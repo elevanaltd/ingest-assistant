@@ -1,0 +1,35 @@
+# Lexicon Configuration
+# Copy this file to config.yaml or place it in ~/Library/Application Support/ingest-assistant/
+
+lexicon:
+  # Terms the AI should prefer when generating names/metadata
+  preferredTerms:
+    - tap
+    - sink
+    - oven
+    - counter
+    - cabinet
+
+  # Terms the AI should avoid using
+  excludedTerms:
+    - faucet
+    - basin
+
+  # Synonym mapping: if AI suggests key, replace with value
+  synonymMapping:
+    faucet: tap
+    basin: sink
+
+  # Optional: categorize terms for better organization
+  categories:
+    kitchen:
+      - oven
+      - sink
+      - tap
+      - counter
+      - cabinet
+    bathroom:
+      - shower
+      - toilet
+      - mirror
+      - bath
