@@ -2,7 +2,7 @@
   "name": "ingest-assistant",
   "version": "1.0.0",
   "description": "AI-powered media file ingestion and metadata assistant",
-  "main": "dist/electron/main.js",
+  "main": "dist/electron/electron/main.js",
   "scripts": {
     "dev": "concurrently \"npm run dev:vite\" \"npm run dev:electron\"",
     "dev:vite": "vite",
