@@ -15,7 +15,11 @@ function App() {
 
   // Check if AI is configured on mount
   useEffect(() => {
-    window.electronAPI.isAIConfigured().then(setIsAIConfigured);
+    if (window.electronAPI) {
+      window.electronAPI.isAIConfigured().then(setIsAIConfigured);
+    } else {
+      console.error('Electron API not available. Make sure the app is running in Electron.');
+    }
   }, []);
 
   // Update form when current file changes
