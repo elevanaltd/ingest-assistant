@@ -1,4 +1,4 @@
-import type { FileMetadata, AppConfig, AIAnalysisResult, Lexicon, LexiconConfig } from './index';
+import type { FileMetadata, AppConfig, AIAnalysisResult, Lexicon, LexiconConfig, AIConfigForUI, AIConnectionTestResult } from './index';
 
 export interface ElectronAPI {
   // File operations
@@ -11,6 +11,11 @@ export interface ElectronAPI {
 
   // AI operations
   isAIConfigured: () => Promise<boolean>;
+  getAIConfig: () => Promise<AIConfigForUI>;
+  updateAIConfig: (config: { provider: 'openai' | 'anthropic' | 'openrouter'; model: string; apiKey: string }) => Promise<{ success: boolean; error?: string }>;
+  testAIConnection: (provider: 'openai' | 'anthropic' | 'openrouter', model: string, apiKey: string) => Promise<AIConnectionTestResult>;
+  testSavedAIConnection: () => Promise<AIConnectionTestResult>;
+  getAIModels: (provider: string) => Promise<Array<{id: string; name: string; description?: string}>>;
   analyzeFile: (filePath: string) => Promise<AIAnalysisResult>;
   batchProcess: (fileIds: string[]) => Promise<Record<string, AIAnalysisResult>>;
 

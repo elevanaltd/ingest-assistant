@@ -262,6 +262,51 @@ export class ConfigManager {
   }
 
   /**
+   * Fetch available models from AI provider
+   * Returns a list of models with id, name, and optional description
+   */
+  async getAIModels(provider: string): Promise<Array<{id: string; name: string; description?: string}>> {
+    try {
+      if (provider === 'openrouter') {
+        // Fetch from OpenRouter API
+        const response = await fetch('https://openrouter.ai/api/v1/models');
+        if (!response.ok) {
+          throw new Error(`OpenRouter API error: ${response.statusText}`);
+        }
+        const data = await response.json() as { data: Array<{ id: string; name?: string; description?: string }> };
+
+        // Transform to simplified format
+        return data.data.map((model) => ({
+          id: model.id,
+          name: model.name || model.id,
+          description: model.description
+        }));
+      } else if (provider === 'openai') {
+        // Return common OpenAI models (API requires auth to list)
+        return [
+          { id: 'gpt-4-vision-preview', name: 'GPT-4 Vision Preview', description: 'Advanced vision and text model' },
+          { id: 'gpt-4o', name: 'GPT-4o', description: 'Multimodal model with vision capabilities' },
+          { id: 'gpt-4-turbo', name: 'GPT-4 Turbo', description: 'Fast GPT-4 with vision' },
+          { id: 'gpt-4', name: 'GPT-4', description: 'Most capable GPT-4 model' },
+        ];
+      } else if (provider === 'anthropic') {
+        // Return common Anthropic models
+        return [
+          { id: 'claude-3-5-sonnet-20241022', name: 'Claude 3.5 Sonnet', description: 'Latest balanced model with vision' },
+          { id: 'claude-3-opus-20240229', name: 'Claude 3 Opus', description: 'Most capable Claude model' },
+          { id: 'claude-3-sonnet-20240229', name: 'Claude 3 Sonnet', description: 'Balanced performance and speed' },
+          { id: 'claude-3-haiku-20240307', name: 'Claude 3 Haiku', description: 'Fastest Claude model' },
+        ];
+      }
+
+      return [];
+    } catch (error) {
+      console.error('Failed to fetch models:', error);
+      return [];
+    }
+  }
+
+  /**
    * Test AI connection by making a minimal API call
    */
   async testAIConnection(

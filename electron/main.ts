@@ -467,3 +467,13 @@ ipcMain.handle('ai:test-saved-connection', async () => {
     };
   }
 });
+
+// Get available AI models for a provider
+ipcMain.handle('ai:get-models', async (_event, provider: string) => {
+  try {
+    return await configManager.getAIModels(provider);
+  } catch (error) {
+    console.error('Failed to get models:', error);
+    return [];
+  }
+});

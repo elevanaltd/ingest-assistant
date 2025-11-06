@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron';
-import type { FileMetadata, AppConfig, AIAnalysisResult, Lexicon, LexiconConfig } from '../src/types';
+import type { FileMetadata, AppConfig, AIAnalysisResult, Lexicon, LexiconConfig, AIConfigForUI, AIConnectionTestResult } from '../src/types';
 
 // Expose protected methods that allow the renderer process to use
 // the ipcRenderer without exposing the entire object
@@ -24,6 +24,21 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // AI operations
   isAIConfigured: (): Promise<boolean> =>
     ipcRenderer.invoke('ai:is-configured'),
+
+  getAIConfig: (): Promise<AIConfigForUI> =>
+    ipcRenderer.invoke('ai:get-config'),
+
+  updateAIConfig: (config: { provider: 'openai' | 'anthropic' | 'openrouter'; model: string; apiKey: string }): Promise<{ success: boolean; error?: string }> =>
+    ipcRenderer.invoke('ai:update-config', config),
+
+  testAIConnection: (provider: 'openai' | 'anthropic' | 'openrouter', model: string, apiKey: string): Promise<AIConnectionTestResult> =>
+    ipcRenderer.invoke('ai:test-connection', provider, model, apiKey),
+
+  testSavedAIConnection: (): Promise<AIConnectionTestResult> =>
+    ipcRenderer.invoke('ai:test-saved-connection'),
+
+  getAIModels: (provider: string): Promise<Array<{id: string; name: string; description?: string}>> =>
+    ipcRenderer.invoke('ai:get-models', provider),
 
   analyzeFile: (filePath: string): Promise<AIAnalysisResult> =>
     ipcRenderer.invoke('ai:analyze-file', filePath),
