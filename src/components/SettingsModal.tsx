@@ -8,13 +8,25 @@ interface SettingsModalProps {
 }
 
 export function SettingsModal({ onClose, onSave, initialConfig }: SettingsModalProps) {
+  // Tab state
+  const [activeTab, setActiveTab] = useState<'lexicon' | 'ai'>('lexicon');
+
+  // Lexicon state
   const [mappings, setMappings] = useState<TermMapping[]>([]);
   const [alwaysInclude, setAlwaysInclude] = useState<string>('');
   const [customInstructions, setCustomInstructions] = useState<string>('');
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string>('');
 
-  // Load initial config
+  // AI config state
+  const [aiProvider, setAiProvider] = useState<'openrouter' | 'openai' | 'anthropic'>('openrouter');
+  const [aiModel, setAiModel] = useState('');
+  const [aiApiKey, setAiApiKey] = useState('');
+  const [testStatus, setTestStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
+  const [aiErrorMessage, setAiErrorMessage] = useState('');
+  const [isSavingAI, setIsSavingAI] = useState(false);
+
+  // Load initial lexicon config
   useEffect(() => {
     if (initialConfig) {
       setMappings(initialConfig.termMappings);
@@ -25,6 +37,17 @@ export function SettingsModal({ onClose, onSave, initialConfig }: SettingsModalP
       setMappings([{ preferred: '', excluded: '' }]);
     }
   }, [initialConfig]);
+
+  // Load AI config when switching to AI tab
+  useEffect(() => {
+    if (activeTab === 'ai' && window.electronAPI) {
+      window.electronAPI.getAIConfig().then(config => {
+        if (config.provider) setAiProvider(config.provider);
+        if (config.model) setAiModel(config.model);
+        // API key is masked, leave empty for user to enter new one if needed
+      });
+    }
+  }, [activeTab]);
 
   const handleMappingChange = (index: number, field: 'preferred' | 'excluded', value: string) => {
     const newMappings = [...mappings];
@@ -76,22 +99,86 @@ export function SettingsModal({ onClose, onSave, initialConfig }: SettingsModalP
     }
   };
 
+  const handleTestConnection = async () => {
+    if (!aiApiKey) {
+      setAiErrorMessage('Please enter an API key');
+      setTestStatus('error');
+      return;
+    }
+
+    setTestStatus('testing');
+    setAiErrorMessage('');
+
+    const result = await window.electronAPI.testAIConnection(aiProvider, aiModel, aiApiKey);
+
+    if (result.success) {
+      setTestStatus('success');
+    } else {
+      setTestStatus('error');
+      setAiErrorMessage(result.error || 'Connection test failed');
+    }
+  };
+
+  const handleSaveAIConfig = async () => {
+    if (!aiApiKey) {
+      setAiErrorMessage('Please enter an API key');
+      return;
+    }
+
+    setIsSavingAI(true);
+    setAiErrorMessage('');
+
+    const result = await window.electronAPI.updateAIConfig({
+      provider: aiProvider,
+      model: aiModel,
+      apiKey: aiApiKey
+    });
+
+    setIsSavingAI(false);
+
+    if (result.success) {
+      // Success! Close modal
+      onClose();
+    } else {
+      setAiErrorMessage(result.error || 'Failed to save configuration');
+    }
+  };
+
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
-          <h2>AI Lexicon Settings</h2>
+          <h2>Settings</h2>
           <button onClick={onClose} className="modal-close" title="Close">
             ×
           </button>
         </div>
 
+        {/* Tab Navigation */}
+        <div className="tabs">
+          <button
+            className={activeTab === 'lexicon' ? 'tab active' : 'tab'}
+            onClick={() => setActiveTab('lexicon')}
+          >
+            Lexicon
+          </button>
+          <button
+            className={activeTab === 'ai' ? 'tab active' : 'tab'}
+            onClick={() => setActiveTab('ai')}
+          >
+            AI Configuration
+          </button>
+        </div>
+
         <div className="modal-body">
-          <section className="settings-section">
-            <h3>Word Preferences (what to call things)</h3>
-            <p className="section-help">
-              Define preferred terms and their alternatives to avoid
-            </p>
+          {/* Lexicon Tab */}
+          {activeTab === 'lexicon' && (
+            <div className="lexicon-tab">
+              <section className="settings-section">
+                <h3>Word Preferences (what to call things)</h3>
+                <p className="section-help">
+                  Define preferred terms and their alternatives to avoid
+                </p>
 
             <table className="term-mapping-table">
               <thead>
@@ -167,20 +254,122 @@ export function SettingsModal({ onClose, onSave, initialConfig }: SettingsModalP
             />
           </section>
 
-          {error && (
-            <div className="error-message">
-              {error}
+              {error && (
+                <div className="error-message">
+                  {error}
+                </div>
+              )}
+
+              <div className="modal-footer">
+                <button onClick={onClose} className="btn" disabled={isSaving}>
+                  Cancel
+                </button>
+                <button onClick={handleSave} className="btn-primary" disabled={isSaving}>
+                  {isSaving ? 'Saving...' : 'Save Lexicon'}
+                </button>
+              </div>
             </div>
           )}
-        </div>
 
-        <div className="modal-footer">
-          <button onClick={onClose} className="btn" disabled={isSaving}>
-            Cancel
-          </button>
-          <button onClick={handleSave} className="btn-primary" disabled={isSaving}>
-            {isSaving ? 'Saving...' : 'Save Lexicon'}
-          </button>
+          {/* AI Configuration Tab */}
+          {activeTab === 'ai' && (
+            <div className="ai-config-tab">
+              <div className="form-group">
+                <label htmlFor="ai-provider">AI Provider</label>
+                <select
+                  id="ai-provider"
+                  value={aiProvider}
+                  onChange={(e) => setAiProvider(e.target.value as any)}
+                >
+                  <option value="openrouter">OpenRouter (Recommended - 100+ models)</option>
+                  <option value="openai">OpenAI</option>
+                  <option value="anthropic">Anthropic</option>
+                </select>
+                <small className="help-text">
+                  OpenRouter provides access to multiple AI models with a single API key
+                </small>
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="ai-model">Model</label>
+                <input
+                  id="ai-model"
+                  type="text"
+                  value={aiModel}
+                  onChange={(e) => setAiModel(e.target.value)}
+                  placeholder={
+                    aiProvider === 'openrouter'
+                      ? 'anthropic/claude-3.5-sonnet'
+                      : aiProvider === 'openai'
+                      ? 'gpt-4-vision-preview'
+                      : 'claude-3-5-sonnet-20241022'
+                  }
+                />
+                <small className="help-text">
+                  {aiProvider === 'openrouter' && 'See available models at openrouter.ai/models'}
+                  {aiProvider === 'openai' && 'Examples: gpt-4-vision-preview, gpt-4o'}
+                  {aiProvider === 'anthropic' && 'Examples: claude-3-5-sonnet-20241022'}
+                </small>
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="ai-api-key">API Key</label>
+                <input
+                  id="ai-api-key"
+                  type="password"
+                  value={aiApiKey}
+                  onChange={(e) => setAiApiKey(e.target.value)}
+                  placeholder="Enter your API key"
+                />
+                <small className="help-text">
+                  {aiProvider === 'openrouter' && 'Get your key at openrouter.ai/keys'}
+                  {aiProvider === 'openai' && 'Get your key at platform.openai.com/api-keys'}
+                  {aiProvider === 'anthropic' && 'Get your key at console.anthropic.com'}
+                </small>
+              </div>
+
+              <div className="button-group">
+                <button
+                  onClick={handleTestConnection}
+                  disabled={testStatus === 'testing' || !aiApiKey}
+                  className="btn-secondary"
+                >
+                  {testStatus === 'testing' ? 'Testing...' : 'Test Connection'}
+                </button>
+              </div>
+
+              {testStatus === 'success' && (
+                <div className="status-message success">
+                  ✓ Connection successful! API key is valid.
+                </div>
+              )}
+
+              {testStatus === 'error' && aiErrorMessage && (
+                <div className="status-message error">
+                  ✗ {aiErrorMessage}
+                </div>
+              )}
+
+              {aiErrorMessage && testStatus !== 'success' && testStatus !== 'error' && (
+                <div className="status-message error">
+                  ✗ {aiErrorMessage}
+                </div>
+              )}
+
+              <div className="modal-footer">
+                <button onClick={onClose} className="btn-secondary">
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSaveAIConfig}
+                  disabled={isSavingAI || !aiApiKey}
+                  className="btn"
+                >
+                  {isSavingAI ? 'Saving...' : 'Save Configuration'}
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

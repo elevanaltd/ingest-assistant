@@ -15,7 +15,7 @@ describe('SettingsModal', () => {
 
   it('renders modal with title', () => {
     render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
-    expect(screen.getByText('AI Lexicon Settings')).toBeInTheDocument();
+    expect(screen.getByText('Settings')).toBeInTheDocument();
   });
 
   it('renders empty table with one row by default', () => {
@@ -115,7 +115,7 @@ describe('SettingsModal', () => {
   it('calls onClose when overlay clicked', () => {
     render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
 
-    const overlay = screen.getByText('AI Lexicon Settings').closest('.modal-overlay');
+    const overlay = screen.getByText('Settings').closest('.modal-overlay');
     expect(overlay).toBeInTheDocument();
 
     fireEvent.click(overlay!);
@@ -125,7 +125,7 @@ describe('SettingsModal', () => {
   it('does not close when modal content clicked', () => {
     render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
 
-    const modal = screen.getByText('AI Lexicon Settings').closest('.modal');
+    const modal = screen.getByText('Settings').closest('.modal');
     expect(modal).toBeInTheDocument();
 
     fireEvent.click(modal!);
@@ -232,6 +232,238 @@ describe('SettingsModal', () => {
 
     await waitFor(() => {
       expect(mockOnClose).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('AI Configuration Tab', () => {
+    beforeEach(() => {
+      // Mock window.electronAPI
+      window.electronAPI = {
+        getAIConfig: vi.fn().mockResolvedValue({
+          provider: 'openrouter',
+          model: 'anthropic/claude-3.5-sonnet',
+          apiKey: '***masked***'
+        }),
+        updateAIConfig: vi.fn().mockResolvedValue({ success: true }),
+        testAIConnection: vi.fn().mockResolvedValue({ success: true }),
+      } as any;
+    });
+
+    it('should render tabs for Lexicon and AI Configuration', () => {
+      render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
+
+      expect(screen.getByText('Lexicon')).toBeInTheDocument();
+      expect(screen.getByText('AI Configuration')).toBeInTheDocument();
+    });
+
+    it('should switch to AI Configuration tab when clicked', () => {
+      render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
+
+      const aiTab = screen.getByText('AI Configuration');
+      fireEvent.click(aiTab);
+
+      // Should show AI config form elements
+      expect(screen.getByLabelText(/AI Provider/i)).toBeInTheDocument();
+      expect(screen.getByLabelText(/Model/i)).toBeInTheDocument();
+      expect(screen.getByLabelText(/API Key/i)).toBeInTheDocument();
+    });
+
+    it('should load existing AI config when switching to AI tab', async () => {
+      render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
+
+      const aiTab = screen.getByText('AI Configuration');
+      fireEvent.click(aiTab);
+
+      await waitFor(() => {
+        expect(window.electronAPI.getAIConfig).toHaveBeenCalled();
+      });
+
+      // Should populate form with loaded config
+      expect(screen.getByDisplayValue('anthropic/claude-3.5-sonnet')).toBeInTheDocument();
+    });
+
+    it('should test connection successfully', async () => {
+      render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
+
+      fireEvent.click(screen.getByText('AI Configuration'));
+
+      // Wait for config to load
+      await waitFor(() => {
+        expect(window.electronAPI.getAIConfig).toHaveBeenCalled();
+      });
+
+      const apiKeyInput = screen.getByLabelText(/API Key/i);
+      fireEvent.change(apiKeyInput, { target: { value: 'test-api-key' } });
+
+      const testButton = screen.getByText('Test Connection');
+      fireEvent.click(testButton);
+
+      await waitFor(() => {
+        expect(screen.getByText(/Connection successful/i)).toBeInTheDocument();
+      });
+
+      expect(window.electronAPI.testAIConnection).toHaveBeenCalledWith(
+        'openrouter',
+        'anthropic/claude-3.5-sonnet',
+        'test-api-key'
+      );
+    });
+
+    it('should show error when connection test fails', async () => {
+      window.electronAPI.testAIConnection = vi.fn().mockResolvedValue({
+        success: false,
+        error: 'Invalid API key'
+      });
+
+      render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
+
+      fireEvent.click(screen.getByText('AI Configuration'));
+
+      const apiKeyInput = screen.getByLabelText(/API Key/i);
+      fireEvent.change(apiKeyInput, { target: { value: 'bad-key' } });
+
+      const testButton = screen.getByText('Test Connection');
+      fireEvent.click(testButton);
+
+      await waitFor(() => {
+        expect(screen.getByText(/Invalid API key/i)).toBeInTheDocument();
+      });
+    });
+
+    it('should save AI configuration successfully', async () => {
+      render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
+
+      fireEvent.click(screen.getByText('AI Configuration'));
+
+      const providerSelect = screen.getByLabelText(/AI Provider/i);
+      const modelInput = screen.getByLabelText(/Model/i);
+      const apiKeyInput = screen.getByLabelText(/API Key/i);
+
+      fireEvent.change(providerSelect, { target: { value: 'openai' } });
+      fireEvent.change(modelInput, { target: { value: 'gpt-4-vision-preview' } });
+      fireEvent.change(apiKeyInput, { target: { value: 'sk-test-key' } });
+
+      const saveButton = screen.getByText('Save Configuration');
+      fireEvent.click(saveButton);
+
+      await waitFor(() => {
+        expect(window.electronAPI.updateAIConfig).toHaveBeenCalledWith({
+          provider: 'openai',
+          model: 'gpt-4-vision-preview',
+          apiKey: 'sk-test-key'
+        });
+      });
+
+      // Modal should close after successful save
+      expect(mockOnClose).toHaveBeenCalled();
+    });
+
+    it('should show error when save fails', async () => {
+      window.electronAPI.updateAIConfig = vi.fn().mockResolvedValue({
+        success: false,
+        error: 'Failed to save configuration'
+      });
+
+      render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
+
+      fireEvent.click(screen.getByText('AI Configuration'));
+
+      // Wait for config to load
+      await waitFor(() => {
+        expect(window.electronAPI.getAIConfig).toHaveBeenCalled();
+      });
+
+      const apiKeyInput = screen.getByLabelText(/API Key/i);
+      fireEvent.change(apiKeyInput, { target: { value: 'test-key' } });
+
+      const saveButton = screen.getByText('Save Configuration');
+      fireEvent.click(saveButton);
+
+      await waitFor(() => {
+        expect(window.electronAPI.updateAIConfig).toHaveBeenCalled();
+      });
+
+      await waitFor(() => {
+        expect(screen.getByText(/Failed to save configuration/i)).toBeInTheDocument();
+      });
+
+      // Modal should NOT close on error
+      expect(mockOnClose).not.toHaveBeenCalled();
+    });
+
+    it('should require API key before testing connection', () => {
+      render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
+
+      fireEvent.click(screen.getByText('AI Configuration'));
+
+      const testButton = screen.getByText('Test Connection');
+      expect(testButton).toBeDisabled();
+    });
+
+    it('should require API key before saving', () => {
+      render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
+
+      fireEvent.click(screen.getByText('AI Configuration'));
+
+      const saveButton = screen.getByText('Save Configuration');
+      expect(saveButton).toBeDisabled();
+    });
+
+    it('should update help text based on provider selection', () => {
+      render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
+
+      fireEvent.click(screen.getByText('AI Configuration'));
+
+      const providerSelect = screen.getByLabelText(/AI Provider/i);
+
+      // OpenRouter help text
+      expect(screen.getByText(/openrouter\.ai\/keys/i)).toBeInTheDocument();
+
+      // Switch to OpenAI
+      fireEvent.change(providerSelect, { target: { value: 'openai' } });
+      expect(screen.getByText(/platform\.openai\.com\/api-keys/i)).toBeInTheDocument();
+
+      // Switch to Anthropic
+      fireEvent.change(providerSelect, { target: { value: 'anthropic' } });
+      expect(screen.getByText(/console\.anthropic\.com/i)).toBeInTheDocument();
+    });
+
+    it('should disable buttons while testing connection', async () => {
+      window.electronAPI.testAIConnection = vi.fn().mockImplementation(
+        () => new Promise(resolve => setTimeout(() => resolve({ success: true }), 100))
+      );
+
+      render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
+
+      fireEvent.click(screen.getByText('AI Configuration'));
+
+      const apiKeyInput = screen.getByLabelText(/API Key/i);
+      fireEvent.change(apiKeyInput, { target: { value: 'test-key' } });
+
+      const testButton = screen.getByText('Test Connection');
+      fireEvent.click(testButton);
+
+      expect(screen.getByText('Testing...')).toBeInTheDocument();
+      expect(testButton).toBeDisabled();
+    });
+
+    it('should disable buttons while saving', async () => {
+      window.electronAPI.updateAIConfig = vi.fn().mockImplementation(
+        () => new Promise(resolve => setTimeout(() => resolve({ success: true }), 100))
+      );
+
+      render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
+
+      fireEvent.click(screen.getByText('AI Configuration'));
+
+      const apiKeyInput = screen.getByLabelText(/API Key/i);
+      fireEvent.change(apiKeyInput, { target: { value: 'test-key' } });
+
+      const saveButton = screen.getByText('Save Configuration');
+      fireEvent.click(saveButton);
+
+      expect(screen.getByText('Saving...')).toBeInTheDocument();
+      expect(saveButton).toBeDisabled();
     });
   });
 });

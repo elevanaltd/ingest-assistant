@@ -160,6 +160,15 @@ function App() {
     setStatusMessage('✓ Lexicon settings saved');
   };
 
+  const handleSettingsClose = async () => {
+    setShowSettings(false);
+    // Refresh AI configuration status
+    if (window.electronAPI) {
+      const configured = await window.electronAPI.isAIConfigured();
+      setIsAIConfigured(configured);
+    }
+  };
+
   return (
     <div className="app">
       <header className="header">
@@ -305,7 +314,7 @@ function App() {
 
       {showSettings && (
         <SettingsModal
-          onClose={() => setShowSettings(false)}
+          onClose={handleSettingsClose}
           onSave={handleSaveLexicon}
           initialConfig={lexiconConfig}
         />
