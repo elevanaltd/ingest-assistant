@@ -32,9 +32,15 @@ Validate the core UXP→Premiere Pro integration with **minimal features** befor
 ```
 ✓ User edits Description text field
 ✓ Click "Save" button
+✓ Rename project item: "AssetID - [description]"
 ✓ Write to PP project metadata (Description field)
 ✓ Show success message
 ```
+
+**Why rename project item?**
+- Makes descriptive names **immediately visible** in bins
+- No need to enable metadata columns
+- Editor-friendly (names are always displayed)
 
 ### Feature 4: Verify Searchability
 ```
@@ -101,10 +107,15 @@ export function App() {
     if (!selectedClip) return;
 
     try {
-      // Write to PP project metadata
-      selectedClip.setProjectMetadata(description, "Description");
-      setStatus('✓ Saved to project');
+      // 1. Rename project item (visible in bins)
+      const assetId = selectedClip.name.substring(0, 8);
+      const shortDesc = description.substring(0, 40); // First 40 chars
+      selectedClip.name = `${assetId} - ${shortDesc}`;
 
+      // 2. Write to PP project metadata (searchable)
+      selectedClip.setProjectMetadata(description, "Description");
+
+      setStatus('✓ Saved to project');
       setTimeout(() => setStatus(''), 3000);
     } catch (error) {
       setStatus('✗ Error: ' + error.message);
@@ -207,7 +218,8 @@ export function App() {
    - Existing metadata reads successfully
 
 3. **Metadata write succeeds**
-   - Save button writes Description
+   - Save button renames project item (visible immediately)
+   - Save button writes Description metadata
    - No errors thrown
    - PP project file updated
 
@@ -257,14 +269,15 @@ export function App() {
 2. [ ] Verify panel appears in workspace
 3. [ ] Select clip (Project Panel) → Panel shows clip name
 4. [ ] Select clip (Timeline) → Panel updates
-5. [ ] Edit Description: "POC TEST: This is a test description"
+5. [ ] Edit Description: "POC TEST: Guest Arrival Podium"
 6. [ ] Click Save → Success message appears
-7. [ ] Right-click bin columns → Enable "Description"
-8. [ ] Verify Description appears: "POC TEST: This is a test description"
-9. [ ] Press Cmd+F → Search for "test description"
-10. [ ] Confirm clip appears in search results
-11. [ ] Test with OFFLINE clip → Verify still works
-12. [ ] Close/reopen PP → Verify metadata persists
+7. [ ] **Verify clip NAME changed** in bin: "EA001234 - POC TEST: Guest Arrival Podium" (first 40 chars)
+8. [ ] Right-click bin columns → Enable "Description"
+9. [ ] Verify Description appears: "POC TEST: Guest Arrival Podium"
+10. [ ] Press Cmd+F → Search for "guest arrival"
+11. [ ] Confirm clip appears in search results
+12. [ ] Test with OFFLINE clip → Verify still works (both name + metadata)
+13. [ ] Close/reopen PP → Verify name and metadata persist
 
 ### Additional Validation:
 - [ ] Test with multiple clip selection (should show first clip)

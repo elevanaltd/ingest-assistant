@@ -558,12 +558,42 @@ const [keywords, setKeywords] = useState('');
 3. Lexicon loading from shared config
 4. Response parsing (JSON extraction)
 5. Loading states and progress indicators
+6. **Transcript integration** (PP Speech-to-Text)
 
 **Success Criteria:**
 - AI suggestions populate fields
 - Lexicon constraints honored
 - Frame analysis works on offline clips
+- Transcript text enhances AI suggestions (for dialogue/VO)
 - Graceful fallback if API unavailable
+
+**Transcript Integration (NEW):**
+```typescript
+// Premiere Pro has built-in Speech-to-Text
+// Use transcript text to enhance AI analysis
+
+async function analyzeWithTranscript(clip) {
+  // Get PP-generated transcript (if available)
+  const transcript = clip.getTranscript();
+
+  const frame = await exportCurrentFrame();
+
+  const prompt = transcript?.text
+    ? `Analyze this video frame and transcript.
+       Transcript: "${transcript.text}"
+
+       Suggest concise name and keywords based on both visual + audio content.`
+    : `Analyze this video frame and suggest name and keywords.`;
+
+  // Rest of AI logic...
+}
+```
+
+**Why This Matters:**
+- **Interview/VO footage:** AI can summarize what's being said
+- **Keyword extraction:** Pull key terms from speech
+- **Context-aware tagging:** Understand scene content better
+- **Better names:** Especially valuable for dialogue-heavy clips
 
 ### Phase 4: Polish & Testing - Week 4
 
