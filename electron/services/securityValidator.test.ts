@@ -1,6 +1,14 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { SecurityValidator } from './securityValidator';
 import { SecurityViolationError } from '../utils/securityViolationError';
+
+// Mock fs/promises module at the top level
+vi.mock('fs/promises', () => ({
+  realpath: vi.fn(),
+  readFile: vi.fn(),
+  stat: vi.fn(),
+}));
+
 import * as fs from 'fs/promises';
 
 describe('SecurityValidator', () => {
@@ -8,11 +16,15 @@ describe('SecurityValidator', () => {
 
   beforeEach(() => {
     validator = new SecurityValidator();
+    vi.clearAllMocks();
   });
 
   describe('Path Traversal Protection', () => {
     it('should allow files within allowed root', async () => {
       validator.setAllowedBasePath('/selected/folder');
+
+      // Mock realpath to return the same path (simulates valid file)
+      vi.mocked(fs.realpath).mockResolvedValue('/selected/folder/subdir/image.jpg' as any);
 
       const validPath = '/selected/folder/subdir/image.jpg';
       await expect(
@@ -22,6 +34,9 @@ describe('SecurityValidator', () => {
 
     it('should reject absolute paths outside allowed root', async () => {
       validator.setAllowedBasePath('/selected/folder');
+
+      // Mock realpath to return the actual path (no traversal)
+      vi.mocked(fs.realpath).mockResolvedValue('/etc/passwd' as any);
 
       const maliciousPath = '/etc/passwd';
       await expect(
@@ -39,6 +54,9 @@ describe('SecurityValidator', () => {
     it('should reject relative path traversal attempts (../)', async () => {
       validator.setAllowedBasePath('/selected/folder');
 
+      // Mock realpath to resolve the traversal (simulates what Node does)
+      vi.mocked(fs.realpath).mockResolvedValue('/etc/passwd' as any);
+
       const traversalPath = '/selected/folder/../../etc/passwd';
       await expect(
         validator.validateFilePath(traversalPath)
@@ -49,7 +67,7 @@ describe('SecurityValidator', () => {
       validator.setAllowedBasePath('/selected/folder');
 
       // Mock realpath to simulate symlink pointing outside
-      vi.spyOn(fs, 'realpath').mockResolvedValue('/etc/passwd' as any);
+      vi.mocked(fs.realpath).mockResolvedValue('/etc/passwd' as any);
 
       const symlinkPath = '/selected/folder/symlink-to-passwd';
       await expect(
@@ -69,7 +87,7 @@ describe('SecurityValidator', () => {
   describe('File Content Validation', () => {
     it('should accept valid JPEG files', async () => {
       const jpegBuffer = Buffer.from([0xFF, 0xD8, 0xFF, 0xE0, ...Array(100).fill(0)]);
-      vi.spyOn(fs, 'readFile').mockResolvedValue(jpegBuffer as any);
+      vi.mocked(fs.readFile).mockResolvedValue(jpegBuffer as any);
 
       await expect(
         validator.validateFileContent('/test/image.jpg')
@@ -78,7 +96,7 @@ describe('SecurityValidator', () => {
 
     it('should accept valid PNG files', async () => {
       const pngBuffer = Buffer.from([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, ...Array(100).fill(0)]);
-      vi.spyOn(fs, 'readFile').mockResolvedValue(pngBuffer as any);
+      vi.mocked(fs.readFile).mockResolvedValue(pngBuffer as any);
 
       await expect(
         validator.validateFileContent('/test/image.png')
@@ -87,7 +105,7 @@ describe('SecurityValidator', () => {
 
     it('should reject executable disguised as JPEG', async () => {
       const exeBuffer = Buffer.from([0x4D, 0x5A, ...Array(100).fill(0)]); // MZ header (Windows EXE)
-      vi.spyOn(fs, 'readFile').mockResolvedValue(exeBuffer as any);
+      vi.mocked(fs.readFile).mockResolvedValue(exeBuffer as any);
 
       await expect(
         validator.validateFileContent('/test/malware.jpg')
@@ -102,7 +120,7 @@ describe('SecurityValidator', () => {
 
     it('should reject files with mismatched extension', async () => {
       const pngBuffer = Buffer.from([0x89, 0x50, 0x4E, 0x47, ...Array(100).fill(0)]);
-      vi.spyOn(fs, 'readFile').mockResolvedValue(pngBuffer as any);
+      vi.mocked(fs.readFile).mockResolvedValue(pngBuffer as any);
 
       // PNG magic bytes but .jpg extension
       await expect(
@@ -113,7 +131,7 @@ describe('SecurityValidator', () => {
 
   describe('File Size Validation', () => {
     it('should accept files under max size', async () => {
-      vi.spyOn(fs, 'stat').mockResolvedValue({
+      vi.mocked(fs.stat).mockResolvedValue({
         size: 50 * 1024 * 1024, // 50MB
       } as any);
 
@@ -123,7 +141,7 @@ describe('SecurityValidator', () => {
     });
 
     it('should reject files over max size', async () => {
-      vi.spyOn(fs, 'stat').mockResolvedValue({
+      vi.mocked(fs.stat).mockResolvedValue({
         size: 150 * 1024 * 1024, // 150MB
       } as any);
 
