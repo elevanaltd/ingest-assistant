@@ -25,6 +25,12 @@ export function SettingsModal({ onClose, onSave, initialConfig }: SettingsModalP
   const [testStatus, setTestStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
   const [aiErrorMessage, setAiErrorMessage] = useState('');
   const [isSavingAI, setIsSavingAI] = useState(false);
+  const [availableModels, setAvailableModels] = useState<Array<{id: string; name: string; description?: string}>>([]);
+  const [loadingModels, setLoadingModels] = useState(false);
+
+  // Success states
+  const [lexiconSaveSuccess, setLexiconSaveSuccess] = useState(false);
+  const [aiSaveSuccess, setAiSaveSuccess] = useState(false);
 
   // Load initial lexicon config
   useEffect(() => {
@@ -49,6 +55,21 @@ export function SettingsModal({ onClose, onSave, initialConfig }: SettingsModalP
     }
   }, [activeTab]);
 
+  // Fetch available models when provider changes
+  useEffect(() => {
+    if (activeTab === 'ai' && window.electronAPI) {
+      setLoadingModels(true);
+      window.electronAPI.getAIModels(aiProvider).then(models => {
+        setAvailableModels(models);
+        setLoadingModels(false);
+      }).catch(err => {
+        console.error('Failed to fetch models:', err);
+        setAvailableModels([]);
+        setLoadingModels(false);
+      });
+    }
+  }, [aiProvider, activeTab]);
+
   const handleMappingChange = (index: number, field: 'preferred' | 'excluded', value: string) => {
     const newMappings = [...mappings];
     newMappings[index][field] = value;
@@ -70,6 +91,7 @@ export function SettingsModal({ onClose, onSave, initialConfig }: SettingsModalP
 
   const handleSave = async () => {
     setError('');
+    setLexiconSaveSuccess(false);
 
     // Validate: Remove empty rows
     const validMappings = mappings.filter(
@@ -91,7 +113,14 @@ export function SettingsModal({ onClose, onSave, initialConfig }: SettingsModalP
     setIsSaving(true);
     try {
       await onSave(config);
-      onClose();
+
+      // Show success message
+      setLexiconSaveSuccess(true);
+
+      // Close after 1.5 seconds
+      setTimeout(() => {
+        onClose();
+      }, 1500);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save lexicon');
     } finally {
@@ -100,16 +129,18 @@ export function SettingsModal({ onClose, onSave, initialConfig }: SettingsModalP
   };
 
   const handleTestConnection = async () => {
-    if (!aiApiKey) {
-      setAiErrorMessage('Please enter an API key');
-      setTestStatus('error');
-      return;
-    }
-
     setTestStatus('testing');
     setAiErrorMessage('');
 
-    const result = await window.electronAPI.testAIConnection(aiProvider, aiModel, aiApiKey);
+    let result;
+
+    if (!aiApiKey) {
+      // No new key entered, test with saved key from Keychain
+      result = await window.electronAPI.testSavedAIConnection();
+    } else {
+      // New key entered, test with it
+      result = await window.electronAPI.testAIConnection(aiProvider, aiModel, aiApiKey);
+    }
 
     if (result.success) {
       setTestStatus('success');
@@ -127,6 +158,7 @@ export function SettingsModal({ onClose, onSave, initialConfig }: SettingsModalP
 
     setIsSavingAI(true);
     setAiErrorMessage('');
+    setAiSaveSuccess(false);
 
     const result = await window.electronAPI.updateAIConfig({
       provider: aiProvider,
@@ -137,16 +169,21 @@ export function SettingsModal({ onClose, onSave, initialConfig }: SettingsModalP
     setIsSavingAI(false);
 
     if (result.success) {
-      // Success! Close modal
-      onClose();
+      // Show success message
+      setAiSaveSuccess(true);
+
+      // Close after 1.5 seconds
+      setTimeout(() => {
+        onClose();
+      }, 1500);
     } else {
       setAiErrorMessage(result.error || 'Failed to save configuration');
     }
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal" onClick={(e) => e.stopPropagation()}>
+    <div className="modal-overlay">
+      <div className="modal">
         <div className="modal-header">
           <h2>Settings</h2>
           <button onClick={onClose} className="modal-close" title="Close">
@@ -254,6 +291,12 @@ export function SettingsModal({ onClose, onSave, initialConfig }: SettingsModalP
             />
           </section>
 
+              {lexiconSaveSuccess && (
+                <div className="status-message success">
+                  ✓ Lexicon settings saved successfully!
+                </div>
+              )}
+
               {error && (
                 <div className="error-message">
                   {error}
@@ -295,18 +338,28 @@ export function SettingsModal({ onClose, onSave, initialConfig }: SettingsModalP
                 <input
                   id="ai-model"
                   type="text"
+                  list="model-options"
                   value={aiModel}
                   onChange={(e) => setAiModel(e.target.value)}
                   placeholder={
+                    loadingModels ? 'Loading models...' :
                     aiProvider === 'openrouter'
                       ? 'anthropic/claude-3.5-sonnet'
                       : aiProvider === 'openai'
                       ? 'gpt-4-vision-preview'
                       : 'claude-3-5-sonnet-20241022'
                   }
+                  disabled={loadingModels}
                 />
+                <datalist id="model-options">
+                  {availableModels.map(model => (
+                    <option key={model.id} value={model.id}>
+                      {model.name}
+                    </option>
+                  ))}
+                </datalist>
                 <small className="help-text">
-                  {aiProvider === 'openrouter' && 'See available models at openrouter.ai/models'}
+                  {aiProvider === 'openrouter' && !loadingModels && `${availableModels.length} models available`}
                   {aiProvider === 'openai' && 'Examples: gpt-4-vision-preview, gpt-4o'}
                   {aiProvider === 'anthropic' && 'Examples: claude-3-5-sonnet-20241022'}
                 </small>
@@ -331,10 +384,14 @@ export function SettingsModal({ onClose, onSave, initialConfig }: SettingsModalP
               <div className="button-group">
                 <button
                   onClick={handleTestConnection}
-                  disabled={testStatus === 'testing' || !aiApiKey}
+                  disabled={testStatus === 'testing'}
                   className="btn-secondary"
                 >
-                  {testStatus === 'testing' ? 'Testing...' : 'Test Connection'}
+                  {testStatus === 'testing'
+                    ? 'Testing...'
+                    : aiApiKey
+                    ? 'Test New Key'
+                    : 'Test Saved Connection'}
                 </button>
               </div>
 
@@ -353,6 +410,12 @@ export function SettingsModal({ onClose, onSave, initialConfig }: SettingsModalP
               {aiErrorMessage && testStatus !== 'success' && testStatus !== 'error' && (
                 <div className="status-message error">
                   ✗ {aiErrorMessage}
+                </div>
+              )}
+
+              {aiSaveSuccess && (
+                <div className="status-message success">
+                  ✓ AI configuration saved successfully! Settings will be available after closing.
                 </div>
               )}
 

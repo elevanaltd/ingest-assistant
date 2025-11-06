@@ -246,6 +246,11 @@ describe('SettingsModal', () => {
         }),
         updateAIConfig: vi.fn().mockResolvedValue({ success: true }),
         testAIConnection: vi.fn().mockResolvedValue({ success: true }),
+        testSavedAIConnection: vi.fn().mockResolvedValue({ success: true }),
+        getAIModels: vi.fn().mockResolvedValue([
+          { id: 'anthropic/claude-3.5-sonnet', name: 'Claude 3.5 Sonnet', description: 'Latest model' },
+          { id: 'openai/gpt-4', name: 'GPT-4', description: 'OpenAI GPT-4' },
+        ]),
       } as any;
     });
 
@@ -295,7 +300,7 @@ describe('SettingsModal', () => {
       const apiKeyInput = screen.getByLabelText(/API Key/i);
       fireEvent.change(apiKeyInput, { target: { value: 'test-api-key' } });
 
-      const testButton = screen.getByText('Test Connection');
+      const testButton = screen.getByText('Test New Key');
       fireEvent.click(testButton);
 
       await waitFor(() => {
@@ -322,7 +327,7 @@ describe('SettingsModal', () => {
       const apiKeyInput = screen.getByLabelText(/API Key/i);
       fireEvent.change(apiKeyInput, { target: { value: 'bad-key' } });
 
-      const testButton = screen.getByText('Test Connection');
+      const testButton = screen.getByText('Test New Key');
       fireEvent.click(testButton);
 
       await waitFor(() => {
@@ -391,13 +396,20 @@ describe('SettingsModal', () => {
       expect(mockOnClose).not.toHaveBeenCalled();
     });
 
-    it('should require API key before testing connection', () => {
+    it('should show "Test Saved Connection" when no API key entered', async () => {
       render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
 
       fireEvent.click(screen.getByText('AI Configuration'));
 
-      const testButton = screen.getByText('Test Connection');
-      expect(testButton).toBeDisabled();
+      // Wait for models to load
+      await waitFor(() => {
+        expect(window.electronAPI.getAIModels).toHaveBeenCalled();
+      });
+
+      // When no API key entered, button should say "Test Saved Connection"
+      const testButton = screen.getByText('Test Saved Connection');
+      expect(testButton).toBeInTheDocument();
+      expect(testButton).not.toBeDisabled();
     });
 
     it('should require API key before saving', () => {
@@ -440,7 +452,7 @@ describe('SettingsModal', () => {
       const apiKeyInput = screen.getByLabelText(/API Key/i);
       fireEvent.change(apiKeyInput, { target: { value: 'test-key' } });
 
-      const testButton = screen.getByText('Test Connection');
+      const testButton = screen.getByText('Test New Key');
       fireEvent.click(testButton);
 
       expect(screen.getByText('Testing...')).toBeInTheDocument();
