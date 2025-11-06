@@ -157,7 +157,7 @@ describe('Sidebar Component', () => {
     });
 
     it('should display file type indicator for each file', () => {
-      render(
+      const { container } = render(
         <Sidebar
           files={mockFiles}
           currentFileIndex={0}
@@ -166,13 +166,14 @@ describe('Sidebar Component', () => {
         />
       );
 
-      // Should show image indicators (2 image files)
-      const imageIndicators = screen.getAllByText(/image/i);
-      expect(imageIndicators).toHaveLength(2);
+      // Should show image type indicators (2 image files)
+      const imageTypes = container.querySelectorAll('.sidebar-file-type');
+      const imageCount = Array.from(imageTypes).filter(el => el.textContent === 'image').length;
+      expect(imageCount).toBe(2);
 
-      // Should show video indicator (1 video file)
-      const videoIndicator = screen.getByText(/video/i);
-      expect(videoIndicator).toBeInTheDocument();
+      // Should show video type indicator (1 video file)
+      const videoCount = Array.from(imageTypes).filter(el => el.textContent === 'video').length;
+      expect(videoCount).toBe(1);
     });
 
     it('should show AI-processed indicator for files processed by AI', () => {
