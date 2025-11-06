@@ -582,7 +582,61 @@ npm run package      # Create macOS DMG/ZIP (electron-builder)
 
 ---
 
-**Document Version:** 1.0.0
-**Last Updated:** 2025-01-06
+## Architectural Evolution & Pivot Decision
+
+### November 2025: Critical Discovery - Premiere Pro Workflow Integration
+
+**Context:** During production use validation, a fundamental constraint was discovered that changes the optimal architecture.
+
+**Discovery:** Premiere Pro displays **master file metadata only** when proxies are attached. Metadata written to proxy files is invisible in the editing workflow. This means:
+1. Metadata must be written to RAW files (stored on restricted-access NAS)
+2. Editors work with offline/proxy files (accessible on LucidLink)
+3. File system access creates organizational boundary conflicts
+
+**Workflow Reality Check:**
+```
+ASSUMED WORKFLOW (Tool designed for):
+Camera Cards → Ingest Assistant → Renamed files → Import to PP
+
+ACTUAL WORKFLOW (How editors work):
+Camera Cards → Copy to NAS → Import to PP → Edit with proxies (offline RAW files)
+```
+
+**Architectural Pivot Decision:**
+
+After comprehensive analysis, the optimal solution is a **Premiere Pro UXP Panel** rather than standalone Electron app:
+
+**Why UXP Panel is Superior:**
+1. **Access Boundary:** Editors work in PP with offline files → PP metadata doesn't require file access
+2. **Search Integration:** PP project metadata is immediately searchable in bins (no relink needed)
+3. **Workflow Integration:** Editors never leave PP → Zero tool-switching friction
+4. **AI Advantage:** Can analyze exact frame editor is viewing (better than blind file analysis)
+5. **Simplicity:** No file access choreography, no server infrastructure, no queue systems
+
+**Code Reusability:** 60-70% of Electron app code reusable in UXP:
+- React components (UI layout, forms, state management)
+- AIService (HTTP API calls work identically)
+- ConfigManager (lexicon loading adaptable)
+- Type definitions (interfaces remain valid)
+
+**Electron App Future:**
+- **Status:** Proof-of-concept complete, mission accomplished
+- **Value:** Validated UI/UX concepts, AI integration patterns, lexicon system
+- **Lessons:** File-system approach taught us what editors actually need
+- **Potential Future Use:** Ingest-time workflow (optional, complementary to UXP panel)
+
+**Next Steps:**
+- New project: `ingest-assistant-uxp` (Premiere Pro panel)
+- Fresh repository: Clean architecture based on lessons learned
+- POC-first approach: Validate PP integration before full build
+
+**References:**
+- UXP Panel Architecture: See `ingest-assistant-uxp/ARCHITECTURE.md` (forthcoming)
+- Pivot Analysis Session: November 6, 2025 (Holistic Orchestrator review)
+
+---
+
+**Document Version:** 1.1.0
+**Last Updated:** 2025-11-06
 **Author:** Holistic Orchestrator (Claude Code)
-**Status:** Living document - update as architecture evolves
+**Status:** Historical reference - Electron app architecture preserved, UXP panel is future direction

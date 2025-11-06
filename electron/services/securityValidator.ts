@@ -3,16 +3,17 @@ import * as path from 'path';
 import { SecurityViolationError } from '../utils/securityViolationError';
 
 // File magic bytes signatures
+// Note: Video formats require deeper validation beyond simple prefix checks
 const FILE_SIGNATURES: Record<string, number[]> = {
   jpg: [0xFF, 0xD8, 0xFF],
   jpeg: [0xFF, 0xD8, 0xFF],
   png: [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A],
   gif: [0x47, 0x49, 0x46, 0x38],
   webp: [0x52, 0x49, 0x46, 0x46], // "RIFF" (need to check bytes 8-11 for "WEBP")
-  mp4: [0x00, 0x00, 0x00], // ftyp box (check bytes 4-7)
-  mov: [0x00, 0x00, 0x00], // Same as mp4
-  avi: [0x52, 0x49, 0x46, 0x46], // "RIFF"
+  bmp: [0x42, 0x4D], // 'BM'
   webm: [0x1A, 0x45, 0xDF, 0xA3], // EBML header
+  mkv: [0x1A, 0x45, 0xDF, 0xA3], // EBML header (same as WebM)
+  // Note: MP4/MOV/AVI require special validation logic (see validateFileContent)
 };
 
 /**
@@ -39,6 +40,7 @@ export class SecurityValidator {
    * Validates file path against allowed base path (prevents path traversal).
    *
    * Mitigates: CRITICAL-2 (CWE-22 Path Traversal)
+   * Fixed: Prefix bypass vulnerability using path.relative() instead of startsWith()
    *
    * @throws SecurityViolationError if path is outside allowed base
    * @returns Resolved absolute path if valid
@@ -51,8 +53,14 @@ export class SecurityValidator {
     // Resolve path (handles relative paths, symlinks)
     const resolvedPath = await fs.realpath(filePath).catch(() => path.resolve(filePath));
 
-    // Check if resolved path starts with allowed base
-    if (!resolvedPath.startsWith(this.allowedBasePath)) {
+    // Security check: Use path.relative() to prevent prefix bypass
+    // Calculate relative path from base to resolved
+    const relativePath = path.relative(this.allowedBasePath, resolvedPath);
+
+    // Reject if relative path:
+    // 1. Starts with '..' (goes up from base - sibling or parent directory)
+    // 2. Is absolute (completely outside base)
+    if (relativePath.startsWith('..') || path.isAbsolute(relativePath)) {
       throw new SecurityViolationError(
         'PATH_TRAVERSAL',
         filePath,
@@ -67,50 +75,127 @@ export class SecurityValidator {
    * Validates file content matches extension via magic number checking.
    *
    * Mitigates: CRITICAL-3 (CWE-434 Unrestricted File Upload)
+   * Fixed: Enhanced video format validation (MP4/MOV/AVI require deeper checks)
+   * Added: BMP and MKV format support (HIGH-1)
    *
    * @throws SecurityViolationError if content doesn't match extension
    * @returns true if valid
    */
   async validateFileContent(filePath: string): Promise<boolean> {
     const ext = path.extname(filePath).toLowerCase().slice(1); // Remove leading dot
-    const signature = FILE_SIGNATURES[ext];
 
-    if (!signature) {
-      throw new SecurityViolationError(
-        'INVALID_EXTENSION',
-        filePath,
-        `Unsupported file extension: ${ext}`
-      );
-    }
-
-    // Read first 16 bytes (sufficient for all signatures)
+    // Read first 32 bytes (sufficient for all video format checks)
     const buffer = await fs.readFile(filePath);
-    const header = buffer.slice(0, 16);
+    const header = buffer.slice(0, 32);
 
-    // Check magic bytes
-    for (let i = 0; i < signature.length; i++) {
-      if (header[i] !== signature[i]) {
+    // Image format validation (simple magic byte checks)
+    if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp'].includes(ext)) {
+      const signature = FILE_SIGNATURES[ext];
+      if (!signature) {
+        throw new SecurityViolationError(
+          'INVALID_EXTENSION',
+          filePath,
+          `Unsupported file extension: ${ext}`
+        );
+      }
+
+      // Check magic bytes
+      for (let i = 0; i < signature.length; i++) {
+        if (header[i] !== signature[i]) {
+          throw new SecurityViolationError(
+            'INVALID_CONTENT',
+            filePath,
+            `File content doesn't match ${ext} format (magic bytes mismatch)`
+          );
+        }
+      }
+
+      // Special case: WEBP requires additional check
+      if (ext === 'webp') {
+        const webpMarker = header.slice(8, 12).toString('ascii');
+        if (webpMarker !== 'WEBP') {
+          throw new SecurityViolationError(
+            'INVALID_CONTENT',
+            filePath,
+            'Invalid WEBP format'
+          );
+        }
+      }
+
+      return true;
+    }
+
+    // Video format validation (ENHANCED - requires deeper checks)
+    if (['mp4', 'mov', 'm4v'].includes(ext)) {
+      // MP4/MOV: Check for 'ftyp' box at bytes 4-7
+      const ftypMarker = header.slice(4, 8).toString('ascii');
+      if (ftypMarker !== 'ftyp') {
         throw new SecurityViolationError(
           'INVALID_CONTENT',
           filePath,
-          `File content doesn't match ${ext} format (magic bytes mismatch)`
+          'Invalid MP4/MOV format (missing ftyp box)'
         );
       }
-    }
 
-    // Special case: WEBP requires additional check
-    if (ext === 'webp') {
-      const webpMarker = header.slice(8, 12).toString('ascii');
-      if (webpMarker !== 'WEBP') {
+      // Additional validation: Check brand (bytes 8-11)
+      const brand = header.slice(8, 12).toString('ascii');
+      const validBrands = ['isom', 'iso2', 'mp41', 'mp42', 'M4V ', 'M4A ', 'qt  '];
+      if (!validBrands.includes(brand)) {
         throw new SecurityViolationError(
           'INVALID_CONTENT',
           filePath,
-          'Invalid WEBP format'
+          `Unknown MP4/MOV brand: ${brand}`
         );
       }
+
+      return true;
     }
 
-    return true;
+    if (ext === 'avi') {
+      // AVI: Must be "RIFF" at 0-3 AND "AVI " at 8-11
+      if (header.slice(0, 4).toString('ascii') !== 'RIFF') {
+        throw new SecurityViolationError(
+          'INVALID_CONTENT',
+          filePath,
+          'Invalid AVI format (missing RIFF)'
+        );
+      }
+      if (header.slice(8, 12).toString('ascii') !== 'AVI ') {
+        throw new SecurityViolationError(
+          'INVALID_CONTENT',
+          filePath,
+          'Invalid AVI format (missing AVI marker)'
+        );
+      }
+      return true;
+    }
+
+    if (ext === 'webm' || ext === 'mkv') {
+      // WebM/MKV: EBML header
+      const signature = FILE_SIGNATURES[ext];
+      if (!signature) {
+        throw new SecurityViolationError(
+          'INVALID_EXTENSION',
+          filePath,
+          `Unsupported file extension: ${ext}`
+        );
+      }
+
+      if (header[0] !== 0x1A || header[1] !== 0x45 || header[2] !== 0xDF || header[3] !== 0xA3) {
+        throw new SecurityViolationError(
+          'INVALID_CONTENT',
+          filePath,
+          `Invalid ${ext.toUpperCase()} format (EBML header mismatch)`
+        );
+      }
+      return true;
+    }
+
+    throw new SecurityViolationError(
+      'INVALID_EXTENSION',
+      filePath,
+      `Unsupported file extension: ${ext}`
+    );
   }
 
   /**

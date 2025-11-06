@@ -99,7 +99,9 @@ ipcMain.handle('file:select-folder', async () => {
   if (!result.canceled && result.filePaths.length > 0) {
     const folderPath = result.filePaths[0];
 
-    // Set allowed base path for all subsequent file operations
+    // CRITICAL-1 FIX: Store selected folder in main process (trusted source)
+    // Only dialog.showOpenDialog() can set the security boundary
+    currentFolderPath = folderPath;
     securityValidator.setAllowedBasePath(folderPath);
 
     return folderPath;
@@ -152,9 +154,15 @@ ipcMain.handle('file:read-as-data-url', async (_event, filePath: string) => {
   }
 });
 
-ipcMain.handle('file:load-files', async (_event, folderPath: string) => {
-  const files = await fileManager.scanFolder(folderPath);
-  const store = getMetadataStoreForFolder(folderPath);
+// CRITICAL-1 FIX: Remove folderPath parameter (renderer cannot override security boundary)
+ipcMain.handle('file:load-files', async () => {
+  if (!currentFolderPath) {
+    throw new Error('No folder selected');
+  }
+
+  // Use stored folder path (trusted source from dialog)
+  const files = await fileManager.scanFolder(currentFolderPath);
+  const store = getMetadataStoreForFolder(currentFolderPath);
 
   // Load metadata for each file
   for (const file of files) {

@@ -68,7 +68,8 @@ function App() {
     const path = await window.electronAPI.selectFolder();
     if (path) {
       setFolderPath(path);
-      const loadedFiles = await window.electronAPI.loadFiles(path);
+      // CRITICAL-1 FIX: loadFiles() no longer accepts path parameter
+      const loadedFiles = await window.electronAPI.loadFiles();
       setFiles(loadedFiles);
       setCurrentFileIndex(0);
     }
@@ -95,7 +96,8 @@ function App() {
       await window.electronAPI.updateMetadata(currentFile.id, metadataTags);
 
       // Reload files to reflect changes
-      const updatedFiles = await window.electronAPI.loadFiles(folderPath);
+      // CRITICAL-1 FIX: loadFiles() no longer accepts path parameter
+      const updatedFiles = await window.electronAPI.loadFiles();
       setFiles(updatedFiles);
 
       // Find the file we just saved by ID and update the index
