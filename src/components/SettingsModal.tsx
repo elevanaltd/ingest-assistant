@@ -20,8 +20,10 @@ export function SettingsModal({ onClose, onSave, initialConfig }: SettingsModalP
 
   // AI config state
   const [aiProvider, setAiProvider] = useState<'openrouter' | 'openai' | 'anthropic'>('openrouter');
+  const [initialProvider, setInitialProvider] = useState<'openrouter' | 'openai' | 'anthropic'>('openrouter'); // Track original provider
   const [aiModel, setAiModel] = useState('');
   const [aiApiKey, setAiApiKey] = useState('');
+  const [hasSavedKey, setHasSavedKey] = useState(false); // Track if key exists in Keychain
   const [testStatus, setTestStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
   const [aiErrorMessage, setAiErrorMessage] = useState('');
   const [isSavingAI, setIsSavingAI] = useState(false);
@@ -47,9 +49,16 @@ export function SettingsModal({ onClose, onSave, initialConfig }: SettingsModalP
   // Load AI config when switching to AI tab
   useEffect(() => {
     if (activeTab === 'ai' && window.electronAPI) {
-      window.electronAPI.getAIConfig().then(config => {
-        if (config.provider) setAiProvider(config.provider);
+      Promise.all([
+        window.electronAPI.getAIConfig(),
+        window.electronAPI.isAIConfigured()
+      ]).then(([config, isConfigured]) => {
+        if (config.provider) {
+          setAiProvider(config.provider);
+          setInitialProvider(config.provider); // Track initial provider
+        }
         if (config.model) setAiModel(config.model);
+        setHasSavedKey(isConfigured); // Track if there's a saved key
         // API key is masked, leave empty for user to enter new one if needed
       });
     }
@@ -151,8 +160,17 @@ export function SettingsModal({ onClose, onSave, initialConfig }: SettingsModalP
   };
 
   const handleSaveAIConfig = async () => {
-    if (!aiApiKey) {
-      setAiErrorMessage('Please enter an API key');
+    const providerChanged = aiProvider !== initialProvider;
+
+    // Require API key if:
+    // 1. No saved key exists at all, OR
+    // 2. Provider changed (need key for new provider)
+    if ((!hasSavedKey || providerChanged) && !aiApiKey) {
+      if (providerChanged) {
+        setAiErrorMessage(`Switching to ${aiProvider} requires entering the API key for this provider`);
+      } else {
+        setAiErrorMessage('Please enter an API key');
+      }
       return;
     }
 
@@ -163,7 +181,7 @@ export function SettingsModal({ onClose, onSave, initialConfig }: SettingsModalP
     const result = await window.electronAPI.updateAIConfig({
       provider: aiProvider,
       model: aiModel,
-      apiKey: aiApiKey
+      apiKey: aiApiKey // If empty and same provider, backend will keep existing key
     });
 
     setIsSavingAI(false);
@@ -425,8 +443,9 @@ export function SettingsModal({ onClose, onSave, initialConfig }: SettingsModalP
                 </button>
                 <button
                   onClick={handleSaveAIConfig}
-                  disabled={isSavingAI || !aiApiKey}
+                  disabled={isSavingAI || ((!hasSavedKey || aiProvider !== initialProvider) && !aiApiKey)}
                   className="btn"
+                  title={(!hasSavedKey || aiProvider !== initialProvider) && !aiApiKey ? 'Enter API key to save' : ''}
                 >
                   {isSavingAI ? 'Saving...' : 'Save Configuration'}
                 </button>

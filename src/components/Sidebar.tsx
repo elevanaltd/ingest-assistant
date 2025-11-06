@@ -39,7 +39,7 @@ export function Sidebar({ files, currentFileIndex, onSelectFolder, onSelectFile 
                 aria-current={isActive ? 'true' : undefined}
               >
                 <div className="sidebar-file-info">
-                  <div className="sidebar-file-name">{file.mainName}</div>
+                  <div className="sidebar-file-name">{file.currentFilename}</div>
                   <div className="sidebar-file-meta">
                     <span className="sidebar-file-type">{file.fileType}</span>
                     {file.processedByAI && (

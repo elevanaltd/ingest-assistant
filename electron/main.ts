@@ -412,13 +412,16 @@ ipcMain.handle('ai:get-config', async () => {
 // Update AI configuration
 ipcMain.handle('ai:update-config', async (_event, config: { provider: 'openai' | 'anthropic' | 'openrouter'; model: string; apiKey: string }) => {
   try {
-    // First, test the connection
-    const testResult = await configManager.testAIConnection(config.provider, config.model, config.apiKey);
-    if (!testResult.success) {
-      return { success: false, error: testResult.error || 'Connection test failed' };
+    // Only test connection if a new API key is provided
+    if (config.apiKey && config.apiKey.trim()) {
+      const testResult = await configManager.testAIConnection(config.provider, config.model, config.apiKey);
+      if (!testResult.success) {
+        return { success: false, error: testResult.error || 'Connection test failed' };
+      }
     }
 
     // Save configuration (to Keychain + electron-store)
+    // If apiKey is empty, configManager will keep existing Keychain key
     const saveResult = await configManager.saveAIConfig(config);
     if (!saveResult) {
       return { success: false, error: 'Failed to save configuration' };

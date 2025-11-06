@@ -148,12 +148,15 @@ export class ConfigManager {
 
   /**
    * Save AI configuration to electron-store (metadata) and macOS Keychain (API key)
+   * If apiKey is empty, only update metadata (keep existing Keychain key)
    */
   async saveAIConfig(config: AIConfig): Promise<boolean> {
     try {
-      // Store API key in macOS Keychain
-      const keychainAccount = `${config.provider}-key`;
-      await keytar.setPassword(KEYCHAIN_SERVICE, keychainAccount, config.apiKey);
+      // Only update API key in Keychain if a new key is provided
+      if (config.apiKey && config.apiKey.trim()) {
+        const keychainAccount = `${config.provider}-key`;
+        await keytar.setPassword(KEYCHAIN_SERVICE, keychainAccount, config.apiKey);
+      }
 
       // Store non-sensitive metadata in electron-store
       (this.aiConfigStore as any).set('provider', config.provider);
