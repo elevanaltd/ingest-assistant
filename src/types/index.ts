@@ -66,6 +66,19 @@ export interface AIConfig {
   apiKey: string;
 }
 
+/** UI-safe AI configuration with masked API key */
+export interface AIConfigForUI {
+  provider: 'openai' | 'anthropic' | 'openrouter' | null;
+  model: string | null;
+  apiKey: string; // Masked for UI display
+}
+
+/** Result of AI connection test */
+export interface AIConnectionTestResult {
+  success: boolean;
+  error?: string;
+}
+
 export interface AIAnalysisResult {
   mainName: string;
   metadata: string[];

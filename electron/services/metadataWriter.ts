@@ -1,7 +1,32 @@
 import { execFile } from 'child_process';
 import { promisify } from 'util';
+import { existsSync } from 'fs';
 
 const execFileAsync = promisify(execFile);
+
+/**
+ * Find exiftool binary path.
+ * In packaged apps, PATH may not include Homebrew locations.
+ * Check common installation paths.
+ */
+function findExiftool(): string {
+  // Common installation paths (Homebrew, MacPorts, manual install)
+  const commonPaths = [
+    '/usr/local/bin/exiftool',      // Homebrew Intel
+    '/opt/homebrew/bin/exiftool',   // Homebrew Apple Silicon
+    '/opt/local/bin/exiftool',      // MacPorts
+    '/usr/bin/exiftool',             // System install
+  ];
+
+  for (const exiftoolPath of commonPaths) {
+    if (existsSync(exiftoolPath)) {
+      return exiftoolPath;
+    }
+  }
+
+  // Fallback to PATH (works in development)
+  return 'exiftool';
+}
 
 // Shell metacharacters that indicate injection attempt
 // Parentheses, hyphens, apostrophes, brackets are SAFE (common in metadata)
@@ -142,7 +167,8 @@ export class MetadataWriter {
     try {
       // SECURITY: execFile() prevents shell injection
       // Arguments passed as array (no shell expansion)
-      const { stderr } = await execFileAsync('exiftool', args, {
+      const exiftoolPath = findExiftool();
+      const { stderr } = await execFileAsync(exiftoolPath, args, {
         timeout: 30000,        // 30 second timeout
         maxBuffer: 10 * 1024 * 1024  // 10MB output limit
       });
@@ -155,7 +181,17 @@ export class MetadataWriter {
       }
     } catch (error) {
       console.error('Failed to write metadata to file:', error);
-      throw new Error('Metadata write failed');
+
+      // Provide actionable error message
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+        throw new Error(
+          'exiftool not found. Please install exiftool: brew install exiftool'
+        );
+      }
+
+      // Include actual error details for debugging
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      throw new Error(`Metadata write failed: ${errorMessage}`);
     }
   }
 
@@ -172,8 +208,9 @@ export class MetadataWriter {
   }> {
     try {
       const args = ['-Title', '-Keywords', '-Description', '-json', filePath];
+      const exiftoolPath = findExiftool();
 
-      const { stdout } = await execFileAsync('exiftool', args, {
+      const { stdout } = await execFileAsync(exiftoolPath, args, {
         timeout: 30000,
         maxBuffer: 10 * 1024 * 1024
       });

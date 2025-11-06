@@ -50,7 +50,7 @@
    - Security assessment
    - Quality analysis
 
-8. **`001-DOC-ADR-006-SECURITY-HARDENING-STRATEGY.md`**
+8. **`adrs/001-DOC-ADR-006-SECURITY-HARDENING-STRATEGY.md`**
    - Security considerations (Electron app context)
    - Some principles applicable to UXP panel
 
