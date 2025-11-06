@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { SecurityValidator } from './securityValidator';
 import { SecurityViolationError } from '../utils/securityViolationError';
+import type { Stats } from 'fs';
 
 // Mock fs/promises module at the top level
 vi.mock('fs/promises', () => ({
@@ -349,7 +350,7 @@ describe('SecurityValidator', () => {
     it('should accept files under max size', async () => {
       vi.mocked(fs.stat).mockResolvedValue({
         size: 50 * 1024 * 1024, // 50MB
-      } as fs.Stats);
+      } as Stats);
 
       await expect(
         validator.validateFileSize('/test/file.jpg', 100 * 1024 * 1024)
@@ -359,7 +360,7 @@ describe('SecurityValidator', () => {
     it('should reject files over max size', async () => {
       vi.mocked(fs.stat).mockResolvedValue({
         size: 150 * 1024 * 1024, // 150MB
-      } as fs.Stats);
+      } as Stats);
 
       await expect(
         validator.validateFileSize('/test/huge.jpg', 100 * 1024 * 1024)
