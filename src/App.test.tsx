@@ -18,7 +18,12 @@ const mockElectronAPI = {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  (global as any).window.electronAPI = mockElectronAPI;
+  // Extend window with electronAPI for testing
+  Object.defineProperty(window, 'electronAPI', {
+    value: mockElectronAPI,
+    writable: true,
+    configurable: true,
+  });
   mockElectronAPI.isAIConfigured.mockResolvedValue(false);
 });
 

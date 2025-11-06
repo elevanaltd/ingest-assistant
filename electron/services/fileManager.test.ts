@@ -7,7 +7,12 @@ vi.mock('fs/promises');
 
 describe('FileManager', () => {
   let fileManager: FileManager;
-  const mockFs = fs as any;
+  // Partial mock of fs/promises for testing (explicit unknown cast)
+  const mockFs = fs as unknown as {
+    readdir: ReturnType<typeof vi.fn>;
+    stat: ReturnType<typeof vi.fn>;
+    rename: ReturnType<typeof vi.fn>;
+  };
   const testFolderPath = '/test/folder';
 
   beforeEach(() => {

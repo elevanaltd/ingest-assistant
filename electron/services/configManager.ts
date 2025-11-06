@@ -21,8 +21,9 @@ export class ConfigManager {
       const config = yaml.load(content) as AppConfig;
       this.cachedConfig = config;
       return config;
-    } catch (error: any) {
-      if (error.code === 'ENOENT') {
+    } catch (error) {
+      // Type guard: Check if error has code property (NodeJS.ErrnoException)
+      if (error && typeof error === 'object' && 'code' in error && error.code === 'ENOENT') {
         // File doesn't exist, return default config
         this.cachedConfig = this.getDefaultConfig();
         return this.cachedConfig;

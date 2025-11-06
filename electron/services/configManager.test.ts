@@ -9,7 +9,12 @@ vi.mock('fs/promises');
 describe('ConfigManager', () => {
   let configManager: ConfigManager;
   const testConfigPath = '/test/config.yaml';
-  const mockFs = fs as any;
+  // Partial mock of fs/promises for testing (explicit unknown cast)
+  const mockFs = fs as unknown as {
+    readFile: ReturnType<typeof vi.fn>;
+    mkdir: ReturnType<typeof vi.fn>;
+    writeFile: ReturnType<typeof vi.fn>;
+  };
 
   beforeEach(() => {
     vi.clearAllMocks();

@@ -8,7 +8,12 @@ vi.mock('fs/promises');
 describe('MetadataStore', () => {
   let metadataStore: MetadataStore;
   const testStorePath = '/test/metadata.json';
-  const mockFs = fs as any;
+  // Partial mock of fs/promises for testing (explicit unknown cast)
+  const mockFs = fs as unknown as {
+    readFile: ReturnType<typeof vi.fn>;
+    mkdir: ReturnType<typeof vi.fn>;
+    writeFile: ReturnType<typeof vi.fn>;
+  };
 
   beforeEach(() => {
     vi.clearAllMocks();
