@@ -23,24 +23,17 @@ function App() {
     }
   }, [statusMessage]);
 
-  // Check if running in Electron (user-friendly UI check)
-  if (!window.electronAPI) {
-    return (
-      <div className="app" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', flexDirection: 'column', gap: '16px' }}>
-        <h2>⚠️ Electron API not available</h2>
-        <p>This app must be run in Electron, not in a browser.</p>
-        <p>Run: <code>npm run dev</code></p>
-      </div>
-    );
-  }
-
   // Check if AI is configured on mount
   useEffect(() => {
-    window.electronAPI.isAIConfigured().then(setIsAIConfigured);
+    if (window.electronAPI) {
+      window.electronAPI.isAIConfigured().then(setIsAIConfigured);
+    }
   }, []);
 
   // Update form and load media when current file changes
   useEffect(() => {
+    if (!window.electronAPI) return;
+
     if (currentFile) {
       setMainName(currentFile.mainName);
       setMetadata(currentFile.metadata.join(', '));
@@ -56,6 +49,17 @@ function App() {
       setMediaDataUrl('');
     }
   }, [currentFile]);
+
+  // Check if running in Electron (user-friendly UI check)
+  if (!window.electronAPI) {
+    return (
+      <div className="app" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', flexDirection: 'column', gap: '16px' }}>
+        <h2>⚠️ Electron API not available</h2>
+        <p>This app must be run in Electron, not in a browser.</p>
+        <p>Run: <code>npm run dev</code></p>
+      </div>
+    );
+  }
 
   const handleSelectFolder = async () => {
     const path = await window.electronAPI.selectFolder();

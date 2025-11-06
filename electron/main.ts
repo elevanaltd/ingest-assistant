@@ -9,20 +9,16 @@ import { MetadataWriter } from './services/metadataWriter';
 import type { AppConfig } from '../src/types';
 
 let mainWindow: BrowserWindow | null = null;
-let fileManager: FileManager;
+const fileManager: FileManager = new FileManager();
 let metadataStore: MetadataStore | null = null;
 let currentFolderPath: string | null = null;
-let configManager: ConfigManager;
-let metadataWriter: MetadataWriter;
+const configManager: ConfigManager = (() => {
+  const userDataPath = app.getPath('userData');
+  const configPath = path.join(userDataPath, 'config.yaml');
+  return new ConfigManager(configPath);
+})();
+const metadataWriter: MetadataWriter = new MetadataWriter();
 let aiService: AIService | null = null;
-
-// Initialize services
-const userDataPath = app.getPath('userData');
-const configPath = path.join(userDataPath, 'config.yaml');
-
-fileManager = new FileManager();
-configManager = new ConfigManager(configPath);
-metadataWriter = new MetadataWriter();
 
 // Helper function to get or create metadata store for a specific folder
 function getMetadataStoreForFolder(folderPath: string): MetadataStore {

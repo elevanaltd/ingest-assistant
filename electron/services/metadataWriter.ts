@@ -43,7 +43,7 @@ export class MetadataWriter {
     const exiftoolCmd = `exiftool ${commands.join(' ')} "${filePath}"`;
 
     try {
-      const { stdout, stderr } = await execAsync(exiftoolCmd);
+      const { stderr } = await execAsync(exiftoolCmd);
       if (stderr && !stderr.includes('1 image files updated')) {
         console.error('exiftool stderr:', stderr);
       }

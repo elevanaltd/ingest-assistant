@@ -1,8 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import * as fs from 'fs/promises';
-import * as path from 'path';
 import { ConfigManager } from './configManager';
-import type { AppConfig, Lexicon } from '../../src/types';
+import type { AppConfig } from '../../src/types';
 
 // Mock fs module
 vi.mock('fs/promises');
