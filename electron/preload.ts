@@ -8,8 +8,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   selectFolder: (): Promise<string | null> =>
     ipcRenderer.invoke('file:select-folder'),
 
-  loadFiles: (folderPath: string): Promise<FileMetadata[]> =>
-    ipcRenderer.invoke('file:load-files', folderPath),
+  // CRITICAL-1 FIX: Remove folderPath parameter (security boundary enforced in main process)
+  loadFiles: (): Promise<FileMetadata[]> =>
+    ipcRenderer.invoke('file:load-files'),
 
   readFileAsDataUrl: (filePath: string): Promise<string> =>
     ipcRenderer.invoke('file:read-as-data-url', filePath),

@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, security/* ]
   pull_request:
     branches: [ main ]
 
@@ -37,3 +37,37 @@ jobs:
 
       - name: Build production
         run: npm run build
+
+      # NEW: Security scanning gates
+      - name: Security audit (HIGH/CRITICAL vulnerabilities)
+        run: npm audit --audit-level=high --production
+        continue-on-error: false  # FAIL build if HIGH/CRITICAL found
+
+      - name: Verify Electron version (security requirement)
+        run: |
+          ELECTRON_VERSION=$(npm list electron --depth=0 --json | jq -r '.dependencies.electron.version')
+          REQUIRED_VERSION="35.7.5"
+
+          echo "Detected Electron version: $ELECTRON_VERSION"
+          echo "Required minimum version: $REQUIRED_VERSION"
+
+          if [ "$(printf '%s\n' "$REQUIRED_VERSION" "$ELECTRON_VERSION" | sort -V | head -n1)" != "$REQUIRED_VERSION" ]; then
+            echo "❌ FAIL: Electron version too old (security requirement)"
+            exit 1
+          fi
+
+          echo "✅ PASS: Electron version meets security requirements"
+
+      - name: Security test suite (isolated)
+        run: npm test -- --run electron/__tests__/security/
+
+      - name: Generate security report
+        if: always()
+        run: |
+          echo "## Security Scan Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          npm audit --json | jq -r '
+            "- Total vulnerabilities: \(.metadata.vulnerabilities.total)",
+            "- HIGH: \(.metadata.vulnerabilities.high)",
+            "- CRITICAL: \(.metadata.vulnerabilities.critical)"
+          ' >> $GITHUB_STEP_SUMMARY

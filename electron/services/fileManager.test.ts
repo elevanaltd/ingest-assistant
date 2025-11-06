@@ -2,22 +2,47 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { FileManager } from './fileManager';
+import { SecurityValidator } from './securityValidator';
 
 vi.mock('fs/promises');
 
 describe('FileManager', () => {
   let fileManager: FileManager;
+  let mockSecurityValidator: SecurityValidator;
+
   // Partial mock of fs/promises for testing (explicit unknown cast)
   const mockFs = fs as unknown as {
     readdir: ReturnType<typeof vi.fn>;
     stat: ReturnType<typeof vi.fn>;
     rename: ReturnType<typeof vi.fn>;
+    realpath: ReturnType<typeof vi.fn>;
+    readFile: ReturnType<typeof vi.fn>;
   };
   const testFolderPath = '/test/folder';
 
   beforeEach(() => {
     vi.clearAllMocks();
-    fileManager = new FileManager();
+
+    // Create mock SecurityValidator
+    mockSecurityValidator = new SecurityValidator();
+
+    // Mock validateFilePath to pass through (no path traversal for normal tests)
+    vi.spyOn(mockSecurityValidator, 'validateFilePath').mockImplementation(async (path: string) => path);
+
+    // Mock validateFileSize to call the real implementation
+    // (This allows file size validation tests to work properly)
+    vi.spyOn(mockSecurityValidator, 'validateFileSize').mockImplementation(
+      async (filePath: string, maxBytes: number) => {
+        // Call through to the real SecurityValidator implementation
+        const realValidator = new SecurityValidator();
+        return realValidator.validateFileSize(filePath, maxBytes);
+      }
+    );
+
+    // Mock setAllowedBasePath (no-op for normal tests)
+    vi.spyOn(mockSecurityValidator, 'setAllowedBasePath').mockImplementation(() => {});
+
+    fileManager = new FileManager(mockSecurityValidator);
   });
 
   afterEach(() => {
@@ -169,6 +194,69 @@ describe('FileManager', () => {
     it('should return video for video files', () => {
       expect(fileManager.getFileType('test.mp4')).toBe('video');
       expect(fileManager.getFileType('test.mov')).toBe('video');
+    });
+  });
+
+  describe('validateFileSize - Security', () => {
+    it('should reject files larger than 100MB', async () => {
+      const largeFilePath = '/test/huge-file.jpg';
+
+      // Mock fs.stat to return 150MB size
+      mockFs.stat.mockResolvedValue({
+        size: 150 * 1024 * 1024, // 150MB
+        isFile: () => true,
+        isDirectory: () => false,
+        mtime: new Date(),
+      });
+
+      await expect(
+        fileManager.validateFileSize(largeFilePath)
+      ).rejects.toThrow('File too large: 150.00MB (max 100MB)');
+    });
+
+    it('should accept files smaller than 100MB', async () => {
+      const normalFilePath = '/test/normal-file.jpg';
+
+      mockFs.stat.mockResolvedValue({
+        size: 50 * 1024 * 1024, // 50MB
+        isFile: () => true,
+        isDirectory: () => false,
+        mtime: new Date(),
+      });
+
+      await expect(
+        fileManager.validateFileSize(normalFilePath)
+      ).resolves.not.toThrow();
+    });
+
+    it('should accept files exactly at 100MB limit', async () => {
+      const limitFilePath = '/test/limit-file.jpg';
+
+      mockFs.stat.mockResolvedValue({
+        size: 100 * 1024 * 1024, // exactly 100MB
+        isFile: () => true,
+        isDirectory: () => false,
+        mtime: new Date(),
+      });
+
+      await expect(
+        fileManager.validateFileSize(limitFilePath)
+      ).resolves.not.toThrow();
+    });
+
+    it('should reject files just over 100MB', async () => {
+      const overLimitPath = '/test/over-limit.jpg';
+
+      mockFs.stat.mockResolvedValue({
+        size: (100 * 1024 * 1024) + 1, // 100MB + 1 byte
+        isFile: () => true,
+        isDirectory: () => false,
+        mtime: new Date(),
+      });
+
+      await expect(
+        fileManager.validateFileSize(overLimitPath)
+      ).rejects.toThrow('File too large');
     });
   });
 });
