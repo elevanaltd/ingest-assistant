@@ -11,6 +11,7 @@ import { ConfigManager } from './services/configManager';
 import { AIService } from './services/aiService';
 import { MetadataWriter } from './services/metadataWriter';
 import { convertToYAMLFormat, convertToUIFormat } from './utils/lexiconConverter';
+import { sanitizeError } from './utils/errorSanitization';
 import type { AppConfig, LexiconConfig } from '../src/types';
 
 let mainWindow: BrowserWindow | null = null;
@@ -123,8 +124,8 @@ ipcMain.handle('file:read-as-data-url', async (_event, filePath: string) => {
     const mimeType = mimeTypes[ext] || 'application/octet-stream';
     return `data:${mimeType};base64,${base64}`;
   } catch (error) {
-    console.error('Failed to read file:', error);
-    throw error;
+    console.error('Failed to read file:', error); // Log full error internally
+    throw sanitizeError(error); // Send sanitized error to renderer
   }
 });
 
@@ -192,8 +193,8 @@ ipcMain.handle('file:rename', async (_event, fileId: string, mainName: string, c
 
     return true;
   } catch (error) {
-    console.error('Failed to rename file:', error);
-    return false;
+    console.error('Failed to rename file:', error); // Log full error internally
+    throw sanitizeError(error); // Send sanitized error to renderer
   }
 });
 
@@ -217,8 +218,8 @@ ipcMain.handle('file:update-metadata', async (_event, fileId: string, metadata: 
 
     return true;
   } catch (error) {
-    console.error('Failed to update metadata:', error);
-    return false;
+    console.error('Failed to update metadata:', error); // Log full error internally
+    throw sanitizeError(error); // Send sanitized error to renderer
   }
 });
 
@@ -293,8 +294,8 @@ ipcMain.handle('lexicon:save', async (_event, uiConfig: LexiconConfig) => {
     await configManager.saveLexicon(lexicon);
     return true;
   } catch (error) {
-    console.error('Failed to save lexicon:', error);
-    throw error;
+    console.error('Failed to save lexicon:', error); // Log full error internally
+    throw sanitizeError(error); // Send sanitized error to renderer
   }
 });
 
