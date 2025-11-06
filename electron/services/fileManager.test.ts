@@ -171,4 +171,67 @@ describe('FileManager', () => {
       expect(fileManager.getFileType('test.mov')).toBe('video');
     });
   });
+
+  describe('validateFileSize - Security', () => {
+    it('should reject files larger than 100MB', async () => {
+      const largeFilePath = '/test/huge-file.jpg';
+
+      // Mock fs.stat to return 150MB size
+      mockFs.stat.mockResolvedValue({
+        size: 150 * 1024 * 1024, // 150MB
+        isFile: () => true,
+        isDirectory: () => false,
+        mtime: new Date(),
+      });
+
+      await expect(
+        fileManager.validateFileSize(largeFilePath)
+      ).rejects.toThrow('File too large: 150.00MB (max 100MB)');
+    });
+
+    it('should accept files smaller than 100MB', async () => {
+      const normalFilePath = '/test/normal-file.jpg';
+
+      mockFs.stat.mockResolvedValue({
+        size: 50 * 1024 * 1024, // 50MB
+        isFile: () => true,
+        isDirectory: () => false,
+        mtime: new Date(),
+      });
+
+      await expect(
+        fileManager.validateFileSize(normalFilePath)
+      ).resolves.not.toThrow();
+    });
+
+    it('should accept files exactly at 100MB limit', async () => {
+      const limitFilePath = '/test/limit-file.jpg';
+
+      mockFs.stat.mockResolvedValue({
+        size: 100 * 1024 * 1024, // exactly 100MB
+        isFile: () => true,
+        isDirectory: () => false,
+        mtime: new Date(),
+      });
+
+      await expect(
+        fileManager.validateFileSize(limitFilePath)
+      ).resolves.not.toThrow();
+    });
+
+    it('should reject files just over 100MB', async () => {
+      const overLimitPath = '/test/over-limit.jpg';
+
+      mockFs.stat.mockResolvedValue({
+        size: (100 * 1024 * 1024) + 1, // 100MB + 1 byte
+        isFile: () => true,
+        isDirectory: () => false,
+        mtime: new Date(),
+      });
+
+      await expect(
+        fileManager.validateFileSize(overLimitPath)
+      ).rejects.toThrow('File too large');
+    });
+  });
 });
