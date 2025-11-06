@@ -4,8 +4,21 @@ import type { FileMetadata } from '../../src/types';
 
 const IMAGE_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp'];
 const VIDEO_EXTENSIONS = ['.mp4', '.mov', '.avi', '.mkv', '.webm'];
+const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB in bytes
 
 export class FileManager {
+  /**
+   * Validate file size to prevent DoS attacks from large files
+   * @throws Error if file exceeds 100MB
+   */
+  async validateFileSize(filePath: string): Promise<void> {
+    const stats = await fs.stat(filePath);
+
+    if (stats.size > MAX_FILE_SIZE) {
+      const sizeMB = (stats.size / 1024 / 1024).toFixed(2);
+      throw new Error(`File too large: ${sizeMB}MB (max 100MB)`);
+    }
+  }
   /**
    * Scan a folder and return all media files as FileMetadata
    */

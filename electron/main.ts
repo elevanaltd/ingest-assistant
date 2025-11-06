@@ -94,6 +94,15 @@ ipcMain.handle('file:select-folder', async () => {
 // Read file as base64 data URL for display in renderer
 ipcMain.handle('file:read-as-data-url', async (_event, filePath: string) => {
   try {
+    // Security: Validate file size before reading into memory
+    const stats = await fs.stat(filePath);
+    const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB
+
+    if (stats.size > MAX_FILE_SIZE) {
+      const sizeMB = (stats.size / 1024 / 1024).toFixed(2);
+      throw new Error(`File too large: ${sizeMB}MB (max 100MB)`);
+    }
+
     const buffer = await fs.readFile(filePath);
     const base64 = buffer.toString('base64');
 
