@@ -85,6 +85,46 @@ describe('AIService', () => {
       expect(result.metadata).toEqual(['oven', 'panel']);
       expect(result.confidence).toBe(0.8);
     });
+
+    it('should parse JSON with trailing period', () => {
+      const response = '{ "mainName": "siemens-microwave-control-panel", "metadata": ["appliance", "control panel", "european", "kitchen"] }.';
+
+      const result = aiService.parseAIResponse(response);
+
+      expect(result.mainName).toBe('siemens-microwave-control-panel');
+      expect(result.metadata).toEqual(['appliance', 'control panel', 'european', 'kitchen']);
+      expect(result.confidence).toBe(0.8);
+    });
+
+    it('should parse markdown bullet format', () => {
+      const response = `**Image Description**
+
+* **Main Name:** Under Sink Bin
+* **Metadata:**
+  * furniture
+  * household
+  * interior-exterior`;
+
+      const result = aiService.parseAIResponse(response);
+
+      expect(result.mainName).toBe('under-sink-bin');
+      expect(result.metadata).toContain('furniture');
+      expect(result.metadata).toContain('household');
+      expect(result.confidence).toBe(0.7);
+    });
+
+    it('should parse prose with bullets format', () => {
+      const response = `The image shows a recessed utility cabinet with a built-in recycling bin.
+
+• **Descriptive Name**: minimalist-sink-cabinet
+• **Metadata**: ["sustainable living", "home", "kitchen"]`;
+
+      const result = aiService.parseAIResponse(response);
+
+      expect(result.mainName).toBe('minimalist-sink-cabinet');
+      expect(result.metadata).toEqual(['sustainable living', 'home', 'kitchen']);
+      expect(result.confidence).toBe(0.7);
+    });
   });
 
   describe('analyzeImage', () => {

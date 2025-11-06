@@ -66,28 +66,44 @@ Lexicon rules:
 
   /**
    * Parse AI response into structured result
-   * Handles both raw JSON and markdown-wrapped JSON (```json ... ```)
+   * Handles multiple response formats:
+   * - Raw JSON: { "mainName": "...", "metadata": [...] }
+   * - Markdown code blocks: ```json ... ```
+   * - JSON with trailing punctuation: { ... }.
+   * - Markdown bullets: * **Main Name:** ... * **Metadata:** ...
+   * - Prose with bullets: The image shows... • **Descriptive Name**: ...
    */
   parseAIResponse(response: string): AIAnalysisResult {
     try {
-      // Remove markdown code block wrapper if present
       let jsonString = response.trim();
 
-      // Check for markdown code block (```json ... ``` or ``` ... ```)
+      // Strategy 1: Extract from markdown code block
       const codeBlockMatch = jsonString.match(/```(?:json)?\s*\n?([\s\S]*?)\n?```/);
       if (codeBlockMatch) {
         jsonString = codeBlockMatch[1].trim();
       }
 
-      // Parse the JSON
-      const parsed = JSON.parse(jsonString);
+      // Strategy 2: Extract JSON object from text (find { ... })
+      const jsonObjectMatch = jsonString.match(/\{[\s\S]*\}/);
+      if (jsonObjectMatch) {
+        jsonString = jsonObjectMatch[0];
 
-      // Validate and return
-      return {
-        mainName: parsed.mainName || '',
-        metadata: Array.isArray(parsed.metadata) ? parsed.metadata : [],
-        confidence: 0.8, // Default confidence
-      };
+        // Remove trailing punctuation after closing brace
+        jsonString = jsonString.replace(/\}\s*[.,;!]+\s*$/, '}');
+      }
+
+      // Try parsing as JSON
+      try {
+        const parsed = JSON.parse(jsonString);
+        return {
+          mainName: parsed.mainName || '',
+          metadata: Array.isArray(parsed.metadata) ? parsed.metadata : [],
+          confidence: 0.8,
+        };
+      } catch (jsonError) {
+        // Strategy 3: Parse markdown/prose format
+        return this.parseMarkdownFormat(response);
+      }
     } catch (error) {
       console.error('Failed to parse AI response:', error);
       console.error('Response was:', response);
@@ -97,6 +113,64 @@ Lexicon rules:
         confidence: 0,
       };
     }
+  }
+
+  /**
+   * Fallback parser for markdown/prose formats
+   * Handles:
+   * - * **Main Name:** value
+   * - • **Descriptive Name**: value
+   * - **Metadata**: ["tag1", "tag2"]
+   */
+  private parseMarkdownFormat(response: string): AIAnalysisResult {
+    let mainName = '';
+    const metadata: string[] = [];
+
+    // Extract main name (various formats)
+    const namePatterns = [
+      /\*\*\s*Main Name\s*\*\*:\s*([^\n]+)/i,          // **Main Name**: value
+      /\*\s*\*\*\s*Main Name\s*:\*\*\s*([^\n]+)/i,     // * **Main Name:** value (with space before closing **)
+      /\*\s*\*\*\s*Main Name\s*\*\*:\s*([^\n]+)/i,     // * **Main Name**: value
+      /•\s*\*\*\s*Descriptive\s*Name\s*\*\*:\s*([^\n]+)/i, // • **Descriptive Name**: value
+      /Descriptive\s*Name\s*:\s*([^\n]+)/i,            // Descriptive Name: value
+    ];
+
+    for (const pattern of namePatterns) {
+      const match = response.match(pattern);
+      if (match) {
+        mainName = match[1].trim();
+        break;
+      }
+    }
+
+    // Extract metadata array from JSON format in text
+    const metadataArrayMatch = response.match(/\["([^"]+)"(?:,\s*"([^"]+)")*\]/);
+    if (metadataArrayMatch) {
+      const matched = response.match(/"([^"]+)"/g);
+      if (matched) {
+        metadata.push(...matched.map(m => m.replace(/"/g, '')));
+      }
+    } else {
+      // Extract metadata from bullet list
+      const metadataSection = response.match(/\*\*\s*Metadata\s*:\*\*[\s\S]*?(?=\n\n|\n\*\*|$)/i);
+      if (metadataSection) {
+        const bullets = metadataSection[0].match(/[•*]\s*([^\n]+)/g);
+        if (bullets) {
+          metadata.push(...bullets.map(b => b.replace(/^[•*]\s*/, '').trim()));
+        }
+      }
+    }
+
+    // Convert to kebab-case if needed
+    if (mainName && !mainName.includes('-')) {
+      mainName = mainName.toLowerCase().replace(/\s+/g, '-');
+    }
+
+    return {
+      mainName: mainName || '',
+      metadata: metadata.length > 0 ? metadata : [],
+      confidence: mainName || metadata.length > 0 ? 0.7 : 0,
+    };
   }
 
   /**
