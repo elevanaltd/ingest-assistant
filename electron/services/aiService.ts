@@ -42,20 +42,26 @@ export class AIService {
       .map(([from, to]) => `"${from}" -> "${to}"`)
       .join(', ');
 
-    return `Analyze this image and provide:
+    let prompt = `Analyze this image and provide:
 1. A descriptive name (kebab-case, concise, 2-4 words)
 2. Relevant metadata tags (2-5 tags)
 
 Lexicon rules:
 - Preferred terms: ${preferredTerms || 'none'}
 - Excluded terms (do not use): ${excludedTerms || 'none'}
-- Synonym mappings: ${synonyms || 'none'}
+- Synonym mappings: ${synonyms || 'none'}`;
 
-IMPORTANT: Return ONLY valid JSON in this exact format (no markdown, no explanation):
+    if (lexicon.customInstructions) {
+      prompt += `\n\nADDITIONAL INSTRUCTIONS:\n${lexicon.customInstructions}`;
+    }
+
+    prompt += `\n\nIMPORTANT: Return ONLY valid JSON in this exact format (no markdown, no explanation):
 {
   "mainName": "descriptive-name",
   "metadata": ["tag1", "tag2", "tag3"]
 }`;
+
+    return prompt;
   }
 
   /**

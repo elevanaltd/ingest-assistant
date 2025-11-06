@@ -67,6 +67,26 @@ export class ConfigManager {
   }
 
   /**
+   * Save lexicon to config file
+   */
+  async saveLexicon(lexicon: Lexicon): Promise<void> {
+    const config = await this.loadConfig();
+    config.lexicon = lexicon;
+
+    const yamlContent = yaml.dump(config, {
+      indent: 2,
+      lineWidth: -1,
+    });
+
+    // Ensure directory exists
+    const dir = path.dirname(this.configPath);
+    await fs.mkdir(dir, { recursive: true });
+
+    await fs.writeFile(this.configPath, yamlContent, 'utf-8');
+    this.cachedConfig = config;
+  }
+
+  /**
    * Get default configuration
    */
   getDefaultConfig(): AppConfig {

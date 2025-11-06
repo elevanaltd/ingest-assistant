@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron';
-import type { FileMetadata, AppConfig, AIAnalysisResult, Lexicon } from '../src/types';
+import type { FileMetadata, AppConfig, AIAnalysisResult, Lexicon, LexiconConfig } from '../src/types';
 
 // Expose protected methods that allow the renderer process to use
 // the ipcRenderer without exposing the entire object
@@ -39,4 +39,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   getLexicon: (): Promise<Lexicon> =>
     ipcRenderer.invoke('config:get-lexicon'),
+
+  // Lexicon operations
+  lexicon: {
+    load: (): Promise<LexiconConfig> =>
+      ipcRenderer.invoke('lexicon:load'),
+    save: (config: LexiconConfig): Promise<boolean> =>
+      ipcRenderer.invoke('lexicon:save', config),
+  },
 });

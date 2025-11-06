@@ -1,4 +1,4 @@
-import type { FileMetadata, AppConfig, AIAnalysisResult, Lexicon } from './index';
+import type { FileMetadata, AppConfig, AIAnalysisResult, Lexicon, LexiconConfig } from './index';
 
 export interface ElectronAPI {
   // File operations
@@ -17,6 +17,12 @@ export interface ElectronAPI {
   loadConfig: () => Promise<AppConfig>;
   saveConfig: (config: AppConfig) => Promise<boolean>;
   getLexicon: () => Promise<Lexicon>;
+
+  // Lexicon operations
+  lexicon: {
+    load: () => Promise<LexiconConfig>;
+    save: (config: LexiconConfig) => Promise<boolean>;
+  };
 }
 
 declare global {

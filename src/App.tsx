@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import type { FileMetadata } from './types';
+import type { FileMetadata, LexiconConfig } from './types';
+import { SettingsModal } from './components/SettingsModal';
 import './App.css';
 
 function App() {
@@ -12,6 +13,8 @@ function App() {
   const [isLoading, setIsLoading] = useState(false);
   const [mediaDataUrl, setMediaDataUrl] = useState<string>('');
   const [statusMessage, setStatusMessage] = useState<string>('');
+  const [showSettings, setShowSettings] = useState(false);
+  const [lexiconConfig, setLexiconConfig] = useState<LexiconConfig | undefined>();
 
   const currentFile = files[currentFileIndex];
 
@@ -139,13 +142,34 @@ function App() {
     }
   };
 
+  const handleOpenSettings = async () => {
+    try {
+      const config = await window.electronAPI.lexicon.load();
+      setLexiconConfig(config);
+      setShowSettings(true);
+    } catch (error) {
+      console.error('Failed to load lexicon:', error);
+      setStatusMessage('✗ Failed to load settings');
+    }
+  };
+
+  const handleSaveLexicon = async (config: LexiconConfig) => {
+    await window.electronAPI.lexicon.save(config);
+    setStatusMessage('✓ Lexicon settings saved');
+  };
+
   return (
     <div className="app">
       <header className="header">
         <h1>Ingest Assistant</h1>
-        <button onClick={handleSelectFolder} className="btn-primary">
-          Select Folder
-        </button>
+        <div className="header-buttons">
+          <button onClick={handleSelectFolder} className="btn-primary">
+            Select Folder
+          </button>
+          <button onClick={handleOpenSettings} className="btn" title="Settings">
+            ⚙️
+          </button>
+        </div>
       </header>
 
       {folderPath && (
@@ -275,6 +299,14 @@ function App() {
         <div className="empty-state">
           <p>Select a folder to get started.</p>
         </div>
+      )}
+
+      {showSettings && (
+        <SettingsModal
+          onClose={() => setShowSettings(false)}
+          onSave={handleSaveLexicon}
+          initialConfig={lexiconConfig}
+        />
       )}
     </div>
   );

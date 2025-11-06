@@ -10,7 +10,8 @@ import { MetadataStore } from './services/metadataStore';
 import { ConfigManager } from './services/configManager';
 import { AIService } from './services/aiService';
 import { MetadataWriter } from './services/metadataWriter';
-import type { AppConfig } from '../src/types';
+import { convertToYAMLFormat, convertToUIFormat } from './utils/lexiconConverter';
+import type { AppConfig, LexiconConfig } from '../src/types';
 
 let mainWindow: BrowserWindow | null = null;
 const fileManager: FileManager = new FileManager();
@@ -269,6 +270,23 @@ ipcMain.handle('config:save', async (_event, config: AppConfig) => {
 
 ipcMain.handle('config:get-lexicon', async () => {
   return await configManager.getLexicon();
+});
+
+// Lexicon operations (UI format)
+ipcMain.handle('lexicon:load', async () => {
+  const lexicon = await configManager.getLexicon();
+  return convertToUIFormat(lexicon);
+});
+
+ipcMain.handle('lexicon:save', async (_event, uiConfig: LexiconConfig) => {
+  try {
+    const lexicon = convertToYAMLFormat(uiConfig);
+    await configManager.saveLexicon(lexicon);
+    return true;
+  } catch (error) {
+    console.error('Failed to save lexicon:', error);
+    throw error;
+  }
 });
 
 // Check if AI is configured

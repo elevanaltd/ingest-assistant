@@ -34,6 +34,26 @@ export interface Lexicon {
   synonymMapping: Record<string, string>;
   /** Categorized term groups */
   categories?: Record<string, string[]>;
+  /** Custom AI instructions (free-form guidance) */
+  customInstructions?: string;
+}
+
+/** UI representation of term mapping for Settings Modal */
+export interface TermMapping {
+  /** Preferred term to use */
+  preferred: string;
+  /** Comma-separated excluded terms */
+  excluded: string;
+}
+
+/** UI configuration for lexicon settings */
+export interface LexiconConfig {
+  /** Table rows of preferred/excluded term mappings */
+  termMappings: TermMapping[];
+  /** Additional preferred terms (not part of mappings) */
+  alwaysInclude: string[];
+  /** Free-form AI guidance */
+  customInstructions: string;
 }
 
 export interface AppConfig {
