@@ -11,8 +11,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
   loadFiles: (folderPath: string): Promise<FileMetadata[]> =>
     ipcRenderer.invoke('file:load-files', folderPath),
 
-  renameFile: (fileId: string, mainName: string): Promise<boolean> =>
-    ipcRenderer.invoke('file:rename', fileId, mainName),
+  readFileAsDataUrl: (filePath: string): Promise<string> =>
+    ipcRenderer.invoke('file:read-as-data-url', filePath),
+
+  renameFile: (fileId: string, mainName: string, currentPath: string): Promise<boolean> =>
+    ipcRenderer.invoke('file:rename', fileId, mainName, currentPath),
 
   updateMetadata: (fileId: string, metadata: string[]): Promise<boolean> =>
     ipcRenderer.invoke('file:update-metadata', fileId, metadata),

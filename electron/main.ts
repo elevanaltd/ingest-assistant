@@ -1,25 +1,38 @@
 import { app, BrowserWindow, ipcMain, dialog } from 'electron';
 import * as path from 'path';
+import * as fs from 'fs/promises';
 import { FileManager } from './services/fileManager';
 import { MetadataStore } from './services/metadataStore';
 import { ConfigManager } from './services/configManager';
 import { AIService } from './services/aiService';
+import { MetadataWriter } from './services/metadataWriter';
 import type { AppConfig } from '../src/types';
 
 let mainWindow: BrowserWindow | null = null;
 let fileManager: FileManager;
-let metadataStore: MetadataStore;
+let metadataStore: MetadataStore | null = null;
+let currentFolderPath: string | null = null;
 let configManager: ConfigManager;
+let metadataWriter: MetadataWriter;
 let aiService: AIService | null = null;
 
 // Initialize services
 const userDataPath = app.getPath('userData');
 const configPath = path.join(userDataPath, 'config.yaml');
-const metadataPath = path.join(userDataPath, 'metadata.json');
 
 fileManager = new FileManager();
-metadataStore = new MetadataStore(metadataPath);
 configManager = new ConfigManager(configPath);
+metadataWriter = new MetadataWriter();
+
+// Helper function to get or create metadata store for a specific folder
+function getMetadataStoreForFolder(folderPath: string): MetadataStore {
+  if (currentFolderPath !== folderPath || !metadataStore) {
+    currentFolderPath = folderPath;
+    const metadataPath = path.join(folderPath, '.ingest-metadata.json');
+    metadataStore = new MetadataStore(metadataPath);
+  }
+  return metadataStore;
+}
 
 async function createWindow() {
   mainWindow = new BrowserWindow({
@@ -38,11 +51,14 @@ async function createWindow() {
     aiService = new AIService(aiConfig.provider, aiConfig.model, aiConfig.apiKey);
   }
 
-  if (process.env.NODE_ENV === 'development') {
+  // In development, use Vite dev server; in production, load built files
+  const isDev = !app.isPackaged;
+
+  if (isDev) {
     mainWindow.loadURL('http://localhost:5173');
     mainWindow.webContents.openDevTools();
   } else {
-    mainWindow.loadFile(path.join(__dirname, '../dist/index.html'));
+    mainWindow.loadFile(path.join(__dirname, '../../dist/index.html'));
   }
 
   mainWindow.on('closed', () => {
@@ -74,12 +90,41 @@ ipcMain.handle('file:select-folder', async () => {
   return result.canceled ? null : result.filePaths[0];
 });
 
+// Read file as base64 data URL for display in renderer
+ipcMain.handle('file:read-as-data-url', async (_event, filePath: string) => {
+  try {
+    const buffer = await fs.readFile(filePath);
+    const base64 = buffer.toString('base64');
+
+    // Determine MIME type from extension
+    const ext = path.extname(filePath).toLowerCase();
+    const mimeTypes: Record<string, string> = {
+      '.jpg': 'image/jpeg',
+      '.jpeg': 'image/jpeg',
+      '.png': 'image/png',
+      '.gif': 'image/gif',
+      '.webp': 'image/webp',
+      '.mp4': 'video/mp4',
+      '.mov': 'video/quicktime',
+      '.avi': 'video/x-msvideo',
+      '.webm': 'video/webm',
+    };
+
+    const mimeType = mimeTypes[ext] || 'application/octet-stream';
+    return `data:${mimeType};base64,${base64}`;
+  } catch (error) {
+    console.error('Failed to read file:', error);
+    throw error;
+  }
+});
+
 ipcMain.handle('file:load-files', async (_event, folderPath: string) => {
   const files = await fileManager.scanFolder(folderPath);
+  const store = getMetadataStoreForFolder(folderPath);
 
   // Load metadata for each file
   for (const file of files) {
-    const existingMetadata = await metadataStore.getFileMetadata(file.id);
+    const existingMetadata = await store.getFileMetadata(file.id);
     if (existingMetadata) {
       file.mainName = existingMetadata.mainName;
       file.metadata = existingMetadata.metadata;
@@ -90,25 +135,51 @@ ipcMain.handle('file:load-files', async (_event, folderPath: string) => {
   return files;
 });
 
-ipcMain.handle('file:rename', async (_event, fileId: string, mainName: string) => {
+ipcMain.handle('file:rename', async (_event, fileId: string, mainName: string, currentPath: string) => {
   try {
-    // Get current file metadata
-    const fileMetadata = await metadataStore.getFileMetadata(fileId);
-    if (!fileMetadata) return false;
-
     // Rename the file
     const newPath = await fileManager.renameFile(
-      fileMetadata.filePath,
+      currentPath,
       fileId,
       mainName
     );
 
-    // Update metadata
-    fileMetadata.mainName = mainName;
-    fileMetadata.currentFilename = path.basename(newPath);
-    fileMetadata.filePath = newPath;
+    const folderPath = path.dirname(newPath);
+    const store = getMetadataStoreForFolder(folderPath);
 
-    await metadataStore.updateFileMetadata(fileId, fileMetadata);
+    // Get or create metadata
+    let fileMetadata = await store.getFileMetadata(fileId);
+    if (!fileMetadata) {
+      // Create new metadata entry
+      const stats = await fs.stat(newPath);
+      fileMetadata = {
+        id: fileId,
+        originalFilename: path.basename(currentPath),
+        currentFilename: path.basename(newPath),
+        filePath: newPath,
+        extension: path.extname(newPath),
+        mainName: mainName,
+        metadata: [],
+        processedByAI: false,
+        lastModified: stats.mtime,
+        fileType: fileManager.getFileType(path.basename(newPath)),
+      };
+    } else {
+      // Update existing metadata
+      fileMetadata.mainName = mainName;
+      fileMetadata.currentFilename = path.basename(newPath);
+      fileMetadata.filePath = newPath;
+    }
+
+    await store.updateFileMetadata(fileId, fileMetadata);
+
+    // Write metadata to the file
+    await metadataWriter.writeMetadataToFile(
+      newPath,
+      fileMetadata.mainName,
+      fileMetadata.metadata
+    );
+
     return true;
   } catch (error) {
     console.error('Failed to rename file:', error);
@@ -118,11 +189,22 @@ ipcMain.handle('file:rename', async (_event, fileId: string, mainName: string) =
 
 ipcMain.handle('file:update-metadata', async (_event, fileId: string, metadata: string[]) => {
   try {
-    const fileMetadata = await metadataStore.getFileMetadata(fileId);
+    if (!currentFolderPath) return false;
+
+    const store = getMetadataStoreForFolder(currentFolderPath);
+    const fileMetadata = await store.getFileMetadata(fileId);
     if (!fileMetadata) return false;
 
     fileMetadata.metadata = metadata;
-    await metadataStore.updateFileMetadata(fileId, fileMetadata);
+    await store.updateFileMetadata(fileId, fileMetadata);
+
+    // Write metadata INTO the actual file using exiftool
+    await metadataWriter.writeMetadataToFile(
+      fileMetadata.filePath,
+      fileMetadata.mainName,
+      metadata
+    );
+
     return true;
   } catch (error) {
     console.error('Failed to update metadata:', error);
@@ -145,11 +227,16 @@ ipcMain.handle('ai:batch-process', async (_event, fileIds: string[]) => {
     throw new Error('AI service not configured.');
   }
 
+  if (!currentFolderPath) {
+    throw new Error('No folder selected');
+  }
+
+  const store = getMetadataStoreForFolder(currentFolderPath);
   const results = new Map();
   const lexicon = await configManager.getLexicon();
 
   for (const fileId of fileIds) {
-    const fileMetadata = await metadataStore.getFileMetadata(fileId);
+    const fileMetadata = await store.getFileMetadata(fileId);
     if (!fileMetadata || fileMetadata.processedByAI) continue;
 
     try {
@@ -161,7 +248,7 @@ ipcMain.handle('ai:batch-process', async (_event, fileIds: string[]) => {
         fileMetadata.mainName = result.mainName;
         fileMetadata.metadata = result.metadata;
         fileMetadata.processedByAI = true;
-        await metadataStore.updateFileMetadata(fileId, fileMetadata);
+        await store.updateFileMetadata(fileId, fileMetadata);
       }
     } catch (error) {
       console.error(`Failed to process ${fileId}:`, error);

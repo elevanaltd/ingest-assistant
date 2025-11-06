@@ -10,23 +10,50 @@ function App() {
   const [metadata, setMetadata] = useState<string>('');
   const [isAIConfigured, setIsAIConfigured] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [mediaDataUrl, setMediaDataUrl] = useState<string>('');
+  const [statusMessage, setStatusMessage] = useState<string>('');
 
   const currentFile = files[currentFileIndex];
 
+  // Auto-dismiss status message after 3 seconds
+  useEffect(() => {
+    if (statusMessage) {
+      const timer = setTimeout(() => setStatusMessage(''), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [statusMessage]);
+
+  // Check if running in Electron (user-friendly UI check)
+  if (!window.electronAPI) {
+    return (
+      <div className="app" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', flexDirection: 'column', gap: '16px' }}>
+        <h2>⚠️ Electron API not available</h2>
+        <p>This app must be run in Electron, not in a browser.</p>
+        <p>Run: <code>npm run dev</code></p>
+      </div>
+    );
+  }
+
   // Check if AI is configured on mount
   useEffect(() => {
-    if (window.electronAPI) {
-      window.electronAPI.isAIConfigured().then(setIsAIConfigured);
-    } else {
-      console.error('Electron API not available. Make sure the app is running in Electron.');
-    }
+    window.electronAPI.isAIConfigured().then(setIsAIConfigured);
   }, []);
 
-  // Update form when current file changes
+  // Update form and load media when current file changes
   useEffect(() => {
     if (currentFile) {
       setMainName(currentFile.mainName);
       setMetadata(currentFile.metadata.join(', '));
+
+      // Load file as data URL
+      window.electronAPI.readFileAsDataUrl(currentFile.filePath)
+        .then(setMediaDataUrl)
+        .catch(error => {
+          console.error('Failed to load media:', error);
+          setMediaDataUrl('');
+        });
+    } else {
+      setMediaDataUrl('');
     }
   }, [currentFile]);
 
@@ -44,10 +71,12 @@ function App() {
     if (!currentFile) return;
 
     setIsLoading(true);
+    const currentFileId = currentFile.id; // Remember the current file ID
+
     try {
       // Save main name (and rename file)
       if (mainName && mainName !== currentFile.mainName) {
-        await window.electronAPI.renameFile(currentFile.id, mainName);
+        await window.electronAPI.renameFile(currentFile.id, mainName, currentFile.filePath);
       }
 
       // Save metadata
@@ -62,10 +91,16 @@ function App() {
       const updatedFiles = await window.electronAPI.loadFiles(folderPath);
       setFiles(updatedFiles);
 
-      alert('Saved successfully!');
+      // Find the file we just saved by ID and update the index
+      const newIndex = updatedFiles.findIndex(f => f.id === currentFileId);
+      if (newIndex !== -1) {
+        setCurrentFileIndex(newIndex);
+      }
+
+      setStatusMessage('✓ Saved successfully');
     } catch (error) {
       console.error('Save failed:', error);
-      alert('Save failed: ' + error);
+      setStatusMessage('✗ Save failed: ' + (error instanceof Error ? error.message : error));
     } finally {
       setIsLoading(false);
     }
@@ -91,10 +126,10 @@ function App() {
       const result = await window.electronAPI.analyzeFile(currentFile.filePath);
       setMainName(result.mainName);
       setMetadata(result.metadata.join(', '));
-      alert(`AI Analysis complete! Confidence: ${(result.confidence * 100).toFixed(0)}%`);
+      setStatusMessage(`✓ AI Analysis complete! Confidence: ${(result.confidence * 100).toFixed(0)}%`);
     } catch (error) {
       console.error('AI analysis failed:', error);
-      alert('AI analysis failed: ' + error);
+      setStatusMessage('✗ AI analysis failed: ' + (error instanceof Error ? error.message : error));
     } finally {
       setIsLoading(false);
     }
@@ -119,62 +154,78 @@ function App() {
       {currentFile && (
         <div className="content">
           <div className="viewer">
-            {currentFile.fileType === 'image' ? (
-              <img
-                src={`file://${currentFile.filePath}`}
-                alt={currentFile.currentFilename}
-                className="media-preview"
-              />
+            {mediaDataUrl ? (
+              currentFile.fileType === 'image' ? (
+                <img
+                  src={mediaDataUrl}
+                  alt={currentFile.currentFilename}
+                  className="media-preview"
+                />
+              ) : (
+                <video
+                  src={mediaDataUrl}
+                  controls
+                  className="media-preview"
+                />
+              )
             ) : (
-              <video
-                src={`file://${currentFile.filePath}`}
-                controls
-                className="media-preview"
-              />
+              <div style={{ color: '#999' }}>Loading media...</div>
             )}
           </div>
 
           <div className="form">
-            <div className="form-group">
-              <label>ID (First 8 Digits - Read Only)</label>
-              <input
-                type="text"
-                value={currentFile.id}
-                readOnly
-                className="input-readonly"
-              />
+            <div className="form-row">
+              <div className="form-group">
+                <label>ID (8 Digits - Read Only)</label>
+                <input
+                  type="text"
+                  value={currentFile.id}
+                  readOnly
+                  className="input-readonly"
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Main Name</label>
+                <input
+                  type="text"
+                  value={mainName}
+                  onChange={(e) => setMainName(e.target.value)}
+                  placeholder="e.g., Oven Control Panel"
+                  className="input"
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Metadata (comma-separated tags)</label>
+                <input
+                  type="text"
+                  value={metadata}
+                  onChange={(e) => setMetadata(e.target.value)}
+                  placeholder="e.g., oven, control panel, kitchen"
+                  className="input"
+                />
+              </div>
+
+              <div className="form-group">
+                <label>&nbsp;</label>
+                <button
+                  onClick={handleSave}
+                  disabled={isLoading || !mainName}
+                  className="btn-primary"
+                >
+                  {isLoading ? 'Saving...' : 'Save'}
+                </button>
+              </div>
             </div>
 
-            <div className="form-group">
-              <label>Main Name</label>
-              <input
-                type="text"
-                value={mainName}
-                onChange={(e) => setMainName(e.target.value)}
-                placeholder="e.g., Oven Control Panel"
-                className="input"
-              />
-            </div>
-
-            <div className="form-group">
-              <label>Metadata (comma-separated tags)</label>
-              <input
-                type="text"
-                value={metadata}
-                onChange={(e) => setMetadata(e.target.value)}
-                placeholder="e.g., oven, control panel, kitchen"
-                className="input"
-              />
-            </div>
+            {statusMessage && (
+              <div className={`status-message ${statusMessage.startsWith('✗') ? 'error' : 'success'}`}>
+                {statusMessage}
+              </div>
+            )}
 
             <div className="button-group">
-              <button
-                onClick={handleSave}
-                disabled={isLoading || !mainName}
-                className="btn-primary"
-              >
-                {isLoading ? 'Saving...' : 'Save'}
-              </button>
 
               {isAIConfigured && (
                 <button

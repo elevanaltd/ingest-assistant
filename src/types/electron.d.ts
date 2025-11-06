@@ -4,7 +4,8 @@ export interface ElectronAPI {
   // File operations
   selectFolder: () => Promise<string | null>;
   loadFiles: (folderPath: string) => Promise<FileMetadata[]>;
-  renameFile: (fileId: string, mainName: string) => Promise<boolean>;
+  readFileAsDataUrl: (filePath: string) => Promise<string>;
+  renameFile: (fileId: string, mainName: string, currentPath: string) => Promise<boolean>;
   updateMetadata: (fileId: string, metadata: string[]) => Promise<boolean>;
 
   // AI operations
