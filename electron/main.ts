@@ -1,3 +1,7 @@
+// Load environment variables from .env file (must be first!)
+import * as dotenv from 'dotenv';
+dotenv.config();
+
 import { app, BrowserWindow, ipcMain, dialog } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs/promises';
