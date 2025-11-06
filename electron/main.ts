@@ -5,6 +5,7 @@ dotenv.config();
 import { app, BrowserWindow, ipcMain, dialog } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs/promises';
+import { z } from 'zod';
 import { FileManager } from './services/fileManager';
 import { SecurityValidator } from './services/securityValidator';
 import { SecurityViolationError } from './utils/securityViolationError';
@@ -14,6 +15,7 @@ import { AIService } from './services/aiService';
 import { MetadataWriter } from './services/metadataWriter';
 import { convertToYAMLFormat, convertToUIFormat } from './utils/lexiconConverter';
 import { sanitizeError } from './utils/errorSanitization';
+import { FileRenameSchema, FileUpdateMetadataSchema, AIBatchProcessSchema } from './schemas/ipcSchemas';
 import type { AppConfig, LexiconConfig } from '../src/types';
 
 let mainWindow: BrowserWindow | null = null;
@@ -169,11 +171,14 @@ ipcMain.handle('file:load-files', async (_event, folderPath: string) => {
 
 ipcMain.handle('file:rename', async (_event, fileId: string, mainName: string, currentPath: string) => {
   try {
-    // Rename the file
+    // Security: Validate input schema (prevents type confusion attacks)
+    const validated = FileRenameSchema.parse({ fileId, mainName, currentPath });
+
+    // Rename the file using validated data
     const newPath = await fileManager.renameFile(
-      currentPath,
-      fileId,
-      mainName
+      validated.currentPath,
+      validated.fileId,
+      validated.mainName
     );
 
     const folderPath = path.dirname(newPath);
@@ -215,31 +220,48 @@ ipcMain.handle('file:rename', async (_event, fileId: string, mainName: string, c
     return true;
   } catch (error) {
     console.error('Failed to rename file:', error); // Log full error internally
+
+    // Special handling for validation errors
+    if (error instanceof z.ZodError) {
+      console.error('Invalid IPC message:', error.errors);
+      throw new Error('Invalid request parameters');
+    }
+
     throw sanitizeError(error); // Send sanitized error to renderer
   }
 });
 
 ipcMain.handle('file:update-metadata', async (_event, fileId: string, metadata: string[]) => {
   try {
+    // Security: Validate input schema
+    const validated = FileUpdateMetadataSchema.parse({ fileId, metadata });
+
     if (!currentFolderPath) return false;
 
     const store = getMetadataStoreForFolder(currentFolderPath);
-    const fileMetadata = await store.getFileMetadata(fileId);
+    const fileMetadata = await store.getFileMetadata(validated.fileId);
     if (!fileMetadata) return false;
 
-    fileMetadata.metadata = metadata;
-    await store.updateFileMetadata(fileId, fileMetadata);
+    fileMetadata.metadata = validated.metadata;
+    await store.updateFileMetadata(validated.fileId, fileMetadata);
 
     // Write metadata INTO the actual file using exiftool
     await metadataWriter.writeMetadataToFile(
       fileMetadata.filePath,
       fileMetadata.mainName,
-      metadata
+      validated.metadata
     );
 
     return true;
   } catch (error) {
     console.error('Failed to update metadata:', error); // Log full error internally
+
+    // Special handling for validation errors
+    if (error instanceof z.ZodError) {
+      console.error('Invalid IPC message:', error.errors);
+      throw new Error('Invalid request parameters');
+    }
+
     throw sanitizeError(error); // Send sanitized error to renderer
   }
 });
@@ -276,19 +298,23 @@ ipcMain.handle('ai:analyze-file', async (_event, filePath: string) => {
 });
 
 ipcMain.handle('ai:batch-process', async (_event, fileIds: string[]) => {
-  if (!aiService) {
-    throw new Error('AI service not configured.');
-  }
+  try {
+    // Security: Validate input schema
+    const validated = AIBatchProcessSchema.parse({ fileIds });
 
-  if (!currentFolderPath) {
-    throw new Error('No folder selected');
-  }
+    if (!aiService) {
+      throw new Error('AI service not configured.');
+    }
 
-  const store = getMetadataStoreForFolder(currentFolderPath);
-  const results = new Map();
-  const lexicon = await configManager.getLexicon();
+    if (!currentFolderPath) {
+      throw new Error('No folder selected');
+    }
 
-  for (const fileId of fileIds) {
+    const store = getMetadataStoreForFolder(currentFolderPath);
+    const results = new Map();
+    const lexicon = await configManager.getLexicon();
+
+    for (const fileId of validated.fileIds) {
     const fileMetadata = await store.getFileMetadata(fileId);
     if (!fileMetadata || fileMetadata.processedByAI) continue;
 
@@ -308,7 +334,18 @@ ipcMain.handle('ai:batch-process', async (_event, fileIds: string[]) => {
     }
   }
 
-  return Object.fromEntries(results);
+    return Object.fromEntries(results);
+  } catch (error) {
+    console.error('Failed to batch process:', error);
+
+    // Special handling for validation errors
+    if (error instanceof z.ZodError) {
+      console.error('Invalid IPC message:', error.errors);
+      throw new Error('Invalid request parameters');
+    }
+
+    throw sanitizeError(error);
+  }
 });
 
 // Config operations
