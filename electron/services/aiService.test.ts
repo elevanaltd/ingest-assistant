@@ -55,6 +55,36 @@ describe('AIService', () => {
       expect(result.metadata).toEqual([]);
       expect(result.confidence).toBe(0);
     });
+
+    it('should parse markdown-wrapped JSON (```json ... ```)', () => {
+      const response = `\`\`\`json
+{
+  "mainName": "microwave-controls",
+  "metadata": ["microwave", "control panel"]
+}
+\`\`\``;
+
+      const result = aiService.parseAIResponse(response);
+
+      expect(result.mainName).toBe('microwave-controls');
+      expect(result.metadata).toEqual(['microwave', 'control panel']);
+      expect(result.confidence).toBe(0.8);
+    });
+
+    it('should parse markdown-wrapped JSON (``` ... ```)', () => {
+      const response = `\`\`\`
+{
+  "mainName": "oven-panel",
+  "metadata": ["oven", "panel"]
+}
+\`\`\``;
+
+      const result = aiService.parseAIResponse(response);
+
+      expect(result.mainName).toBe('oven-panel');
+      expect(result.metadata).toEqual(['oven', 'panel']);
+      expect(result.confidence).toBe(0.8);
+    });
   });
 
   describe('analyzeImage', () => {

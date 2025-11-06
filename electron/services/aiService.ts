@@ -51,7 +51,7 @@ Lexicon rules:
 - Excluded terms (do not use): ${excludedTerms || 'none'}
 - Synonym mappings: ${synonyms || 'none'}
 
-Return JSON format:
+IMPORTANT: Return ONLY valid JSON in this exact format (no markdown, no explanation):
 {
   "mainName": "descriptive-name",
   "metadata": ["tag1", "tag2", "tag3"]
@@ -60,10 +60,23 @@ Return JSON format:
 
   /**
    * Parse AI response into structured result
+   * Handles both raw JSON and markdown-wrapped JSON (```json ... ```)
    */
   parseAIResponse(response: string): AIAnalysisResult {
     try {
-      const parsed = JSON.parse(response);
+      // Remove markdown code block wrapper if present
+      let jsonString = response.trim();
+
+      // Check for markdown code block (```json ... ``` or ``` ... ```)
+      const codeBlockMatch = jsonString.match(/```(?:json)?\s*\n?([\s\S]*?)\n?```/);
+      if (codeBlockMatch) {
+        jsonString = codeBlockMatch[1].trim();
+      }
+
+      // Parse the JSON
+      const parsed = JSON.parse(jsonString);
+
+      // Validate and return
       return {
         mainName: parsed.mainName || '',
         metadata: Array.isArray(parsed.metadata) ? parsed.metadata : [],
@@ -71,6 +84,7 @@ Return JSON format:
       };
     } catch (error) {
       console.error('Failed to parse AI response:', error);
+      console.error('Response was:', response);
       return {
         mainName: '',
         metadata: [],

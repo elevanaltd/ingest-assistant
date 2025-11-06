@@ -58,11 +58,14 @@ export class MetadataWriter {
     }
 
     // Keywords - Array of tags
+    // Write each tag individually so exiftool creates proper array structure
+    // This ensures Premiere Pro and other tools see them as separate searchable keywords
+    // Note: -Keywords writes to IPTC:Keywords, -XMP:Subject writes to XMP namespace
     if (tags.length > 0) {
-      const keywordsStr = tags.join(', ');
-      commands.push(`-Keywords="${keywordsStr}"`);
-      commands.push(`-XMP:Subject="${keywordsStr}"`);
-      commands.push(`-IPTC:Keywords="${keywordsStr}"`);
+      tags.forEach(tag => {
+        commands.push(`-Keywords="${tag}"`);
+        commands.push(`-XMP:Subject="${tag}"`);
+      });
     }
 
     // Description - Combine for searchability
