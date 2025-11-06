@@ -142,7 +142,7 @@ export class MetadataWriter {
     try {
       // SECURITY: execFile() prevents shell injection
       // Arguments passed as array (no shell expansion)
-      const { stdout, stderr } = await execFileAsync('exiftool', args, {
+      const { stderr } = await execFileAsync('exiftool', args, {
         timeout: 30000,        // 30 second timeout
         maxBuffer: 10 * 1024 * 1024  // 10MB output limit
       });
