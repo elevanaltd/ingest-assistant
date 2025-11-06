@@ -29,8 +29,9 @@ export class MetadataStore {
 
       this.cache = data;
       return data;
-    } catch (error: any) {
-      if (error.code === 'ENOENT') {
+    } catch (error) {
+      // Type guard: Check if error has code property (NodeJS.ErrnoException)
+      if (error && typeof error === 'object' && 'code' in error && error.code === 'ENOENT') {
         // File doesn't exist, return empty store
         this.cache = {};
         return {};
