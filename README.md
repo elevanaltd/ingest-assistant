@@ -20,7 +20,17 @@ AI-powered media file ingestion and metadata assistant for MacOS.
 npm install
 ```
 
-### 2. Configure API Keys
+### 2. Install exiftool (Required)
+
+Metadata is embedded directly into files using exiftool:
+
+```bash
+brew install exiftool  # macOS
+```
+
+**Why needed:** Embedded metadata is readable by Premiere Pro, Lightroom, and other professional tools.
+
+### 3. Configure API Keys
 
 Create a `.env` file from the example:
 
@@ -54,7 +64,7 @@ AI_MODEL=gpt-4-vision-preview
 
 **⚠️ Security Note:** API keys are stored in `.env` which is gitignored. Never commit API keys to version control!
 
-### 3. Customize Lexicon (Optional)
+### 4. Customize Lexicon (Optional - Can Also Use Settings UI)
 
 Copy the example config:
 
@@ -106,13 +116,17 @@ npm run package
 ## Usage
 
 1. **Select Folder**: Click "Select Folder" to choose a directory with images/videos
-2. **View Files**: Navigate through files using Previous/Next buttons
-3. **Manual Entry**:
+2. **Configure Lexicon** (Optional): Click ⚙️ Settings button
+   - Define term preferences (e.g., "bin" instead of "trash")
+   - Add custom AI instructions
+   - Save changes
+3. **View Files**: Navigate through files using Previous/Next buttons
+4. **Manual Entry**:
    - ID field is auto-populated (first 8 characters of filename)
    - Enter a Main Name (e.g., "Oven Control Panel")
    - Add metadata tags (comma-separated, e.g., "oven, control panel, kitchen")
    - Click "Save" to rename the file and store metadata
-4. **AI Assistance**:
+5. **AI Assistance**:
    - Click "AI Assist" to analyze the current file
    - Review the suggested name and metadata
    - Edit if needed, then Save
@@ -132,23 +146,25 @@ Example:
 - **FileManager**: Scans folders, manages file operations, handles renaming
 - **MetadataStore**: JSON-based metadata persistence
 - **ConfigManager**: YAML configuration management
-- **AIService**: Abstraction layer for OpenAI and Anthropic APIs
+- **AIService**: Multi-format AI response parser (OpenAI, Anthropic, OpenRouter)
+- **MetadataWriter**: Embeds metadata into files via exiftool
 
 ### UI (React)
 
-- Simple single-page app with image/video viewer
+- Single-page app with image/video viewer
 - Form for ID, Main Name, and Metadata
+- Settings Modal for lexicon configuration (⚙️ button)
 - Navigation between files
 - AI assistance button
 
 ## Testing
 
-Full TDD implementation with 43+ passing tests covering:
-- Type definitions
-- Configuration management
-- Metadata storage
-- File operations
-- AI service integration
+Full TDD implementation with **100+ passing tests** covering:
+- Settings Modal and lexicon management
+- Multi-format AI response parsing
+- Metadata storage and EXIF embedding
+- File operations and configuration
+- Type definitions and integration
 
 Run tests: `npm test`
 

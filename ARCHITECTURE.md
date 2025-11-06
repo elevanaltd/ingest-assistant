@@ -557,7 +557,14 @@ npm run package      # Create macOS DMG/ZIP (electron-builder)
 - ✅ Error boundary for UI resilience
 - ✅ CI/CD pipeline with quality gates
 
-### Recent Fixes
+### Recent Enhancements (November 6, 2025)
+- ✅ **Settings Modal** - In-app lexicon editor with table-based term mapping (⚙️ button)
+- ✅ **Robust AI Parsing** - Handles multiple response formats (JSON, markdown, prose)
+- ✅ **dotenv Integration** - Automatic .env loading for API keys
+- ✅ **Custom AI Instructions** - Free-form guidance field in lexicon
+- ✅ **Test Coverage** - Increased from 43 to 100+ passing tests
+
+### Initial Release Fixes
 - Fixed critical console error (window.electronAPI undefined)
 - Added ErrorBoundary for graceful error handling
 - Fixed package.json main entry point
