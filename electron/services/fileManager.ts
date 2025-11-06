@@ -1,28 +1,31 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import type { FileMetadata } from '../../src/types';
+import { SecurityValidator } from './securityValidator';
 
 const IMAGE_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp'];
 const VIDEO_EXTENSIONS = ['.mp4', '.mov', '.avi', '.mkv', '.webm'];
 const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB in bytes
 
 export class FileManager {
+  constructor(private readonly securityValidator: SecurityValidator) {}
+
   /**
    * Validate file size to prevent DoS attacks from large files
-   * @throws Error if file exceeds 100MB
+   * @throws SecurityViolationError if file exceeds 100MB
+   * @deprecated Use securityValidator.validateFileSize instead
    */
   async validateFileSize(filePath: string): Promise<void> {
-    const stats = await fs.stat(filePath);
-
-    if (stats.size > MAX_FILE_SIZE) {
-      const sizeMB = (stats.size / 1024 / 1024).toFixed(2);
-      throw new Error(`File too large: ${sizeMB}MB (max 100MB)`);
-    }
+    // Delegate to SecurityValidator for consistency
+    await this.securityValidator.validateFileSize(filePath, MAX_FILE_SIZE);
   }
   /**
    * Scan a folder and return all media files as FileMetadata
    */
   async scanFolder(folderPath: string): Promise<FileMetadata[]> {
+    // Set allowed base path for security validation
+    this.securityValidator.setAllowedBasePath(folderPath);
+
     const entries = await fs.readdir(folderPath, { withFileTypes: true });
     const files: FileMetadata[] = [];
 
@@ -33,6 +36,10 @@ export class FileManager {
       if (!this.isMediaFile(filename)) continue;
 
       const filePath = path.join(folderPath, filename);
+
+      // Validate path before processing (prevents path traversal)
+      await this.securityValidator.validateFilePath(filePath);
+
       const stats = await fs.stat(filePath);
       const id = this.extractFileId(filename);
       const extension = path.extname(filename);
@@ -89,6 +96,9 @@ export class FileManager {
     fileId: string,
     mainName: string
   ): Promise<string> {
+    // Validate path before rename operation (prevents path traversal)
+    await this.securityValidator.validateFilePath(currentPath);
+
     const dir = path.dirname(currentPath);
     const extension = path.extname(currentPath);
     const kebabName = this.toKebabCase(mainName);

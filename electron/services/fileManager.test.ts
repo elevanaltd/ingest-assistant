@@ -2,22 +2,47 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { FileManager } from './fileManager';
+import { SecurityValidator } from './securityValidator';
 
 vi.mock('fs/promises');
 
 describe('FileManager', () => {
   let fileManager: FileManager;
+  let mockSecurityValidator: SecurityValidator;
+
   // Partial mock of fs/promises for testing (explicit unknown cast)
   const mockFs = fs as unknown as {
     readdir: ReturnType<typeof vi.fn>;
     stat: ReturnType<typeof vi.fn>;
     rename: ReturnType<typeof vi.fn>;
+    realpath: ReturnType<typeof vi.fn>;
+    readFile: ReturnType<typeof vi.fn>;
   };
   const testFolderPath = '/test/folder';
 
   beforeEach(() => {
     vi.clearAllMocks();
-    fileManager = new FileManager();
+
+    // Create mock SecurityValidator
+    mockSecurityValidator = new SecurityValidator();
+
+    // Mock validateFilePath to pass through (no path traversal for normal tests)
+    vi.spyOn(mockSecurityValidator, 'validateFilePath').mockImplementation(async (path: string) => path);
+
+    // Mock validateFileSize to call the real implementation
+    // (This allows file size validation tests to work properly)
+    vi.spyOn(mockSecurityValidator, 'validateFileSize').mockImplementation(
+      async (filePath: string, maxBytes: number) => {
+        // Call through to the real SecurityValidator implementation
+        const realValidator = new SecurityValidator();
+        return realValidator.validateFileSize(filePath, maxBytes);
+      }
+    );
+
+    // Mock setAllowedBasePath (no-op for normal tests)
+    vi.spyOn(mockSecurityValidator, 'setAllowedBasePath').mockImplementation(() => {});
+
+    fileManager = new FileManager(mockSecurityValidator);
   });
 
   afterEach(() => {
