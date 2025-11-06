@@ -33,9 +33,11 @@ describe('App', () => {
     expect(screen.getByText('Ingest Assistant')).toBeInTheDocument();
   });
 
-  it('should render folder selection button', () => {
+  it('should render sidebar with folder selection button', () => {
     render(<App />);
-    expect(screen.getByText('Select Folder')).toBeInTheDocument();
+    // Folder selection button is now in the sidebar
+    expect(screen.getByRole('complementary')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /select folder/i })).toBeInTheDocument();
   });
 
   it('should show empty state when no folder selected', () => {

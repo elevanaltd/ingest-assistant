@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import type { FileMetadata, LexiconConfig } from './types';
 import { SettingsModal } from './components/SettingsModal';
+import { Sidebar } from './components/Sidebar';
 import './App.css';
 
 function App() {
@@ -174,9 +175,6 @@ function App() {
       <header className="header">
         <h1>Ingest Assistant</h1>
         <div className="header-buttons">
-          <button onClick={handleSelectFolder} className="btn-primary">
-            Select Folder
-          </button>
           <button onClick={handleOpenSettings} className="btn" title="Settings">
             ⚙️
           </button>
@@ -190,8 +188,16 @@ function App() {
         </div>
       )}
 
-      {currentFile && (
-        <div className="content">
+      <div className="main-container">
+        <Sidebar
+          files={files}
+          currentFileIndex={currentFileIndex}
+          onSelectFolder={handleSelectFolder}
+          onSelectFile={setCurrentFileIndex}
+        />
+
+        {currentFile && (
+          <div className="content">
           <div className="viewer">
             {mediaDataUrl ? (
               currentFile.fileType === 'image' ? (
@@ -298,19 +304,20 @@ function App() {
             </div>
           </div>
         </div>
-      )}
+        )}
 
-      {!currentFile && folderPath && (
-        <div className="empty-state">
-          <p>No media files found in this folder.</p>
-        </div>
-      )}
+        {!currentFile && folderPath && (
+          <div className="empty-state">
+            <p>No media files found in this folder.</p>
+          </div>
+        )}
 
-      {!folderPath && (
-        <div className="empty-state">
-          <p>Select a folder to get started.</p>
-        </div>
-      )}
+        {!folderPath && (
+          <div className="empty-state">
+            <p>Select a folder to get started.</p>
+          </div>
+        )}
+      </div>
 
       {showSettings && (
         <SettingsModal
