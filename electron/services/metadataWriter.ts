@@ -5,6 +5,36 @@ const execAsync = promisify(exec);
 
 export class MetadataWriter {
   /**
+   * Parse keywords from exiftool output
+   * exiftool may return keywords in different formats:
+   * - Array of strings: ['tag1', 'tag2']
+   * - Single string: 'tag1'
+   * - Comma-separated string: 'tag1, tag2, tag3' (when we write multiple tags)
+   */
+  private parseKeywords(keywords: string | string[] | undefined): string[] {
+    if (!keywords) {
+      return [];
+    }
+
+    // Already an array - return as-is
+    if (Array.isArray(keywords)) {
+      return keywords;
+    }
+
+    // Single string - check if it contains commas
+    if (typeof keywords === 'string') {
+      // If it contains commas, split and trim
+      if (keywords.includes(',')) {
+        return keywords.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0);
+      }
+      // Single tag without commas
+      return [keywords];
+    }
+
+    return [];
+  }
+
+  /**
    * Write metadata directly into the file using exiftool
    * This embeds EXIF/XMP metadata that Premiere Pro and other tools can read
    */
@@ -72,9 +102,7 @@ export class MetadataWriter {
         const metadata = data[0];
         return {
           title: metadata.Title,
-          keywords: metadata.Keywords ?
-            (Array.isArray(metadata.Keywords) ? metadata.Keywords : [metadata.Keywords]) :
-            [],
+          keywords: this.parseKeywords(metadata.Keywords),
           description: metadata.Description,
         };
       }
