@@ -17,6 +17,7 @@ import { convertToYAMLFormat, convertToUIFormat } from './utils/lexiconConverter
 import { sanitizeError } from './utils/errorSanitization';
 import { FileRenameSchema, FileUpdateMetadataSchema, AIBatchProcessSchema } from './schemas/ipcSchemas';
 import type { AppConfig, LexiconConfig } from '../src/types';
+import { migrateToKeychain } from './services/keychainMigration';
 
 let mainWindow: BrowserWindow | null = null;
 // Initialize SecurityValidator and FileManager with dependency injection
@@ -53,8 +54,8 @@ async function createWindow() {
     },
   });
 
-  // Initialize AI service from environment variables
-  const aiConfig = ConfigManager.getAIConfig();
+  // Initialize AI service from Keychain + environment variables
+  const aiConfig = await ConfigManager.getAIConfig();
   if (aiConfig) {
     aiService = new AIService(aiConfig.provider, aiConfig.model, aiConfig.apiKey);
   }
@@ -66,7 +67,7 @@ async function createWindow() {
     mainWindow.loadURL('http://localhost:5173');
     mainWindow.webContents.openDevTools();
   } else {
-    mainWindow.loadFile(path.join(__dirname, '../../dist/index.html'));
+    mainWindow.loadFile(path.join(__dirname, '../../index.html'));
   }
 
   mainWindow.on('closed', () => {
@@ -74,7 +75,19 @@ async function createWindow() {
   });
 }
 
-app.whenReady().then(createWindow);
+app.whenReady().then(async () => {
+  // Run migration from plaintext electron-store to Keychain (one-time for existing users)
+  try {
+    const migrated = await migrateToKeychain();
+    if (migrated) {
+      console.log('Successfully migrated API keys to Keychain');
+    }
+  } catch (error) {
+    console.error('Migration error (non-fatal):', error);
+  }
+
+  await createWindow();
+});
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
@@ -389,4 +402,68 @@ ipcMain.handle('lexicon:save', async (_event, uiConfig: LexiconConfig) => {
 // Check if AI is configured
 ipcMain.handle('ai:is-configured', async () => {
   return aiService !== null;
+});
+
+// Get AI configuration for UI (with masked API key)
+ipcMain.handle('ai:get-config', async () => {
+  return configManager.getAIConfigForUI();
+});
+
+// Update AI configuration
+ipcMain.handle('ai:update-config', async (_event, config: { provider: 'openai' | 'anthropic' | 'openrouter'; model: string; apiKey: string }) => {
+  try {
+    // First, test the connection
+    const testResult = await configManager.testAIConnection(config.provider, config.model, config.apiKey);
+    if (!testResult.success) {
+      return { success: false, error: testResult.error || 'Connection test failed' };
+    }
+
+    // Save configuration (to Keychain + electron-store)
+    const saveResult = await configManager.saveAIConfig(config);
+    if (!saveResult) {
+      return { success: false, error: 'Failed to save configuration' };
+    }
+
+    // Hot-reload aiService with new configuration
+    const newConfig = await ConfigManager.getAIConfig();
+    if (newConfig) {
+      aiService = new AIService(newConfig.provider, newConfig.model, newConfig.apiKey);
+    } else {
+      aiService = null;
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error('Failed to update AI config:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    };
+  }
+});
+
+// Test AI connection
+ipcMain.handle('ai:test-connection', async (_event, provider: 'openai' | 'anthropic' | 'openrouter', model: string, apiKey: string) => {
+  try {
+    return await configManager.testAIConnection(provider, model, apiKey);
+  } catch (error) {
+    console.error('Failed to test AI connection:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    };
+  }
+});
+
+// Test AI connection with saved Keychain key
+ipcMain.handle('ai:test-saved-connection', async () => {
+  try {
+    return await configManager.testSavedAIConnection();
+  } catch (error) {
+    console.error('Failed to test saved AI connection:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    };
+  }
 });

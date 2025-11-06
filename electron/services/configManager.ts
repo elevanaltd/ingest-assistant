@@ -1,14 +1,43 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import * as yaml from 'js-yaml';
-import type { AppConfig, Lexicon, AIConfig } from '../../src/types';
+import Store from 'electron-store';
+import OpenAI from 'openai';
+import Anthropic from '@anthropic-ai/sdk';
+import * as keytar from 'keytar';
+import type { AppConfig, Lexicon, AIConfig, AIConfigForUI, AIConnectionTestResult } from '../../src/types';
+
+const KEYCHAIN_SERVICE = 'ingest-assistant';
+
+type AIConfigSchema = {
+  provider: 'openrouter' | 'openai' | 'anthropic' | null;
+  model: string | null;
+  apiKey: string | null; // Deprecated: now stored in Keychain
+};
 
 export class ConfigManager {
   private configPath: string;
   private cachedConfig: AppConfig | null = null;
+  private aiConfigStore: Store<AIConfigSchema>;
+
+  // Static store for getAIConfig to check electron-store
+  private static staticAIConfigStore: Store<AIConfigSchema> | null = null;
 
   constructor(configPath: string) {
     this.configPath = configPath;
+    this.aiConfigStore = new Store<AIConfigSchema>({
+      name: 'ai-config',
+      defaults: {
+        provider: null,
+        model: null,
+        apiKey: null,
+      },
+    });
+
+    // Initialize static store on first instantiation
+    if (!ConfigManager.staticAIConfigStore) {
+      ConfigManager.staticAIConfigStore = this.aiConfigStore;
+    }
   }
 
   /**
@@ -100,10 +129,209 @@ export class ConfigManager {
   }
 
   /**
-   * Get AI configuration from environment variables
+   * Get AI config metadata from electron-store (without API key)
+   * Returns null if not configured in store
+   * Note: API keys are now stored in Keychain, use getAIConfigWithKeychain() for full config
+   */
+  getAIConfigFromStore(): AIConfig | null {
+    const provider = (this.aiConfigStore as any).get('provider');
+    const model = (this.aiConfigStore as any).get('model');
+    const apiKey = (this.aiConfigStore as any).get('apiKey');
+
+    if (!provider || !model) {
+      return null;
+    }
+
+    // Return config with apiKey (will be null for Keychain-stored keys)
+    return { provider, model, apiKey };
+  }
+
+  /**
+   * Save AI configuration to electron-store (metadata) and macOS Keychain (API key)
+   */
+  async saveAIConfig(config: AIConfig): Promise<boolean> {
+    try {
+      // Store API key in macOS Keychain
+      const keychainAccount = `${config.provider}-key`;
+      await keytar.setPassword(KEYCHAIN_SERVICE, keychainAccount, config.apiKey);
+
+      // Store non-sensitive metadata in electron-store
+      (this.aiConfigStore as any).set('provider', config.provider);
+      (this.aiConfigStore as any).set('model', config.model);
+      (this.aiConfigStore as any).set('apiKey', null); // Don't store in plaintext anymore
+      return true;
+    } catch (error) {
+      console.error('Failed to save AI config:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Get AI configuration with API key from Keychain
+   * Returns full config with sensitive data retrieved from macOS Keychain
+   */
+  async getAIConfigWithKeychain(): Promise<AIConfig | null> {
+    const provider = (this.aiConfigStore as any).get('provider');
+    const model = (this.aiConfigStore as any).get('model');
+
+    if (!provider || !model) {
+      // Fall back to .env
+      return ConfigManager.getAIConfig();
+    }
+
+    // Retrieve API key from Keychain
+    const keychainAccount = `${provider}-key`;
+    const apiKey = await keytar.getPassword(KEYCHAIN_SERVICE, keychainAccount);
+
+    if (!apiKey) {
+      // No key in Keychain, try .env fallback
+      return ConfigManager.getAIConfig();
+    }
+
+    return { provider, model, apiKey };
+  }
+
+  /**
+   * Delete AI configuration from both Keychain and electron-store
+   */
+  async deleteAIConfig(provider: string): Promise<void> {
+    const keychainAccount = `${provider}-key`;
+    await keytar.deletePassword(KEYCHAIN_SERVICE, keychainAccount);
+
+    // Clear electron-store if this was active provider
+    if ((this.aiConfigStore as any).get('provider') === provider) {
+      (this.aiConfigStore as any).set('provider', null);
+      (this.aiConfigStore as any).set('model', null);
+      (this.aiConfigStore as any).set('apiKey', null);
+    }
+  }
+
+  /**
+   * Get AI configuration for UI with masked API key
+   * Safe to expose to renderer process
+   * Note: With Keychain storage, API keys are not available in electron-store
+   */
+  getAIConfigForUI(): AIConfigForUI {
+    const config = this.getAIConfigFromStore();
+
+    if (!config) {
+      return {
+        provider: null,
+        model: null,
+        apiKey: '',
+      };
+    }
+
+    // Mask API key: show first 5 chars and last 4 chars (if available in store)
+    // With Keychain storage, apiKey will be null, so show '***'
+    const maskedKey = config.apiKey && config.apiKey.length > 9
+      ? `${config.apiKey.substring(0, 5)}...${config.apiKey.substring(config.apiKey.length - 4)}`
+      : '***';
+
+    return {
+      provider: config.provider,
+      model: config.model,
+      apiKey: maskedKey,
+    };
+  }
+
+  /**
+   * Test AI connection using saved Keychain API key
+   * Retrieves configuration from electron-store and Keychain, then tests the connection
+   */
+  async testSavedAIConnection(): Promise<AIConnectionTestResult> {
+    try {
+      const config = await this.getAIConfigWithKeychain();
+
+      if (!config) {
+        return { success: false, error: 'No AI configuration found' };
+      }
+
+      if (!config.apiKey) {
+        return { success: false, error: 'No API key found in Keychain' };
+      }
+
+      // Use existing testAIConnection logic
+      return await this.testAIConnection(config.provider, config.model, config.apiKey);
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Test failed'
+      };
+    }
+  }
+
+  /**
+   * Test AI connection by making a minimal API call
+   */
+  async testAIConnection(
+    provider: 'openai' | 'anthropic' | 'openrouter',
+    model: string,
+    apiKey: string
+  ): Promise<AIConnectionTestResult> {
+    try {
+      if (provider === 'openai') {
+        const client = new OpenAI({ apiKey, timeout: 5000 });
+        await client.models.retrieve(model.split('-')[0]); // Test with model family
+        return { success: true };
+      } else if (provider === 'openrouter') {
+        const client = new OpenAI({
+          apiKey,
+          baseURL: 'https://openrouter.ai/api/v1',
+          timeout: 5000,
+        });
+        // OpenRouter: Test with a minimal completion request
+        await client.chat.completions.create({
+          model,
+          messages: [{ role: 'user', content: 'test' }],
+          max_tokens: 1,
+        });
+        return { success: true };
+      } else {
+        // Anthropic
+        const client = new Anthropic({ apiKey, timeout: 5000 });
+        await client.messages.create({
+          model,
+          max_tokens: 1,
+          messages: [{ role: 'user', content: 'test' }],
+        });
+        return { success: true };
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+
+      // Parse common error messages
+      if (errorMessage.includes('401') || errorMessage.includes('Unauthorized') || errorMessage.includes('invalid_api_key')) {
+        return { success: false, error: 'Invalid API key' };
+      }
+
+      return { success: false, error: errorMessage };
+    }
+  }
+
+  /**
+   * Get AI configuration with fallback priority:
+   * 1. electron-store + Keychain (production/runtime config)
+   * 2. process.env (development/backward compatibility)
    * Returns null if API key is not configured
    */
-  static getAIConfig(): AIConfig | null {
+  static async getAIConfig(): Promise<AIConfig | null> {
+    // Priority 1: Check electron-store + Keychain
+    if (ConfigManager.staticAIConfigStore) {
+      const provider = (ConfigManager.staticAIConfigStore as any).get('provider');
+      const model = (ConfigManager.staticAIConfigStore as any).get('model');
+
+      if (provider && model) {
+        const keychainAccount = `${provider}-key`;
+        const apiKey = await keytar.getPassword(KEYCHAIN_SERVICE, keychainAccount);
+
+        if (apiKey) {
+          return { provider, model, apiKey };
+        }
+      }
+    }
+
+    // Priority 2: Fall back to environment variables
     const provider = (process.env.AI_PROVIDER || 'openrouter') as 'openai' | 'anthropic' | 'openrouter';
 
     let apiKey: string | undefined;
