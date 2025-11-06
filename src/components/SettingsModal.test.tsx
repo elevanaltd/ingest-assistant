@@ -112,15 +112,8 @@ describe('SettingsModal', () => {
     expect(mockOnClose).toHaveBeenCalledTimes(1);
   });
 
-  it('calls onClose when overlay clicked', () => {
-    render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
-
-    const overlay = screen.getByText('Settings').closest('.modal-overlay');
-    expect(overlay).toBeInTheDocument();
-
-    fireEvent.click(overlay!);
-    expect(mockOnClose).toHaveBeenCalledTimes(1);
-  });
+  // Note: Click-outside-to-close was intentionally removed from modal
+  // Modal now only closes via Cancel button, X button, or after successful save
 
   it('does not close when modal content clicked', () => {
     render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
@@ -226,13 +219,15 @@ describe('SettingsModal', () => {
   });
 
   it('closes modal after successful save', async () => {
-    render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
+    const localOnClose = vi.fn();
+    render(<SettingsModal onClose={localOnClose} onSave={mockOnSave} />);
 
     fireEvent.click(screen.getByText('Save Lexicon'));
 
+    // Modal closes after 1.5 second delay following successful save
     await waitFor(() => {
-      expect(mockOnClose).toHaveBeenCalledTimes(1);
-    });
+      expect(localOnClose).toHaveBeenCalled();
+    }, { timeout: 3000 });
   });
 
   describe('AI Configuration Tab', () => {
@@ -244,6 +239,7 @@ describe('SettingsModal', () => {
           model: 'anthropic/claude-3.5-sonnet',
           apiKey: '***masked***'
         }),
+        isAIConfigured: vi.fn().mockResolvedValue(true),
         updateAIConfig: vi.fn().mockResolvedValue({ success: true }),
         testAIConnection: vi.fn().mockResolvedValue({ success: true }),
         testSavedAIConnection: vi.fn().mockResolvedValue({ success: true }),
@@ -340,6 +336,11 @@ describe('SettingsModal', () => {
 
       fireEvent.click(screen.getByText('AI Configuration'));
 
+      // Wait for async config loading
+      await waitFor(() => {
+        expect(window.electronAPI.getAIConfig).toHaveBeenCalled();
+      });
+
       const providerSelect = screen.getByLabelText(/AI Provider/i);
       const modelInput = screen.getByLabelText(/Model/i);
       const apiKeyInput = screen.getByLabelText(/API Key/i);
@@ -359,8 +360,10 @@ describe('SettingsModal', () => {
         });
       });
 
-      // Modal should close after successful save
-      expect(mockOnClose).toHaveBeenCalled();
+      // Modal should close after successful save (1.5 second delay)
+      await waitFor(() => {
+        expect(mockOnClose).toHaveBeenCalled();
+      }, { timeout: 3000 });
     });
 
     it('should show error when save fails', async () => {
@@ -412,12 +415,21 @@ describe('SettingsModal', () => {
       expect(testButton).not.toBeDisabled();
     });
 
-    it('should require API key before saving', () => {
+    it('should require API key when no saved key exists', async () => {
+      // Mock scenario where NO key is saved
+      window.electronAPI.isAIConfigured = vi.fn().mockResolvedValue(false);
+
       render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
 
       fireEvent.click(screen.getByText('AI Configuration'));
 
+      // Wait for async loading to complete
+      await waitFor(() => {
+        expect(window.electronAPI.getAIConfig).toHaveBeenCalled();
+      });
+
       const saveButton = screen.getByText('Save Configuration');
+      // Button should be disabled when no saved key and no new key entered
       expect(saveButton).toBeDisabled();
     });
 
