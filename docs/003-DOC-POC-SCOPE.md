@@ -2,11 +2,15 @@
 
 ## Purpose
 
+**⚠️ CRITICAL CONTEXT:** See `000-DOC-CRITICAL-DISCOVERY-PP-METADATA-BEHAVIOR.md` for WHY we're building a UXP panel (file-based approach failed empirical testing).
+
 Validate the core UXP→Premiere Pro integration with **minimal features** before committing to full development.
 
-**Goal:** Prove that UXP panel can solve the core workflow problem (editing metadata on offline clips).
+**Goal:** Prove that UXP panel can solve the core workflow problem (editing metadata on offline clips) that file-based metadata could NOT solve.
 
 **Timeline:** 1-2 days maximum
+
+**Key Validation:** PP project metadata works where file metadata fails (offline clips remain searchable).
 
 ---
 

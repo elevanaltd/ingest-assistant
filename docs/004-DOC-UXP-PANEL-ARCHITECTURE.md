@@ -2,9 +2,11 @@
 
 ## Purpose
 
+**⚠️ CRITICAL CONTEXT:** See `000-DOC-CRITICAL-DISCOVERY-PP-METADATA-BEHAVIOR.md` for the empirical findings that drove this architectural decision.
+
 **Problem Solved:** Video editors need to enrich footage metadata during the editing process, but:
 - Raw files are offline/unmounted (stored on restricted NAS)
-- File-based metadata tools require direct file access
+- **File-based metadata tools fail:** PP ignores proxy metadata, and RAW metadata disappears when offline (empirically tested)
 - Editors work in Premiere Pro 90% of the time
 - Context switching to external tools creates friction
 
@@ -13,6 +15,12 @@
 - Immediate searchability in Premiere bins
 - AI assistance from current timeline frame
 - Zero tool-switching workflow
+
+**Why PP Project Metadata:**
+1. Works with offline files (metadata stored in .prproj, not in source files)
+2. No access barriers (editors always have .prproj access)
+3. Immediate availability (no relink required)
+4. Survives PP restarts (persistent in project database)
 
 ---
 
