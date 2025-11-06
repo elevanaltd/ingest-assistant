@@ -1,8 +1,24 @@
-import { exec } from 'child_process';
+import { execFile } from 'child_process';
 import { promisify } from 'util';
 
-const execAsync = promisify(exec);
+const execFileAsync = promisify(execFile);
 
+// Shell metacharacters that indicate injection attempt
+// Parentheses, hyphens, apostrophes, brackets are SAFE (common in metadata)
+// Dangerous: semicolon, pipe, ampersand, backtick, dollar, newline, angle brackets
+const SHELL_METACHARACTERS = /[;|&$`\n<>{}!]/;
+
+/**
+ * MetadataWriter service for embedding metadata into media files via exiftool.
+ *
+ * Security: Uses execFile() to prevent shell injection (no shell expansion).
+ * Validates input for shell metacharacters before processing.
+ *
+ * Mitigates: CRITICAL-1 (CWE-78 OS Command Injection)
+ *
+ * Security-specialist: identified vulnerability and exploitation scenarios
+ * Critical-engineer: validated execFile() mitigation approach
+ */
 export class MetadataWriter {
   /**
    * Parse keywords from exiftool output
@@ -40,60 +56,114 @@ export class MetadataWriter {
   }
 
   /**
-   * Write metadata directly into the file using exiftool
+   * Validates metadata input for shell metacharacters.
+   *
+   * @throws Error if input contains shell metacharacters
+   */
+  private validateInput(input: string, fieldName: string): void {
+    if (SHELL_METACHARACTERS.test(input)) {
+      throw new Error(
+        `Invalid ${fieldName}: Contains potentially dangerous characters (;|&$\`<>)`
+      );
+    }
+
+    // Additional length validation
+    if (input.length > 1000) {
+      throw new Error(`Invalid ${fieldName}: Too long (max 1000 characters)`);
+    }
+  }
+
+  /**
+   * Write metadata directly into the file using exiftool.
+   *
+   * Security: Uses execFile() (NOT exec()) to prevent shell injection.
+   * Validates all user input before processing.
+   *
    * This embeds EXIF/XMP metadata that Premiere Pro and other tools can read
+   *
+   * @param filePath Absolute path to media file
+   * @param mainName Main descriptive name
+   * @param tags Array of keyword tags
+   * @throws Error if metadata contains shell metacharacters or file operation fails
    */
   async writeMetadataToFile(
     filePath: string,
     mainName: string,
     tags: string[]
   ): Promise<void> {
-    const commands: string[] = [];
+    // Validate inputs for shell metacharacters
+    if (mainName) {
+      this.validateInput(mainName, 'mainName');
+    }
+
+    tags.forEach((tag, index) => {
+      this.validateInput(tag, `tag[${index}]`);
+    });
+
+    // Build exiftool arguments (array, NOT string concatenation)
+    const args: string[] = [];
 
     // Title/DocumentTitle - Main descriptive name
     if (mainName) {
-      commands.push(`-Title="${mainName}"`);
-      commands.push(`-XMP:Title="${mainName}"`);
-      commands.push(`-IPTC:ObjectName="${mainName}"`);
+      // Write to multiple metadata fields for compatibility
+      args.push(`-Title=${mainName}`);
+      args.push(`-XMP:Title=${mainName}`);
+      args.push(`-IPTC:ObjectName=${mainName}`);
     }
 
     // Keywords - Array of tags
     // Write each tag individually so exiftool creates proper array structure
     // This ensures Premiere Pro and other tools see them as separate searchable keywords
     // Note: -Keywords writes to IPTC:Keywords, -XMP:Subject writes to XMP namespace
-    if (tags.length > 0) {
-      tags.forEach(tag => {
-        commands.push(`-Keywords="${tag}"`);
-        commands.push(`-XMP:Subject="${tag}"`);
-      });
-    }
+    tags.forEach(tag => {
+      args.push(`-Keywords=${tag}`);
+      args.push(`-XMP:Subject=${tag}`);
+    });
 
     // Description - Combine for searchability
-    const description = mainName + (tags.length > 0 ? ` - ${tags.join(', ')}` : '');
-    commands.push(`-Description="${description}"`);
-    commands.push(`-XMP:Description="${description}"`);
-    commands.push(`-IPTC:Caption-Abstract="${description}"`);
+    if (mainName || tags.length > 0) {
+      const description = mainName
+        ? tags.length > 0
+          ? `${mainName} - ${tags.join(', ')}`
+          : mainName
+        : tags.join(', ');
+
+      args.push(`-Description=${description}`);
+      args.push(`-XMP:Description=${description}`);
+      args.push(`-IPTC:Caption-Abstract=${description}`);
+    }
 
     // Don't create backup files
-    commands.push('-overwrite_original');
+    args.push('-overwrite_original');
 
-    // Build the full command
-    const exiftoolCmd = `exiftool ${commands.join(' ')} "${filePath}"`;
+    // Add file path
+    args.push(filePath);
 
     try {
-      const { stderr } = await execAsync(exiftoolCmd);
-      if (stderr && !stderr.includes('1 image files updated')) {
-        console.error('exiftool stderr:', stderr);
-      }
+      // SECURITY: execFile() prevents shell injection
+      // Arguments passed as array (no shell expansion)
+      const { stdout, stderr } = await execFileAsync('exiftool', args, {
+        timeout: 30000,        // 30 second timeout
+        maxBuffer: 10 * 1024 * 1024  // 10MB output limit
+      });
+
+      // Log success internally
       console.log('Metadata written to file:', filePath);
+
+      if (stderr && !stderr.includes('image files updated')) {
+        console.warn('exiftool stderr:', stderr);
+      }
     } catch (error) {
       console.error('Failed to write metadata to file:', error);
-      throw error;
+      throw new Error('Metadata write failed');
     }
   }
 
   /**
-   * Read metadata from file using exiftool
+   * Read metadata from file using exiftool.
+   *
+   * @param filePath Absolute path to media file
+   * @returns Object with title and keywords
    */
   async readMetadataFromFile(filePath: string): Promise<{
     title?: string;
@@ -101,9 +171,13 @@ export class MetadataWriter {
     description?: string;
   }> {
     try {
-      const { stdout } = await execAsync(
-        `exiftool -Title -Keywords -Description -json "${filePath}"`
-      );
+      const args = ['-Title', '-Keywords', '-Description', '-json', filePath];
+
+      const { stdout } = await execFileAsync('exiftool', args, {
+        timeout: 30000,
+        maxBuffer: 10 * 1024 * 1024
+      });
+
       const data = JSON.parse(stdout);
 
       if (data && data.length > 0) {
