@@ -7,27 +7,32 @@ export class MetadataWriter {
   /**
    * Parse keywords from exiftool output
    * exiftool may return keywords in different formats:
+   * - Array with comma-separated string: ['tag1, tag2, tag3'] (most common when we write multiple tags)
    * - Array of strings: ['tag1', 'tag2']
    * - Single string: 'tag1'
-   * - Comma-separated string: 'tag1, tag2, tag3' (when we write multiple tags)
+   * - Comma-separated string: 'tag1, tag2, tag3'
    */
   private parseKeywords(keywords: string | string[] | undefined): string[] {
     if (!keywords) {
       return [];
     }
 
-    // Already an array - return as-is
+    // Handle array - check each element for commas
     if (Array.isArray(keywords)) {
-      return keywords;
+      // Flatten array by splitting any comma-separated elements
+      return keywords.flatMap(keyword => {
+        if (typeof keyword === 'string' && keyword.includes(',')) {
+          return keyword.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0);
+        }
+        return keyword;
+      });
     }
 
     // Single string - check if it contains commas
     if (typeof keywords === 'string') {
-      // If it contains commas, split and trim
       if (keywords.includes(',')) {
         return keywords.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0);
       }
-      // Single tag without commas
       return [keywords];
     }
 
