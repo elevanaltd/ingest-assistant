@@ -1,6 +1,6 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import { SecurityViolationError, SecurityViolationType } from '../utils/securityViolationError';
+import { SecurityViolationError } from '../utils/securityViolationError';
 
 // File magic bytes signatures
 const FILE_SIGNATURES: Record<string, number[]> = {
