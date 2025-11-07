@@ -18,7 +18,6 @@ dotenv.config();
 import * as path from 'path';
 import * as fs from 'fs/promises';
 import { AIService } from '../services/aiService';
-import { ConfigManager } from '../services/configManager';
 import type { AIAnalysisResult, Lexicon } from '../../src/types';
 
 // ANSI color codes for terminal output
