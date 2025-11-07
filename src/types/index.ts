@@ -41,6 +41,8 @@ export interface FileMetadata {
   location?: string;
   /** Main subject/object in shot (e.g., "oven", "sink") */
   subject?: string;
+  /** Action being performed (videos only, e.g., "cleaning", "installing") */
+  action?: string;
   /** Shot type from controlled vocabulary */
   shotType?: ShotType;
 }
@@ -145,7 +147,7 @@ export interface AIConnectionTestResult {
 }
 
 export interface AIAnalysisResult {
-  /** Structured main name: {location}-{subject}-{shotType} */
+  /** Structured main name: {location}-{subject}-{shotType} or {location}-{subject}-{action}-{shotType} */
   mainName: string;
   /** Array of metadata tags */
   metadata: string[];
@@ -157,6 +159,8 @@ export interface AIAnalysisResult {
   location?: string;
   /** Subject component */
   subject?: string;
+  /** Action component (videos only) */
+  action?: string;
   /** Shot type component */
   shotType?: ShotType;
 }
