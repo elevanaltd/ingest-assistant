@@ -1,38 +1,74 @@
-import type { Lexicon, LexiconConfig, TermMapping } from '../../src/types';
+import type { Lexicon, LexiconConfig } from '../../src/types';
 
 /**
  * Convert UI LexiconConfig to YAML Lexicon format
  */
 export function convertToYAMLFormat(uiConfig: LexiconConfig): Lexicon {
-  const synonymMapping: Record<string, string> = {};
-  const preferredTerms: string[] = uiConfig.alwaysInclude.map(t => t.trim());
-  const excludedTerms: string[] = [];
+  // Parse comma-separated locations
+  const commonLocations = uiConfig.commonLocations
+    .split(',')
+    .map(t => t.trim())
+    .filter(t => t.length > 0);
 
-  uiConfig.termMappings.forEach(mapping => {
-    const preferred = mapping.preferred.trim();
-    if (preferred) {
-      preferredTerms.push(preferred);
+  // Parse comma-separated subjects
+  const commonSubjects = uiConfig.commonSubjects
+    .split(',')
+    .map(t => t.trim())
+    .filter(t => t.length > 0);
 
-      // Parse comma-separated excluded terms
-      const excluded = mapping.excluded
-        .split(',')
-        .map(t => t.trim())
-        .filter(t => t.length > 0);
+  // Parse comma-separated actions
+  const commonActions = uiConfig.commonActions
+    .split(',')
+    .map(t => t.trim())
+    .filter(t => t.length > 0);
 
-      excludedTerms.push(...excluded);
+  // Parse word preferences (format: "from → to" or "from->to")
+  const wordPreferences: Record<string, string> = {};
+  if (uiConfig.wordPreferences.trim()) {
+    uiConfig.wordPreferences.split('\n').forEach(line => {
+      const trimmed = line.trim();
+      if (!trimmed) return;
 
-      // First excluded term becomes synonym for preferred
-      if (excluded[0]) {
-        synonymMapping[excluded[0]] = preferred;
+      // Match "from → to" or "from->to" or "from → to"
+      const match = trimmed.match(/^(.+?)\s*(?:→|->)\s*(.+)$/);
+      if (match) {
+        const [, from, to] = match;
+        wordPreferences[from.trim()] = to.trim();
       }
-    }
-  });
+    });
+  }
+
+  // Parse good examples (one per line)
+  const goodExamples = uiConfig.goodExamples
+    .split('\n')
+    .map(t => t.trim())
+    .filter(t => t.length > 0);
+
+  // Parse bad examples (format: "bad-example (reason)" or "bad-example(reason)")
+  const badExamples: Array<{wrong: string, reason: string}> = [];
+  if (uiConfig.badExamples.trim()) {
+    uiConfig.badExamples.split('\n').forEach(line => {
+      const trimmed = line.trim();
+      if (!trimmed) return;
+
+      // Match "bad-example (reason)" or "bad-example(reason)"
+      const match = trimmed.match(/^(.+?)\s*\((.+?)\)\s*$/);
+      if (match) {
+        const [, wrong, reason] = match;
+        badExamples.push({ wrong: wrong.trim(), reason: reason.trim() });
+      }
+    });
+  }
 
   return {
-    preferredTerms,
-    excludedTerms,
-    synonymMapping,
-    customInstructions: uiConfig.customInstructions.trim(),
+    pattern: uiConfig.pattern.trim(),
+    commonLocations,
+    commonSubjects,
+    commonActions,
+    wordPreferences,
+    aiInstructions: uiConfig.aiInstructions.trim(),
+    goodExamples,
+    badExamples,
   };
 }
 
@@ -40,31 +76,37 @@ export function convertToYAMLFormat(uiConfig: LexiconConfig): Lexicon {
  * Convert YAML Lexicon to UI LexiconConfig format
  */
 export function convertToUIFormat(lexicon: Lexicon): LexiconConfig {
-  const termMappings: TermMapping[] = [];
+  // Convert locations array to comma-separated string
+  const commonLocations = (lexicon.commonLocations || []).join(', ');
 
-  // Build mappings from synonym mapping
-  Object.entries(lexicon.synonymMapping).forEach(([excluded, preferred]) => {
-    // Find if mapping already exists
-    let mapping = termMappings.find(m => m.preferred === preferred);
-    if (!mapping) {
-      mapping = { preferred, excluded: '' };
-      termMappings.push(mapping);
-    }
-    mapping.excluded += (mapping.excluded ? ', ' : '') + excluded;
-  });
+  // Convert subjects array to comma-separated string
+  const commonSubjects = (lexicon.commonSubjects || []).join(', ');
 
-  // Add empty row for adding new terms
-  termMappings.push({ preferred: '', excluded: '' });
+  // Convert actions array to comma-separated string
+  const commonActions = (lexicon.commonActions || []).join(', ');
 
-  // Extract alwaysInclude (terms not in synonym mappings)
-  const mappedPreferred = new Set(termMappings.map(m => m.preferred).filter(p => p));
-  const alwaysInclude = lexicon.preferredTerms.filter(
-    term => !mappedPreferred.has(term)
-  );
+  // Convert word preferences to "from → to" format (one per line)
+  const wordPrefs = lexicon.wordPreferences || {};
+  const wordPreferences = Object.entries(wordPrefs)
+    .map(([from, to]) => `${from} → ${to}`)
+    .join('\n');
+
+  // Convert good examples to newline-separated string
+  const goodExamples = (lexicon.goodExamples || []).join('\n');
+
+  // Convert bad examples to "wrong (reason)" format
+  const badExamples = (lexicon.badExamples || [])
+    .map(ex => `${ex.wrong} (${ex.reason})`)
+    .join('\n');
 
   return {
-    termMappings,
-    alwaysInclude,
-    customInstructions: lexicon.customInstructions || '',
+    pattern: lexicon.pattern || '',
+    commonLocations,
+    commonSubjects,
+    commonActions,
+    wordPreferences,
+    aiInstructions: lexicon.aiInstructions || '',
+    goodExamples,
+    badExamples,
   };
 }

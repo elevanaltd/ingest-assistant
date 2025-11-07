@@ -116,15 +116,114 @@ export class ConfigManager {
   }
 
   /**
-   * Get default configuration
+   * Get default configuration (uses new structured format)
    */
   getDefaultConfig(): AppConfig {
     return {
       lexicon: {
-        preferredTerms: [],
-        excludedTerms: [],
-        synonymMapping: {},
+        // New structured format
+        commonLocations: [
+          'kitchen', 'bathroom', 'bedroom', 'living-room',
+          'garage', 'laundry', 'hallway', 'exterior',
+        ],
+        commonSubjects: [
+          'oven', 'sink', 'tap', 'shower', 'toilet', 'window',
+          'door', 'counter', 'cabinet', 'mirror',
+        ],
+        wordPreferences: {
+          faucet: 'tap',
+          basin: 'sink',
+          stovetop: 'cooktop',
+        },
+        shotTypes: {
+          static: ['WS', 'MID', 'CU', 'UNDER'],
+          moving: ['FP', 'TRACK', 'ESTAB'],
+        },
+        aiInstructions: 'Generate structured name as {location}-{subject}-{shotType}',
       },
+    };
+  }
+
+  /**
+   * Get all shot types as a flat array for UI dropdown
+   */
+  getAllShotTypes(): string[] {
+    const lexicon = this.cachedConfig?.lexicon;
+    if (!lexicon) return ['WS', 'MID', 'CU', 'UNDER', 'FP', 'TRACK', 'ESTAB'];
+
+    // If using new structured format
+    if (lexicon.shotTypes) {
+      return [...lexicon.shotTypes.static, ...lexicon.shotTypes.moving];
+    }
+
+    // Fallback to default shot types
+    return ['WS', 'MID', 'CU', 'UNDER', 'FP', 'TRACK', 'ESTAB'];
+  }
+
+  /**
+   * Get static shot types only
+   */
+  getStaticShotTypes(): string[] {
+    const lexicon = this.cachedConfig?.lexicon;
+    if (!lexicon?.shotTypes) return ['WS', 'MID', 'CU', 'UNDER'];
+    return lexicon.shotTypes.static;
+  }
+
+  /**
+   * Get moving shot types only
+   */
+  getMovingShotTypes(): string[] {
+    const lexicon = this.cachedConfig?.lexicon;
+    if (!lexicon?.shotTypes) return ['FP', 'TRACK', 'ESTAB'];
+    return lexicon.shotTypes.moving;
+  }
+
+  /**
+   * Check if lexicon is using new structured format
+   */
+  isStructuredLexicon(lexicon: Lexicon): boolean {
+    return !!(lexicon.commonLocations || lexicon.commonSubjects || lexicon.shotTypes);
+  }
+
+  /**
+   * Migrate legacy lexicon to new structured format
+   * @param legacy - Legacy lexicon with preferredTerms/excludedTerms
+   * @returns New structured lexicon
+   */
+  migrateLexiconToStructured(legacy: Lexicon): Lexicon {
+    // If already using new format, return as-is
+    if (this.isStructuredLexicon(legacy)) {
+      return legacy;
+    }
+
+    // Extract locations and subjects from categories (if available)
+    const commonLocations: string[] = [];
+    const commonSubjects: string[] = [];
+
+    if (legacy.categories) {
+      // Category keys are likely locations
+      commonLocations.push(...Object.keys(legacy.categories));
+      // Category values are likely subjects
+      Object.values(legacy.categories).forEach(items => {
+        commonSubjects.push(...items);
+      });
+    }
+
+    // Add preferred terms to subjects if not already categorized
+    if (legacy.preferredTerms) {
+      legacy.preferredTerms.forEach(term => {
+        if (!commonSubjects.includes(term)) {
+          commonSubjects.push(term);
+        }
+      });
+    }
+
+    return {
+      commonLocations: commonLocations.length > 0 ? commonLocations : this.getDefaultConfig().lexicon.commonLocations,
+      commonSubjects: commonSubjects.length > 0 ? commonSubjects : this.getDefaultConfig().lexicon.commonSubjects,
+      wordPreferences: legacy.synonymMapping || {},
+      shotTypes: this.getDefaultConfig().lexicon.shotTypes,
+      aiInstructions: legacy.customInstructions || this.getDefaultConfig().lexicon.aiInstructions,
     };
   }
 

@@ -2,6 +2,18 @@
  * Shared types for ingest-assistant
  */
 
+/**
+ * Shot type vocabulary for structured naming
+ */
+export type ShotType =
+  | 'WS'     // Wide shot
+  | 'MID'    // Midshot
+  | 'CU'     // Close up
+  | 'UNDER'  // Underneath
+  | 'FP'     // Focus pull
+  | 'TRACK'  // Tracking
+  | 'ESTAB'; // Establishing
+
 export interface FileMetadata {
   /** First 8 digits extracted from filename */
   id: string;
@@ -13,7 +25,7 @@ export interface FileMetadata {
   filePath: string;
   /** File extension */
   extension: string;
-  /** Main descriptive name (kebab-case) */
+  /** Main descriptive name (kebab-case) - format: {location}-{subject}-{shotType} */
   mainName: string;
   /** Array of metadata tags */
   metadata: string[];
@@ -23,18 +35,61 @@ export interface FileMetadata {
   lastModified: Date;
   /** File type: image or video */
   fileType: 'image' | 'video';
+
+  // Structured naming fields (optional for backward compatibility)
+  /** Location where shot takes place (e.g., "kitchen", "bathroom") */
+  location?: string;
+  /** Main subject/object in shot (e.g., "oven", "sink") */
+  subject?: string;
+  /** Shot type from controlled vocabulary */
+  shotType?: ShotType;
 }
 
+/**
+ * Shot types structure for lexicon configuration
+ */
+export interface ShotTypesConfig {
+  /** Static shot types (no camera movement) */
+  static: string[];
+  /** Moving shot types (camera movement or focus change) */
+  moving: string[];
+}
+
+/**
+ * Lexicon configuration
+ * Supports both legacy format (preferredTerms, excludedTerms) and new structured format
+ */
 export interface Lexicon {
-  /** Terms to prefer when AI generates names/metadata */
-  preferredTerms: string[];
-  /** Terms to avoid */
-  excludedTerms: string[];
-  /** Synonym mapping (e.g., "faucet" -> "tap") */
-  synonymMapping: Record<string, string>;
-  /** Categorized term groups */
+  // === NEW STRUCTURED FORMAT (Preferred) ===
+  /** Filename pattern template */
+  pattern?: string;
+  /** Common locations for AI guidance (not enforced) */
+  commonLocations?: string[];
+  /** Common subjects for AI guidance (not enforced) */
+  commonSubjects?: string[];
+  /** Common actions for video analysis (not enforced) */
+  commonActions?: string[];
+  /** Word preferences for synonym replacement */
+  wordPreferences?: Record<string, string>;
+  /** Shot type vocabulary (controlled - enforced in UI) */
+  shotTypes?: ShotTypesConfig;
+  /** Custom AI instructions for structured naming */
+  aiInstructions?: string;
+  /** Good example filenames for AI guidance */
+  goodExamples?: string[];
+  /** Bad example filenames with explanations for AI guidance */
+  badExamples?: Array<{wrong: string, reason: string}>;
+
+  // === LEGACY FORMAT (Backward compatibility) ===
+  /** @deprecated Use commonLocations/commonSubjects instead */
+  preferredTerms?: string[];
+  /** @deprecated Use wordPreferences instead */
+  excludedTerms?: string[];
+  /** @deprecated Use wordPreferences instead */
+  synonymMapping?: Record<string, string>;
+  /** @deprecated Use commonLocations/commonSubjects instead */
   categories?: Record<string, string[]>;
-  /** Custom AI instructions (free-form guidance) */
+  /** @deprecated Use aiInstructions instead */
   customInstructions?: string;
 }
 
@@ -48,12 +103,22 @@ export interface TermMapping {
 
 /** UI configuration for lexicon settings */
 export interface LexiconConfig {
-  /** Table rows of preferred/excluded term mappings */
-  termMappings: TermMapping[];
-  /** Additional preferred terms (not part of mappings) */
-  alwaysInclude: string[];
-  /** Free-form AI guidance */
-  customInstructions: string;
+  /** Filename pattern (e.g., "{location}-{subject}-{shotType}") */
+  pattern: string;
+  /** Comma-separated list of common locations */
+  commonLocations: string;
+  /** Comma-separated list of common subjects */
+  commonSubjects: string;
+  /** Comma-separated list of common actions (for videos) */
+  commonActions: string;
+  /** Word preferences mapping (one per line, format: "from → to") */
+  wordPreferences: string;
+  /** Custom AI instructions */
+  aiInstructions: string;
+  /** Correct example filenames (one per line) */
+  goodExamples: string;
+  /** Incorrect examples with reasons (one per line, format: "bad-example (reason)") */
+  badExamples: string;
 }
 
 export interface AppConfig {
@@ -80,9 +145,20 @@ export interface AIConnectionTestResult {
 }
 
 export interface AIAnalysisResult {
+  /** Structured main name: {location}-{subject}-{shotType} */
   mainName: string;
+  /** Array of metadata tags */
   metadata: string[];
+  /** AI confidence score (0-1) */
   confidence: number;
+
+  // Structured components (optional - parsed from mainName or provided directly)
+  /** Location component */
+  location?: string;
+  /** Subject component */
+  subject?: string;
+  /** Shot type component */
+  shotType?: ShotType;
 }
 
 export interface IPCChannels {

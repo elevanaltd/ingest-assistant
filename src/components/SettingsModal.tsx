@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import type { LexiconConfig, TermMapping } from '../types';
+import type { LexiconConfig } from '../types';
 
 interface SettingsModalProps {
   onClose: () => void;
@@ -11,19 +11,23 @@ export function SettingsModal({ onClose, onSave, initialConfig }: SettingsModalP
   // Tab state
   const [activeTab, setActiveTab] = useState<'lexicon' | 'ai'>('lexicon');
 
-  // Lexicon state
-  const [mappings, setMappings] = useState<TermMapping[]>([]);
-  const [alwaysInclude, setAlwaysInclude] = useState<string>('');
-  const [customInstructions, setCustomInstructions] = useState<string>('');
+  // Lexicon state - simple text fields
+  const [pattern, setPattern] = useState('{location}-{subject}-{shotType}');
+  const [commonLocations, setCommonLocations] = useState('');
+  const [commonSubjects, setCommonSubjects] = useState('');
+  const [commonActions, setCommonActions] = useState('');
+  const [wordPreferences, setWordPreferences] = useState('');
+  const [aiInstructions, setAiInstructions] = useState('');
+  const [goodExamples, setGoodExamples] = useState('');
+  const [badExamples, setBadExamples] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string>('');
 
   // AI config state
   const [aiProvider, setAiProvider] = useState<'openrouter' | 'openai' | 'anthropic'>('openrouter');
-  const [initialProvider, setInitialProvider] = useState<'openrouter' | 'openai' | 'anthropic'>('openrouter'); // Track original provider
   const [aiModel, setAiModel] = useState('');
   const [aiApiKey, setAiApiKey] = useState('');
-  const [hasSavedKey, setHasSavedKey] = useState(false); // Track if key exists in Keychain
+  const [hasSavedKey, setHasSavedKey] = useState(false);
   const [testStatus, setTestStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
   const [aiErrorMessage, setAiErrorMessage] = useState('');
   const [isSavingAI, setIsSavingAI] = useState(false);
@@ -37,12 +41,14 @@ export function SettingsModal({ onClose, onSave, initialConfig }: SettingsModalP
   // Load initial lexicon config
   useEffect(() => {
     if (initialConfig) {
-      setMappings(initialConfig.termMappings);
-      setAlwaysInclude(initialConfig.alwaysInclude.join(', '));
-      setCustomInstructions(initialConfig.customInstructions);
-    } else {
-      // Start with one empty row
-      setMappings([{ preferred: '', excluded: '' }]);
+      setPattern(initialConfig.pattern || '{location}-{subject}-{shotType}');
+      setCommonLocations(initialConfig.commonLocations || '');
+      setCommonSubjects(initialConfig.commonSubjects || '');
+      setCommonActions(initialConfig.commonActions || '');
+      setWordPreferences(initialConfig.wordPreferences || '');
+      setAiInstructions(initialConfig.aiInstructions || '');
+      setGoodExamples(initialConfig.goodExamples || '');
+      setBadExamples(initialConfig.badExamples || '');
     }
   }, [initialConfig]);
 
@@ -55,11 +61,11 @@ export function SettingsModal({ onClose, onSave, initialConfig }: SettingsModalP
       ]).then(([config, isConfigured]) => {
         if (config.provider) {
           setAiProvider(config.provider);
-          setInitialProvider(config.provider); // Track initial provider
         }
         if (config.model) setAiModel(config.model);
-        setHasSavedKey(isConfigured); // Track if there's a saved key
-        // API key is masked, leave empty for user to enter new one if needed
+        setHasSavedKey(isConfigured);
+      }).catch(error => {
+        setAiErrorMessage(`Failed to load AI configuration: ${error.message}`);
       });
     }
   }, [activeTab]);
@@ -67,110 +73,115 @@ export function SettingsModal({ onClose, onSave, initialConfig }: SettingsModalP
   // Fetch available models when provider changes
   useEffect(() => {
     if (activeTab === 'ai' && window.electronAPI) {
+      let isCurrent = true; // Track if this effect is still current
       setLoadingModels(true);
-      window.electronAPI.getAIModels(aiProvider).then(models => {
-        setAvailableModels(models);
-        setLoadingModels(false);
-      }).catch(err => {
-        console.error('Failed to fetch models:', err);
-        setAvailableModels([]);
-        setLoadingModels(false);
-      });
+
+      window.electronAPI.getAIModels(aiProvider)
+        .then(models => {
+          if (isCurrent) { // Only update if provider hasn't changed
+            setAvailableModels(models);
+          }
+        })
+        .catch(err => {
+          console.error('Failed to fetch models:', err);
+          if (isCurrent) {
+            setAvailableModels([]);
+          }
+        })
+        .finally(() => {
+          if (isCurrent) {
+            setLoadingModels(false);
+          }
+        });
+
+      return () => { isCurrent = false; }; // Cleanup: mark stale
     }
   }, [aiProvider, activeTab]);
 
-  const handleMappingChange = (index: number, field: 'preferred' | 'excluded', value: string) => {
-    const newMappings = [...mappings];
-    newMappings[index][field] = value;
-    setMappings(newMappings);
-
-    // If user is typing in the last row, add a new empty row
-    if (index === mappings.length - 1 && value.trim()) {
-      setMappings([...newMappings, { preferred: '', excluded: '' }]);
-    }
-  };
-
-  const handleRemoveRow = (index: number) => {
-    // Don't allow removing the last empty row
-    if (mappings.length === 1) return;
-
-    const newMappings = mappings.filter((_, i) => i !== index);
-    setMappings(newMappings);
-  };
-
-  const handleSave = async () => {
-    setError('');
-    setLexiconSaveSuccess(false);
-
-    // Validate: Remove empty rows
-    const validMappings = mappings.filter(
-      m => m.preferred.trim() || m.excluded.trim()
-    );
-
-    // Parse alwaysInclude
-    const alwaysIncludeArray = alwaysInclude
-      .split(',')
-      .map(t => t.trim())
-      .filter(t => t.length > 0);
-
-    const config: LexiconConfig = {
-      termMappings: validMappings,
-      alwaysInclude: alwaysIncludeArray,
-      customInstructions: customInstructions.trim(),
-    };
-
-    setIsSaving(true);
+  const handleSaveLexicon = async () => {
     try {
+      setError('');
+      setIsSaving(true);
+      setLexiconSaveSuccess(false);
+
+      const config: LexiconConfig = {
+        pattern: pattern.trim(),
+        commonLocations: commonLocations.trim(),
+        commonSubjects: commonSubjects.trim(),
+        commonActions: commonActions.trim(),
+        wordPreferences: wordPreferences.trim(),
+        aiInstructions: aiInstructions.trim(),
+        goodExamples: goodExamples.trim(),
+        badExamples: badExamples.trim(),
+      };
+
       await onSave(config);
-
-      // Show success message
       setLexiconSaveSuccess(true);
-
-      // Close after 1.5 seconds
-      setTimeout(() => {
-        onClose();
-      }, 1500);
+      setTimeout(() => setLexiconSaveSuccess(false), 3000);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save lexicon');
+      setError(err instanceof Error ? err.message : 'Failed to save settings');
     } finally {
       setIsSaving(false);
     }
   };
 
-  const handleTestConnection = async () => {
+  const handleTestAIConnection = async () => {
+    if (!aiApiKey && !hasSavedKey) {
+      setAiErrorMessage('Please enter an API key');
+      return;
+    }
+
     setTestStatus('testing');
     setAiErrorMessage('');
 
-    let result;
+    try {
+      const result = await window.electronAPI.testAIConnection(
+        aiProvider,
+        aiModel || availableModels[0]?.id || '',
+        aiApiKey || ''
+      );
 
-    if (!aiApiKey) {
-      // No new key entered, test with saved key from Keychain
-      result = await window.electronAPI.testSavedAIConnection();
-    } else {
-      // New key entered, test with it
-      result = await window.electronAPI.testAIConnection(aiProvider, aiModel, aiApiKey);
-    }
-
-    if (result.success) {
-      setTestStatus('success');
-    } else {
+      if (result.success) {
+        setTestStatus('success');
+        setTimeout(() => setTestStatus('idle'), 3000);
+      } else {
+        setTestStatus('error');
+        setAiErrorMessage(result.error || 'Connection test failed');
+      }
+    } catch (err) {
       setTestStatus('error');
-      setAiErrorMessage(result.error || 'Connection test failed');
+      setAiErrorMessage(err instanceof Error ? err.message : 'Connection test failed');
     }
   };
 
-  const handleSaveAIConfig = async () => {
-    const providerChanged = aiProvider !== initialProvider;
+  const handleTestSavedConnection = async () => {
+    setTestStatus('testing');
+    setAiErrorMessage('');
 
-    // Require API key if:
-    // 1. No saved key exists at all, OR
-    // 2. Provider changed (need key for new provider)
-    if ((!hasSavedKey || providerChanged) && !aiApiKey) {
-      if (providerChanged) {
-        setAiErrorMessage(`Switching to ${aiProvider} requires entering the API key for this provider`);
+    try {
+      const result = await window.electronAPI.testSavedAIConnection();
+
+      if (result.success) {
+        setTestStatus('success');
+        setTimeout(() => setTestStatus('idle'), 3000);
       } else {
-        setAiErrorMessage('Please enter an API key');
+        setTestStatus('error');
+        setAiErrorMessage(result.error || 'Connection test failed');
       }
+    } catch (err) {
+      setTestStatus('error');
+      setAiErrorMessage(err instanceof Error ? err.message : 'Connection test failed');
+    }
+  };
+
+  const handleSaveAI = async () => {
+    if (!aiModel) {
+      setAiErrorMessage('Please select a model');
+      return;
+    }
+
+    if (!aiApiKey && !hasSavedKey) {
+      setAiErrorMessage('Please enter an API key');
       return;
     }
 
@@ -178,281 +189,346 @@ export function SettingsModal({ onClose, onSave, initialConfig }: SettingsModalP
     setAiErrorMessage('');
     setAiSaveSuccess(false);
 
-    const result = await window.electronAPI.updateAIConfig({
-      provider: aiProvider,
-      model: aiModel,
-      apiKey: aiApiKey // If empty and same provider, backend will keep existing key
-    });
+    try {
+      const result = await window.electronAPI.updateAIConfig({
+        provider: aiProvider,
+        model: aiModel,
+        apiKey: aiApiKey || ''
+      });
 
-    setIsSavingAI(false);
+      if (result.success) {
+        setAiSaveSuccess(true);
+        setHasSavedKey(true);
+        setAiApiKey('');
+        setTimeout(() => setAiSaveSuccess(false), 3000);
+      } else {
+        setAiErrorMessage(result.error || 'Failed to save AI configuration');
+      }
+    } catch (err) {
+      setAiErrorMessage(err instanceof Error ? err.message : 'Failed to save AI configuration');
+    } finally {
+      setIsSavingAI(false);
+    }
+  };
 
-    if (result.success) {
-      // Show success message
-      setAiSaveSuccess(true);
-
-      // Close after 1.5 seconds
-      setTimeout(() => {
-        onClose();
-      }, 1500);
-    } else {
-      setAiErrorMessage(result.error || 'Failed to save configuration');
+  const handleBackdropClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (e.target === e.currentTarget) {
+      onClose();
     }
   };
 
   return (
-    <div className="modal-overlay">
-      <div className="modal">
-        <div className="modal-header">
-          <h2>Settings</h2>
-          <button onClick={onClose} className="modal-close" title="Close">
-            ×
-          </button>
-        </div>
+    <div
+      className="modal-backdrop"
+      onClick={handleBackdropClick}
+      style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 1000,
+      }}
+    >
+      <div
+        className="modal-content"
+        style={{
+          backgroundColor: 'white',
+          borderRadius: '8px',
+          width: '90%',
+          maxWidth: '800px',
+          maxHeight: '90vh',
+          overflow: 'auto',
+          padding: '24px',
+          boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+        }}
+      >
+        <h2 style={{ marginTop: 0 }}>Settings</h2>
 
-        {/* Tab Navigation */}
-        <div className="tabs">
+        {/* Tabs */}
+        <div style={{ display: 'flex', gap: '16px', borderBottom: '1px solid #ddd', marginBottom: '24px' }}>
           <button
-            className={activeTab === 'lexicon' ? 'tab active' : 'tab'}
             onClick={() => setActiveTab('lexicon')}
+            style={{
+              padding: '8px 16px',
+              background: 'none',
+              border: 'none',
+              borderBottom: activeTab === 'lexicon' ? '2px solid #007bff' : '2px solid transparent',
+              cursor: 'pointer',
+              fontWeight: activeTab === 'lexicon' ? 'bold' : 'normal',
+            }}
           >
             Lexicon
           </button>
           <button
-            className={activeTab === 'ai' ? 'tab active' : 'tab'}
             onClick={() => setActiveTab('ai')}
+            style={{
+              padding: '8px 16px',
+              background: 'none',
+              border: 'none',
+              borderBottom: activeTab === 'ai' ? '2px solid #007bff' : '2px solid transparent',
+              cursor: 'pointer',
+              fontWeight: activeTab === 'ai' ? 'bold' : 'normal',
+            }}
           >
-            AI Configuration
+            AI Connection
           </button>
         </div>
 
-        <div className="modal-body">
-          {/* Lexicon Tab */}
-          {activeTab === 'lexicon' && (
-            <div className="lexicon-tab">
-              <section className="settings-section">
-                <h3>Word Preferences (what to call things)</h3>
-                <p className="section-help">
-                  Define preferred terms and their alternatives to avoid
-                </p>
-
-            <table className="term-mapping-table">
-              <thead>
-                <tr>
-                  <th>Use This</th>
-                  <th>Don't Use (avoid)</th>
-                  <th style={{ width: '40px' }}></th>
-                </tr>
-              </thead>
-              <tbody>
-                {mappings.map((mapping, index) => (
-                  <tr key={index}>
-                    <td>
-                      <input
-                        type="text"
-                        value={mapping.preferred}
-                        onChange={(e) => handleMappingChange(index, 'preferred', e.target.value)}
-                        placeholder="e.g., bin"
-                        className="input"
-                      />
-                    </td>
-                    <td>
-                      <input
-                        type="text"
-                        value={mapping.excluded}
-                        onChange={(e) => handleMappingChange(index, 'excluded', e.target.value)}
-                        placeholder="e.g., trash, garbage"
-                        className="input"
-                      />
-                    </td>
-                    <td>
-                      {index < mappings.length - 1 && (
-                        <button
-                          onClick={() => handleRemoveRow(index)}
-                          className="btn-icon"
-                          title="Remove row"
-                        >
-                          ×
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </section>
-
-          <section className="settings-section">
-            <h3>Additional Terms (always good to use)</h3>
-            <p className="section-help">
-              Comma-separated list of generally preferred terms
-            </p>
-            <input
-              type="text"
-              value={alwaysInclude}
-              onChange={(e) => setAlwaysInclude(e.target.value)}
-              placeholder="e.g., manufacturer, model, category, brand"
-              className="input input-wide"
-            />
-          </section>
-
-          <section className="settings-section">
-            <h3>AI Instructions (free-form guidance)</h3>
-            <p className="section-help">
-              Additional instructions for how AI should analyze images
-            </p>
-            <textarea
-              value={customInstructions}
-              onChange={(e) => setCustomInstructions(e.target.value)}
-              placeholder="e.g., Always include 'oven' for oven items&#10;Add manufacturer to metadata&#10;Include model number if visible"
-              className="textarea"
-              rows={5}
-            />
-          </section>
-
-              {lexiconSaveSuccess && (
-                <div className="status-message success">
-                  ✓ Lexicon settings saved successfully!
-                </div>
-              )}
-
-              {error && (
-                <div className="error-message">
-                  {error}
-                </div>
-              )}
-
-              <div className="modal-footer">
-                <button onClick={onClose} className="btn" disabled={isSaving}>
-                  Cancel
-                </button>
-                <button onClick={handleSave} className="btn-primary" disabled={isSaving}>
-                  {isSaving ? 'Saving...' : 'Save Lexicon'}
-                </button>
-              </div>
+        {/* Lexicon Tab */}
+        {activeTab === 'lexicon' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <div>
+              <label style={{ display: 'block', marginBottom: '4px', fontWeight: 'bold' }}>
+                Pattern
+              </label>
+              <input
+                type="text"
+                value={pattern}
+                onChange={(e) => setPattern(e.target.value)}
+                placeholder="{location}-{subject}-{shotType}"
+                style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
+              />
+              <small style={{ color: '#666' }}>
+                Photos: {'{location}-{subject}-{shotType}'} • Videos: {'{location}-{subject}-{action}-{shotType}'}
+              </small>
             </div>
-          )}
 
-          {/* AI Configuration Tab */}
-          {activeTab === 'ai' && (
-            <div className="ai-config-tab">
-              <div className="form-group">
-                <label htmlFor="ai-provider">AI Provider</label>
-                <select
-                  id="ai-provider"
-                  value={aiProvider}
-                  onChange={(e) => setAiProvider(e.target.value as any)}
-                >
-                  <option value="openrouter">OpenRouter (Recommended - 100+ models)</option>
-                  <option value="openai">OpenAI</option>
-                  <option value="anthropic">Anthropic</option>
-                </select>
-                <small className="help-text">
-                  OpenRouter provides access to multiple AI models with a single API key
-                </small>
-              </div>
+            <div>
+              <label style={{ display: 'block', marginBottom: '4px', fontWeight: 'bold' }}>
+                Common Locations (comma-separated)
+              </label>
+              <input
+                type="text"
+                value={commonLocations}
+                onChange={(e) => setCommonLocations(e.target.value)}
+                placeholder="kitchen, hall, utility, bath, building"
+                style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
+              />
+            </div>
 
-              <div className="form-group">
-                <label htmlFor="ai-model">Model</label>
-                <input
-                  id="ai-model"
-                  type="text"
-                  list="model-options"
-                  value={aiModel}
-                  onChange={(e) => setAiModel(e.target.value)}
-                  placeholder={
-                    loadingModels ? 'Loading models...' :
-                    aiProvider === 'openrouter'
-                      ? 'anthropic/claude-3.5-sonnet'
-                      : aiProvider === 'openai'
-                      ? 'gpt-4-vision-preview'
-                      : 'claude-3-5-sonnet-20241022'
-                  }
-                  disabled={loadingModels}
-                />
-                <datalist id="model-options">
-                  {availableModels.map(model => (
-                    <option key={model.id} value={model.id}>
-                      {model.name}
-                    </option>
-                  ))}
-                </datalist>
-                <small className="help-text">
-                  {aiProvider === 'openrouter' && !loadingModels && `${availableModels.length} models available`}
-                  {aiProvider === 'openai' && 'Examples: gpt-4-vision-preview, gpt-4o'}
-                  {aiProvider === 'anthropic' && 'Examples: claude-3-5-sonnet-20241022'}
-                </small>
-              </div>
+            <div>
+              <label style={{ display: 'block', marginBottom: '4px', fontWeight: 'bold' }}>
+                Common Subjects (comma-separated)
+              </label>
+              <input
+                type="text"
+                value={commonSubjects}
+                onChange={(e) => setCommonSubjects(e.target.value)}
+                placeholder="oven, sink, tap, dishwasher, shower"
+                style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
+              />
+            </div>
 
-              <div className="form-group">
-                <label htmlFor="ai-api-key">API Key</label>
-                <input
-                  id="ai-api-key"
-                  type="password"
-                  value={aiApiKey}
-                  onChange={(e) => setAiApiKey(e.target.value)}
-                  placeholder="Enter your API key"
-                />
-                <small className="help-text">
-                  {aiProvider === 'openrouter' && 'Get your key at openrouter.ai/keys'}
-                  {aiProvider === 'openai' && 'Get your key at platform.openai.com/api-keys'}
-                  {aiProvider === 'anthropic' && 'Get your key at console.anthropic.com'}
-                </small>
-              </div>
+            <div>
+              <label style={{ display: 'block', marginBottom: '4px', fontWeight: 'bold' }}>
+                Common Actions (comma-separated, for videos)
+              </label>
+              <input
+                type="text"
+                value={commonActions}
+                onChange={(e) => setCommonActions(e.target.value)}
+                placeholder="cleaning, installing, replacing, inspecting"
+                style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
+              />
+            </div>
 
-              <div className="button-group">
+            <div>
+              <label style={{ display: 'block', marginBottom: '4px', fontWeight: 'bold' }}>
+                Word Preferences (one per line: "from → to")
+              </label>
+              <textarea
+                value={wordPreferences}
+                onChange={(e) => setWordPreferences(e.target.value)}
+                placeholder={"faucet → tap\nstove → hob\ntrash → bin"}
+                rows={3}
+                style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px', fontFamily: 'monospace' }}
+              />
+            </div>
+
+            <div>
+              <label style={{ display: 'block', marginBottom: '4px', fontWeight: 'bold' }}>
+                AI Instructions
+              </label>
+              <textarea
+                value={aiInstructions}
+                onChange={(e) => setAiInstructions(e.target.value)}
+                placeholder="Use lowercase. Hyphens for multi-word terms. Photos use 3-part pattern. Videos use 4-part pattern with action."
+                rows={3}
+                style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
+              />
+            </div>
+
+            <div>
+              <label style={{ display: 'block', marginBottom: '4px', fontWeight: 'bold' }}>
+                ✅ Good Examples (one per line)
+              </label>
+              <textarea
+                value={goodExamples}
+                onChange={(e) => setGoodExamples(e.target.value)}
+                placeholder={"kitchen-oven-CU\nbath-shower-MID\nkitchen-dishwasher-cleaning-MID"}
+                rows={3}
+                style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px', fontFamily: 'monospace' }}
+              />
+            </div>
+
+            <div>
+              <label style={{ display: 'block', marginBottom: '4px', fontWeight: 'bold' }}>
+                ❌ Bad Examples (one per line: "wrong-example (reason)")
+              </label>
+              <textarea
+                value={badExamples}
+                onChange={(e) => setBadExamples(e.target.value)}
+                placeholder={"Kitchen-Oven-CU (mixed case)\nkitchen_oven_CU (underscores)\nkitchen-fridge freezer-CU (missing hyphen)"}
+                rows={3}
+                style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px', fontFamily: 'monospace' }}
+              />
+            </div>
+
+            {error && <div style={{ color: 'red' }}>{error}</div>}
+            {lexiconSaveSuccess && <div style={{ color: 'green' }}>✓ Lexicon settings saved successfully!</div>}
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '16px' }}>
+              <button onClick={onClose} style={{ padding: '8px 16px' }}>
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveLexicon}
+                disabled={isSaving}
+                style={{
+                  padding: '8px 16px',
+                  backgroundColor: '#007bff',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: isSaving ? 'not-allowed' : 'pointer',
+                }}
+              >
+                {isSaving ? 'Saving...' : 'Save Lexicon'}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* AI Tab */}
+        {activeTab === 'ai' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <div>
+              <label style={{ display: 'block', marginBottom: '4px', fontWeight: 'bold' }}>
+                Provider
+              </label>
+              <select
+                value={aiProvider}
+                onChange={(e) => setAiProvider(e.target.value as 'openrouter' | 'openai' | 'anthropic')}
+                style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
+              >
+                <option value="openrouter">OpenRouter</option>
+                <option value="openai">OpenAI</option>
+                <option value="anthropic">Anthropic</option>
+              </select>
+            </div>
+
+            <div>
+              <label style={{ display: 'block', marginBottom: '4px', fontWeight: 'bold' }}>
+                Model
+              </label>
+              <select
+                value={aiModel}
+                onChange={(e) => setAiModel(e.target.value)}
+                disabled={loadingModels}
+                style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
+              >
+                {loadingModels ? (
+                  <option>Loading models...</option>
+                ) : availableModels.length > 0 ? (
+                  <>
+                    <option value="">Select a model...</option>
+                    {availableModels.map((model) => (
+                      <option key={model.id} value={model.id}>
+                        {model.name}
+                      </option>
+                    ))}
+                  </>
+                ) : (
+                  <option value="">No models available</option>
+                )}
+              </select>
+            </div>
+
+            <div>
+              <label style={{ display: 'block', marginBottom: '4px', fontWeight: 'bold' }}>
+                API Key {hasSavedKey && <span style={{ color: 'green', fontSize: '12px' }}>(saved in Keychain)</span>}
+              </label>
+              <input
+                type="password"
+                value={aiApiKey}
+                onChange={(e) => setAiApiKey(e.target.value)}
+                placeholder={hasSavedKey ? "Leave empty to keep existing key" : "Enter API key"}
+                style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
+              />
+            </div>
+
+            {aiErrorMessage && <div style={{ color: 'red' }}>{aiErrorMessage}</div>}
+            {aiSaveSuccess && <div style={{ color: 'green' }}>✓ AI configuration saved successfully!</div>}
+
+            <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
+              {hasSavedKey && (
                 <button
-                  onClick={handleTestConnection}
+                  onClick={handleTestSavedConnection}
                   disabled={testStatus === 'testing'}
-                  className="btn-secondary"
+                  style={{
+                    padding: '8px 16px',
+                    backgroundColor: '#28a745',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '4px',
+                    cursor: testStatus === 'testing' ? 'not-allowed' : 'pointer',
+                  }}
                 >
-                  {testStatus === 'testing'
-                    ? 'Testing...'
-                    : aiApiKey
-                    ? 'Test New Key'
-                    : 'Test Saved Connection'}
+                  {testStatus === 'testing' ? 'Testing...' : testStatus === 'success' ? '✓ Success' : 'Test Saved Connection'}
                 </button>
-              </div>
-
-              {testStatus === 'success' && (
-                <div className="status-message success">
-                  ✓ Connection successful! API key is valid.
-                </div>
               )}
-
-              {testStatus === 'error' && aiErrorMessage && (
-                <div className="status-message error">
-                  ✗ {aiErrorMessage}
-                </div>
-              )}
-
-              {aiErrorMessage && testStatus !== 'success' && testStatus !== 'error' && (
-                <div className="status-message error">
-                  ✗ {aiErrorMessage}
-                </div>
-              )}
-
-              {aiSaveSuccess && (
-                <div className="status-message success">
-                  ✓ AI configuration saved successfully! Settings will be available after closing.
-                </div>
-              )}
-
-              <div className="modal-footer">
-                <button onClick={onClose} className="btn-secondary">
-                  Cancel
-                </button>
-                <button
-                  onClick={handleSaveAIConfig}
-                  disabled={isSavingAI || ((!hasSavedKey || aiProvider !== initialProvider) && !aiApiKey)}
-                  className="btn"
-                  title={(!hasSavedKey || aiProvider !== initialProvider) && !aiApiKey ? 'Enter API key to save' : ''}
-                >
-                  {isSavingAI ? 'Saving...' : 'Save Configuration'}
-                </button>
-              </div>
+              <button
+                onClick={handleTestAIConnection}
+                disabled={testStatus === 'testing' || (!aiApiKey && !hasSavedKey)}
+                style={{
+                  padding: '8px 16px',
+                  backgroundColor: '#6c757d',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: (testStatus === 'testing' || (!aiApiKey && !hasSavedKey)) ? 'not-allowed' : 'pointer',
+                }}
+              >
+                {testStatus === 'testing' ? 'Testing...' : 'Test Connection'}
+              </button>
             </div>
-          )}
-        </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '16px' }}>
+              <button onClick={onClose} style={{ padding: '8px 16px' }}>
+                Close
+              </button>
+              <button
+                onClick={handleSaveAI}
+                disabled={isSavingAI}
+                style={{
+                  padding: '8px 16px',
+                  backgroundColor: '#007bff',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: isSavingAI ? 'not-allowed' : 'pointer',
+                }}
+              >
+                {isSavingAI ? 'Saving...' : 'Save AI Config'}
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

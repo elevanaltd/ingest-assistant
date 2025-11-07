@@ -57,7 +57,7 @@ describe('Type Definitions', () => {
 
       expect(lexicon.preferredTerms).toContain('tap');
       expect(lexicon.excludedTerms).toContain('faucet');
-      expect(lexicon.synonymMapping['faucet']).toBe('tap');
+      expect(lexicon.synonymMapping?.['faucet']).toBe('tap');
     });
 
     it('should allow optional categories', () => {

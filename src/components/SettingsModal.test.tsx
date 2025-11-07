@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { SettingsModal } from './SettingsModal';
 import type { LexiconConfig } from '../types';
 
@@ -18,24 +18,36 @@ describe('SettingsModal', () => {
     expect(screen.getByText('Settings')).toBeInTheDocument();
   });
 
-  it('renders empty table with one row by default', () => {
+  it('renders lexicon form with all fields', () => {
     render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
 
-    const preferredInputs = screen.getAllByPlaceholderText(/bin/i);
-    expect(preferredInputs).toHaveLength(1);
+    // Pattern field
+    expect(screen.getByPlaceholderText(/\{location\}-\{subject\}-\{shotType\}/i)).toBeInTheDocument();
 
-    const excludedInputs = screen.getAllByPlaceholderText(/trash, garbage/i);
-    expect(excludedInputs).toHaveLength(1);
+    // Common fields
+    expect(screen.getByPlaceholderText(/kitchen, hall, utility/i)).toBeInTheDocument();
+    expect(screen.getByPlaceholderText(/oven, sink, tap/i)).toBeInTheDocument();
+    expect(screen.getByPlaceholderText(/cleaning, installing/i)).toBeInTheDocument();
+
+    // Textarea fields
+    expect(screen.getByPlaceholderText(/faucet → tap/i)).toBeInTheDocument();
+    expect(screen.getByPlaceholderText(/Use lowercase/i)).toBeInTheDocument();
+
+    // Get all textareas to verify both good and bad examples exist
+    const textareas = screen.getAllByRole('textbox', { hidden: false });
+    expect(textareas.length).toBeGreaterThanOrEqual(5); // wordPreferences, aiInstructions, goodExamples, badExamples
   });
 
   it('loads initial config data', () => {
     const initialConfig: LexiconConfig = {
-      termMappings: [
-        { preferred: 'bin', excluded: 'trash, garbage' },
-        { preferred: 'tap', excluded: 'faucet' },
-      ],
-      alwaysInclude: ['manufacturer', 'model'],
-      customInstructions: 'Always include manufacturer',
+      pattern: '{location}-{subject}-{shotType}',
+      commonLocations: 'kitchen, bathroom',
+      commonSubjects: 'oven, sink',
+      commonActions: 'cleaning, installing',
+      wordPreferences: 'faucet → tap\nstove → hob',
+      aiInstructions: 'Use lowercase and hyphens',
+      goodExamples: 'kitchen-oven-CU\nbath-shower-MID',
+      badExamples: 'Kitchen-Oven-CU (mixed case)',
     };
 
     render(
@@ -46,56 +58,40 @@ describe('SettingsModal', () => {
       />
     );
 
-    expect(screen.getByDisplayValue('bin')).toBeInTheDocument();
-    expect(screen.getByDisplayValue('trash, garbage')).toBeInTheDocument();
-    expect(screen.getByDisplayValue('tap')).toBeInTheDocument();
-    expect(screen.getByDisplayValue('faucet')).toBeInTheDocument();
-    expect(screen.getByDisplayValue('manufacturer, model')).toBeInTheDocument();
-    expect(screen.getByDisplayValue('Always include manufacturer')).toBeInTheDocument();
+    // Input fields
+    expect(screen.getByDisplayValue('{location}-{subject}-{shotType}')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('kitchen, bathroom')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('oven, sink')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('cleaning, installing')).toBeInTheDocument();
+
+    // Textareas - need to use different matcher for multiline content
+    const wordPrefTextarea = screen.getByPlaceholderText(/faucet → tap/i) as HTMLTextAreaElement;
+    expect(wordPrefTextarea.value).toBe('faucet → tap\nstove → hob');
+
+    const aiInstrTextarea = screen.getByPlaceholderText(/Use lowercase/i) as HTMLTextAreaElement;
+    expect(aiInstrTextarea.value).toBe('Use lowercase and hyphens');
+
+    const goodExTextarea = screen.getByPlaceholderText(/kitchen-oven-CU.*bath-shower-MID/s) as HTMLTextAreaElement;
+    expect(goodExTextarea.value).toBe('kitchen-oven-CU\nbath-shower-MID');
+
+    const badExTextarea = screen.getByPlaceholderText(/Kitchen-Oven-CU.*mixed case/s) as HTMLTextAreaElement;
+    expect(badExTextarea.value).toBe('Kitchen-Oven-CU (mixed case)');
   });
 
-  it('adds new empty row when user types in last row', () => {
+  it('updates field values when user types', () => {
     render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
 
-    const preferredInputs = screen.getAllByPlaceholderText(/bin/i);
-    expect(preferredInputs).toHaveLength(1);
+    const patternInput = screen.getByPlaceholderText(/\{location\}-\{subject\}-\{shotType\}/i) as HTMLInputElement;
+    fireEvent.change(patternInput, { target: { value: '{location}-{subject}-{action}-{shotType}' } });
+    expect(patternInput.value).toBe('{location}-{subject}-{action}-{shotType}');
 
-    // Type in the first (and only) row
-    fireEvent.change(preferredInputs[0], { target: { value: 'bin' } });
+    const locationsInput = screen.getByPlaceholderText(/kitchen, hall, utility/i) as HTMLInputElement;
+    fireEvent.change(locationsInput, { target: { value: 'kitchen, bathroom, garage' } });
+    expect(locationsInput.value).toBe('kitchen, bathroom, garage');
 
-    // Should now have 2 rows (original + new empty)
-    const updatedInputs = screen.getAllByPlaceholderText(/bin/i);
-    expect(updatedInputs).toHaveLength(2);
-  });
-
-  it('removes row when delete button clicked', () => {
-    const initialConfig: LexiconConfig = {
-      termMappings: [
-        { preferred: 'bin', excluded: 'trash' },
-        { preferred: 'tap', excluded: 'faucet' },
-      ],
-      alwaysInclude: [],
-      customInstructions: '',
-    };
-
-    render(
-      <SettingsModal
-        onClose={mockOnClose}
-        onSave={mockOnSave}
-        initialConfig={initialConfig}
-      />
-    );
-
-    // Should have 2 delete buttons (not on empty row)
-    const deleteButtons = screen.getAllByTitle('Remove row');
-    expect(deleteButtons.length).toBeGreaterThan(0);
-
-    // Click first delete button
-    fireEvent.click(deleteButtons[0]);
-
-    // 'bin' should be gone
-    expect(screen.queryByDisplayValue('bin')).not.toBeInTheDocument();
-    expect(screen.getByDisplayValue('tap')).toBeInTheDocument();
+    const wordPrefTextarea = screen.getByPlaceholderText(/faucet → tap/i) as HTMLTextAreaElement;
+    fireEvent.change(wordPrefTextarea, { target: { value: 'faucet → tap\nstove → hob' } });
+    expect(wordPrefTextarea.value).toBe('faucet → tap\nstove → hob');
   });
 
   it('calls onClose when cancel button clicked', () => {
@@ -105,33 +101,28 @@ describe('SettingsModal', () => {
     expect(mockOnClose).toHaveBeenCalledTimes(1);
   });
 
-  it('calls onClose when X button clicked', () => {
+
+  it('closes when backdrop clicked', () => {
     render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
 
-    fireEvent.click(screen.getByTitle('Close'));
+    // Click on the backdrop (not the modal content)
+    const backdrop = screen.getByText('Settings').closest('.modal-backdrop');
+    expect(backdrop).toBeTruthy();
+
+    fireEvent.click(backdrop!);
     expect(mockOnClose).toHaveBeenCalledTimes(1);
-  });
-
-  // Note: Click-outside-to-close was intentionally removed from modal
-  // Modal now only closes via Cancel button, X button, or after successful save
-
-  it('does not close when modal content clicked', () => {
-    render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
-
-    const modal = screen.getByText('Settings').closest('.modal');
-    expect(modal).toBeInTheDocument();
-
-    fireEvent.click(modal!);
-    expect(mockOnClose).not.toHaveBeenCalled();
   });
 
   it('saves lexicon config when save button clicked', async () => {
     const initialConfig: LexiconConfig = {
-      termMappings: [
-        { preferred: 'bin', excluded: 'trash, garbage' },
-      ],
-      alwaysInclude: ['manufacturer'],
-      customInstructions: 'Include model numbers',
+      pattern: '{location}-{subject}-{shotType}',
+      commonLocations: 'kitchen, bathroom',
+      commonSubjects: 'oven, sink',
+      commonActions: 'cleaning',
+      wordPreferences: 'faucet → tap',
+      aiInstructions: 'Use lowercase',
+      goodExamples: 'kitchen-oven-CU',
+      badExamples: 'Kitchen-Oven-CU (mixed case)',
     };
 
     render(
@@ -149,33 +140,24 @@ describe('SettingsModal', () => {
     });
 
     const savedConfig = mockOnSave.mock.calls[0][0] as LexiconConfig;
-    expect(savedConfig.termMappings).toHaveLength(1);
-    expect(savedConfig.termMappings[0]).toEqual({ preferred: 'bin', excluded: 'trash, garbage' });
-    expect(savedConfig.alwaysInclude).toEqual(['manufacturer']);
-    expect(savedConfig.customInstructions).toBe('Include model numbers');
+    expect(savedConfig.pattern).toBe('{location}-{subject}-{shotType}');
+    expect(savedConfig.commonLocations).toBe('kitchen, bathroom');
+    expect(savedConfig.commonSubjects).toBe('oven, sink');
+    expect(savedConfig.commonActions).toBe('cleaning');
+    expect(savedConfig.wordPreferences).toBe('faucet → tap');
+    expect(savedConfig.aiInstructions).toBe('Use lowercase');
+    expect(savedConfig.goodExamples).toBe('kitchen-oven-CU');
+    expect(savedConfig.badExamples).toBe('Kitchen-Oven-CU (mixed case)');
   });
 
-  it('filters out empty rows when saving', async () => {
+  it('trims whitespace when saving', async () => {
     render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
 
-    // Default has one empty row
-    fireEvent.click(screen.getByText('Save Lexicon'));
+    const patternInput = screen.getByPlaceholderText(/\{location\}-\{subject\}-\{shotType\}/i);
+    const locationsInput = screen.getByPlaceholderText(/kitchen, hall, utility/i);
 
-    await waitFor(() => {
-      expect(mockOnSave).toHaveBeenCalledTimes(1);
-    });
-
-    const savedConfig = mockOnSave.mock.calls[0][0] as LexiconConfig;
-    expect(savedConfig.termMappings).toHaveLength(0);
-  });
-
-  it('parses comma-separated alwaysInclude terms', async () => {
-    render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
-
-    const alwaysIncludeInput = screen.getByPlaceholderText(/manufacturer, model/i);
-    fireEvent.change(alwaysIncludeInput, {
-      target: { value: 'manufacturer, model, brand, category' }
-    });
+    fireEvent.change(patternInput, { target: { value: '  {location}-{subject}  ' } });
+    fireEvent.change(locationsInput, { target: { value: '  kitchen, bathroom  ' } });
 
     fireEvent.click(screen.getByText('Save Lexicon'));
 
@@ -184,8 +166,10 @@ describe('SettingsModal', () => {
     });
 
     const savedConfig = mockOnSave.mock.calls[0][0] as LexiconConfig;
-    expect(savedConfig.alwaysInclude).toEqual(['manufacturer', 'model', 'brand', 'category']);
+    expect(savedConfig.pattern).toBe('{location}-{subject}');
+    expect(savedConfig.commonLocations).toBe('kitchen, bathroom');
   });
+
 
   it('shows error message when save fails', async () => {
     mockOnSave.mockRejectedValue(new Error('Network error'));
@@ -202,32 +186,34 @@ describe('SettingsModal', () => {
     expect(mockOnClose).not.toHaveBeenCalled();
   });
 
-  it('disables buttons while saving', async () => {
+  it('disables save button while saving', async () => {
     mockOnSave.mockImplementation(() => new Promise(resolve => setTimeout(resolve, 100)));
 
     render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
 
     const saveButton = screen.getByText('Save Lexicon');
-    const cancelButton = screen.getByText('Cancel');
 
     fireEvent.click(saveButton);
 
-    // Buttons should be disabled during save
+    // Save button should be disabled during save
     expect(saveButton).toBeDisabled();
-    expect(cancelButton).toBeDisabled();
     expect(screen.getByText('Saving...')).toBeInTheDocument();
   });
 
-  it('closes modal after successful save', async () => {
-    const localOnClose = vi.fn();
-    render(<SettingsModal onClose={localOnClose} onSave={mockOnSave} />);
+  it('shows success message after save', async () => {
+    render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
 
     fireEvent.click(screen.getByText('Save Lexicon'));
 
-    // Modal closes after 1.5 second delay following successful save
     await waitFor(() => {
-      expect(localOnClose).toHaveBeenCalled();
-    }, { timeout: 3000 });
+      expect(mockOnSave).toHaveBeenCalledTimes(1);
+    });
+
+    // Should show success message
+    expect(screen.getByText(/Lexicon settings saved successfully/i)).toBeInTheDocument();
+
+    // Modal should NOT auto-close
+    expect(mockOnClose).not.toHaveBeenCalled();
   });
 
   describe('AI Configuration Tab', () => {
@@ -250,57 +236,64 @@ describe('SettingsModal', () => {
       } as any;
     });
 
-    it('should render tabs for Lexicon and AI Configuration', () => {
+    it('should render tabs for Lexicon and AI Connection', () => {
       render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
 
       expect(screen.getByText('Lexicon')).toBeInTheDocument();
-      expect(screen.getByText('AI Configuration')).toBeInTheDocument();
+      expect(screen.getByText('AI Connection')).toBeInTheDocument();
     });
 
-    it('should switch to AI Configuration tab when clicked', () => {
+    it('should switch to AI Connection tab when clicked', () => {
       render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
 
-      const aiTab = screen.getByText('AI Configuration');
+      const aiTab = screen.getByText('AI Connection');
       fireEvent.click(aiTab);
 
       // Should show AI config form elements
-      expect(screen.getByLabelText(/AI Provider/i)).toBeInTheDocument();
-      expect(screen.getByLabelText(/Model/i)).toBeInTheDocument();
-      expect(screen.getByLabelText(/API Key/i)).toBeInTheDocument();
+      expect(screen.getByText('Provider')).toBeInTheDocument();
+      expect(screen.getByText('Model')).toBeInTheDocument();
+      expect(screen.getByText(/API Key/i)).toBeInTheDocument();
+      expect(screen.getByPlaceholderText(/Enter API key/i)).toBeInTheDocument();
     });
 
     it('should load existing AI config when switching to AI tab', async () => {
       render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
 
-      const aiTab = screen.getByText('AI Configuration');
+      const aiTab = screen.getByText('AI Connection');
       fireEvent.click(aiTab);
 
       await waitFor(() => {
         expect(window.electronAPI.getAIConfig).toHaveBeenCalled();
+        expect(window.electronAPI.getAIModels).toHaveBeenCalled();
       });
 
-      // Should populate form with loaded config
-      expect(screen.getByDisplayValue('anthropic/claude-3.5-sonnet')).toBeInTheDocument();
+      // Should populate model select with loaded config
+      // Get all comboboxes - Provider is first, Model is second
+      await waitFor(() => {
+        const selects = screen.getAllByRole('combobox');
+        const modelSelect = selects[1]; // Second select is Model
+        expect(modelSelect).toHaveValue('anthropic/claude-3.5-sonnet');
+      });
     });
 
     it('should test connection successfully', async () => {
       render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
 
-      fireEvent.click(screen.getByText('AI Configuration'));
+      fireEvent.click(screen.getByText('AI Connection'));
 
       // Wait for config to load
       await waitFor(() => {
         expect(window.electronAPI.getAIConfig).toHaveBeenCalled();
       });
 
-      const apiKeyInput = screen.getByLabelText(/API Key/i);
+      const apiKeyInput = screen.getByPlaceholderText(/Leave empty to keep existing key|Enter API key/i);
       fireEvent.change(apiKeyInput, { target: { value: 'test-api-key' } });
 
-      const testButton = screen.getByText('Test New Key');
+      const testButton = screen.getByText('Test Connection');
       fireEvent.click(testButton);
 
       await waitFor(() => {
-        expect(screen.getByText(/Connection successful/i)).toBeInTheDocument();
+        expect(screen.getByText(/Success/i)).toBeInTheDocument();
       });
 
       expect(window.electronAPI.testAIConnection).toHaveBeenCalledWith(
@@ -318,12 +311,17 @@ describe('SettingsModal', () => {
 
       render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
 
-      fireEvent.click(screen.getByText('AI Configuration'));
+      fireEvent.click(screen.getByText('AI Connection'));
 
-      const apiKeyInput = screen.getByLabelText(/API Key/i);
+      // Wait for config load
+      await waitFor(() => {
+        expect(window.electronAPI.getAIConfig).toHaveBeenCalled();
+      });
+
+      const apiKeyInput = screen.getByPlaceholderText(/Leave empty to keep existing key|Enter API key/i);
       fireEvent.change(apiKeyInput, { target: { value: 'bad-key' } });
 
-      const testButton = screen.getByText('Test New Key');
+      const testButton = screen.getByText('Test Connection');
       fireEvent.click(testButton);
 
       await waitFor(() => {
@@ -334,36 +332,46 @@ describe('SettingsModal', () => {
     it('should save AI configuration successfully', async () => {
       render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
 
-      fireEvent.click(screen.getByText('AI Configuration'));
+      fireEvent.click(screen.getByText('AI Connection'));
 
-      // Wait for async config loading
+      // Wait for async config loading and models
       await waitFor(() => {
         expect(window.electronAPI.getAIConfig).toHaveBeenCalled();
+        expect(window.electronAPI.getAIModels).toHaveBeenCalled();
       });
 
-      const providerSelect = screen.getByLabelText(/AI Provider/i);
-      const modelInput = screen.getByLabelText(/Model/i);
-      const apiKeyInput = screen.getByLabelText(/API Key/i);
+      // Get selects by role - there are 2 comboboxes (Provider and Model)
+      const selects = screen.getAllByRole('combobox');
+      const providerSelect = selects[0]; // First select is Provider
+      const modelSelect = selects[1]; // Second select is Model
+      const apiKeyInput = screen.getByPlaceholderText(/Enter API key|Leave empty|saved in Keychain/i);
 
       fireEvent.change(providerSelect, { target: { value: 'openai' } });
-      fireEvent.change(modelInput, { target: { value: 'gpt-4-vision-preview' } });
+
+      // Wait for models to reload after provider change
+      await waitFor(() => {
+        expect(window.electronAPI.getAIModels).toHaveBeenCalledWith('openai');
+      });
+
+      fireEvent.change(modelSelect, { target: { value: 'openai/gpt-4' } });
       fireEvent.change(apiKeyInput, { target: { value: 'sk-test-key' } });
 
-      const saveButton = screen.getByText('Save Configuration');
+      const saveButton = screen.getByText('Save AI Config');
       fireEvent.click(saveButton);
 
       await waitFor(() => {
         expect(window.electronAPI.updateAIConfig).toHaveBeenCalledWith({
           provider: 'openai',
-          model: 'gpt-4-vision-preview',
+          model: 'openai/gpt-4',
           apiKey: 'sk-test-key'
         });
       });
 
-      // Modal should close after successful save (1.5 second delay)
-      await waitFor(() => {
-        expect(mockOnClose).toHaveBeenCalled();
-      }, { timeout: 3000 });
+      // Should show success message
+      expect(screen.getByText(/AI configuration saved successfully/i)).toBeInTheDocument();
+
+      // Modal should NOT auto-close
+      expect(mockOnClose).not.toHaveBeenCalled();
     });
 
     it('should show error when save fails', async () => {
@@ -374,17 +382,17 @@ describe('SettingsModal', () => {
 
       render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
 
-      fireEvent.click(screen.getByText('AI Configuration'));
+      fireEvent.click(screen.getByText('AI Connection'));
 
       // Wait for config to load
       await waitFor(() => {
         expect(window.electronAPI.getAIConfig).toHaveBeenCalled();
       });
 
-      const apiKeyInput = screen.getByLabelText(/API Key/i);
+      const apiKeyInput = screen.getByPlaceholderText(/Enter API key|Leave empty/i);
       fireEvent.change(apiKeyInput, { target: { value: 'test-key' } });
 
-      const saveButton = screen.getByText('Save Configuration');
+      const saveButton = screen.getByText('Save AI Config');
       fireEvent.click(saveButton);
 
       await waitFor(() => {
@@ -399,17 +407,17 @@ describe('SettingsModal', () => {
       expect(mockOnClose).not.toHaveBeenCalled();
     });
 
-    it('should show "Test Saved Connection" when no API key entered', async () => {
+    it('should show "Test Saved Connection" when saved key exists', async () => {
       render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
 
-      fireEvent.click(screen.getByText('AI Configuration'));
+      fireEvent.click(screen.getByText('AI Connection'));
 
       // Wait for models to load
       await waitFor(() => {
         expect(window.electronAPI.getAIModels).toHaveBeenCalled();
       });
 
-      // When no API key entered, button should say "Test Saved Connection"
+      // When saved key exists (hasSavedKey = true), should show "Test Saved Connection"
       const testButton = screen.getByText('Test Saved Connection');
       expect(testButton).toBeInTheDocument();
       expect(testButton).not.toBeDisabled();
@@ -421,36 +429,18 @@ describe('SettingsModal', () => {
 
       render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
 
-      fireEvent.click(screen.getByText('AI Configuration'));
+      fireEvent.click(screen.getByText('AI Connection'));
 
       // Wait for async loading to complete
       await waitFor(() => {
         expect(window.electronAPI.getAIConfig).toHaveBeenCalled();
       });
 
-      const saveButton = screen.getByText('Save Configuration');
-      // Button should be disabled when no saved key and no new key entered
-      expect(saveButton).toBeDisabled();
+      // Test button should be disabled when no saved key and no new key entered
+      const testButton = screen.getByText('Test Connection');
+      expect(testButton).toBeDisabled();
     });
 
-    it('should update help text based on provider selection', () => {
-      render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
-
-      fireEvent.click(screen.getByText('AI Configuration'));
-
-      const providerSelect = screen.getByLabelText(/AI Provider/i);
-
-      // OpenRouter help text
-      expect(screen.getByText(/openrouter\.ai\/keys/i)).toBeInTheDocument();
-
-      // Switch to OpenAI
-      fireEvent.change(providerSelect, { target: { value: 'openai' } });
-      expect(screen.getByText(/platform\.openai\.com\/api-keys/i)).toBeInTheDocument();
-
-      // Switch to Anthropic
-      fireEvent.change(providerSelect, { target: { value: 'anthropic' } });
-      expect(screen.getByText(/console\.anthropic\.com/i)).toBeInTheDocument();
-    });
 
     it('should disable buttons while testing connection', async () => {
       window.electronAPI.testAIConnection = vi.fn().mockImplementation(
@@ -459,16 +449,26 @@ describe('SettingsModal', () => {
 
       render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
 
-      fireEvent.click(screen.getByText('AI Configuration'));
+      fireEvent.click(screen.getByText('AI Connection'));
 
-      const apiKeyInput = screen.getByLabelText(/API Key/i);
+      // Wait for config to load
+      await waitFor(() => {
+        expect(window.electronAPI.getAIConfig).toHaveBeenCalled();
+      });
+
+      const apiKeyInput = screen.getByPlaceholderText(/Enter API key|Leave empty/i);
       fireEvent.change(apiKeyInput, { target: { value: 'test-key' } });
 
-      const testButton = screen.getByText('Test New Key');
+      const testButton = screen.getByText('Test Connection');
       fireEvent.click(testButton);
 
-      expect(screen.getByText('Testing...')).toBeInTheDocument();
+      // When testing, the button text changes to "Testing..."
+      // There might be multiple buttons (Test Saved Connection and Test Connection)
+      // so we verify the specific test button is disabled
       expect(testButton).toBeDisabled();
+      // Verify at least one Testing... button exists
+      const testingButtons = screen.getAllByText('Testing...');
+      expect(testingButtons.length).toBeGreaterThanOrEqual(1);
     });
 
     it('should disable buttons while saving', async () => {
@@ -478,16 +478,96 @@ describe('SettingsModal', () => {
 
       render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
 
-      fireEvent.click(screen.getByText('AI Configuration'));
+      fireEvent.click(screen.getByText('AI Connection'));
 
-      const apiKeyInput = screen.getByLabelText(/API Key/i);
+      // Wait for config to load
+      await waitFor(() => {
+        expect(window.electronAPI.getAIConfig).toHaveBeenCalled();
+      });
+
+      const apiKeyInput = screen.getByPlaceholderText(/Enter API key|Leave empty/i);
       fireEvent.change(apiKeyInput, { target: { value: 'test-key' } });
 
-      const saveButton = screen.getByText('Save Configuration');
+      const saveButton = screen.getByText('Save AI Config');
       fireEvent.click(saveButton);
 
       expect(screen.getByText('Saving...')).toBeInTheDocument();
       expect(saveButton).toBeDisabled();
+    });
+
+    it('should handle race condition when switching providers quickly', async () => {
+      // Mock slow model fetching for OpenRouter
+      const openRouterModels = [
+        { id: 'anthropic/claude-3.5-sonnet', name: 'Claude 3.5 Sonnet' },
+      ];
+      const openAIModels = [
+        { id: 'gpt-4', name: 'GPT-4' },
+        { id: 'gpt-3.5-turbo', name: 'GPT-3.5 Turbo' },
+      ];
+
+      let openRouterResolve: any;
+      let openAIResolve: any;
+
+      window.electronAPI.getAIModels = vi.fn().mockImplementation((provider: string) => {
+        if (provider === 'openrouter') {
+          return new Promise(resolve => {
+            openRouterResolve = resolve;
+          });
+        } else if (provider === 'openai') {
+          return new Promise(resolve => {
+            openAIResolve = resolve;
+          });
+        }
+        return Promise.resolve([]);
+      });
+
+      render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
+
+      fireEvent.click(screen.getByText('AI Connection'));
+
+      // Wait for initial config load
+      await waitFor(() => {
+        expect(window.electronAPI.getAIConfig).toHaveBeenCalled();
+      });
+
+      // Get provider select (first combobox)
+      const selects = screen.getAllByRole('combobox');
+      const providerSelect = selects[0];
+
+      // Quickly switch from openrouter -> openai (both requests in flight)
+      fireEvent.change(providerSelect, { target: { value: 'openrouter' } });
+      fireEvent.change(providerSelect, { target: { value: 'openai' } });
+
+      // Resolve openrouter AFTER switching to openai (stale response)
+      openRouterResolve(openRouterModels);
+
+      // Resolve openai (current provider)
+      openAIResolve(openAIModels);
+
+      // Final state should show OpenAI models (not stale OpenRouter models)
+      await waitFor(() => {
+        const modelSelect = screen.getAllByRole('combobox')[1];
+        const options = within(modelSelect as HTMLElement).getAllByRole('option');
+        const modelIds = options.map(opt => (opt as HTMLOptionElement).value).filter(v => v);
+
+        // Should have OpenAI models, NOT OpenRouter models
+        expect(modelIds).toContain('gpt-4');
+        expect(modelIds).not.toContain('anthropic/claude-3.5-sonnet');
+      });
+    });
+
+    it('should display error message when AI config loading fails', async () => {
+      // Mock getAIConfig to reject
+      window.electronAPI.getAIConfig = vi.fn().mockRejectedValue(new Error('Failed to load config'));
+
+      render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
+
+      fireEvent.click(screen.getByText('AI Connection'));
+
+      // Should display error message
+      await waitFor(() => {
+        expect(screen.getByText(/Failed to load AI configuration: Failed to load config/i)).toBeInTheDocument();
+      });
     });
   });
 });

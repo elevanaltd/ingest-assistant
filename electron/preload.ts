@@ -15,11 +15,14 @@ contextBridge.exposeInMainWorld('electronAPI', {
   readFileAsDataUrl: (filePath: string): Promise<string> =>
     ipcRenderer.invoke('file:read-as-data-url', filePath),
 
-  renameFile: (fileId: string, mainName: string, currentPath: string): Promise<boolean> =>
-    ipcRenderer.invoke('file:rename', fileId, mainName, currentPath),
+  renameFile: (fileId: string, mainName: string, currentPath: string, structured?: { location?: string; subject?: string; shotType?: string }): Promise<boolean> =>
+    ipcRenderer.invoke('file:rename', fileId, mainName, currentPath, structured),
 
   updateMetadata: (fileId: string, metadata: string[]): Promise<boolean> =>
     ipcRenderer.invoke('file:update-metadata', fileId, metadata),
+
+  updateStructuredMetadata: (fileId: string, structured: { location: string; subject: string; shotType: string }): Promise<boolean> =>
+    ipcRenderer.invoke('file:update-structured-metadata', fileId, structured),
 
   // AI operations
   isAIConfigured: (): Promise<boolean> =>
@@ -55,6 +58,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   getLexicon: (): Promise<Lexicon> =>
     ipcRenderer.invoke('config:get-lexicon'),
+
+  getShotTypes: (): Promise<string[]> =>
+    ipcRenderer.invoke('config:get-shot-types'),
 
   // Lexicon operations
   lexicon: {

@@ -16,7 +16,7 @@ import { MetadataWriter } from './services/metadataWriter';
 import { convertToYAMLFormat, convertToUIFormat } from './utils/lexiconConverter';
 import { sanitizeError } from './utils/errorSanitization';
 import { FileRenameSchema, FileUpdateMetadataSchema, AIBatchProcessSchema } from './schemas/ipcSchemas';
-import type { AppConfig, LexiconConfig } from '../src/types';
+import type { AppConfig, LexiconConfig, ShotType } from '../src/types';
 import { migrateToKeychain } from './services/keychainMigration';
 
 let mainWindow: BrowserWindow | null = null;
@@ -184,14 +184,20 @@ ipcMain.handle('file:load-files', async () => {
       file.mainName = existingMetadata.mainName;
       file.metadata = existingMetadata.metadata;
       file.processedByAI = existingMetadata.processedByAI;
+      // Preserve structured naming components
+      file.location = existingMetadata.location;
+      file.subject = existingMetadata.subject;
+      file.shotType = existingMetadata.shotType;
     }
   }
 
   return files;
 });
 
-ipcMain.handle('file:rename', async (_event, fileId: string, mainName: string, currentPath: string) => {
+ipcMain.handle('file:rename', async (_event, fileId: string, mainName: string, currentPath: string, structured?: { location?: string; subject?: string; shotType?: string }) => {
   try {
+    console.log('[main.ts] file:rename called with:', { fileId, mainName, structured });
+
     // Security: Validate input schema (prevents type confusion attacks)
     const validated = FileRenameSchema.parse({ fileId, mainName, currentPath });
 
@@ -221,13 +227,29 @@ ipcMain.handle('file:rename', async (_event, fileId: string, mainName: string, c
         processedByAI: false,
         lastModified: stats.mtime,
         fileType: fileManager.getFileType(path.basename(newPath)),
+        // Store structured components if provided
+        location: structured?.location,
+        subject: structured?.subject,
+        shotType: structured?.shotType as ShotType | undefined,
       };
     } else {
       // Update existing metadata
       fileMetadata.mainName = mainName;
       fileMetadata.currentFilename = path.basename(newPath);
       fileMetadata.filePath = newPath;
+      // Update structured components if provided
+      if (structured?.location) fileMetadata.location = structured.location;
+      if (structured?.subject) fileMetadata.subject = structured.subject;
+      if (structured?.shotType) fileMetadata.shotType = structured.shotType as ShotType;
     }
+
+    console.log('[main.ts] Saving fileMetadata to store:', JSON.stringify({
+      id: fileMetadata.id,
+      mainName: fileMetadata.mainName,
+      location: fileMetadata.location,
+      subject: fileMetadata.subject,
+      shotType: fileMetadata.shotType
+    }));
 
     await store.updateFileMetadata(fileId, fileMetadata);
 
@@ -284,6 +306,36 @@ ipcMain.handle('file:update-metadata', async (_event, fileId: string, metadata: 
     }
 
     throw sanitizeError(error); // Send sanitized error to renderer
+  }
+});
+
+ipcMain.handle('file:update-structured-metadata', async (_event, fileId: string, structured: { location: string; subject: string; shotType: string }) => {
+  try {
+    console.log('[main.ts] file:update-structured-metadata called with:', { fileId, structured });
+
+    if (!currentFolderPath) return false;
+
+    const store = getMetadataStoreForFolder(currentFolderPath);
+    const fileMetadata = await store.getFileMetadata(fileId);
+    if (!fileMetadata) return false;
+
+    // Update structured components
+    fileMetadata.location = structured.location;
+    fileMetadata.subject = structured.subject;
+    fileMetadata.shotType = structured.shotType as ShotType;
+
+    console.log('[main.ts] Updating structured metadata in store:', {
+      location: fileMetadata.location,
+      subject: fileMetadata.subject,
+      shotType: fileMetadata.shotType
+    });
+
+    await store.updateFileMetadata(fileId, fileMetadata);
+
+    return true;
+  } catch (error) {
+    console.error('Failed to update structured metadata:', error);
+    throw sanitizeError(error);
   }
 });
 
@@ -380,6 +432,12 @@ ipcMain.handle('config:save', async (_event, config: AppConfig) => {
 
 ipcMain.handle('config:get-lexicon', async () => {
   return await configManager.getLexicon();
+});
+
+ipcMain.handle('config:get-shot-types', async () => {
+  // Load config first to ensure it's cached
+  await configManager.loadConfig();
+  return configManager.getAllShotTypes();
 });
 
 // Lexicon operations (UI format)
