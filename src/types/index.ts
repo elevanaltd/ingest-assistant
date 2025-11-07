@@ -67,6 +67,8 @@ export interface Lexicon {
   commonLocations?: string[];
   /** Common subjects for AI guidance (not enforced) */
   commonSubjects?: string[];
+  /** Common actions for video analysis (not enforced) */
+  commonActions?: string[];
   /** Word preferences for synonym replacement */
   wordPreferences?: Record<string, string>;
   /** Shot type vocabulary (controlled - enforced in UI) */
@@ -107,6 +109,8 @@ export interface LexiconConfig {
   commonLocations: string;
   /** Comma-separated list of common subjects */
   commonSubjects: string;
+  /** Comma-separated list of common actions (for videos) */
+  commonActions: string;
   /** Word preferences mapping (one per line, format: "from → to") */
   wordPreferences: string;
   /** Custom AI instructions */
