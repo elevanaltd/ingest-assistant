@@ -16,7 +16,9 @@ export class PromptLoader {
    */
   static async loadPrompt(templateName: string, lexicon: Lexicon): Promise<string | null> {
     try {
-      const promptPath = path.join(process.cwd(), 'prompts', `${templateName}.md`);
+      // In Electron, use __dirname to resolve relative to the built code location
+      // __dirname points to dist/electron/, so go up to project root
+      const promptPath = path.join(__dirname, '../../prompts', `${templateName}.md`);
 
       // Try to read from file
       let template: string;

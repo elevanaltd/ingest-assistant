@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { SettingsModal } from './SettingsModal';
 import type { LexiconConfig } from '../types';
 
@@ -102,7 +102,7 @@ describe('SettingsModal', () => {
   });
 
 
-  it('closes when backdrop clicked', () => {
+  it('does not close when backdrop clicked', () => {
     render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
 
     // Click on the backdrop (not the modal content)
@@ -110,7 +110,8 @@ describe('SettingsModal', () => {
     expect(backdrop).toBeTruthy();
 
     fireEvent.click(backdrop!);
-    expect(mockOnClose).toHaveBeenCalledTimes(1);
+    // Modal should NOT close when clicking outside
+    expect(mockOnClose).not.toHaveBeenCalled();
   });
 
   it('saves lexicon config when save button clicked', async () => {
@@ -546,9 +547,12 @@ describe('SettingsModal', () => {
 
       // Final state should show OpenAI models (not stale OpenRouter models)
       await waitFor(() => {
-        const modelSelect = screen.getAllByRole('combobox')[1];
-        const options = within(modelSelect as HTMLElement).getAllByRole('option');
-        const modelIds = options.map(opt => (opt as HTMLOptionElement).value).filter(v => v);
+        // Model selector is now an input with datalist, not a select
+        const datalist = document.getElementById('modelList');
+
+        expect(datalist).toBeTruthy();
+        const options = datalist?.querySelectorAll('option');
+        const modelIds = Array.from(options || []).map(opt => opt.value);
 
         // Should have OpenAI models, NOT OpenRouter models
         expect(modelIds).toContain('gpt-4');
