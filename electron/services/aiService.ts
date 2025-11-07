@@ -2,6 +2,7 @@ import OpenAI from 'openai';
 import Anthropic from '@anthropic-ai/sdk';
 import * as fs from 'fs/promises';
 import type { Lexicon, AIAnalysisResult } from '../../src/types';
+import { PromptLoader } from '../utils/promptLoader';
 
 export class AIService {
   private provider: 'openai' | 'anthropic' | 'openrouter';
@@ -34,11 +35,110 @@ export class AIService {
 
   /**
    * Build prompt with lexicon rules
+   * Supports both legacy and new structured formats
+   * For structured format, tries to load from prompts/structured-analysis.md
    */
-  buildPrompt(lexicon: Lexicon): string {
-    const preferredTerms = lexicon.preferredTerms.join(', ');
-    const excludedTerms = lexicon.excludedTerms.join(', ');
-    const synonyms = Object.entries(lexicon.synonymMapping)
+  async buildPrompt(lexicon: Lexicon): Promise<string> {
+    // Check if using new structured format
+    const isStructured = !!(lexicon.commonLocations || lexicon.commonSubjects || lexicon.shotTypes);
+
+    if (isStructured) {
+      return await this.buildStructuredPromptAsync(lexicon);
+    } else {
+      return this.buildLegacyPrompt(lexicon);
+    }
+  }
+
+  /**
+   * Build structured prompt for {location}-{subject}-{shotType} format
+   * Tries to load from prompts/structured-analysis.md first, falls back to hardcoded
+   */
+  private async buildStructuredPromptAsync(lexicon: Lexicon): Promise<string> {
+    // Try loading from template file first
+    const templatePrompt = await PromptLoader.loadPrompt('structured-analysis', lexicon);
+    if (templatePrompt) {
+      return templatePrompt;
+    }
+
+    // Fall back to hardcoded prompt
+    return this.buildStructuredPromptHardcoded(lexicon);
+  }
+
+  /**
+   * Hardcoded structured prompt (fallback when template file not available)
+   */
+  private buildStructuredPromptHardcoded(lexicon: Lexicon): string {
+    const locations = lexicon.commonLocations?.join(', ') || 'any appropriate location';
+    const subjects = lexicon.commonSubjects?.join(', ') || 'any relevant subject';
+    const staticShots = lexicon.shotTypes?.static.join(', ') || 'WS, MID, CU, UNDER';
+    const movingShots = lexicon.shotTypes?.moving.join(', ') || 'FP, TRACK, ESTAB';
+
+    const wordPrefs = lexicon.wordPreferences || {};
+    const synonyms = Object.entries(wordPrefs)
+      .map(([from, to]) => `"${from}" -> "${to}"`)
+      .join(', ');
+
+    let prompt = `Analyze this image and generate structured metadata following this pattern:
+{location}-{subject}-{shotType}
+
+LOCATION: Identify where the shot takes place
+Common locations: ${locations}
+(You can use custom locations not in this list if more appropriate)
+
+SUBJECT: Identify the main object or feature being captured
+Common subjects: ${subjects}
+(You can use custom subjects not in this list if more appropriate)
+
+SHOT TYPE: Determine the framing category
+For static shots (no camera movement): ${staticShots}
+  - WS = Wide shot (shows full scene/context)
+  - MID = Midshot (partial scene, main subject visible)
+  - CU = Close up (detail focus)
+  - UNDER = Underneath angle (shot from below)
+
+For shots with camera movement: ${movingShots}
+  - FP = Focus pull (rack focus effect)
+  - TRACK = Tracking (following subject with camera movement)
+  - ESTAB = Establishing (scene reveal via pan/tilt/slider)
+
+Note: For photos, always use static shot types (WS, MID, CU, UNDER)`;
+
+    if (synonyms) {
+      prompt += `\n\nWORD PREFERENCES (use these terms consistently):\n${synonyms}`;
+    }
+
+    if (lexicon.aiInstructions) {
+      prompt += `\n\nADDITIONAL INSTRUCTIONS:\n${lexicon.aiInstructions}`;
+    }
+
+    prompt += `\n\nIMPORTANT: Return ONLY valid JSON in this exact format (no markdown, no explanation):
+{
+  "location": "location-name",
+  "subject": "subject-name",
+  "shotType": "SHOT_TYPE",
+  "mainName": "location-subject-SHOT_TYPE",
+  "metadata": ["tag1", "tag2"]
+}
+
+Example response:
+{
+  "location": "kitchen",
+  "subject": "oven",
+  "shotType": "CU",
+  "mainName": "kitchen-oven-CU",
+  "metadata": ["appliance", "control-panel", "interior"]
+}`;
+
+    return prompt;
+  }
+
+  /**
+   * Build legacy prompt for backward compatibility
+   */
+  private buildLegacyPrompt(lexicon: Lexicon): string {
+    const preferredTerms = lexicon.preferredTerms?.join(', ') || '';
+    const excludedTerms = lexicon.excludedTerms?.join(', ') || '';
+    const synonyms = Object.entries(lexicon.synonymMapping || {})
       .map(([from, to]) => `"${from}" -> "${to}"`)
       .join(', ');
 
@@ -95,8 +195,48 @@ Lexicon rules:
       // Try parsing as JSON
       try {
         const parsed = JSON.parse(jsonString);
+        console.log('[AIService] Parsed AI response:', JSON.stringify(parsed, null, 2));
+
+        // Handle structured format (with location, subject, shotType)
+        if (parsed.location && parsed.subject && parsed.shotType) {
+          console.log('[AIService] Using structured format (separate fields provided)');
+          return {
+            location: parsed.location,
+            subject: parsed.subject,
+            shotType: parsed.shotType,
+            mainName: parsed.mainName || `${parsed.location}-${parsed.subject}-${parsed.shotType}`,
+            metadata: Array.isArray(parsed.metadata) ? parsed.metadata : [],
+            confidence: 0.8,
+          };
+        }
+
+        // Try parsing mainName into structured components if pattern matches
+        const mainName = parsed.mainName || '';
+        console.log('[AIService] Checking if mainName matches pattern:', mainName);
+        const parts = mainName.split('-');
+        const shotTypes = ['WS', 'MID', 'CU', 'UNDER', 'FP', 'TRACK', 'ESTAB'];
+
+        console.log('[AIService] Split parts:', parts);
+        console.log('[AIService] Last part uppercase:', parts.length > 0 ? parts[parts.length - 1].toUpperCase() : 'N/A');
+
+        if (parts.length === 3 && shotTypes.includes(parts[2].toUpperCase())) {
+          // mainName follows {location}-{subject}-{shotType} pattern
+          const result = {
+            location: parts[0],
+            subject: parts[1],
+            shotType: parts[2].toUpperCase(),
+            mainName: mainName,
+            metadata: Array.isArray(parsed.metadata) ? parsed.metadata : [],
+            confidence: 0.8,
+          };
+          console.log('[AIService] Pattern matched! Extracted structured components:', result);
+          return result;
+        }
+
+        // Handle legacy format (just mainName and metadata, no pattern match)
+        console.log('[AIService] No pattern match, using legacy format');
         return {
-          mainName: parsed.mainName || '',
+          mainName: mainName,
           metadata: Array.isArray(parsed.metadata) ? parsed.metadata : [],
           confidence: 0.8,
         };
@@ -180,7 +320,9 @@ Lexicon rules:
     imagePath: string,
     lexicon: Lexicon
   ): Promise<AIAnalysisResult> {
-    const prompt = this.buildPrompt(lexicon);
+    const prompt = await this.buildPrompt(lexicon);
+    console.log('[AIService] Using prompt (first 500 chars):', prompt.substring(0, 500));
+    console.log('[AIService] Lexicon has structured format:', !!(lexicon.commonLocations || lexicon.commonSubjects || lexicon.shotTypes));
 
     try {
       if (this.provider === 'openai' || this.provider === 'openrouter') {

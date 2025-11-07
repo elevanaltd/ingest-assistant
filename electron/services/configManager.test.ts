@@ -198,7 +198,7 @@ lexicon:
 
       expect(lexicon.preferredTerms).toEqual(['tap', 'sink']);
       expect(lexicon.excludedTerms).toEqual(['faucet']);
-      expect(lexicon.synonymMapping['faucet']).toBe('tap');
+      expect(lexicon.synonymMapping?.['faucet']).toBe('tap');
     });
   });
 

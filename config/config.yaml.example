@@ -1,35 +1,129 @@
-# Lexicon Configuration
+# Ingest Assistant - Lexicon Configuration
 # Copy this file to config.yaml or place it in ~/Library/Application Support/ingest-assistant/
 
 lexicon:
-  # Terms the AI should prefer when generating names/metadata
-  preferredTerms:
-    - tap
-    - sink
+  # ============================================================================
+  # STRUCTURED NAMING: {location}-{subject}-{shotType}
+  # ============================================================================
+
+  # Common Locations (AI guidance - users can use custom locations too)
+  # These help AI suggest appropriate locations, but are not enforced
+  commonLocations:
+    # Interior spaces
+    - kitchen
+    - bathroom
+    - bedroom
+    - living-room
+    - dining-room
+    - hallway
+    - laundry
+    - garage
+    - office
+    - pantry
+    - closet
+    - stairs
+
+    # Exterior spaces
+    - garden
+    - driveway
+    - patio
+    - balcony
+    - entrance
+    - exterior
+
+  # Common Subjects (AI guidance - users can use custom subjects too)
+  # These help AI identify main objects/features, but are not enforced
+  commonSubjects:
+    # Kitchen
     - oven
+    - stove
+    - cooktop
+    - microwave
+    - refrigerator
+    - dishwasher
+    - sink
+    - tap
     - counter
     - cabinet
+    - drawer
+    - island
+    - range-hood
 
-  # Terms the AI should avoid using
-  excludedTerms:
-    - faucet
+    # Bathroom
+    - toilet
+    - shower
+    - bath
+    - bathtub
+    - vanity
+    - mirror
     - basin
 
-  # Synonym mapping: if AI suggests key, replace with value
-  synonymMapping:
+    # General fixtures
+    - window
+    - door
+    - light
+    - switch
+    - outlet
+    - floor
+    - ceiling
+    - wall
+    - tiles
+    - hardware
+    - handle
+    - fixture
+
+  # Word Preferences (synonym mapping)
+  # If AI suggests the key term, it will be replaced with the value
+  wordPreferences:
     faucet: tap
     basin: sink
+    stovetop: cooktop
+    range: stove
 
-  # Optional: categorize terms for better organization
-  categories:
-    kitchen:
-      - oven
-      - sink
-      - tap
-      - counter
-      - cabinet
-    bathroom:
-      - shower
-      - toilet
-      - mirror
-      - bath
+  # Shot Types (controlled vocabulary - enforced in UI)
+  # AI must select from these options, user can change via dropdown
+  shotTypes:
+    # Static shots (no camera movement)
+    static:
+      - WS      # Wide shot - shows full scene/context
+      - MID     # Midshot - partial scene, main subject visible
+      - CU      # Close up - detail focus
+      - UNDER   # Underneath angle - shot from below
+
+    # Movement shots (camera movement or focus change)
+    moving:
+      - FP      # Focus pull - rack focus effect
+      - TRACK   # Tracking - following subject with gimbal/camera movement
+      - ESTAB   # Establishing - scene reveal via pan/tilt/slider
+
+  # Custom AI Instructions
+  # Free-form guidance for the AI analysis
+  aiInstructions: |
+    Analyze the image/video and generate metadata following this structured pattern:
+    {location}-{subject}-{shotType}
+
+    Guidelines:
+    - Location: Identify the space/room where the shot takes place
+    - Subject: Identify the main object or feature being captured
+    - Shot Type: Determine the framing and movement category
+
+    For photos and static video shots, use: WS, MID, CU, or UNDER
+    For video with camera movement, use: FP, TRACK, or ESTAB
+
+    Example outputs:
+    - "kitchen-oven-CU" (close up of kitchen oven)
+    - "bathroom-shower-MID" (midshot of bathroom shower)
+    - "living-room-window-TRACK" (tracking shot following through living room window)
+
+    Use the word preferences to ensure consistent terminology.
+
+# ============================================================================
+# LEGACY SUPPORT (Optional - for backward compatibility)
+# ============================================================================
+# If you have existing configurations using the old format, they will still work
+# but we recommend migrating to the structured format above for better results.
+
+# preferredTerms: []    # Deprecated - use commonLocations/commonSubjects
+# excludedTerms: []     # Deprecated - use wordPreferences
+# synonymMapping: {}    # Deprecated - use wordPreferences
+# categories: {}        # Deprecated - use commonLocations/commonSubjects

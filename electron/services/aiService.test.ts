@@ -20,8 +20,8 @@ describe('AIService', () => {
   });
 
   describe('buildPrompt', () => {
-    it('should build prompt with lexicon rules', () => {
-      const prompt = aiService.buildPrompt(mockLexicon);
+    it('should build prompt with lexicon rules', async () => {
+      const prompt = await aiService.buildPrompt(mockLexicon);
 
       expect(prompt).toContain('Preferred terms');
       expect(prompt).toContain('tap');

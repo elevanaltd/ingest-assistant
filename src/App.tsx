@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import type { FileMetadata, LexiconConfig } from './types';
+import type { FileMetadata, LexiconConfig, ShotType } from './types';
 import { SettingsModal } from './components/SettingsModal';
 import { Sidebar } from './components/Sidebar';
 import './App.css';
@@ -8,6 +8,14 @@ function App() {
   const [folderPath, setFolderPath] = useState<string>('');
   const [files, setFiles] = useState<FileMetadata[]>([]);
   const [currentFileIndex, setCurrentFileIndex] = useState<number>(0);
+
+  // Structured naming fields
+  const [location, setLocation] = useState<string>('');
+  const [subject, setSubject] = useState<string>('');
+  const [shotType, setShotType] = useState<ShotType | ''>('');
+  const [shotTypes, setShotTypes] = useState<string[]>([]);
+
+  // Legacy field (still used for backward compatibility)
   const [mainName, setMainName] = useState<string>('');
   const [metadata, setMetadata] = useState<string>('');
   const [isAIConfigured, setIsAIConfigured] = useState(false);
@@ -27,10 +35,19 @@ function App() {
     }
   }, [statusMessage]);
 
-  // Check if AI is configured on mount
+  // Check if AI is configured and load shot types on mount
   useEffect(() => {
     if (window.electronAPI) {
       window.electronAPI.isAIConfigured().then(setIsAIConfigured);
+
+      // Load shot types for dropdown
+      window.electronAPI.getShotTypes()
+        .then(setShotTypes)
+        .catch(error => {
+          console.error('Failed to load shot types:', error);
+          // Fallback to default shot types
+          setShotTypes(['WS', 'MID', 'CU', 'UNDER', 'FP', 'TRACK', 'ESTAB']);
+        });
     }
   }, []);
 
@@ -39,7 +56,34 @@ function App() {
     if (!window.electronAPI) return;
 
     if (currentFile) {
-      setMainName(currentFile.mainName);
+      // Parse structured naming if available
+      if (currentFile.location && currentFile.subject && currentFile.shotType) {
+        setLocation(currentFile.location);
+        setSubject(currentFile.subject);
+        setShotType(currentFile.shotType as ShotType);
+        setMainName(currentFile.mainName);
+      } else if (currentFile.mainName) {
+        // Try parsing mainName pattern: {location}-{subject}-{shotType}
+        const parts = currentFile.mainName.split('-');
+        if (parts.length === 3 && shotTypes.includes(parts[2].toUpperCase())) {
+          setLocation(parts[0]);
+          setSubject(parts[1]);
+          setShotType(parts[2].toUpperCase() as ShotType);
+          setMainName(currentFile.mainName);
+        } else {
+          // Legacy format - populate mainName directly
+          setLocation('');
+          setSubject('');
+          setShotType('');
+          setMainName(currentFile.mainName);
+        }
+      } else {
+        setLocation('');
+        setSubject('');
+        setShotType('');
+        setMainName('');
+      }
+
       setMetadata(currentFile.metadata.join(', '));
 
       // Load file as data URL
@@ -52,7 +96,7 @@ function App() {
     } else {
       setMediaDataUrl('');
     }
-  }, [currentFile]);
+  }, [currentFile, shotTypes]);
 
   // Check if running in Electron (user-friendly UI check)
   if (!window.electronAPI) {
@@ -83,12 +127,39 @@ function App() {
     const currentFileId = currentFile.id; // Remember the current file ID
 
     try {
-      // Save main name (and rename file)
-      if (mainName && mainName !== currentFile.mainName) {
-        await window.electronAPI.renameFile(currentFile.id, mainName, currentFile.filePath);
+      // Build mainName from structured components or use direct input
+      let finalMainName = mainName;
+      if (location && subject && shotType) {
+        // Structured naming: {location}-{subject}-{shotType}
+        finalMainName = `${location}-${subject}-${shotType}`;
+        setMainName(finalMainName); // Update mainName state for consistency
       }
 
-      // Save metadata
+      // Save main name (and rename file) with structured components
+      const structuredData = location && subject && shotType ? { location, subject, shotType } : undefined;
+
+      if (finalMainName && finalMainName !== currentFile.mainName) {
+        console.log('[App] Calling renameFile with:', {
+          fileId: currentFile.id,
+          finalMainName,
+          structuredData
+        });
+        await window.electronAPI.renameFile(
+          currentFile.id,
+          finalMainName,
+          currentFile.filePath,
+          structuredData
+        );
+      } else if (structuredData) {
+        // Filename didn't change, but we still need to save structured components
+        console.log('[App] Filename unchanged, updating structured metadata only');
+        await window.electronAPI.updateStructuredMetadata(
+          currentFile.id,
+          structuredData
+        );
+      }
+
+      // Save metadata tags
       const metadataTags = metadata
         .split(',')
         .map((tag) => tag.trim())
@@ -134,7 +205,25 @@ function App() {
     setIsLoading(true);
     try {
       const result = await window.electronAPI.analyzeFile(currentFile.filePath);
-      setMainName(result.mainName);
+      console.log('[App] AI result received:', result);
+
+      // Populate structured fields if available
+      if (result.location && result.subject && result.shotType) {
+        console.log('[App] Populating structured fields:', {
+          location: result.location,
+          subject: result.subject,
+          shotType: result.shotType
+        });
+        setLocation(result.location);
+        setSubject(result.subject);
+        setShotType(result.shotType);
+        setMainName(result.mainName);
+      } else {
+        // Legacy format - populate mainName directly
+        console.log('[App] Using legacy format, mainName only:', result.mainName);
+        setMainName(result.mainName);
+      }
+
       setMetadata(result.metadata.join(', '));
       setStatusMessage(`✓ AI Analysis complete! Confidence: ${(result.confidence * 100).toFixed(0)}%`);
     } catch (error) {
@@ -219,9 +308,10 @@ function App() {
           </div>
 
           <div className="form">
+            {/* Structured Naming Row */}
             <div className="form-row">
               <div className="form-group">
-                <label>ID (8 Digits - Read Only)</label>
+                <label>ID (Read Only)</label>
                 <input
                   type="text"
                   value={currentFile.id}
@@ -231,23 +321,70 @@ function App() {
               </div>
 
               <div className="form-group">
-                <label>Main Name</label>
+                <label>Location</label>
                 <input
                   type="text"
-                  value={mainName}
-                  onChange={(e) => setMainName(e.target.value)}
-                  placeholder="e.g., Oven Control Panel"
+                  value={location}
+                  onChange={(e) => setLocation(e.target.value)}
+                  placeholder="e.g., kitchen, bathroom"
                   className="input"
                 />
               </div>
 
               <div className="form-group">
+                <label>Subject</label>
+                <input
+                  type="text"
+                  value={subject}
+                  onChange={(e) => setSubject(e.target.value)}
+                  placeholder="e.g., oven, sink, window"
+                  className="input"
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Shot Type</label>
+                <select
+                  value={shotType}
+                  onChange={(e) => setShotType(e.target.value as ShotType)}
+                  className="input"
+                >
+                  <option value="">Select shot type...</option>
+                  <optgroup label="Static (No Movement)">
+                    {shotTypes.filter(st => ['WS', 'MID', 'CU', 'UNDER'].includes(st)).map(st => (
+                      <option key={st} value={st}>{st}</option>
+                    ))}
+                  </optgroup>
+                  <optgroup label="Movement">
+                    {shotTypes.filter(st => ['FP', 'TRACK', 'ESTAB'].includes(st)).map(st => (
+                      <option key={st} value={st}>{st}</option>
+                    ))}
+                  </optgroup>
+                </select>
+              </div>
+            </div>
+
+            {/* Generated Name Preview */}
+            {location && subject && shotType && (
+              <div className="form-row" style={{ marginTop: '8px' }}>
+                <div className="form-group" style={{ gridColumn: 'span 4' }}>
+                  <label style={{ fontSize: '12px', color: '#666' }}>Generated Name:</label>
+                  <div style={{ padding: '8px', background: '#f5f5f5', borderRadius: '4px', fontFamily: 'monospace', fontSize: '14px' }}>
+                    {currentFile.id}-{location}-{subject}-{shotType}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Metadata Row */}
+            <div className="form-row">
+              <div className="form-group" style={{ gridColumn: 'span 3' }}>
                 <label>Metadata (comma-separated tags)</label>
                 <input
                   type="text"
                   value={metadata}
                   onChange={(e) => setMetadata(e.target.value)}
-                  placeholder="e.g., oven, control panel, kitchen"
+                  placeholder="e.g., appliance, control-panel, interior"
                   className="input"
                 />
               </div>
@@ -256,7 +393,7 @@ function App() {
                 <label>&nbsp;</label>
                 <button
                   onClick={handleSave}
-                  disabled={isLoading || !mainName}
+                  disabled={isLoading || (!location || !subject || !shotType)}
                   className="btn-primary"
                 >
                   {isLoading ? 'Saving...' : 'Save'}
