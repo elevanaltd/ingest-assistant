@@ -14,6 +14,7 @@ const mockElectronAPI = {
   loadConfig: vi.fn(),
   saveConfig: vi.fn(),
   getLexicon: vi.fn(),
+  getShotTypes: vi.fn(),
 };
 
 beforeEach(() => {
@@ -25,6 +26,7 @@ beforeEach(() => {
     configurable: true,
   });
   mockElectronAPI.isAIConfigured.mockResolvedValue(false);
+  mockElectronAPI.getShotTypes.mockResolvedValue(['WS', 'MID', 'CU', 'UNDER', 'FP', 'TRACK', 'ESTAB']);
 });
 
 describe('App', () => {

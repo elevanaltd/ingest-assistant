@@ -134,7 +134,8 @@ lexicon:
       const config = await configManager.loadConfig();
 
       expect(config.lexicon).toBeDefined();
-      expect(config.lexicon.preferredTerms).toEqual([]);
+      expect(Array.isArray(config.lexicon.commonLocations)).toBe(true);
+      expect(Array.isArray(config.lexicon.commonSubjects)).toBe(true);
     });
 
     it('should throw error for invalid YAML', async () => {
@@ -207,8 +208,11 @@ lexicon:
       const defaultConfig = configManager.getDefaultConfig();
 
       expect(defaultConfig.lexicon).toBeDefined();
-      expect(Array.isArray(defaultConfig.lexicon.preferredTerms)).toBe(true);
-      expect(Array.isArray(defaultConfig.lexicon.excludedTerms)).toBe(true);
+      expect(Array.isArray(defaultConfig.lexicon.commonLocations)).toBe(true);
+      expect(Array.isArray(defaultConfig.lexicon.commonSubjects)).toBe(true);
+      expect(defaultConfig.lexicon.shotTypes).toBeDefined();
+      expect(Array.isArray(defaultConfig.lexicon.shotTypes?.static)).toBe(true);
+      expect(Array.isArray(defaultConfig.lexicon.shotTypes?.moving)).toBe(true);
     });
   });
 
