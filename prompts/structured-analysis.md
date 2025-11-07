@@ -2,22 +2,29 @@
 
 This prompt template is used for analyzing images/videos and generating structured metadata.
 
-**Format:** `{location}-{subject}-{shotType}`
+**Format:**
+- Photos: `{location}-{subject}-{shotType}` (3 parts)
+- Videos: `{location}-{subject}-{action}-{shotType}` (4 parts)
 
 **Variables available:**
 - `{{locations}}` - Comma-separated list of common locations
 - `{{subjects}}` - Comma-separated list of common subjects
+- `{{actions}}` - Comma-separated list of common actions (videos only)
 - `{{staticShots}}` - Comma-separated list of static shot types
 - `{{movingShots}}` - Comma-separated list of moving shot types
 - `{{wordPreferences}}` - Synonym mappings (e.g., "faucet" -> "tap")
 - `{{aiInstructions}}` - Custom instructions from lexicon config
+- `{{goodExamples}}` - Good example filenames
+- `{{badExamples}}` - Bad example filenames with reasons
 
 ---
 
 ## Prompt (Edit Below)
 
-Analyze this image and generate structured metadata following this pattern:
-**{location}-{subject}-{shotType}**
+Analyze this image/video and generate structured metadata following these patterns:
+
+**PHOTOS:** `{location}-{subject}-{shotType}` (3 parts)
+**VIDEOS:** `{location}-{subject}-{action}-{shotType}` (4 parts)
 
 ### LOCATION
 Identify where the shot takes place.
@@ -32,6 +39,15 @@ Identify the main object or feature being captured.
 **Common subjects:** {{subjects}}
 
 You can use custom subjects not in this list if more appropriate.
+
+### ACTION (VIDEOS ONLY)
+For videos, identify the action being performed or demonstrated.
+
+**Common actions:** {{actions}}
+
+Examples: cleaning, installing, replacing, inspecting, removing, adjusting
+
+**IMPORTANT:** Only include action for videos. Photos use 3-part naming without action.
 
 ### SHOT TYPE
 Determine the framing category.
@@ -66,6 +82,7 @@ Use these terms consistently:
 
 **CRITICAL:** Return ONLY valid JSON in this exact format (no markdown, no explanation):
 
+**For photos (3-part naming):**
 ```json
 {
   "location": "location-name",
@@ -76,7 +93,21 @@ Use these terms consistently:
 }
 ```
 
-### Example Response
+**For videos (4-part naming with action):**
+```json
+{
+  "location": "location-name",
+  "subject": "subject-name",
+  "action": "action-verb",
+  "shotType": "SHOT_TYPE",
+  "mainName": "location-subject-action-SHOT_TYPE",
+  "metadata": ["tag1", "tag2"]
+}
+```
+
+### Example Responses
+
+**Photo example:**
 ```json
 {
   "location": "kitchen",
@@ -84,6 +115,18 @@ Use these terms consistently:
   "shotType": "CU",
   "mainName": "kitchen-oven-CU",
   "metadata": ["appliance", "control-panel", "interior"]
+}
+```
+
+**Video example:**
+```json
+{
+  "location": "kitchen",
+  "subject": "dishwasher",
+  "action": "cleaning",
+  "shotType": "MID",
+  "mainName": "kitchen-dishwasher-cleaning-MID",
+  "metadata": ["appliance", "maintenance", "tutorial"]
 }
 ```
 

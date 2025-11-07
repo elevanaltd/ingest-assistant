@@ -12,6 +12,7 @@ function App() {
   // Structured naming fields
   const [location, setLocation] = useState<string>('');
   const [subject, setSubject] = useState<string>('');
+  const [action, setAction] = useState<string>('');
   const [shotType, setShotType] = useState<ShotType | ''>('');
   const [shotTypes, setShotTypes] = useState<string[]>([]);
 
@@ -60,26 +61,38 @@ function App() {
       if (currentFile.location && currentFile.subject && currentFile.shotType) {
         setLocation(currentFile.location);
         setSubject(currentFile.subject);
+        setAction(currentFile.action || '');
         setShotType(currentFile.shotType as ShotType);
         setMainName(currentFile.mainName);
       } else if (currentFile.mainName) {
-        // Try parsing mainName pattern: {location}-{subject}-{shotType}
+        // Try parsing mainName pattern: {location}-{subject}-{shotType} or {location}-{subject}-{action}-{shotType}
         const parts = currentFile.mainName.split('-');
-        if (parts.length === 3 && shotTypes.includes(parts[2].toUpperCase())) {
+        if (parts.length === 4 && shotTypes.includes(parts[3].toUpperCase())) {
+          // 4-part video format
           setLocation(parts[0]);
           setSubject(parts[1]);
+          setAction(parts[2]);
+          setShotType(parts[3].toUpperCase() as ShotType);
+          setMainName(currentFile.mainName);
+        } else if (parts.length === 3 && shotTypes.includes(parts[2].toUpperCase())) {
+          // 3-part photo format
+          setLocation(parts[0]);
+          setSubject(parts[1]);
+          setAction('');
           setShotType(parts[2].toUpperCase() as ShotType);
           setMainName(currentFile.mainName);
         } else {
           // Legacy format - populate mainName directly
           setLocation('');
           setSubject('');
+          setAction('');
           setShotType('');
           setMainName(currentFile.mainName);
         }
       } else {
         setLocation('');
         setSubject('');
+        setAction('');
         setShotType('');
         setMainName('');
       }
@@ -130,13 +143,17 @@ function App() {
       // Build mainName from structured components or use direct input
       let finalMainName = mainName;
       if (location && subject && shotType) {
-        // Structured naming: {location}-{subject}-{shotType}
-        finalMainName = `${location}-${subject}-${shotType}`;
+        // Structured naming: 4-part for videos (with action), 3-part for photos (without action)
+        if (currentFile.fileType === 'video' && action) {
+          finalMainName = `${location}-${subject}-${action}-${shotType}`;
+        } else {
+          finalMainName = `${location}-${subject}-${shotType}`;
+        }
         setMainName(finalMainName); // Update mainName state for consistency
       }
 
       // Save main name (and rename file) with structured components
-      const structuredData = location && subject && shotType ? { location, subject, shotType } : undefined;
+      const structuredData = location && subject && shotType ? { location, subject, action, shotType } : undefined;
 
       if (finalMainName && finalMainName !== currentFile.mainName) {
         console.log('[App] Calling renameFile with:', {
@@ -212,10 +229,12 @@ function App() {
         console.log('[App] Populating structured fields:', {
           location: result.location,
           subject: result.subject,
+          action: result.action,
           shotType: result.shotType
         });
         setLocation(result.location);
         setSubject(result.subject);
+        setAction(result.action || '');
         setShotType(result.shotType);
         setMainName(result.mainName);
       } else {
@@ -343,6 +362,22 @@ function App() {
               </div>
 
               <div className="form-group">
+                <label>Action (videos only)</label>
+                <input
+                  type="text"
+                  value={action}
+                  onChange={(e) => setAction(e.target.value)}
+                  placeholder="e.g., cleaning, installing"
+                  disabled={currentFile.fileType === 'image'}
+                  className="input"
+                  style={{
+                    opacity: currentFile.fileType === 'image' ? 0.5 : 1,
+                    cursor: currentFile.fileType === 'image' ? 'not-allowed' : 'text'
+                  }}
+                />
+              </div>
+
+              <div className="form-group">
                 <label>Shot Type</label>
                 <select
                   value={shotType}
@@ -370,7 +405,7 @@ function App() {
                 <div className="form-group" style={{ gridColumn: 'span 4' }}>
                   <label style={{ fontSize: '12px', color: '#666' }}>Generated Name:</label>
                   <div style={{ padding: '8px', background: '#f5f5f5', borderRadius: '4px', fontFamily: 'monospace', fontSize: '14px' }}>
-                    {currentFile.id}-{location}-{subject}-{shotType}
+                    {currentFile.id}-{location}-{subject}-{currentFile.fileType === 'video' && action ? `${action}-` : ''}{shotType}
                   </div>
                 </div>
               </div>
