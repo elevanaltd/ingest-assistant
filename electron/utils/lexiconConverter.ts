@@ -16,6 +16,12 @@ export function convertToYAMLFormat(uiConfig: LexiconConfig): Lexicon {
     .map(t => t.trim())
     .filter(t => t.length > 0);
 
+  // Parse comma-separated actions
+  const commonActions = uiConfig.commonActions
+    .split(',')
+    .map(t => t.trim())
+    .filter(t => t.length > 0);
+
   // Parse word preferences (format: "from → to" or "from->to")
   const wordPreferences: Record<string, string> = {};
   if (uiConfig.wordPreferences.trim()) {
@@ -58,6 +64,7 @@ export function convertToYAMLFormat(uiConfig: LexiconConfig): Lexicon {
     pattern: uiConfig.pattern.trim(),
     commonLocations,
     commonSubjects,
+    commonActions,
     wordPreferences,
     aiInstructions: uiConfig.aiInstructions.trim(),
     goodExamples,
@@ -74,6 +81,9 @@ export function convertToUIFormat(lexicon: Lexicon): LexiconConfig {
 
   // Convert subjects array to comma-separated string
   const commonSubjects = (lexicon.commonSubjects || []).join(', ');
+
+  // Convert actions array to comma-separated string
+  const commonActions = (lexicon.commonActions || []).join(', ');
 
   // Convert word preferences to "from → to" format (one per line)
   const wordPrefs = lexicon.wordPreferences || {};
@@ -93,6 +103,7 @@ export function convertToUIFormat(lexicon: Lexicon): LexiconConfig {
     pattern: lexicon.pattern || '',
     commonLocations,
     commonSubjects,
+    commonActions,
     wordPreferences,
     aiInstructions: lexicon.aiInstructions || '',
     goodExamples,

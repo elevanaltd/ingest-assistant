@@ -28,7 +28,8 @@ export class PromptLoader {
       }
 
       // Extract prompt content (everything after "## Prompt (Edit Below)")
-      const promptMatch = template.match(/## Prompt \(Edit Below\)([\s\S]*?)(?=---\n## Response Format|$)/);
+      // Support both LF (\n) and CRLF (\r\n) line endings for Windows compatibility
+      const promptMatch = template.match(/## Prompt \(Edit Below\)\r?\n([\s\S]*?)(?=---\r?\n## Response Format|$)/);
       if (!promptMatch) {
         console.warn('Could not find prompt section in template');
         return null;
@@ -40,7 +41,8 @@ export class PromptLoader {
       prompt = this.replaceVariables(prompt, lexicon);
 
       // Extract response format section
-      const responseFormatMatch = template.match(/## Response Format([\s\S]*?)(?=---\n## |$)/);
+      // Support both LF (\n) and CRLF (\r\n) line endings for Windows compatibility
+      const responseFormatMatch = template.match(/## Response Format\r?\n([\s\S]*?)(?=---\r?\n## |$)/);
       if (responseFormatMatch) {
         const responseFormat = responseFormatMatch[1].trim();
         prompt += '\n\n' + responseFormat;
@@ -74,13 +76,25 @@ export class PromptLoader {
 
     const aiInstructions = lexicon.aiInstructions || lexicon.customInstructions || '';
 
+    // New lexicon variables
+    const actions = lexicon.commonActions?.join(', ') || '';
+    const goodExamples = lexicon.goodExamples?.join('\n') || '';
+    const badExamples = lexicon.badExamples
+      ?.map(ex => `${ex.wrong} (${ex.reason})`)
+      .join('\n') || '';
+
+    // Use function replacers to prevent $ special sequences from being interpreted
+    // as regex replacement patterns (e.g., $& would reinsert the matched token)
     return template
-      .replace(/\{\{locations\}\}/g, locations)
-      .replace(/\{\{subjects\}\}/g, subjects)
-      .replace(/\{\{staticShots\}\}/g, staticShots)
-      .replace(/\{\{movingShots\}\}/g, movingShots)
-      .replace(/\{\{wordPreferences\}\}/g, wordPreferences)
-      .replace(/\{\{aiInstructions\}\}/g, aiInstructions);
+      .replace(/\{\{locations\}\}/g, () => locations)
+      .replace(/\{\{subjects\}\}/g, () => subjects)
+      .replace(/\{\{staticShots\}\}/g, () => staticShots)
+      .replace(/\{\{movingShots\}\}/g, () => movingShots)
+      .replace(/\{\{wordPreferences\}\}/g, () => wordPreferences)
+      .replace(/\{\{aiInstructions\}\}/g, () => aiInstructions)
+      .replace(/\{\{actions\}\}/g, () => actions)
+      .replace(/\{\{goodExamples\}\}/g, () => goodExamples)
+      .replace(/\{\{badExamples\}\}/g, () => badExamples);
   }
 
   /**
