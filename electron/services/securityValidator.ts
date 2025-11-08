@@ -84,46 +84,50 @@ export class SecurityValidator {
   async validateFileContent(filePath: string): Promise<boolean> {
     const ext = path.extname(filePath).toLowerCase().slice(1); // Remove leading dot
 
-    // Read first 32 bytes (sufficient for all video format checks)
-    const buffer = await fs.readFile(filePath);
-    const header = buffer.slice(0, 32);
+    // Read only first 64 bytes for magic number validation (not entire file!)
+    // This prevents ERR_FS_FILE_TOO_LARGE for videos >2GB
+    const fileHandle = await fs.open(filePath, 'r');
+    try {
+      const buffer = Buffer.alloc(64);
+      await fileHandle.read(buffer, 0, 64, 0);
+      const header = buffer;
 
-    // Image format validation (simple magic byte checks)
-    if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp'].includes(ext)) {
-      const signature = FILE_SIGNATURES[ext];
-      if (!signature) {
-        throw new SecurityViolationError(
-          'INVALID_EXTENSION',
-          filePath,
-          `Unsupported file extension: ${ext}`
-        );
-      }
-
-      // Check magic bytes
-      for (let i = 0; i < signature.length; i++) {
-        if (header[i] !== signature[i]) {
+      // Image format validation (simple magic byte checks)
+      if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp'].includes(ext)) {
+        const signature = FILE_SIGNATURES[ext];
+        if (!signature) {
           throw new SecurityViolationError(
-            'INVALID_CONTENT',
+            'INVALID_EXTENSION',
             filePath,
-            `File content doesn't match ${ext} format (magic bytes mismatch)`
+            `Unsupported file extension: ${ext}`
           );
         }
-      }
 
-      // Special case: WEBP requires additional check
-      if (ext === 'webp') {
-        const webpMarker = header.slice(8, 12).toString('ascii');
-        if (webpMarker !== 'WEBP') {
-          throw new SecurityViolationError(
-            'INVALID_CONTENT',
-            filePath,
-            'Invalid WEBP format'
-          );
+        // Check magic bytes
+        for (let i = 0; i < signature.length; i++) {
+          if (header[i] !== signature[i]) {
+            throw new SecurityViolationError(
+              'INVALID_CONTENT',
+              filePath,
+              `File content doesn't match ${ext} format (magic bytes mismatch)`
+            );
+          }
         }
-      }
 
-      return true;
-    }
+        // Special case: WEBP requires additional check
+        if (ext === 'webp') {
+          const webpMarker = header.slice(8, 12).toString('ascii');
+          if (webpMarker !== 'WEBP') {
+            throw new SecurityViolationError(
+              'INVALID_CONTENT',
+              filePath,
+              'Invalid WEBP format'
+            );
+          }
+        }
+
+        return true;
+      }
 
     // Video format validation (ENHANCED - requires deeper checks)
     if (['mp4', 'mov', 'm4v'].includes(ext)) {
@@ -196,6 +200,9 @@ export class SecurityValidator {
       filePath,
       `Unsupported file extension: ${ext}`
     );
+    } finally {
+      await fileHandle.close();
+    }
   }
 
   /**

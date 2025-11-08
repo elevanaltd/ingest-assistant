@@ -33,6 +33,10 @@ export class FileManager {
       if (!entry.isFile()) continue;
 
       const filename = entry.name;
+
+      // Skip macOS resource fork files (._filename) - they're metadata, not actual media
+      if (filename.startsWith('._')) continue;
+
       if (!this.isMediaFile(filename)) continue;
 
       const filePath = path.join(folderPath, filename);
