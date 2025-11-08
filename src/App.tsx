@@ -22,6 +22,7 @@ function App() {
   const [isAIConfigured, setIsAIConfigured] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [mediaDataUrl, setMediaDataUrl] = useState<string>('');
+  const [codecWarning, setCodecWarning] = useState<string>('');
   const [statusMessage, setStatusMessage] = useState<string>('');
   const [showSettings, setShowSettings] = useState(false);
   const [lexiconConfig, setLexiconConfig] = useState<LexiconConfig | undefined>();
@@ -104,11 +105,29 @@ function App() {
         .then(url => {
           console.log('[App] Received URL from IPC:', url);
           console.log('[App] File type:', currentFile.fileType);
-          setMediaDataUrl(url);
+
+          // Check for codec warning (format: "data:text/plain;base64,XXX|||http://...")
+          if (url.includes('|||')) {
+            const [warningPart, actualUrl] = url.split('|||');
+            if (warningPart.startsWith('data:text/plain;base64,')) {
+              const base64 = warningPart.replace('data:text/plain;base64,', '');
+              const warning = atob(base64);
+              console.warn('[App] Codec warning:', warning);
+              setCodecWarning(warning);
+              setMediaDataUrl(actualUrl);
+            } else {
+              setCodecWarning('');
+              setMediaDataUrl(url);
+            }
+          } else {
+            setCodecWarning('');
+            setMediaDataUrl(url);
+          }
         })
         .catch(error => {
           console.error('Failed to load media:', error);
           setMediaDataUrl('');
+          setCodecWarning('');
         });
     } else {
       setMediaDataUrl('');
@@ -311,6 +330,20 @@ function App() {
         {currentFile && (
           <div className="content">
           <div className="viewer">
+            {codecWarning && (
+              <div style={{
+                backgroundColor: '#fff3cd',
+                border: '1px solid #ffc107',
+                borderRadius: '4px',
+                padding: '12px',
+                marginBottom: '12px',
+                color: '#856404',
+                fontSize: '14px',
+                lineHeight: '1.5'
+              }}>
+                {codecWarning}
+              </div>
+            )}
             {mediaDataUrl ? (
               currentFile.fileType === 'image' ? (
                 <img

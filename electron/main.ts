@@ -262,6 +262,7 @@ ipcMain.handle('file:read-as-data-url', async (_event, filePath: string) => {
       console.log('[IPC] Returning HTTP URL for video streaming:', validPath);
 
       // Check video codec compatibility
+      let codecWarning: string | undefined;
       try {
         const extractor = new VideoFrameExtractor();
         const codecInfo = await extractor.getVideoCodec(validPath);
@@ -271,7 +272,9 @@ ipcMain.handle('file:read-as-data-url', async (_event, filePath: string) => {
           console.warn('[IPC] ⚠️  WARNING: Video codec not supported by Chromium!');
           console.warn('[IPC]     Codec:', codecInfo.codec_name, '-', codecInfo.codec_long_name);
           console.warn('[IPC]     Supported codecs: H.264, VP8, VP9, Theora');
-          console.warn('[IPC]     You may only hear audio, no video.');
+          console.warn('[IPC]     Video playback may not work (audio only).');
+
+          codecWarning = `⚠️ Video codec "${codecInfo.codec_long_name}" (${codecInfo.codec_name}) is not supported by Chromium. You may only hear audio without video. AI analysis will still work.`;
         }
       } catch (error) {
         console.error('[IPC] Failed to check video codec:', error);
@@ -281,6 +284,11 @@ ipcMain.handle('file:read-as-data-url', async (_event, filePath: string) => {
       const encodedPath = encodeURIComponent(validPath);
       const httpUrl = `http://localhost:${MEDIA_SERVER_PORT}/?path=${encodedPath}`;
       console.log('[IPC] HTTP URL:', httpUrl);
+
+      // Return URL with codec warning embedded as data URI if codec not supported
+      if (codecWarning) {
+        return `data:text/plain;base64,${Buffer.from(codecWarning).toString('base64')}|||${httpUrl}`;
+      }
       return httpUrl;
     }
 
