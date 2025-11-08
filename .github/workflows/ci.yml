@@ -299,11 +299,8 @@ jobs:
       - name: Install dependencies
         run: npm ci --prefer-offline --no-audit
 
-      - name: Dependency Review (PRs only)
-        if: github.event_name == 'pull_request'
-        uses: actions/dependency-review-action@v3
-        with:
-          fail-on-severity: moderate
+      # Note: Dependency Review Action requires GitHub Advanced Security (paid feature)
+      # Using npm audit instead which provides similar vulnerability scanning
 
       - name: NPM Audit (HIGH/CRITICAL only)
         run: |
