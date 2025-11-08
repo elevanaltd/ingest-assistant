@@ -9,8 +9,8 @@ vi.mock('fs/promises', () => ({
   readFile: vi.fn(),
   stat: vi.fn(),
   open: vi.fn(() => Promise.resolve({
-    read: vi.fn((buffer: Buffer, offset: number, length: number, position: number) =>
-      Promise.resolve({ bytesRead: length, buffer })
+    read: vi.fn((buffer: Buffer) =>
+      Promise.resolve({ bytesRead: buffer.length, buffer })
     ),
     close: vi.fn(() => Promise.resolve()),
   })),
