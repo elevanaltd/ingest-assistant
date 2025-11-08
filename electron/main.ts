@@ -2,7 +2,7 @@
 import * as dotenv from 'dotenv';
 dotenv.config();
 
-import { app, BrowserWindow, ipcMain, dialog, protocol } from 'electron';
+import { app, BrowserWindow, ipcMain, dialog } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs/promises';
 import { z } from 'zod';
@@ -75,41 +75,7 @@ async function createWindow() {
   });
 }
 
-// Register custom protocol for streaming large video files
-// Must be called before app is ready
-protocol.registerSchemesAsPrivileged([
-  {
-    scheme: 'media',
-    privileges: {
-      bypassCSP: true,
-      stream: true,
-      supportFetchAPI: true,
-      standard: true,
-      secure: true,
-    },
-  },
-]);
-
 app.whenReady().then(async () => {
-  // Register protocol handler for streaming video files
-  // Uses registerFileProtocol for proper streaming with range request support
-  protocol.registerFileProtocol('media', (request, callback) => {
-    try {
-      console.log('[Protocol] Received request for:', request.url);
-
-      // Extract file path from media://filepath
-      const urlPath = request.url.replace('media://', '');
-      const filePath = decodeURIComponent(urlPath);
-
-      console.log('[Protocol] Decoded file path:', filePath);
-
-      // Return the file path - Electron handles streaming and range requests automatically
-      callback({ path: filePath });
-    } catch (error) {
-      console.error('[Protocol] Failed to handle media request:', error);
-      callback({ error: -2 }); // -2 = FILE_NOT_FOUND
-    }
-  });
 
   // Run migration from plaintext electron-store to Keychain (one-time for existing users)
   try {
@@ -171,14 +137,17 @@ ipcMain.handle('file:read-as-data-url', async (_event, filePath: string) => {
     // Security: Validate file content matches extension (prevents malware upload)
     await securityValidator.validateFileContent(validPath);
 
-    // For video files, return media:// URL for streaming (custom protocol handler)
+    // For video files, return file:// URL for streaming
     // This prevents DoS from large video files (can be 5GB+)
-    // The media:// protocol streams files in chunks, supporting seeking and range requests
+    // The file:// protocol in Electron supports streaming natively with range requests
     if (fileType === 'video') {
-      console.log('[IPC] Returning media:// URL for video streaming:', validPath);
-      // URL-encode the file path to handle spaces and special characters
-      const encodedPath = encodeURIComponent(validPath);
-      return `media://${encodedPath}`;
+      console.log('[IPC] Returning file:// URL for video streaming:', validPath);
+      // Convert absolute path to file:// URL
+      // Use pathToFileURL to properly handle Windows paths, spaces, and special characters
+      const { pathToFileURL } = await import('url');
+      const fileUrl = pathToFileURL(validPath).href;
+      console.log('[IPC] File URL:', fileUrl);
+      return fileUrl;
     }
 
     // For images, validate size and load into memory as base64
