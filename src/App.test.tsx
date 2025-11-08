@@ -43,21 +43,28 @@ afterEach(() => {
 });
 
 describe('App', () => {
-  it('should render the app header', () => {
+  it('should render the app header', async () => {
     render(<App />);
-    expect(screen.getByText('Ingest Assistant')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText('Ingest Assistant')).toBeInTheDocument();
+    });
   });
 
-  it('should render sidebar with folder selection button', () => {
+  it('should render sidebar with folder selection button', async () => {
     render(<App />);
-    // Folder selection button is now in the sidebar
-    expect(screen.getByRole('complementary')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /select folder/i })).toBeInTheDocument();
+    // Wait for async effects to complete
+    await waitFor(() => {
+      // Folder selection button is now in the sidebar
+      expect(screen.getByRole('complementary')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /select folder/i })).toBeInTheDocument();
+    });
   });
 
-  it('should show empty state when no folder selected', () => {
+  it('should show empty state when no folder selected', async () => {
     render(<App />);
-    expect(screen.getByText(/Select a folder to get started/i)).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText(/Select a folder to get started/i)).toBeInTheDocument();
+    });
   });
 });
 

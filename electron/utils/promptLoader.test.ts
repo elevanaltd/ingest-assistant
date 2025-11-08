@@ -22,7 +22,7 @@ describe('PromptLoader', () => {
       expect(result).toBe('Common actions: cleaning, installing, replacing');
     });
 
-    it('replaces {{goodExamples}} variable with newline-separated examples', () => {
+    it('replaces {{goodExamples}} variable with comma-separated examples', () => {
       const lexicon: Lexicon = {
         goodExamples: ['kitchen-oven-CU', 'hall-door-MID', 'utility-sink-WS'],
       };
@@ -31,7 +31,7 @@ describe('PromptLoader', () => {
       const template = 'Good examples:\n{{goodExamples}}';
       const result = replaceVariables(template, lexicon);
 
-      expect(result).toBe('Good examples:\nkitchen-oven-CU\nhall-door-MID\nutility-sink-WS');
+      expect(result).toBe('Good examples:\nkitchen-oven-CU, hall-door-MID, utility-sink-WS');
     });
 
     it('replaces {{badExamples}} variable with formatted bad examples', () => {
@@ -46,7 +46,7 @@ describe('PromptLoader', () => {
       const template = 'Bad examples:\n{{badExamples}}';
       const result = replaceVariables(template, lexicon);
 
-      expect(result).toBe('Bad examples:\nKitchen-Oven-CU (mixed case)\nkitchen-fridge freezer-CU (missing hyphen)');
+      expect(result).toBe('Bad examples:\nKitchen-Oven-CU[mixed case], kitchen-fridge freezer-CU[missing hyphen]');
     });
 
     it('handles missing new lexicon fields with defaults', () => {
@@ -92,7 +92,7 @@ describe('PromptLoader', () => {
       expect(result).toContain('Subjects: oven, sink');
       expect(result).toContain('Actions: cleaning, installing');
       expect(result).toContain('Good: kitchen-oven-CU');
-      expect(result).toContain('Bad: Kitchen-Oven (missing shot type)');
+      expect(result).toContain('Bad: Kitchen-Oven[missing shot type]');
     });
 
     it('handles $ characters in user content without corrupting template', () => {
@@ -109,7 +109,7 @@ describe('PromptLoader', () => {
       // Should NOT reinsert template tokens or corrupt the output
       expect(result).not.toContain('{{');
       expect(result).not.toContain('}}');
-      expect(result).toBe('Actions: replacing $5 fuse, installing $200 fixture, Good: kitchen-oven-$50-repair-CU, Bad: costs-$100 (includes currency in name)');
+      expect(result).toBe('Actions: replacing $5 fuse, installing $200 fixture, Good: kitchen-oven-$50-repair-CU, Bad: costs-$100[includes currency in name]');
     });
 
     it('handles special regex replacement patterns ($&, $1, etc.) in user content', () => {
@@ -127,7 +127,7 @@ describe('PromptLoader', () => {
       expect(result).not.toContain('{{');
       expect(result).not.toContain('}}');
       expect(result).toContain('use $& pattern');
-      expect(result).toContain('example-$&-name (contains $& special char)');
+      expect(result).toContain('example-$&-name[contains $& special char]');
       expect(result).toContain('Variables like $& should work fine');
     });
   });
