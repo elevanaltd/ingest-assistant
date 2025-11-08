@@ -15,6 +15,7 @@ import { MetadataStore } from './services/metadataStore';
 import { ConfigManager } from './services/configManager';
 import { AIService } from './services/aiService';
 import { MetadataWriter } from './services/metadataWriter';
+import { VideoFrameExtractor } from './services/videoFrameExtractor';
 import { convertToYAMLFormat, convertToUIFormat } from './utils/lexiconConverter';
 import { sanitizeError } from './utils/errorSanitization';
 import { FileRenameSchema, FileUpdateMetadataSchema, AIBatchProcessSchema } from './schemas/ipcSchemas';
@@ -259,6 +260,23 @@ ipcMain.handle('file:read-as-data-url', async (_event, filePath: string) => {
     // The HTTP server supports streaming and range requests for seeking
     if (fileType === 'video') {
       console.log('[IPC] Returning HTTP URL for video streaming:', validPath);
+
+      // Check video codec compatibility
+      try {
+        const extractor = new VideoFrameExtractor();
+        const codecInfo = await extractor.getVideoCodec(validPath);
+        console.log('[IPC] Video codec:', codecInfo);
+
+        if (!codecInfo.supported) {
+          console.warn('[IPC] ⚠️  WARNING: Video codec not supported by Chromium!');
+          console.warn('[IPC]     Codec:', codecInfo.codec_name, '-', codecInfo.codec_long_name);
+          console.warn('[IPC]     Supported codecs: H.264, VP8, VP9, Theora');
+          console.warn('[IPC]     You may only hear audio, no video.');
+        }
+      } catch (error) {
+        console.error('[IPC] Failed to check video codec:', error);
+      }
+
       // URL-encode the file path to handle spaces and special characters
       const encodedPath = encodeURIComponent(validPath);
       const httpUrl = `http://localhost:${MEDIA_SERVER_PORT}/?path=${encodedPath}`;

@@ -92,4 +92,28 @@ export class VideoFrameExtractor {
     const { stdout } = await execAsync(command);
     return parseFloat(stdout.trim());
   }
+
+  /**
+   * Get video codec information using ffprobe
+   * @param videoPath - Full path to video file
+   * @returns Object containing codec_name and codec_long_name
+   */
+  async getVideoCodec(videoPath: string): Promise<{ codec_name: string; codec_long_name: string; supported: boolean }> {
+    const command = `"${this.ffprobePath}" -v error -select_streams v:0 -show_entries stream=codec_name,codec_long_name -of json "${videoPath}"`;
+
+    const { stdout } = await execAsync(command);
+    const result = JSON.parse(stdout);
+    const stream = result.streams?.[0] || {};
+
+    const codec_name = stream.codec_name || 'unknown';
+    const codec_long_name = stream.codec_long_name || 'Unknown codec';
+
+    // Check if codec is supported by Chromium/Electron
+    // Chromium natively supports: h264, vp8, vp9, theora
+    // Does NOT support: hevc (h265), prores, mpeg2, mpeg4
+    const supportedCodecs = ['h264', 'vp8', 'vp9', 'theora'];
+    const supported = supportedCodecs.includes(codec_name.toLowerCase());
+
+    return { codec_name, codec_long_name, supported };
+  }
 }
