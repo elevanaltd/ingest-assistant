@@ -2,9 +2,11 @@
 import * as dotenv from 'dotenv';
 dotenv.config();
 
-import { app, BrowserWindow, ipcMain, dialog, protocol, net } from 'electron';
+import { app, BrowserWindow, ipcMain, dialog } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs/promises';
+import * as fsSync from 'fs';
+import * as http from 'http';
 import { z } from 'zod';
 import { FileManager } from './services/fileManager';
 import { SecurityValidator } from './services/securityValidator';
@@ -19,22 +21,9 @@ import { FileRenameSchema, FileUpdateMetadataSchema, AIBatchProcessSchema } from
 import type { AppConfig, LexiconConfig, ShotType } from '../src/types';
 import { migrateToKeychain } from './services/keychainMigration';
 
-// Register custom protocol for streaming video files
-// Must be called BEFORE app.ready()
-protocol.registerSchemesAsPrivileged([
-  {
-    scheme: 'stream',
-    privileges: {
-      standard: true,
-      secure: true,
-      supportFetchAPI: true,
-      corsEnabled: false,
-      stream: true,
-    },
-  },
-]);
-
 let mainWindow: BrowserWindow | null = null;
+let mediaServer: http.Server | null = null;
+const MEDIA_SERVER_PORT = 8765;
 // Initialize SecurityValidator and FileManager with dependency injection
 const securityValidator = new SecurityValidator();
 const fileManager: FileManager = new FileManager(securityValidator);
@@ -56,6 +45,87 @@ function getMetadataStoreForFolder(folderPath: string): MetadataStore {
     metadataStore = new MetadataStore(metadataPath);
   }
   return metadataStore;
+}
+
+// Create local HTTP server for streaming video files
+// This approach works reliably with Chromium's media element security
+function createMediaServer(): http.Server {
+  const server = http.createServer(async (req, res) => {
+    try {
+      console.log('[MediaServer] Request:', req.method, req.url);
+
+      // Extract file path from URL query parameter
+      const url = new URL(req.url!, `http://localhost:${MEDIA_SERVER_PORT}`);
+      const filePath = url.searchParams.get('path');
+
+      if (!filePath) {
+        res.writeHead(400, { 'Content-Type': 'text/plain' });
+        res.end('Missing path parameter');
+        return;
+      }
+
+      console.log('[MediaServer] File path:', filePath);
+
+      // Security: Validate file path
+      try {
+        await securityValidator.validateFilePath(filePath);
+      } catch (error) {
+        console.error('[MediaServer] Security validation failed:', error);
+        res.writeHead(403, { 'Content-Type': 'text/plain' });
+        res.end('Access denied');
+        return;
+      }
+
+      // Get file stats
+      const stat = fsSync.statSync(filePath);
+      const fileSize = stat.size;
+      const range = req.headers.range;
+
+      // Handle range requests for video seeking
+      if (range) {
+        const parts = range.replace(/bytes=/, '').split('-');
+        const start = parseInt(parts[0], 10);
+        const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+        const chunkSize = end - start + 1;
+
+        console.log('[MediaServer] Range request:', { start, end, chunkSize, fileSize });
+
+        const fileStream = fsSync.createReadStream(filePath, { start, end });
+
+        res.writeHead(206, {
+          'Content-Range': `bytes ${start}-${end}/${fileSize}`,
+          'Accept-Ranges': 'bytes',
+          'Content-Length': chunkSize,
+          'Content-Type': 'video/mp4', // Generic video type
+          'Access-Control-Allow-Origin': '*',
+        });
+
+        fileStream.pipe(res);
+      } else {
+        // No range request - send entire file
+        console.log('[MediaServer] Full file request, size:', fileSize);
+
+        res.writeHead(200, {
+          'Content-Length': fileSize,
+          'Content-Type': 'video/mp4',
+          'Accept-Ranges': 'bytes',
+          'Access-Control-Allow-Origin': '*',
+        });
+
+        fsSync.createReadStream(filePath).pipe(res);
+      }
+    } catch (error) {
+      console.error('[MediaServer] Error:', error);
+      res.writeHead(500, { 'Content-Type': 'text/plain' });
+      res.end('Internal server error');
+    }
+  });
+
+  server.listen(MEDIA_SERVER_PORT, 'localhost', () => {
+    console.log(`[MediaServer] Listening on http://localhost:${MEDIA_SERVER_PORT}`);
+  });
+
+  return server;
 }
 
 async function createWindow() {
@@ -91,34 +161,8 @@ async function createWindow() {
 }
 
 app.whenReady().then(async () => {
-  // Register custom protocol handler for streaming video files
-  // Uses net.fetch to properly stream local files with range request support
-  protocol.handle('stream', async (request) => {
-    try {
-      console.log('[Protocol] Received request:', request.url);
-
-      // Extract file path from stream://filepath
-      const urlPath = request.url.replace('stream://', '');
-      const filePath = decodeURIComponent(urlPath);
-
-      console.log('[Protocol] Decoded file path:', filePath);
-
-      // Convert to file:// URL for net.fetch
-      const { pathToFileURL } = await import('url');
-      const fileUrl = pathToFileURL(filePath).href;
-
-      console.log('[Protocol] Using file URL:', fileUrl);
-
-      // Use net.fetch to handle the file with proper streaming and range support
-      return await net.fetch(fileUrl, {
-        method: request.method,
-        headers: request.headers,
-      });
-    } catch (error) {
-      console.error('[Protocol] Error handling stream request:', error);
-      return new Response('File not found', { status: 404 });
-    }
-  });
+  // Start local HTTP server for video streaming
+  mediaServer = createMediaServer();
 
   // Run migration from plaintext electron-store to Keychain (one-time for existing users)
   try {
@@ -142,6 +186,14 @@ app.on('window-all-closed', () => {
 app.on('activate', () => {
   if (mainWindow === null) {
     createWindow();
+  }
+});
+
+app.on('quit', () => {
+  // Clean up media server
+  if (mediaServer) {
+    console.log('[MediaServer] Shutting down');
+    mediaServer.close();
   }
 });
 
@@ -180,16 +232,16 @@ ipcMain.handle('file:read-as-data-url', async (_event, filePath: string) => {
     // Security: Validate file content matches extension (prevents malware upload)
     await securityValidator.validateFileContent(validPath);
 
-    // For video files, return stream:// URL for streaming
+    // For video files, return HTTP URL pointing to local media server
     // This prevents DoS from large video files (can be 5GB+)
-    // The stream:// protocol uses net.fetch which supports streaming and range requests
+    // The HTTP server supports streaming and range requests for seeking
     if (fileType === 'video') {
-      console.log('[IPC] Returning stream:// URL for video streaming:', validPath);
+      console.log('[IPC] Returning HTTP URL for video streaming:', validPath);
       // URL-encode the file path to handle spaces and special characters
       const encodedPath = encodeURIComponent(validPath);
-      const streamUrl = `stream://${encodedPath}`;
-      console.log('[IPC] Stream URL:', streamUrl);
-      return streamUrl;
+      const httpUrl = `http://localhost:${MEDIA_SERVER_PORT}/?path=${encodedPath}`;
+      console.log('[IPC] HTTP URL:', httpUrl);
+      return httpUrl;
     }
 
     // For images, validate size and load into memory as base64
