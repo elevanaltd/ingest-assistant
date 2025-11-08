@@ -101,7 +101,11 @@ function App() {
 
       // Load file as data URL
       window.electronAPI.readFileAsDataUrl(currentFile.filePath)
-        .then(setMediaDataUrl)
+        .then(url => {
+          console.log('[App] Received URL from IPC:', url);
+          console.log('[App] File type:', currentFile.fileType);
+          setMediaDataUrl(url);
+        })
         .catch(error => {
           console.error('Failed to load media:', error);
           setMediaDataUrl('');
@@ -319,6 +323,22 @@ function App() {
                   src={mediaDataUrl}
                   controls
                   className="media-preview"
+                  onLoadStart={() => console.log('[Video] Load started')}
+                  onLoadedMetadata={() => console.log('[Video] Metadata loaded')}
+                  onLoadedData={() => console.log('[Video] Data loaded')}
+                  onCanPlay={() => console.log('[Video] Can play')}
+                  onError={(e) => {
+                    console.error('[Video] Error event:', e);
+                    const video = e.currentTarget;
+                    console.error('[Video] Error details:', {
+                      error: video.error,
+                      code: video.error?.code,
+                      message: video.error?.message,
+                      src: video.src,
+                      networkState: video.networkState,
+                      readyState: video.readyState
+                    });
+                  }}
                 />
               )
             ) : (
