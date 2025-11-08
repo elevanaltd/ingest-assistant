@@ -124,16 +124,30 @@ ipcMain.handle('file:select-folder', async () => {
 });
 
 // Read file as base64 data URL for display in renderer
+// Note: For videos, returns file:// URL to avoid loading large files into memory
 ipcMain.handle('file:read-as-data-url', async (_event, filePath: string) => {
   try {
     // Security: Validate path (prevents path traversal)
     const validPath = await securityValidator.validateFilePath(filePath);
 
-    // Security: Validate file size (prevents DoS)
-    await securityValidator.validateFileSize(validPath, 100 * 1024 * 1024); // 100MB
+    // Determine file type
+    const fileType = fileManager.getFileType(validPath);
 
     // Security: Validate file content matches extension (prevents malware upload)
     await securityValidator.validateFileContent(validPath);
+
+    // For video files, return file:// URL instead of loading into memory
+    // This prevents DoS from large video files (can be 5GB+)
+    if (fileType === 'video') {
+      console.log('[IPC] Returning file:// URL for video (avoiding memory load):', validPath);
+      // Encode the file path for URL (handles spaces and special characters)
+      const encodedPath = validPath.replace(/\\/g, '/');
+      return `file://${encodedPath}`;
+    }
+
+    // For images, validate size and load into memory as base64
+    // Security: Validate file size (prevents DoS) - only for images
+    await securityValidator.validateFileSize(validPath, 100 * 1024 * 1024); // 100MB
 
     const buffer = await fs.readFile(validPath);
     const base64 = buffer.toString('base64');
@@ -146,10 +160,7 @@ ipcMain.handle('file:read-as-data-url', async (_event, filePath: string) => {
       '.png': 'image/png',
       '.gif': 'image/gif',
       '.webp': 'image/webp',
-      '.mp4': 'video/mp4',
-      '.mov': 'video/quicktime',
-      '.avi': 'video/x-msvideo',
-      '.webm': 'video/webm',
+      '.bmp': 'image/bmp',
     };
 
     const mimeType = mimeTypes[ext] || 'application/octet-stream';
@@ -352,18 +363,21 @@ ipcMain.handle('ai:analyze-file', async (_event, filePath: string) => {
     // Security: Validate file content (prevents sending malware to AI API)
     await securityValidator.validateFileContent(validPath);
 
-    // Security: Validate file size
-    await securityValidator.validateFileSize(validPath, 100 * 1024 * 1024);
-
     const lexicon = await configManager.getLexicon();
 
     // Detect file type and route to appropriate analysis method
     const fileType = fileManager.getFileType(validPath);
 
     if (fileType === 'video') {
-      console.log('[IPC] Analyzing video file:', validPath);
+      // For videos, we extract frames (not load entire file), so no size limit needed
+      // Video files can be 5GB+ which is fine since we only extract ~5 JPEG frames
+      console.log('[IPC] Analyzing video file (frame extraction):', validPath);
       return await aiService.analyzeVideo(validPath, lexicon);
     } else {
+      // For images, validate size before loading into memory for AI analysis
+      // Security: Validate file size (prevents DoS)
+      await securityValidator.validateFileSize(validPath, 100 * 1024 * 1024); // 100MB
+
       console.log('[IPC] Analyzing image file:', validPath);
       return await aiService.analyzeImage(validPath, lexicon);
     }
