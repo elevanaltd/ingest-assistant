@@ -2,9 +2,10 @@
 import * as dotenv from 'dotenv';
 dotenv.config();
 
-import { app, BrowserWindow, ipcMain, dialog } from 'electron';
+import { app, BrowserWindow, ipcMain, dialog, protocol } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs/promises';
+import { createReadStream } from 'fs';
 import { z } from 'zod';
 import { FileManager } from './services/fileManager';
 import { SecurityValidator } from './services/securityValidator';
@@ -75,7 +76,49 @@ async function createWindow() {
   });
 }
 
+// Register custom protocol for streaming large video files
+// Must be called before app is ready
+protocol.registerSchemesAsPrivileged([
+  {
+    scheme: 'media',
+    privileges: {
+      bypassCSP: true,
+      stream: true,
+      supportFetchAPI: true,
+      standard: true,
+      secure: true,
+    },
+  },
+]);
+
 app.whenReady().then(async () => {
+  // Register protocol handler for streaming video files
+  protocol.handle('media', async (request) => {
+    try {
+      // Extract file path from media://filepath
+      const urlPath = request.url.replace('media://', '');
+      const filePath = decodeURIComponent(urlPath);
+
+      // Security: Validate the file path
+      await securityValidator.validateFilePath(filePath);
+
+      // Stream the file (supports range requests for video seeking)
+      const stats = await fs.stat(filePath);
+
+      return new Response(createReadStream(filePath), {
+        status: 200,
+        headers: {
+          'Content-Type': getMimeType(filePath),
+          'Content-Length': stats.size.toString(),
+          'Accept-Ranges': 'bytes',
+        },
+      });
+    } catch (error) {
+      console.error('[Protocol] Failed to stream media file:', error);
+      return new Response('File not found', { status: 404 });
+    }
+  });
+
   // Run migration from plaintext electron-store to Keychain (one-time for existing users)
   try {
     const migrated = await migrateToKeychain();
@@ -88,6 +131,20 @@ app.whenReady().then(async () => {
 
   await createWindow();
 });
+
+// Helper function to get MIME type from file extension
+function getMimeType(filePath: string): string {
+  const ext = path.extname(filePath).toLowerCase();
+  const mimeTypes: Record<string, string> = {
+    '.mp4': 'video/mp4',
+    '.mov': 'video/quicktime',
+    '.avi': 'video/x-msvideo',
+    '.webm': 'video/webm',
+    '.mkv': 'video/x-matroska',
+    '.m4v': 'video/x-m4v',
+  };
+  return mimeTypes[ext] || 'application/octet-stream';
+}
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
@@ -136,13 +193,14 @@ ipcMain.handle('file:read-as-data-url', async (_event, filePath: string) => {
     // Security: Validate file content matches extension (prevents malware upload)
     await securityValidator.validateFileContent(validPath);
 
-    // For video files, return file:// URL instead of loading into memory
+    // For video files, return media:// URL for streaming (custom protocol handler)
     // This prevents DoS from large video files (can be 5GB+)
+    // The media:// protocol streams files in chunks, supporting seeking and range requests
     if (fileType === 'video') {
-      console.log('[IPC] Returning file:// URL for video (avoiding memory load):', validPath);
-      // Encode the file path for URL (handles spaces and special characters)
-      const encodedPath = validPath.replace(/\\/g, '/');
-      return `file://${encodedPath}`;
+      console.log('[IPC] Returning media:// URL for video streaming:', validPath);
+      // URL-encode the file path to handle spaces and special characters
+      const encodedPath = encodeURIComponent(validPath);
+      return `media://${encodedPath}`;
     }
 
     // For images, validate size and load into memory as base64
