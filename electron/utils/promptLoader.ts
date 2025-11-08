@@ -29,9 +29,9 @@ export class PromptLoader {
         this.promptCache.set(promptPath, template);
       }
 
-      // Extract prompt content (everything after "## Prompt (Edit Below)")
+      // Extract prompt content (everything after "## Prompt (Edit Below)" until "---")
       // Support both LF (\n) and CRLF (\r\n) line endings for Windows compatibility
-      const promptMatch = template.match(/## Prompt \(Edit Below\)\r?\n([\s\S]*?)(?=---\r?\n## Response Format|$)/);
+      const promptMatch = template.match(/## Prompt \(Edit Below\)\r?\n([\s\S]*?)(?=\r?\n---)/);
       if (!promptMatch) {
         console.warn('Could not find prompt section in template');
         return null;
@@ -41,14 +41,6 @@ export class PromptLoader {
 
       // Replace variables
       prompt = this.replaceVariables(prompt, lexicon);
-
-      // Extract response format section
-      // Support both LF (\n) and CRLF (\r\n) line endings for Windows compatibility
-      const responseFormatMatch = template.match(/## Response Format\r?\n([\s\S]*?)(?=---\r?\n## |$)/);
-      if (responseFormatMatch) {
-        const responseFormat = responseFormatMatch[1].trim();
-        prompt += '\n\n' + responseFormat;
-      }
 
       return prompt;
     } catch (error) {
@@ -73,17 +65,17 @@ export class PromptLoader {
 
     const wordPrefs = lexicon.wordPreferences || lexicon.synonymMapping || {};
     const wordPreferences = Object.entries(wordPrefs)
-      .map(([from, to]) => `"${from}" -> "${to}"`)
-      .join(', ') || 'none';
+      .map(([from, to]) => `${from}→${to}`)
+      .join(', ') || '';
 
     const aiInstructions = lexicon.aiInstructions || lexicon.customInstructions || '';
 
     // New lexicon variables
     const actions = lexicon.commonActions?.join(', ') || '';
-    const goodExamples = lexicon.goodExamples?.join('\n') || '';
+    const goodExamples = lexicon.goodExamples?.join(', ') || '';
     const badExamples = lexicon.badExamples
-      ?.map(ex => `${ex.wrong} (${ex.reason})`)
-      .join('\n') || '';
+      ?.map(ex => `${ex.wrong}[${ex.reason}]`)
+      .join(', ') || '';
 
     // Use function replacers to prevent $ special sequences from being interpreted
     // as regex replacement patterns (e.g., $& would reinsert the matched token)
