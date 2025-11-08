@@ -2,7 +2,7 @@
 import * as dotenv from 'dotenv';
 dotenv.config();
 
-import { app, BrowserWindow, ipcMain, dialog } from 'electron';
+import { app, BrowserWindow, ipcMain, dialog, protocol, net } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs/promises';
 import { z } from 'zod';
@@ -18,6 +18,21 @@ import { sanitizeError } from './utils/errorSanitization';
 import { FileRenameSchema, FileUpdateMetadataSchema, AIBatchProcessSchema } from './schemas/ipcSchemas';
 import type { AppConfig, LexiconConfig, ShotType } from '../src/types';
 import { migrateToKeychain } from './services/keychainMigration';
+
+// Register custom protocol for streaming video files
+// Must be called BEFORE app.ready()
+protocol.registerSchemesAsPrivileged([
+  {
+    scheme: 'stream',
+    privileges: {
+      standard: true,
+      secure: true,
+      supportFetchAPI: true,
+      corsEnabled: false,
+      stream: true,
+    },
+  },
+]);
 
 let mainWindow: BrowserWindow | null = null;
 // Initialize SecurityValidator and FileManager with dependency injection
@@ -76,6 +91,34 @@ async function createWindow() {
 }
 
 app.whenReady().then(async () => {
+  // Register custom protocol handler for streaming video files
+  // Uses net.fetch to properly stream local files with range request support
+  protocol.handle('stream', async (request) => {
+    try {
+      console.log('[Protocol] Received request:', request.url);
+
+      // Extract file path from stream://filepath
+      const urlPath = request.url.replace('stream://', '');
+      const filePath = decodeURIComponent(urlPath);
+
+      console.log('[Protocol] Decoded file path:', filePath);
+
+      // Convert to file:// URL for net.fetch
+      const { pathToFileURL } = await import('url');
+      const fileUrl = pathToFileURL(filePath).href;
+
+      console.log('[Protocol] Using file URL:', fileUrl);
+
+      // Use net.fetch to handle the file with proper streaming and range support
+      return await net.fetch(fileUrl, {
+        method: request.method,
+        headers: request.headers,
+      });
+    } catch (error) {
+      console.error('[Protocol] Error handling stream request:', error);
+      return new Response('File not found', { status: 404 });
+    }
+  });
 
   // Run migration from plaintext electron-store to Keychain (one-time for existing users)
   try {
@@ -137,17 +180,16 @@ ipcMain.handle('file:read-as-data-url', async (_event, filePath: string) => {
     // Security: Validate file content matches extension (prevents malware upload)
     await securityValidator.validateFileContent(validPath);
 
-    // For video files, return file:// URL for streaming
+    // For video files, return stream:// URL for streaming
     // This prevents DoS from large video files (can be 5GB+)
-    // The file:// protocol in Electron supports streaming natively with range requests
+    // The stream:// protocol uses net.fetch which supports streaming and range requests
     if (fileType === 'video') {
-      console.log('[IPC] Returning file:// URL for video streaming:', validPath);
-      // Convert absolute path to file:// URL
-      // Use pathToFileURL to properly handle Windows paths, spaces, and special characters
-      const { pathToFileURL } = await import('url');
-      const fileUrl = pathToFileURL(validPath).href;
-      console.log('[IPC] File URL:', fileUrl);
-      return fileUrl;
+      console.log('[IPC] Returning stream:// URL for video streaming:', validPath);
+      // URL-encode the file path to handle spaces and special characters
+      const encodedPath = encodeURIComponent(validPath);
+      const streamUrl = `stream://${encodedPath}`;
+      console.log('[IPC] Stream URL:', streamUrl);
+      return streamUrl;
     }
 
     // For images, validate size and load into memory as base64
