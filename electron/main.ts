@@ -5,7 +5,6 @@ dotenv.config();
 import { app, BrowserWindow, ipcMain, dialog, protocol } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs/promises';
-import { createReadStream } from 'fs';
 import { z } from 'zod';
 import { FileManager } from './services/fileManager';
 import { SecurityValidator } from './services/securityValidator';
@@ -93,29 +92,22 @@ protocol.registerSchemesAsPrivileged([
 
 app.whenReady().then(async () => {
   // Register protocol handler for streaming video files
-  protocol.handle('media', async (request) => {
+  // Uses registerFileProtocol for proper streaming with range request support
+  protocol.registerFileProtocol('media', (request, callback) => {
     try {
+      console.log('[Protocol] Received request for:', request.url);
+
       // Extract file path from media://filepath
       const urlPath = request.url.replace('media://', '');
       const filePath = decodeURIComponent(urlPath);
 
-      // Security: Validate the file path
-      await securityValidator.validateFilePath(filePath);
+      console.log('[Protocol] Decoded file path:', filePath);
 
-      // Stream the file (supports range requests for video seeking)
-      const stats = await fs.stat(filePath);
-
-      return new Response(createReadStream(filePath), {
-        status: 200,
-        headers: {
-          'Content-Type': getMimeType(filePath),
-          'Content-Length': stats.size.toString(),
-          'Accept-Ranges': 'bytes',
-        },
-      });
+      // Return the file path - Electron handles streaming and range requests automatically
+      callback({ path: filePath });
     } catch (error) {
-      console.error('[Protocol] Failed to stream media file:', error);
-      return new Response('File not found', { status: 404 });
+      console.error('[Protocol] Failed to handle media request:', error);
+      callback({ error: -2 }); // -2 = FILE_NOT_FOUND
     }
   });
 
@@ -131,20 +123,6 @@ app.whenReady().then(async () => {
 
   await createWindow();
 });
-
-// Helper function to get MIME type from file extension
-function getMimeType(filePath: string): string {
-  const ext = path.extname(filePath).toLowerCase();
-  const mimeTypes: Record<string, string> = {
-    '.mp4': 'video/mp4',
-    '.mov': 'video/quicktime',
-    '.avi': 'video/x-msvideo',
-    '.webm': 'video/webm',
-    '.mkv': 'video/x-matroska',
-    '.m4v': 'video/x-m4v',
-  };
-  return mimeTypes[ext] || 'application/octet-stream';
-}
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
