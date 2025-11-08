@@ -47,6 +47,25 @@ function getMetadataStoreForFolder(folderPath: string): MetadataStore {
   return metadataStore;
 }
 
+// Get MIME type for video file based on extension
+function getVideoMimeType(filePath: string): string {
+  const ext = path.extname(filePath).toLowerCase();
+  const mimeTypes: Record<string, string> = {
+    '.mp4': 'video/mp4',
+    '.mov': 'video/quicktime',
+    '.avi': 'video/x-msvideo',
+    '.mkv': 'video/x-matroska',
+    '.webm': 'video/webm',
+    '.m4v': 'video/x-m4v',
+    '.wmv': 'video/x-ms-wmv',
+    '.flv': 'video/x-flv',
+    '.3gp': 'video/3gpp',
+    '.mpg': 'video/mpeg',
+    '.mpeg': 'video/mpeg',
+  };
+  return mimeTypes[ext] || 'video/mp4';
+}
+
 // Create local HTTP server for streaming video files
 // This approach works reliably with Chromium's media element security
 function createMediaServer(): http.Server {
@@ -76,10 +95,13 @@ function createMediaServer(): http.Server {
         return;
       }
 
-      // Get file stats
+      // Get file stats and MIME type
       const stat = fsSync.statSync(filePath);
       const fileSize = stat.size;
+      const mimeType = getVideoMimeType(filePath);
       const range = req.headers.range;
+
+      console.log('[MediaServer] File info:', { fileSize, mimeType, hasRange: !!range });
 
       // Handle range requests for video seeking
       if (range) {
@@ -96,7 +118,7 @@ function createMediaServer(): http.Server {
           'Content-Range': `bytes ${start}-${end}/${fileSize}`,
           'Accept-Ranges': 'bytes',
           'Content-Length': chunkSize,
-          'Content-Type': 'video/mp4', // Generic video type
+          'Content-Type': mimeType,
           'Access-Control-Allow-Origin': '*',
         });
 
@@ -107,7 +129,7 @@ function createMediaServer(): http.Server {
 
         res.writeHead(200, {
           'Content-Length': fileSize,
-          'Content-Type': 'video/mp4',
+          'Content-Type': mimeType,
           'Accept-Ranges': 'bytes',
           'Access-Control-Allow-Origin': '*',
         });
