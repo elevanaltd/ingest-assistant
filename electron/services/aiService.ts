@@ -3,6 +3,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import * as fs from 'fs/promises';
 import type { Lexicon, AIAnalysisResult } from '../../src/types';
 import { PromptLoader } from '../utils/promptLoader';
+import { VideoFrameExtractor } from './videoFrameExtractor';
 
 export class AIService {
   private provider: 'openai' | 'anthropic' | 'openrouter';
@@ -436,5 +437,177 @@ Lexicon rules:
     const content =
       response.content[0]?.type === 'text' ? response.content[0].text : '{}';
     return this.parseAIResponse(content);
+  }
+
+  /**
+   * Analyze video by extracting and analyzing frames
+   * Implements Phase 1 of ADR-007: Video Analysis Workflow
+   *
+   * @param videoPath - Full path to video file
+   * @param lexicon - Lexicon rules for AI guidance
+   * @returns Synthesized analysis result from multiple frames
+   *
+   * Example:
+   * ```typescript
+   * const result = await aiService.analyzeVideo('/path/video.mp4', lexicon);
+   * // Returns: { mainName: 'kitchen-oven-installing-CU', metadata: [...], confidence: 0.85 }
+   * ```
+   */
+  async analyzeVideo(
+    videoPath: string,
+    lexicon: Lexicon
+  ): Promise<AIAnalysisResult> {
+    console.log('[AIService] Starting video analysis:', videoPath);
+
+    try {
+      // 1. Extract frames at specified timestamps (10%, 30%, 50%, 70%, 90%)
+      const frameExtractor = new VideoFrameExtractor();
+      const framePaths = await frameExtractor.extractFrames(
+        videoPath,
+        [0.1, 0.3, 0.5, 0.7, 0.9]
+      );
+
+      console.log('[AIService] Extracted', framePaths.length, 'frames');
+
+      // 2. Analyze each frame using existing analyzeImage method
+      const frameAnalyses = await Promise.all(
+        framePaths.map((framePath) => this.analyzeImage(framePath, lexicon))
+      );
+
+      console.log('[AIService] Analyzed all frames');
+
+      // 3. Synthesize results (combine frame analyses into single result)
+      const synthesized = this.synthesizeFrameAnalyses(frameAnalyses);
+
+      console.log('[AIService] Synthesized result:', synthesized);
+
+      // 4. Cleanup temporary frame files
+      await Promise.all(framePaths.map((framePath) => fs.unlink(framePath)));
+
+      console.log('[AIService] Cleaned up temporary frames');
+
+      return synthesized;
+    } catch (error) {
+      console.error('[AIService] Video analysis failed:', error);
+      return {
+        mainName: '',
+        metadata: [],
+        confidence: 0,
+      };
+    }
+  }
+
+  /**
+   * Synthesize multiple frame analyses into single result
+   * Strategy: Most common terms, highest confidence
+   *
+   * @param analyses - Array of analysis results from individual frames
+   * @returns Combined analysis result
+   * @private
+   */
+  private synthesizeFrameAnalyses(
+    analyses: AIAnalysisResult[]
+  ): AIAnalysisResult {
+    if (analyses.length === 0) {
+      return {
+        mainName: '',
+        metadata: [],
+        confidence: 0,
+      };
+    }
+
+    // Select best mainName (most common, or highest confidence if tie)
+    const mainName = this.selectBestMainName(analyses);
+
+    // Consolidate metadata (unique tags, frequency-weighted)
+    const metadata = this.consolidateMetadata(analyses);
+
+    // Average confidence across all frames
+    const avgConfidence =
+      analyses.reduce((sum, a) => sum + a.confidence, 0) / analyses.length;
+
+    // Extract structured components if available
+    const firstWithStructure = analyses.find(
+      (a) => a.location && a.subject && a.shotType
+    );
+
+    return {
+      mainName,
+      metadata,
+      confidence: avgConfidence,
+      // Include structured components if found
+      ...(firstWithStructure
+        ? {
+            location: firstWithStructure.location,
+            subject: firstWithStructure.subject,
+            action: firstWithStructure.action,
+            shotType: firstWithStructure.shotType,
+          }
+        : {}),
+    };
+  }
+
+  /**
+   * Select best mainName from multiple analyses
+   * Strategy: Most frequent, or highest confidence if tie
+   * @private
+   */
+  private selectBestMainName(analyses: AIAnalysisResult[]): string {
+    const nameFrequency = new Map<string, number>();
+    const nameConfidence = new Map<string, number>();
+
+    // Count frequency and track max confidence for each name
+    for (const analysis of analyses) {
+      const name = analysis.mainName;
+      if (!name) continue;
+
+      nameFrequency.set(name, (nameFrequency.get(name) || 0) + 1);
+
+      const currentMaxConfidence = nameConfidence.get(name) || 0;
+      if (analysis.confidence > currentMaxConfidence) {
+        nameConfidence.set(name, analysis.confidence);
+      }
+    }
+
+    // Find name with highest frequency
+    let bestName = '';
+    let maxFrequency = 0;
+    let maxConfidence = 0;
+
+    for (const [name, frequency] of nameFrequency.entries()) {
+      const confidence = nameConfidence.get(name) || 0;
+
+      if (
+        frequency > maxFrequency ||
+        (frequency === maxFrequency && confidence > maxConfidence)
+      ) {
+        bestName = name;
+        maxFrequency = frequency;
+        maxConfidence = confidence;
+      }
+    }
+
+    return bestName;
+  }
+
+  /**
+   * Consolidate metadata from multiple analyses
+   * Strategy: Unique tags, weighted by frequency
+   * @private
+   */
+  private consolidateMetadata(analyses: AIAnalysisResult[]): string[] {
+    const tagFrequency = new Map<string, number>();
+
+    // Count frequency of each tag
+    for (const analysis of analyses) {
+      for (const tag of analysis.metadata) {
+        tagFrequency.set(tag, (tagFrequency.get(tag) || 0) + 1);
+      }
+    }
+
+    // Sort by frequency (most common first) and return unique tags
+    return Array.from(tagFrequency.entries())
+      .sort((a, b) => b[1] - a[1]) // Sort by frequency descending
+      .map((entry) => entry[0]); // Extract tag name
   }
 }

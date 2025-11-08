@@ -1,0 +1,95 @@
+import { exec } from 'child_process';
+import { promisify } from 'util';
+import * as path from 'path';
+import { tmpdir } from 'os';
+import ffmpeg from '@ffmpeg-installer/ffmpeg';
+import ffprobe from '@ffprobe-installer/ffprobe';
+
+const execAsync = promisify(exec);
+
+/**
+ * VideoFrameExtractor
+ * Extracts frames from video files at specified timestamps using ffmpeg
+ * Implements Phase 1 of ADR-007: Video Analysis Workflow
+ */
+export class VideoFrameExtractor {
+  private ffmpegPath: string;
+  private ffprobePath: string;
+
+  constructor() {
+    this.ffmpegPath = ffmpeg.path;
+    this.ffprobePath = ffprobe.path;
+  }
+
+  /**
+   * Extract frames from video at specified timestamps
+   * @param videoPath - Full path to video file
+   * @param timestamps - Array of timestamps (0.0-1.0 representing percentage through video)
+   * @returns Array of paths to extracted frame images
+   *
+   * Example:
+   * ```typescript
+   * const frames = await extractor.extractFrames('/path/video.mp4', [0.1, 0.5, 0.9]);
+   * // Returns: ['/tmp/frame-123-0.1.jpg', '/tmp/frame-123-0.5.jpg', '/tmp/frame-123-0.9.jpg']
+   * ```
+   */
+  async extractFrames(
+    videoPath: string,
+    timestamps: number[]
+  ): Promise<string[]> {
+    const frames: string[] = [];
+
+    for (const timestamp of timestamps) {
+      const outputPath = await this.extractSingleFrame(videoPath, timestamp);
+      frames.push(outputPath);
+    }
+
+    return frames;
+  }
+
+  /**
+   * Extract a single frame from video at specified timestamp
+   * @param videoPath - Full path to video file
+   * @param timestamp - Timestamp as percentage (0.0-1.0) through video
+   * @returns Path to extracted frame image
+   * @private
+   */
+  private async extractSingleFrame(
+    videoPath: string,
+    timestamp: number
+  ): Promise<string> {
+    // Get video duration first
+    const duration = await this.getVideoDuration(videoPath);
+    const seconds = duration * timestamp;
+
+    // Generate unique output path in temp directory
+    const outputPath = path.join(
+      tmpdir(),
+      `frame-${Date.now()}-${timestamp}.jpg`
+    );
+
+    // Execute ffmpeg command to extract frame
+    // -ss: seek to timestamp (in seconds)
+    // -i: input video file
+    // -frames:v 1: extract exactly 1 frame
+    // -q:v 2: quality (2 is high quality for JPEG)
+    const command = `"${this.ffmpegPath}" -ss ${seconds} -i "${videoPath}" -frames:v 1 -q:v 2 "${outputPath}"`;
+
+    await execAsync(command);
+
+    return outputPath;
+  }
+
+  /**
+   * Get video duration in seconds using ffprobe
+   * @param videoPath - Full path to video file
+   * @returns Duration in seconds
+   * @private
+   */
+  private async getVideoDuration(videoPath: string): Promise<number> {
+    const command = `"${this.ffprobePath}" -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "${videoPath}"`;
+
+    const { stdout } = await execAsync(command);
+    return parseFloat(stdout.trim());
+  }
+}

@@ -356,7 +356,17 @@ ipcMain.handle('ai:analyze-file', async (_event, filePath: string) => {
     await securityValidator.validateFileSize(validPath, 100 * 1024 * 1024);
 
     const lexicon = await configManager.getLexicon();
-    return await aiService.analyzeImage(validPath, lexicon);
+
+    // Detect file type and route to appropriate analysis method
+    const fileType = fileManager.getFileType(validPath);
+
+    if (fileType === 'video') {
+      console.log('[IPC] Analyzing video file:', validPath);
+      return await aiService.analyzeVideo(validPath, lexicon);
+    } else {
+      console.log('[IPC] Analyzing image file:', validPath);
+      return await aiService.analyzeImage(validPath, lexicon);
+    }
   } catch (error) {
     console.error('Failed to analyze file:', error);
 
