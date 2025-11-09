@@ -165,10 +165,27 @@ export interface AIAnalysisResult {
   shotType?: ShotType;
 }
 
+/**
+ * Paginated file list response
+ */
+export interface FileListRangeResponse {
+  /** Array of file metadata for the requested range */
+  files: FileMetadata[];
+  /** Total number of files available */
+  totalCount: number;
+  /** Starting index of this page (0-based) */
+  startIndex: number;
+  /** Number of items requested per page */
+  pageSize: number;
+  /** Whether more files exist beyond this page */
+  hasMore: boolean;
+}
+
 export interface IPCChannels {
   // File operations
   'file:select-folder': () => Promise<string | null>;
   'file:load-files': () => Promise<FileMetadata[]>;
+  'file:list-range': (startIndex: number, pageSize: number) => Promise<FileListRangeResponse>;
   'file:read-as-data-url': (filePath: string) => Promise<string>;
   'file:rename': (fileId: string, mainName: string, currentPath: string, structured?: { location?: string; subject?: string; action?: string; shotType?: string }) => Promise<boolean>;
   'file:update-metadata': (fileId: string, metadata: string[]) => Promise<boolean>;
