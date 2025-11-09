@@ -168,16 +168,29 @@ export interface AIAnalysisResult {
 export interface IPCChannels {
   // File operations
   'file:select-folder': () => Promise<string | null>;
-  'file:load-files': (folderPath: string) => Promise<FileMetadata[]>;
-  'file:rename': (fileId: string, mainName: string) => Promise<boolean>;
+  'file:load-files': () => Promise<FileMetadata[]>;
+  'file:read-as-data-url': (filePath: string) => Promise<string>;
+  'file:rename': (fileId: string, mainName: string, currentPath: string, structured?: { location?: string; subject?: string; action?: string; shotType?: string }) => Promise<boolean>;
   'file:update-metadata': (fileId: string, metadata: string[]) => Promise<boolean>;
+  'file:update-structured-metadata': (fileId: string, structured: { location: string; subject: string; action?: string; shotType: string }, filePath?: string, fileType?: 'image' | 'video') => Promise<boolean>;
 
   // AI operations
+  'ai:is-configured': () => Promise<boolean>;
   'ai:analyze-file': (filePath: string) => Promise<AIAnalysisResult>;
-  'ai:batch-process': (fileIds: string[]) => Promise<Map<string, AIAnalysisResult>>;
+  'ai:batch-process': (fileIds: string[]) => Promise<Record<string, AIAnalysisResult>>;
+  'ai:get-config': () => Promise<AIConfigForUI>;
+  'ai:update-config': (config: { provider: 'openai' | 'anthropic' | 'openrouter'; model: string; apiKey: string }) => Promise<{ success: boolean; error?: string }>;
+  'ai:test-connection': (provider: 'openai' | 'anthropic' | 'openrouter', model: string, apiKey: string) => Promise<AIConnectionTestResult>;
+  'ai:test-saved-connection': () => Promise<AIConnectionTestResult>;
+  'ai:get-models': (provider: string) => Promise<Array<{id: string; name: string; description?: string}>>;
 
   // Config operations
   'config:load': () => Promise<AppConfig>;
   'config:save': (config: AppConfig) => Promise<boolean>;
   'config:get-lexicon': () => Promise<Lexicon>;
+  'config:get-shot-types': () => Promise<string[]>;
+
+  // Lexicon operations
+  'lexicon:load': () => Promise<LexiconConfig>;
+  'lexicon:save': (config: LexiconConfig) => Promise<boolean>;
 }

@@ -15,14 +15,14 @@ contextBridge.exposeInMainWorld('electronAPI', {
   readFileAsDataUrl: (filePath: string): Promise<string> =>
     ipcRenderer.invoke('file:read-as-data-url', filePath),
 
-  renameFile: (fileId: string, mainName: string, currentPath: string, structured?: { location?: string; subject?: string; shotType?: string }): Promise<boolean> =>
+  renameFile: (fileId: string, mainName: string, currentPath: string, structured?: { location?: string; subject?: string; action?: string; shotType?: string }): Promise<boolean> =>
     ipcRenderer.invoke('file:rename', fileId, mainName, currentPath, structured),
 
   updateMetadata: (fileId: string, metadata: string[]): Promise<boolean> =>
     ipcRenderer.invoke('file:update-metadata', fileId, metadata),
 
-  updateStructuredMetadata: (fileId: string, structured: { location: string; subject: string; shotType: string }): Promise<boolean> =>
-    ipcRenderer.invoke('file:update-structured-metadata', fileId, structured),
+  updateStructuredMetadata: (fileId: string, structured: { location: string; subject: string; action?: string; shotType: string }, filePath?: string, fileType?: 'image' | 'video'): Promise<boolean> =>
+    ipcRenderer.invoke('file:update-structured-metadata', fileId, structured, filePath, fileType),
 
   // AI operations
   isAIConfigured: (): Promise<boolean> =>

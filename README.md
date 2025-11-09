@@ -10,6 +10,11 @@ AI-powered media file ingestion and metadata assistant for MacOS.
   - **OpenRouter** (recommended): Access to 100+ models with one API key
   - Direct APIs: OpenAI, Anthropic
 - **Lexicon System**: Configure preferred/excluded terms to guide AI analysis
+- **Video Support**:
+  - Hardware-accelerated transcoding (ProRes, HEVC → H.264)
+  - On-the-fly preview generation with VideoToolbox (macOS)
+  - Disk-based caching for optimal performance
+- **Security**: Defense-in-depth validation (path traversal, magic bytes, file size limits)
 - **Simple Storage**: Metadata stored in JSON, easy to backup and version control
 
 ## Setup
@@ -148,6 +153,9 @@ Example:
 - **ConfigManager**: YAML configuration management
 - **AIService**: Multi-format AI response parser (OpenAI, Anthropic, OpenRouter)
 - **MetadataWriter**: Embeds metadata into files via exiftool
+- **VideoTranscoder**: Hardware-accelerated video transcoding with caching
+- **VideoFrameExtractor**: Generates thumbnails from video files
+- **SecurityValidator**: Defense-in-depth security (path traversal, content validation, size limits)
 
 ### UI (React)
 

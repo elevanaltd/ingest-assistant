@@ -106,8 +106,13 @@ export class MetadataWriter {
    *
    * This embeds EXIF/XMP metadata that Premiere Pro and other tools can read
    *
+   * NEW WORKFLOW:
+   * - XMP Title = mainName (structured title: location-subject-action-shotType)
+   * - XMP Description = tags (comma-separated metadata tags)
+   * - Keywords = tags (searchable keywords)
+   *
    * @param filePath Absolute path to media file
-   * @param mainName Main descriptive name
+   * @param mainName Structured title (location-subject-action-shotType)
    * @param tags Array of keyword tags
    * @throws Error if metadata contains shell metacharacters or file operation fails
    */
@@ -128,31 +133,24 @@ export class MetadataWriter {
     // Build exiftool arguments (array, NOT string concatenation)
     const args: string[] = [];
 
-    // Title/DocumentTitle - Main descriptive name
+    // XMP Title = Structured title (location-subject-action-shotType)
     if (mainName) {
-      // Write to multiple metadata fields for compatibility
       args.push(`-Title=${mainName}`);
       args.push(`-XMP:Title=${mainName}`);
       args.push(`-IPTC:ObjectName=${mainName}`);
     }
 
-    // Keywords - Array of tags
+    // Keywords - Array of tags for searchability
     // Write each tag individually so exiftool creates proper array structure
     // This ensures Premiere Pro and other tools see them as separate searchable keywords
-    // Note: -Keywords writes to IPTC:Keywords, -XMP:Subject writes to XMP namespace
     tags.forEach(tag => {
       args.push(`-Keywords=${tag}`);
       args.push(`-XMP:Subject=${tag}`);
     });
 
-    // Description - Combine for searchability
-    if (mainName || tags.length > 0) {
-      const description = mainName
-        ? tags.length > 0
-          ? `${mainName} - ${tags.join(', ')}`
-          : mainName
-        : tags.join(', ');
-
+    // XMP Description = Metadata tags (comma-separated)
+    if (tags.length > 0) {
+      const description = tags.join(', ');
       args.push(`-Description=${description}`);
       args.push(`-XMP:Description=${description}`);
       args.push(`-IPTC:Caption-Abstract=${description}`);
