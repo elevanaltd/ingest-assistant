@@ -132,12 +132,22 @@ jobs:
           echo "## 🧪 Test Results" >> $GITHUB_STEP_SUMMARY
           npm test -- --run --reporter=verbose 2>&1 | tee test.log
 
+          # Check if tests passed - BLOCKING quality gate
+          if [ ${PIPESTATUS[0]} -ne 0 ]; then
+            echo "❌ Test suite failed" >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+            tail -100 test.log >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
+
           # Extract test summary
           TOTAL_TESTS=$(grep "Tests" test.log | tail -1 | grep -oE '[0-9]+ passed' | grep -oE '[0-9]+' || echo "0")
           TOTAL_FILES=$(grep "Test Files" test.log | tail -1 | grep -oE '[0-9]+ passed' | grep -oE '[0-9]+' || echo "0")
 
           echo "- Test Files: **${TOTAL_FILES} passed**" >> $GITHUB_STEP_SUMMARY
           echo "- Tests: **${TOTAL_TESTS} passed**" >> $GITHUB_STEP_SUMMARY
+          echo "✅ All tests passed" >> $GITHUB_STEP_SUMMARY
 
       - name: Run security test suite (isolated)
         run: |
