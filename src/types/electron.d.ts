@@ -6,9 +6,9 @@ export interface ElectronAPI {
   // CRITICAL-1 FIX: Removed folderPath parameter (security boundary enforced in main process)
   loadFiles: () => Promise<FileMetadata[]>;
   readFileAsDataUrl: (filePath: string) => Promise<string>;
-  renameFile: (fileId: string, mainName: string, currentPath: string, structured?: { location?: string; subject?: string; shotType?: string }) => Promise<boolean>;
+  renameFile: (fileId: string, mainName: string, currentPath: string, structured?: { location?: string; subject?: string; action?: string; shotType?: string }) => Promise<boolean>;
   updateMetadata: (fileId: string, metadata: string[]) => Promise<boolean>;
-  updateStructuredMetadata: (fileId: string, structured: { location: string; subject: string; shotType: string }) => Promise<boolean>;
+  updateStructuredMetadata: (fileId: string, structured: { location: string; subject: string; action?: string; shotType: string }, filePath?: string, fileType?: 'image' | 'video') => Promise<boolean>;
 
   // AI operations
   isAIConfigured: () => Promise<boolean>;
