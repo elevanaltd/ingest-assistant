@@ -20,7 +20,7 @@ import { VideoTranscoder } from './services/videoTranscoder';
 import { convertToYAMLFormat, convertToUIFormat } from './utils/lexiconConverter';
 import { sanitizeError } from './utils/errorSanitization';
 import { FileRenameSchema, FileUpdateMetadataSchema, FileStructuredUpdateSchema, AIBatchProcessSchema } from './schemas/ipcSchemas';
-import type { AppConfig, LexiconConfig, ShotType } from '../src/types';
+import type { AppConfig, LexiconConfig, ShotType, AIAnalysisResult } from '../src/types';
 import { migrateToKeychain } from './services/keychainMigration';
 
 let mainWindow: BrowserWindow | null = null;
