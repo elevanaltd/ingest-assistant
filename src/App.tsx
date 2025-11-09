@@ -16,11 +16,14 @@ function App() {
   const [shotType, setShotType] = useState<ShotType | ''>('');
   const [shotTypes, setShotTypes] = useState<string[]>([]);
 
-  // Legacy field (still used for backward compatibility)
+  // Legacy field (still used for backward compatibility when loading existing files)
+  // @ts-expect-error - mainName is set but not directly read (used for legacy data migration)
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [mainName, setMainName] = useState<string>('');
   const [metadata, setMetadata] = useState<string>('');
   const [isAIConfigured, setIsAIConfigured] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [renameFileEnabled, setRenameFileEnabled] = useState<boolean>(false);
   const [mediaDataUrl, setMediaDataUrl] = useState<string>('');
   const [codecWarning, setCodecWarning] = useState<string>('');
   const [statusMessage, setStatusMessage] = useState<string>('');
@@ -163,49 +166,54 @@ function App() {
     const currentFileId = currentFile.id; // Remember the current file ID
 
     try {
-      // Build mainName from structured components or use direct input
-      let finalMainName = mainName;
+      // Build title from structured components
+      let generatedTitle = '';
       if (location && subject && shotType) {
         // Structured naming: 4-part for videos (with action), 3-part for photos (without action)
         if (currentFile.fileType === 'video' && action) {
-          finalMainName = `${location}-${subject}-${action}-${shotType}`;
+          generatedTitle = `${location}-${subject}-${action}-${shotType}`;
         } else {
-          finalMainName = `${location}-${subject}-${shotType}`;
+          generatedTitle = `${location}-${subject}-${shotType}`;
         }
-        setMainName(finalMainName); // Update mainName state for consistency
+        setMainName(generatedTitle); // Update mainName state for consistency
       }
 
-      // Save main name (and rename file) with structured components
-      const structuredData = location && subject && shotType ? { location, subject, action, shotType } : undefined;
-
-      if (finalMainName && finalMainName !== currentFile.mainName) {
-        console.log('[App] Calling renameFile with:', {
-          fileId: currentFile.id,
-          finalMainName,
-          structuredData
-        });
-        await window.electronAPI.renameFile(
-          currentFile.id,
-          finalMainName,
-          currentFile.filePath,
-          structuredData
-        );
-      } else if (structuredData) {
-        // Filename didn't change, but we still need to save structured components
-        console.log('[App] Filename unchanged, updating structured metadata only');
-        await window.electronAPI.updateStructuredMetadata(
-          currentFile.id,
-          structuredData
-        );
-      }
-
-      // Save metadata tags
+      // Build metadata tags array
       const metadataTags = metadata
         .split(',')
         .map((tag) => tag.trim())
         .filter((tag) => tag.length > 0);
 
-      await window.electronAPI.updateMetadata(currentFile.id, metadataTags);
+      // Save title and metadata with structured components
+      const structuredData = location && subject && shotType ? { location, subject, action, shotType } : undefined;
+
+      // Only rename file if toggle is enabled
+      if (renameFileEnabled && generatedTitle && generatedTitle !== currentFile.mainName) {
+        console.log('[App] Renaming file with:', {
+          fileId: currentFile.id,
+          generatedTitle,
+          structuredData
+        });
+        await window.electronAPI.renameFile(
+          currentFile.id,
+          generatedTitle,
+          currentFile.filePath,
+          structuredData
+        );
+        // Update metadata tags after renaming
+        await window.electronAPI.updateMetadata(currentFile.id, metadataTags);
+      } else if (structuredData) {
+        // File rename disabled - save everything via updateStructuredMetadata
+        console.log('[App] Saving title and metadata as XMP only (file not renamed)');
+        await window.electronAPI.updateStructuredMetadata(
+          currentFile.id,
+          structuredData,
+          currentFile.filePath,
+          currentFile.fileType as 'image' | 'video'
+        );
+        // Update metadata tags
+        await window.electronAPI.updateMetadata(currentFile.id, metadataTags);
+      }
 
       // Reload files to reflect changes
       // CRITICAL-1 FIX: loadFiles() no longer accepts path parameter
@@ -330,20 +338,6 @@ function App() {
         {currentFile && (
           <div className="content">
           <div className="viewer">
-            {codecWarning && (
-              <div style={{
-                backgroundColor: '#fff3cd',
-                border: '1px solid #ffc107',
-                borderRadius: '4px',
-                padding: '12px',
-                marginBottom: '12px',
-                color: '#856404',
-                fontSize: '14px',
-                lineHeight: '1.5'
-              }}>
-                {codecWarning}
-              </div>
-            )}
             {mediaDataUrl ? (
               currentFile.fileType === 'image' ? (
                 <img
@@ -380,65 +374,71 @@ function App() {
           </div>
 
           <div className="form">
-            {/* Structured Naming Row */}
-            <div className="form-row">
-              <div className="form-group">
-                <label>ID (Read Only)</label>
+            {/* Row 1: ID, Location, Subject, Action, Shot Type */}
+            <div className="form-row" style={{ display: 'flex', gap: '8px', flexWrap: 'nowrap' }}>
+              <div className="form-group" style={{ flex: '0 0 70px', minWidth: 0 }}>
+                <label style={{ fontSize: '13px' }}>ID</label>
                 <input
                   type="text"
                   value={currentFile.id}
                   readOnly
                   className="input-readonly"
+                  style={{ fontSize: '12px', padding: '4px 6px' }}
                 />
               </div>
 
-              <div className="form-group">
-                <label>Location</label>
+              <div className="form-group" style={{ flex: '1 1 0', minWidth: 0 }}>
+                <label style={{ fontSize: '13px' }}>Location</label>
                 <input
                   type="text"
                   value={location}
                   onChange={(e) => setLocation(e.target.value)}
-                  placeholder="e.g., kitchen, bathroom"
+                  placeholder="kitchen"
                   className="input"
+                  style={{ fontSize: '13px', padding: '4px 8px' }}
                 />
               </div>
 
-              <div className="form-group">
-                <label>Subject</label>
+              <div className="form-group" style={{ flex: '1 1 0', minWidth: 0 }}>
+                <label style={{ fontSize: '13px' }}>Subject</label>
                 <input
                   type="text"
                   value={subject}
                   onChange={(e) => setSubject(e.target.value)}
-                  placeholder="e.g., oven, sink, window"
+                  placeholder="wine-cooler"
                   className="input"
+                  style={{ fontSize: '13px', padding: '4px 8px' }}
                 />
               </div>
 
-              <div className="form-group">
-                <label>Action (videos only)</label>
+              <div className="form-group" style={{ flex: '1 1 0', minWidth: 0 }}>
+                <label style={{ fontSize: '13px' }}>Action</label>
                 <input
                   type="text"
                   value={action}
                   onChange={(e) => setAction(e.target.value)}
-                  placeholder="e.g., cleaning, installing"
+                  placeholder="cleaning"
                   disabled={currentFile.fileType === 'image'}
                   className="input"
                   style={{
+                    fontSize: '13px',
+                    padding: '4px 8px',
                     opacity: currentFile.fileType === 'image' ? 0.5 : 1,
                     cursor: currentFile.fileType === 'image' ? 'not-allowed' : 'text'
                   }}
                 />
               </div>
 
-              <div className="form-group">
-                <label>Shot Type</label>
+              <div className="form-group" style={{ flex: '0 0 100px', minWidth: 0 }}>
+                <label style={{ fontSize: '13px' }}>Shot Type</label>
                 <select
                   value={shotType}
                   onChange={(e) => setShotType(e.target.value as ShotType)}
                   className="input"
+                  style={{ fontSize: '13px', padding: '4px 6px' }}
                 >
-                  <option value="">Select shot type...</option>
-                  <optgroup label="Static (No Movement)">
+                  <option value="">Select...</option>
+                  <optgroup label="Static">
                     {shotTypes.filter(st => ['WS', 'MID', 'CU', 'UNDER'].includes(st)).map(st => (
                       <option key={st} value={st}>{st}</option>
                     ))}
@@ -452,70 +452,152 @@ function App() {
               </div>
             </div>
 
-            {/* Generated Name Preview */}
-            {location && subject && shotType && (
-              <div className="form-row" style={{ marginTop: '8px' }}>
-                <div className="form-group" style={{ gridColumn: 'span 4' }}>
-                  <label style={{ fontSize: '12px', color: '#666' }}>Generated Name:</label>
-                  <div style={{ padding: '8px', background: '#f5f5f5', borderRadius: '4px', fontFamily: 'monospace', fontSize: '14px' }}>
-                    {currentFile.id}-{location}-{subject}-{currentFile.fileType === 'video' && action ? `${action}-` : ''}{shotType}
-                  </div>
+            {/* Row 2: Generated Title, Metadata, Rename Toggle, Save, AI Assist */}
+            <div className="form-row" style={{ display: 'flex', gap: '8px', marginTop: '10px', flexWrap: 'nowrap' }}>
+              <div className="form-group" style={{ flex: '0 0 240px', minWidth: 0 }}>
+                <label style={{ fontSize: '13px' }}>Generated Title</label>
+                <div style={{
+                  padding: '5px 8px',
+                  background: '#f5f5f5',
+                  borderRadius: '4px',
+                  fontFamily: 'monospace',
+                  fontSize: '12px',
+                  height: '28px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap'
+                }}>
+                  {location && subject && shotType
+                    ? `${location}-${subject}-${currentFile.fileType === 'video' && action ? `${action}-` : ''}${shotType}`
+                    : <span style={{ color: '#999', fontFamily: 'sans-serif' }}>Fill fields above...</span>
+                  }
                 </div>
               </div>
-            )}
 
-            {/* Metadata Row */}
-            <div className="form-row">
-              <div className="form-group" style={{ gridColumn: 'span 3' }}>
-                <label>Metadata (comma-separated tags)</label>
+              <div className="form-group" style={{ flex: '1 1 0', minWidth: 0 }}>
+                <label style={{ fontSize: '13px' }}>Metadata</label>
                 <input
                   type="text"
                   value={metadata}
                   onChange={(e) => setMetadata(e.target.value)}
-                  placeholder="e.g., appliance, control-panel, interior"
+                  placeholder="built-in, wine cooler, bar-area"
                   className="input"
+                  style={{ fontSize: '13px', padding: '4px 8px' }}
                 />
               </div>
 
-              <div className="form-group">
-                <label>&nbsp;</label>
+              <div className="form-group" style={{ flex: '0 0 110px', minWidth: 0 }}>
+                <label style={{ fontSize: '13px' }}>Rename File</label>
+                <label style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  height: '28px',
+                  cursor: 'pointer',
+                  userSelect: 'none'
+                }}>
+                  <input
+                    type="checkbox"
+                    checked={renameFileEnabled}
+                    onChange={(e) => setRenameFileEnabled(e.target.checked)}
+                    style={{ cursor: 'pointer' }}
+                  />
+                  <span style={{ fontSize: '12px' }}>Add ID Prefix</span>
+                </label>
+              </div>
+
+              <div className="form-group" style={{ flex: '0 0 80px', minWidth: 0 }}>
+                <label style={{ fontSize: '13px' }}>&nbsp;</label>
                 <button
                   onClick={handleSave}
                   disabled={isLoading || (!location || !subject || !shotType)}
                   className="btn-primary"
+                  style={{ width: '100%', fontSize: '13px', padding: '5px 8px' }}
                 >
                   {isLoading ? 'Saving...' : 'Save'}
                 </button>
               </div>
-            </div>
-
-            {statusMessage && (
-              <div className={`status-message ${statusMessage.startsWith('✗') ? 'error' : 'success'}`}>
-                {statusMessage}
-              </div>
-            )}
-
-            <div className="button-group">
 
               {isAIConfigured && (
-                <button
-                  onClick={handleAIAssist}
-                  disabled={isLoading}
-                  className="btn-secondary"
-                >
-                  {isLoading ? 'Analyzing...' : 'AI Assist'}
-                </button>
+                <div className="form-group" style={{ flex: '0 0 95px', minWidth: 0 }}>
+                  <label style={{ fontSize: '13px' }}>&nbsp;</label>
+                  <button
+                    onClick={handleAIAssist}
+                    disabled={isLoading}
+                    className="btn-secondary"
+                    style={{ width: '100%', fontSize: '13px', padding: '5px 8px' }}
+                  >
+                    {isLoading ? 'Analyzing...' : 'AI Assist'}
+                  </button>
+                </div>
               )}
             </div>
 
-            <div className="navigation">
-              <button onClick={handlePrevious} disabled={currentFileIndex === 0} className="btn">
+            {/* Combined status messages and navigation row */}
+            <div style={{
+              minHeight: '40px',
+              marginTop: '8px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '12px'
+            }}>
+              {/* Left: Previous button */}
+              <button
+                onClick={handlePrevious}
+                disabled={currentFileIndex === 0}
+                className="btn"
+                style={{
+                  flex: '0 0 80px',
+                  fontSize: '13px',
+                  padding: '6px 12px'
+                }}
+              >
                 Previous
               </button>
+
+              {/* Center: Status messages */}
+              <div style={{
+                flex: '1 1 auto',
+                display: 'flex',
+                gap: '12px',
+                alignItems: 'center',
+                justifyContent: 'center',
+                minWidth: 0
+              }}>
+                {statusMessage && (
+                  <div className={`status-message ${statusMessage.startsWith('✗') ? 'error' : 'success'}`} style={{ margin: 0 }}>
+                    {statusMessage}
+                  </div>
+                )}
+                {codecWarning && (
+                  <div style={{
+                    backgroundColor: '#fff3cd',
+                    border: '1px solid #ffc107',
+                    borderRadius: '4px',
+                    padding: '6px 12px',
+                    color: '#856404',
+                    fontSize: '13px',
+                    display: 'inline-block',
+                    whiteSpace: 'nowrap'
+                  }}>
+                    {codecWarning}
+                  </div>
+                )}
+              </div>
+
+              {/* Right: Next button */}
               <button
                 onClick={handleNext}
                 disabled={currentFileIndex === files.length - 1}
                 className="btn"
+                style={{
+                  flex: '0 0 80px',
+                  fontSize: '13px',
+                  padding: '6px 12px'
+                }}
               >
                 Next
               </button>
