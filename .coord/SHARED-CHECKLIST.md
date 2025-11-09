@@ -2,51 +2,48 @@
 
 ## Immediate Tasks
 
-### Critical Path (Quality Gates)
-- [ ] **Resolve App.test.tsx failures** (16 tests)
-  - Root cause: Incomplete video transcoding feature integration
+### Critical Path (Quality Gates) - B3 Phase
+- [ ] **Fix App.test.tsx failures** (17 tests)
+  - Root cause: Placeholder text mismatch in Action field tests
+  - Test expects: `/cleaning, installing/i` (regex pattern)
+  - Actual placeholder: `"cleaning"` (single example)
+  - Fix: Update test expectations or component placeholder
   - Blocker: Cannot progress to B4 with failing tests
 
-- [ ] **Resolve metadataWriter.test.ts failures** (2 tests)
-  - Pre-existing failures
-  - May be unrelated to video feature
+- [ ] **Fix metadataWriter.test.ts failure** (1 test)
+  - Error: Invalid assertion argument combination (undefined + string)
+  - Test: "should write title without tags"
+  - Fix: Correct assertion syntax in test code
 
-- [ ] **Complete video transcoding integration**
-  - File exists: `electron/services/videoTranscoder.ts` (untracked)
-  - Needs: Integration with App.tsx workflow
-  - Needs: IPC schema validation
-  - Needs: Test coverage
+### Post-Fix Verification
+- [ ] **Run full test suite** - Verify all 277 tests passing
+- [ ] **Verify quality gates** - Confirm lint ✅, typecheck ✅, test ✅
+- [ ] **Update README** - Document test resolution if needed
 
-### Current Branch Tasks
-- [ ] **Commit symlink security fix**
-  - Changes in: `electron/services/securityValidator.ts`, `securityValidator.test.ts`
-  - Evidence: Lint/typecheck passing
-  - Quality: TDD cycle complete (tests passing)
-
-- [ ] **Review uncommitted changes** (11 modified files)
-  - Verify each file's purpose
-  - Ensure atomic commits by feature/fix
-  - Follow conventional commit format
-
-### Quality Gate Verification
+### Quality Gate Status
 - [x] **Lint:** 0 errors, 49 warnings (allowed) ✅
 - [x] **Typecheck:** 0 errors ✅
-- [ ] **Tests:** 259 passing, 18 failing ⚠️
-  - Target: All tests GREEN before phase progression
+- [ ] **Tests:** 259/277 passing (18 failing) ⚠️
+  - **BLOCKER:** 2 test files with failures preventing B3→B4 progression
 
-### Phase Progression
-- [ ] **Verify readiness for B4 (Handoff)**
-  - All quality gates GREEN
-  - Video feature complete and tested
-  - Documentation updated (README.md changes committed)
-  - Branch ready for PR
+### Phase Progression Readiness
+**Current Phase:** B3 (Integration/Quality Compliance)
+**Next Phase:** B4 (Handoff/Production Validation)
+
+**B3→B4 Gate Requirements:**
+- [ ] All quality gates GREEN (currently: Tests ⚠️)
+- [x] Video feature integrated to main ✅
+- [x] Security validation enhanced ✅
+- [ ] Test suite fully passing
+- [ ] Documentation current
 
 ## Coordination Foundation
 - [x] **Create PROJECT-CONTEXT.md** ✅
 - [x] **Create SHARED-CHECKLIST.md** ✅ (this file)
-- [ ] **Create PROJECT-ROADMAP.md** (optional)
+- [x] **Create PROJECT-ROADMAP.md** ✅
 
 ## Notes
-- Branch: `claude/build-video-a-011CUunZ44KwfEYzxEqCb7PL`
-- Main branch: `main` (target for PR)
+- Branch: `main` (production baseline)
+- Last feature merge: Video transcoding integration (PR #17)
+- Working tree: Clean
 - Last updated: 2025-11-09
