@@ -20,7 +20,7 @@ import { VideoTranscoder } from './services/videoTranscoder';
 import { convertToYAMLFormat, convertToUIFormat } from './utils/lexiconConverter';
 import { sanitizeError } from './utils/errorSanitization';
 import { FileRenameSchema, FileUpdateMetadataSchema, FileStructuredUpdateSchema, AIBatchProcessSchema } from './schemas/ipcSchemas';
-import type { AppConfig, LexiconConfig, ShotType } from '../src/types';
+import type { AppConfig, LexiconConfig, ShotType, AIAnalysisResult } from '../src/types';
 import { migrateToKeychain } from './services/keychainMigration';
 
 let mainWindow: BrowserWindow | null = null;
@@ -29,6 +29,44 @@ const MEDIA_SERVER_PORT = 8765;
 // Initialize SecurityValidator and FileManager with dependency injection
 const securityValidator = new SecurityValidator();
 const fileManager: FileManager = new FileManager(securityValidator);
+
+// Rate limiter for batch operations (token bucket algorithm)
+class RateLimiter {
+  private tokens: number;
+  private lastRefill: number;
+  private readonly maxTokens: number;
+  private readonly refillRate: number; // tokens per second
+
+  constructor(maxTokens: number, refillRate: number) {
+    this.maxTokens = maxTokens;
+    this.refillRate = refillRate;
+    this.tokens = maxTokens;
+    this.lastRefill = Date.now();
+  }
+
+  private refill(): void {
+    const now = Date.now();
+    const timePassed = (now - this.lastRefill) / 1000; // seconds
+    const tokensToAdd = timePassed * this.refillRate;
+
+    this.tokens = Math.min(this.maxTokens, this.tokens + tokensToAdd);
+    this.lastRefill = now;
+  }
+
+  async consume(tokens: number): Promise<void> {
+    this.refill();
+
+    if (this.tokens < tokens) {
+      const waitTime = ((tokens - this.tokens) / this.refillRate) * 1000;
+      throw new Error(`Rate limit exceeded. Please wait ${Math.ceil(waitTime / 1000)} seconds before retrying.`);
+    }
+
+    this.tokens -= tokens;
+  }
+}
+
+// Rate limiter: 100 files per minute (allows bursts of 100, refills at ~1.67 files/sec)
+const batchProcessRateLimiter = new RateLimiter(100, 100 / 60);
 let metadataStore: MetadataStore | null = null;
 let currentFolderPath: string | null = null;
 const configManager: ConfigManager = (() => {
@@ -630,6 +668,9 @@ ipcMain.handle('ai:batch-process', async (_event, fileIds: string[]) => {
     // Security: Validate input schema
     const validated = AIBatchProcessSchema.parse({ fileIds });
 
+    // Security: Rate limiting (prevents abuse)
+    await batchProcessRateLimiter.consume(validated.fileIds.length);
+
     if (!aiService) {
       throw new Error('AI service not configured.');
     }
@@ -652,9 +693,23 @@ ipcMain.handle('ai:batch-process', async (_event, fileIds: string[]) => {
       // Pattern: Same 3-layer validation as ai:analyze-file handler
       const validatedPath = await securityValidator.validateFilePath(fileMetadata.filePath);
       await securityValidator.validateFileContent(validatedPath);
-      await securityValidator.validateFileSize(validatedPath, 100 * 1024 * 1024); // 100MB limit
 
-      const result = await aiService.analyzeImage(validatedPath, lexicon);
+      // Detect file type and route to appropriate analysis method
+      const fileType = fileManager.getFileType(validatedPath);
+
+      let result: AIAnalysisResult;
+      if (fileType === 'video') {
+        // For videos, we extract frames (not load entire file), so no size limit needed
+        console.log('[IPC] Batch analyzing video file (frame extraction):', validatedPath);
+        result = await aiService.analyzeVideo(validatedPath, lexicon);
+      } else {
+        // For images, validate size before loading into memory for AI analysis
+        // Security: Validate file size (prevents DoS)
+        await securityValidator.validateFileSize(validatedPath, 100 * 1024 * 1024); // 100MB
+
+        console.log('[IPC] Batch analyzing image file:', validatedPath);
+        result = await aiService.analyzeImage(validatedPath, lexicon);
+      }
       results.set(fileId, result);
 
       // Auto-update if confidence is high
@@ -683,6 +738,12 @@ ipcMain.handle('ai:batch-process', async (_event, fileIds: string[]) => {
     if (error instanceof z.ZodError) {
       console.error('Invalid IPC message:', error.errors);
       throw new Error('Invalid request parameters');
+    }
+
+    // Special handling for security violations
+    if (error instanceof SecurityViolationError) {
+      console.error('Security violation:', error.type, error.details);
+      throw new Error('File validation failed');
     }
 
     throw sanitizeError(error);
