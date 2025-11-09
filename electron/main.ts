@@ -647,7 +647,14 @@ ipcMain.handle('ai:batch-process', async (_event, fileIds: string[]) => {
     if (!fileMetadata || fileMetadata.processedByAI) continue;
 
     try {
-      const result = await aiService.analyzeImage(fileMetadata.filePath, lexicon);
+      // CRITICAL-8: Security validation for each file in batch
+      // Mitigates: Path traversal, content type confusion, resource exhaustion
+      // Pattern: Same 3-layer validation as ai:analyze-file handler
+      const validatedPath = await securityValidator.validateFilePath(fileMetadata.filePath);
+      await securityValidator.validateFileContent(validatedPath);
+      await securityValidator.validateFileSize(validatedPath, 100 * 1024 * 1024); // 100MB limit
+
+      const result = await aiService.analyzeImage(validatedPath, lexicon);
       results.set(fileId, result);
 
       // Auto-update if confidence is high
@@ -658,7 +665,13 @@ ipcMain.handle('ai:batch-process', async (_event, fileIds: string[]) => {
         await store.updateFileMetadata(fileId, fileMetadata);
       }
     } catch (error) {
-      console.error(`Failed to process ${fileId}:`, error);
+      // Security validation errors are logged with their type for audit trail
+      if (error instanceof SecurityViolationError) {
+        console.error(`Security violation for ${fileId}:`, error.type, error.details);
+      } else {
+        console.error(`Failed to process ${fileId}:`, error);
+      }
+      // Continue with remaining files (partial batch failure is acceptable)
     }
   }
 
