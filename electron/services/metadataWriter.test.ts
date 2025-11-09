@@ -115,7 +115,8 @@ describe('MetadataWriter (Integration)', () => {
       const result = await metadataWriter.readMetadataFromFile(testFilePath);
 
       expect(result.title).toBe(mainName);
-      expect(result.description).toContain(mainName);
+      // Description only written when tags.length > 0
+      expect(result.description).toBeUndefined();
     });
 
     it('should write tags without title', async () => {
