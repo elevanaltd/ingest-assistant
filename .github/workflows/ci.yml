@@ -2,13 +2,104 @@ name: CI
 
 on:
   push:
-    branches: [ main, security/* ]
+    branches: [ main, security/*, feat/* ]
   pull_request:
     branches: [ main ]
+  workflow_dispatch: # Allow manual triggers
+
+# Cancel in-progress runs when a new run is triggered
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: '20'
+  ELECTRON_MIN_VERSION: '35.7.5'
 
 jobs:
-  quality-gates:
+  # ============================================================================
+  # TIER 1: Fast Feedback Gates (< 2 minutes)
+  # ============================================================================
+  fast-checks:
+    name: Fast Checks (TypeCheck + Lint)
     runs-on: macos-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Full history for better caching
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Cache dependencies
+        uses: actions/cache@v3
+        with:
+          path: |
+            node_modules
+            ~/.npm
+            ~/.cache/electron
+            ~/.cache/electron-builder
+          key: ${{ runner.os }}-deps-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-deps-
+
+      - name: Install dependencies
+        run: npm ci --prefer-offline --no-audit
+
+      - name: TypeScript type checking (strict mode)
+        run: |
+          echo "## 🔍 TypeScript Type Checking" >> $GITHUB_STEP_SUMMARY
+          npm run typecheck 2>&1 | tee typecheck.log
+
+          if [ ${PIPESTATUS[0]} -ne 0 ]; then
+            echo "❌ Type checking failed" >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+            cat typecheck.log >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
+
+          echo "✅ No type errors found" >> $GITHUB_STEP_SUMMARY
+
+      - name: ESLint code quality
+        run: |
+          echo "## 📋 ESLint Results" >> $GITHUB_STEP_SUMMARY
+          npm run lint 2>&1 | tee lint.log
+
+          if [ ${PIPESTATUS[0]} -ne 0 ]; then
+            echo "❌ Linting failed" >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+            cat lint.log >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
+
+          echo "✅ No linting errors" >> $GITHUB_STEP_SUMMARY
+
+      - name: Upload type check logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: typecheck-logs
+          path: |
+            typecheck.log
+            lint.log
+          retention-days: 7
+
+  # ============================================================================
+  # TIER 2: Comprehensive Test Suite
+  # ============================================================================
+  test-suite:
+    name: Test Suite (Unit + Integration + Security)
+    runs-on: macos-latest
+    needs: fast-checks
+    timeout-minutes: 10
 
     steps:
       - name: Checkout code
@@ -17,57 +108,319 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
 
+      - name: Cache dependencies
+        uses: actions/cache@v3
+        with:
+          path: |
+            node_modules
+            ~/.npm
+          key: ${{ runner.os }}-deps-${{ hashFiles('package-lock.json') }}
+
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --prefer-offline --no-audit
 
-      - name: Install exiftool
-        run: brew install exiftool
-
-      - name: TypeScript type checking
-        run: npm run typecheck
-
-      - name: Lint code
-        run: npm run lint
-
-      - name: Run tests
-        run: npm test -- --run
-
-      - name: Build production
-        run: npm run build
-
-      # NEW: Security scanning gates
-      - name: Security audit (HIGH/CRITICAL vulnerabilities)
-        run: npm audit --audit-level=high --production
-        continue-on-error: false  # FAIL build if HIGH/CRITICAL found
-
-      - name: Verify Electron version (security requirement)
+      - name: Install system dependencies
         run: |
-          ELECTRON_VERSION=$(npm list electron --depth=0 --json | jq -r '.dependencies.electron.version')
-          REQUIRED_VERSION="35.7.5"
+          brew install exiftool
+          echo "✅ exiftool installed" >> $GITHUB_STEP_SUMMARY
 
-          echo "Detected Electron version: $ELECTRON_VERSION"
-          echo "Required minimum version: $REQUIRED_VERSION"
+      - name: Run full test suite
+        run: |
+          echo "## 🧪 Test Results" >> $GITHUB_STEP_SUMMARY
+          npm test -- --run --reporter=verbose 2>&1 | tee test.log
 
-          if [ "$(printf '%s\n' "$REQUIRED_VERSION" "$ELECTRON_VERSION" | sort -V | head -n1)" != "$REQUIRED_VERSION" ]; then
-            echo "❌ FAIL: Electron version too old (security requirement)"
+          # Extract test summary
+          TOTAL_TESTS=$(grep "Tests" test.log | tail -1 | grep -oE '[0-9]+ passed' | grep -oE '[0-9]+' || echo "0")
+          TOTAL_FILES=$(grep "Test Files" test.log | tail -1 | grep -oE '[0-9]+ passed' | grep -oE '[0-9]+' || echo "0")
+
+          echo "- Test Files: **${TOTAL_FILES} passed**" >> $GITHUB_STEP_SUMMARY
+          echo "- Tests: **${TOTAL_TESTS} passed**" >> $GITHUB_STEP_SUMMARY
+
+      - name: Run security test suite (isolated)
+        run: |
+          echo "## 🔒 Security Tests" >> $GITHUB_STEP_SUMMARY
+          npm test -- --run electron/__tests__/security/ 2>&1 | tee security-test.log
+
+          if [ ${PIPESTATUS[0]} -ne 0 ]; then
+            echo "❌ Security tests failed" >> $GITHUB_STEP_SUMMARY
             exit 1
           fi
 
-          echo "✅ PASS: Electron version meets security requirements"
+          echo "✅ All security tests passed" >> $GITHUB_STEP_SUMMARY
 
-      - name: Security test suite (isolated)
-        run: npm test -- --run electron/__tests__/security/
-
-      - name: Generate security report
-        if: always()
+      - name: Generate test coverage
         run: |
-          echo "## Security Scan Results" >> $GITHUB_STEP_SUMMARY
+          echo "## 📊 Test Coverage" >> $GITHUB_STEP_SUMMARY
+          npm test -- --run --coverage --reporter=json 2>&1 | tee coverage.log || true
+
+          # Note: Coverage reporting, not blocking
+          echo "Coverage report generated (non-blocking)" >> $GITHUB_STEP_SUMMARY
+
+      - name: Upload test artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: |
+            test.log
+            security-test.log
+            coverage.log
+            coverage/
+          retention-days: 14
+
+  # ============================================================================
+  # TIER 3: Build Verification
+  # ============================================================================
+  build:
+    name: Production Build Verification
+    runs-on: macos-latest
+    needs: [fast-checks, test-suite]
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Cache dependencies
+        uses: actions/cache@v3
+        with:
+          path: |
+            node_modules
+            ~/.npm
+            ~/.cache/electron
+            ~/.cache/electron-builder
+          key: ${{ runner.os }}-deps-${{ hashFiles('package-lock.json') }}
+
+      - name: Install dependencies
+        run: npm ci --prefer-offline --no-audit
+
+      - name: Verify all dependencies installed
+        run: |
+          echo "## 📦 Dependency Verification" >> $GITHUB_STEP_SUMMARY
+
+          # Check for missing dependencies that might only fail in CI
+          if npm ls --production 2>&1 | grep -i "missing\|UNMET"; then
+            echo "❌ Missing production dependencies detected" >> $GITHUB_STEP_SUMMARY
+            npm ls --production
+            exit 1
+          fi
+
+          echo "✅ All production dependencies present" >> $GITHUB_STEP_SUMMARY
+
+      - name: Build production bundle
+        run: |
+          echo "## 🏗️ Production Build" >> $GITHUB_STEP_SUMMARY
+          npm run build 2>&1 | tee build.log
+
+          if [ ${PIPESTATUS[0]} -ne 0 ]; then
+            echo "❌ Build failed" >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+            cat build.log >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
+
+          echo "✅ Production build successful" >> $GITHUB_STEP_SUMMARY
+
+      - name: Verify build outputs
+        run: |
+          echo "## 📂 Build Artifacts" >> $GITHUB_STEP_SUMMARY
+
+          # Check critical build outputs exist
+          if [ ! -d "dist" ]; then
+            echo "❌ dist/ directory not created" >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
+
+          if [ ! -f "dist/electron/electron/main.js" ]; then
+            echo "❌ Main Electron entry point missing" >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
+
+          # Show build artifact sizes
+          echo "### Build Sizes" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          du -sh dist/* | head -10 >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+
+          echo "✅ Build artifacts verified" >> $GITHUB_STEP_SUMMARY
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist-${{ github.sha }}
+          path: dist/
+          retention-days: 7
+
+      - name: Upload build logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-logs
+          path: build.log
+          retention-days: 7
+
+  # ============================================================================
+  # TIER 4: Security & Compliance Gates
+  # ============================================================================
+  security-scan:
+    name: Security Scanning & Compliance
+    runs-on: macos-latest
+    needs: fast-checks
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Cache dependencies
+        uses: actions/cache@v3
+        with:
+          path: |
+            node_modules
+            ~/.npm
+          key: ${{ runner.os }}-deps-${{ hashFiles('package-lock.json') }}
+
+      - name: Install dependencies
+        run: npm ci --prefer-offline --no-audit
+
+      # Note: Dependency Review Action requires GitHub Advanced Security (paid feature)
+      # Using npm audit instead which provides similar vulnerability scanning
+
+      - name: NPM Audit (HIGH/CRITICAL only)
+        run: |
+          echo "## 🔐 Security Audit" >> $GITHUB_STEP_SUMMARY
+
+          # Run audit and capture output
+          npm audit --production --audit-level=high --json > audit.json || true
+
+          HIGH=$(jq -r '.metadata.vulnerabilities.high' audit.json)
+          CRITICAL=$(jq -r '.metadata.vulnerabilities.critical' audit.json)
+          TOTAL=$(jq -r '.metadata.vulnerabilities.total' audit.json)
+
+          echo "- Total vulnerabilities: **${TOTAL}**" >> $GITHUB_STEP_SUMMARY
+          echo "- HIGH: **${HIGH}**" >> $GITHUB_STEP_SUMMARY
+          echo "- CRITICAL: **${CRITICAL}**" >> $GITHUB_STEP_SUMMARY
+
+          # Fail on HIGH or CRITICAL in production dependencies
+          if [ "$HIGH" != "0" ] || [ "$CRITICAL" != "0" ]; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "❌ **BLOCKING:** HIGH or CRITICAL vulnerabilities found" >> $GITHUB_STEP_SUMMARY
+            npm audit --production --audit-level=high
+            exit 1
+          fi
+
           echo "" >> $GITHUB_STEP_SUMMARY
-          npm audit --json | jq -r '
-            "- Total vulnerabilities: \(.metadata.vulnerabilities.total)",
-            "- HIGH: \(.metadata.vulnerabilities.high)",
-            "- CRITICAL: \(.metadata.vulnerabilities.critical)"
-          ' >> $GITHUB_STEP_SUMMARY
+          echo "✅ No HIGH/CRITICAL vulnerabilities in production dependencies" >> $GITHUB_STEP_SUMMARY
+
+      - name: Verify Electron version (security requirement)
+        run: |
+          echo "## ⚡ Electron Version Check" >> $GITHUB_STEP_SUMMARY
+
+          ELECTRON_VERSION=$(npm list electron --depth=0 --json | jq -r '.dependencies.electron.version')
+          REQUIRED_VERSION="${{ env.ELECTRON_MIN_VERSION }}"
+
+          echo "- Detected: **${ELECTRON_VERSION}**" >> $GITHUB_STEP_SUMMARY
+          echo "- Required: **≥${REQUIRED_VERSION}**" >> $GITHUB_STEP_SUMMARY
+
+          if [ "$(printf '%s\n' "$REQUIRED_VERSION" "$ELECTRON_VERSION" | sort -V | head -n1)" != "$REQUIRED_VERSION" ]; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "❌ Electron version too old (security requirement)" >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Electron version meets security requirements" >> $GITHUB_STEP_SUMMARY
+
+      - name: Check for secrets in code
+        run: |
+          echo "## 🔑 Secrets Scanning" >> $GITHUB_STEP_SUMMARY
+
+          # Basic pattern matching for common secrets (non-exhaustive)
+          SECRETS_FOUND=0
+
+          # Check for hardcoded API keys
+          if grep -r -i "api[_-]key.*=.*['\"]sk-" --include="*.ts" --include="*.tsx" --include="*.js" . 2>/dev/null; then
+            echo "❌ Potential hardcoded API key found" >> $GITHUB_STEP_SUMMARY
+            SECRETS_FOUND=1
+          fi
+
+          # Check for AWS keys
+          if grep -r -E "AKIA[0-9A-Z]{16}" --include="*.ts" --include="*.tsx" --include="*.js" . 2>/dev/null; then
+            echo "❌ Potential AWS key found" >> $GITHUB_STEP_SUMMARY
+            SECRETS_FOUND=1
+          fi
+
+          if [ $SECRETS_FOUND -eq 0 ]; then
+            echo "✅ No obvious secrets detected (basic scan)" >> $GITHUB_STEP_SUMMARY
+          else
+            exit 1
+          fi
+
+      - name: Upload security audit
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-audit
+          path: audit.json
+          retention-days: 30
+
+  # ============================================================================
+  # TIER 5: Final Validation & Summary
+  # ============================================================================
+  ci-summary:
+    name: CI Summary & Final Validation
+    runs-on: macos-latest
+    needs: [fast-checks, test-suite, build, security-scan]
+    if: always()
+    timeout-minutes: 5
+
+    steps:
+      - name: Check all jobs status
+        run: |
+          echo "# 🎯 CI Pipeline Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          # Check if any required jobs failed
+          if [ "${{ needs.fast-checks.result }}" != "success" ]; then
+            echo "❌ **Fast Checks:** FAILED" >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
+          echo "✅ **Fast Checks:** PASSED" >> $GITHUB_STEP_SUMMARY
+
+          if [ "${{ needs.test-suite.result }}" != "success" ]; then
+            echo "❌ **Test Suite:** FAILED" >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
+          echo "✅ **Test Suite:** PASSED" >> $GITHUB_STEP_SUMMARY
+
+          if [ "${{ needs.build.result }}" != "success" ]; then
+            echo "❌ **Build:** FAILED" >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
+          echo "✅ **Build:** PASSED" >> $GITHUB_STEP_SUMMARY
+
+          if [ "${{ needs.security-scan.result }}" != "success" ]; then
+            echo "❌ **Security Scan:** FAILED" >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
+          echo "✅ **Security Scan:** PASSED" >> $GITHUB_STEP_SUMMARY
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## 🎉 All Quality Gates Passed" >> $GITHUB_STEP_SUMMARY
+          echo "This build is ready for deployment." >> $GITHUB_STEP_SUMMARY

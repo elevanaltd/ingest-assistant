@@ -39,6 +39,7 @@
     "@typescript-eslint/eslint-plugin": "^6.15.0",
     "@typescript-eslint/parser": "^6.15.0",
     "@vitejs/plugin-react": "^4.2.1",
+    "@vitest/coverage-v8": "^1.6.1",
     "@vitest/ui": "^1.0.4",
     "concurrently": "^8.2.2",
     "electron": "^35.7.5",
@@ -54,6 +55,8 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.27.0",
+    "@ffmpeg-installer/ffmpeg": "^1.1.0",
+    "@ffprobe-installer/ffprobe": "^2.1.2",
     "dotenv": "^17.2.3",
     "electron-store": "^11.0.2",
     "js-yaml": "^4.1.0",

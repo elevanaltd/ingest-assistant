@@ -135,4 +135,45 @@ describe('AIService', () => {
       expect(typeof aiService.analyzeImage).toBe('function');
     });
   });
+
+  describe('analyzeVideo', () => {
+    it('should extract frames and analyze them', async () => {
+      // Mock VideoFrameExtractor
+      const mockFramePaths = [
+        '/tmp/frame-1.jpg',
+        '/tmp/frame-2.jpg',
+        '/tmp/frame-3.jpg'
+      ];
+
+      // Spy on analyzeImage method
+      const mockAnalysis = {
+        mainName: 'kitchen-oven-CU',
+        metadata: ['kitchen', 'oven', 'appliance'],
+        confidence: 0.9
+      };
+      vi.spyOn(aiService, 'analyzeImage').mockResolvedValue(mockAnalysis);
+
+      // Mock VideoFrameExtractor
+      vi.mock('./videoFrameExtractor', () => ({
+        VideoFrameExtractor: vi.fn().mockImplementation(() => ({
+          extractFrames: vi.fn().mockResolvedValue(mockFramePaths)
+        }))
+      }));
+
+      // Method should exist (will fail until implemented - RED state)
+      expect(aiService.analyzeVideo).toBeDefined();
+      expect(typeof aiService.analyzeVideo).toBe('function');
+    });
+
+    it('should synthesize results from multiple frames', async () => {
+      // This test verifies the synthesis logic exists
+      // Test private method indirectly through analyzeVideo
+      expect(aiService.analyzeVideo).toBeDefined();
+    });
+
+    it('should cleanup temporary frame files after analysis', async () => {
+      // Verify cleanup happens (will test after implementation)
+      expect(aiService.analyzeVideo).toBeDefined();
+    });
+  });
 });

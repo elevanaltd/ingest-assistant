@@ -8,6 +8,12 @@ vi.mock('fs/promises', () => ({
   realpath: vi.fn(),
   readFile: vi.fn(),
   stat: vi.fn(),
+  open: vi.fn(() => Promise.resolve({
+    read: vi.fn((buffer: Buffer) =>
+      Promise.resolve({ bytesRead: buffer.length, buffer })
+    ),
+    close: vi.fn(() => Promise.resolve()),
+  })),
 }));
 
 import * as fs from 'fs/promises';
@@ -18,6 +24,10 @@ describe('SecurityValidator', () => {
   beforeEach(() => {
     validator = new SecurityValidator();
     vi.clearAllMocks();
+
+    // Default mock: fs.realpath returns input path (pass-through)
+    // Individual tests override this for specific scenarios
+    vi.mocked(fs.realpath).mockImplementation((path) => Promise.resolve(path.toString()));
   });
 
   describe('Path Traversal Protection', () => {
@@ -147,10 +157,118 @@ describe('SecurityValidator', () => {
     });
   });
 
+  describe('Additional Allowed Paths', () => {
+    it('should allow files in additional allowed paths', async () => {
+      validator.setAllowedBasePath('/selected/folder');
+      await validator.addAllowedPath('/tmp/cache');
+
+      // File in cache directory (not in base path)
+      vi.mocked(fs.realpath).mockResolvedValue('/tmp/cache/transcoded.mp4');
+
+      const cachePath = '/tmp/cache/transcoded.mp4';
+      await expect(
+        validator.validateFilePath(cachePath)
+      ).resolves.toBe(cachePath);
+    });
+
+    it('should allow files in subdirectories of additional paths', async () => {
+      validator.setAllowedBasePath('/selected/folder');
+      await validator.addAllowedPath('/var/tmp/previews');
+
+      // File in subdirectory of additional path
+      vi.mocked(fs.realpath).mockResolvedValue('/var/tmp/previews/subdir/video.mp4');
+
+      const subPath = '/var/tmp/previews/subdir/video.mp4';
+      await expect(
+        validator.validateFilePath(subPath)
+      ).resolves.toBe(subPath);
+    });
+
+    it('should reject files outside both base and additional paths', async () => {
+      validator.setAllowedBasePath('/selected/folder');
+      await validator.addAllowedPath('/tmp/cache');
+
+      // File in neither base nor additional path
+      vi.mocked(fs.realpath).mockResolvedValue('/etc/passwd');
+
+      await expect(
+        validator.validateFilePath('/etc/passwd')
+      ).rejects.toThrow(SecurityViolationError);
+    });
+
+    it('should support multiple additional allowed paths', async () => {
+      validator.setAllowedBasePath('/selected/folder');
+      await validator.addAllowedPath('/tmp/cache');
+      await validator.addAllowedPath('/var/previews');
+
+      // File in second additional path
+      vi.mocked(fs.realpath).mockResolvedValue('/var/previews/video.mp4');
+
+      await expect(
+        validator.validateFilePath('/var/previews/video.mp4')
+      ).resolves.toBe('/var/previews/video.mp4');
+    });
+
+    it('should not add duplicate additional paths', async () => {
+      validator.setAllowedBasePath('/selected/folder');
+      await validator.addAllowedPath('/tmp/cache');
+      await validator.addAllowedPath('/tmp/cache'); // Duplicate
+
+      // Verify it still works (no error from duplicates)
+      vi.mocked(fs.realpath).mockResolvedValue('/tmp/cache/file.mp4');
+
+      await expect(
+        validator.validateFilePath('/tmp/cache/file.mp4')
+      ).resolves.toBe('/tmp/cache/file.mp4');
+    });
+
+    it('should reject path traversal from additional allowed paths', async () => {
+      validator.setAllowedBasePath('/selected/folder');
+      await validator.addAllowedPath('/tmp/cache');
+
+      // Attempt to traverse outside additional path
+      vi.mocked(fs.realpath).mockResolvedValue('/etc/passwd');
+
+      await expect(
+        validator.validateFilePath('/tmp/cache/../../etc/passwd')
+      ).rejects.toThrow(SecurityViolationError);
+    });
+
+    it('should handle macOS symlink resolution in additional paths', async () => {
+      // macOS /var -> /private/var symlink scenario
+      validator.setAllowedBasePath('/selected/folder');
+
+      // Mock realpath to resolve /var -> /private/var for both directory and file
+      vi.mocked(fs.realpath).mockImplementation((path) => {
+        const pathStr = path.toString();
+        if (pathStr.startsWith('/var/folders/')) {
+          return Promise.resolve(pathStr.replace('/var/', '/private/var/'));
+        }
+        return Promise.resolve(pathStr);
+      });
+
+      // Register with unresolved path (what app currently does)
+      // addAllowedPath() will call realpath() and store: /private/var/folders/xyz/catalog-previews
+      await validator.addAllowedPath('/var/folders/xyz/catalog-previews');
+
+      // validateFilePath() will call realpath() and validate against: /private/var/folders/xyz/catalog-previews
+      await expect(
+        validator.validateFilePath('/var/folders/xyz/catalog-previews/file.mp4')
+      ).resolves.toBe('/private/var/folders/xyz/catalog-previews/file.mp4');
+    });
+  });
+
   describe('File Content Validation', () => {
     it('should accept valid JPEG files', async () => {
       const jpegBuffer = Buffer.from([0xFF, 0xD8, 0xFF, 0xE0, ...Array(100).fill(0)]);
-      vi.mocked(fs.readFile).mockResolvedValue(jpegBuffer);
+      // Mock fs.open to return a FileHandle that reads the jpegBuffer
+      vi.mocked(fs.open).mockResolvedValue({
+        read: vi.fn((buffer: Buffer) => {
+          jpegBuffer.copy(buffer, 0, 0, Math.min(jpegBuffer.length, buffer.length));
+          return Promise.resolve({ bytesRead: Math.min(jpegBuffer.length, buffer.length), buffer });
+        }),
+        close: vi.fn(() => Promise.resolve()),
+      } as any);
 
       await expect(
         validator.validateFileContent('/test/image.jpg')
@@ -159,7 +277,13 @@ describe('SecurityValidator', () => {
 
     it('should accept valid PNG files', async () => {
       const pngBuffer = Buffer.from([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, ...Array(100).fill(0)]);
-      vi.mocked(fs.readFile).mockResolvedValue(pngBuffer);
+      vi.mocked(fs.open).mockResolvedValue({
+        read: vi.fn((buffer: Buffer) => {
+          pngBuffer.copy(buffer, 0, 0, Math.min(pngBuffer.length, buffer.length));
+          return Promise.resolve({ bytesRead: Math.min(pngBuffer.length, buffer.length), buffer });
+        }),
+        close: vi.fn(() => Promise.resolve()),
+      } as any);
 
       await expect(
         validator.validateFileContent('/test/image.png')
@@ -168,7 +292,13 @@ describe('SecurityValidator', () => {
 
     it('should reject executable disguised as JPEG', async () => {
       const exeBuffer = Buffer.from([0x4D, 0x5A, ...Array(100).fill(0)]); // MZ header (Windows EXE)
-      vi.mocked(fs.readFile).mockResolvedValue(exeBuffer);
+      vi.mocked(fs.open).mockResolvedValue({
+        read: vi.fn((buffer: Buffer) => {
+          exeBuffer.copy(buffer, 0, 0, Math.min(exeBuffer.length, buffer.length));
+          return Promise.resolve({ bytesRead: Math.min(exeBuffer.length, buffer.length), buffer });
+        }),
+        close: vi.fn(() => Promise.resolve()),
+      } as any);
 
       await expect(
         validator.validateFileContent('/test/malware.jpg')
@@ -183,7 +313,13 @@ describe('SecurityValidator', () => {
 
     it('should reject files with mismatched extension', async () => {
       const pngBuffer = Buffer.from([0x89, 0x50, 0x4E, 0x47, ...Array(100).fill(0)]);
-      vi.mocked(fs.readFile).mockResolvedValue(pngBuffer);
+      vi.mocked(fs.open).mockResolvedValue({
+        read: vi.fn((buffer: Buffer) => {
+          pngBuffer.copy(buffer, 0, 0, Math.min(pngBuffer.length, buffer.length));
+          return Promise.resolve({ bytesRead: Math.min(pngBuffer.length, buffer.length), buffer });
+        }),
+        close: vi.fn(() => Promise.resolve()),
+      } as any);
 
       // PNG magic bytes but .jpg extension
       await expect(
@@ -197,7 +333,13 @@ describe('SecurityValidator', () => {
         // Current bug: [0x00, 0x00, 0x00] signature is too short
         // Exploit: Just 3 null bytes passes validation
         const fakeMP4 = Buffer.from([0x00, 0x00, 0x00, 0x00, ...Array(100).fill(0xFF)]);
-        vi.mocked(fs.readFile).mockResolvedValue(fakeMP4);
+        vi.mocked(fs.open).mockResolvedValue({
+          read: vi.fn((buffer: Buffer) => {
+            fakeMP4.copy(buffer, 0, 0, Math.min(fakeMP4.length, buffer.length));
+            return Promise.resolve({ bytesRead: Math.min(fakeMP4.length, buffer.length), buffer });
+          }),
+          close: vi.fn(() => Promise.resolve()),
+        } as any);
 
         // This test will FAIL initially (RED phase)
         // Because current code only checks first 3 bytes
@@ -220,7 +362,13 @@ describe('SecurityValidator', () => {
           0x69, 0x73, 0x6F, 0x6D,  // 'isom' brand
           ...Array(100).fill(0x00)
         ]);
-        vi.mocked(fs.readFile).mockResolvedValue(validMP4);
+        vi.mocked(fs.open).mockResolvedValue({
+          read: vi.fn((buffer: Buffer) => {
+            validMP4.copy(buffer, 0, 0, Math.min(validMP4.length, buffer.length));
+            return Promise.resolve({ bytesRead: Math.min(validMP4.length, buffer.length), buffer });
+          }),
+          close: vi.fn(() => Promise.resolve()),
+        } as any);
 
         await expect(
           validator.validateFileContent('/test/valid.mp4')
@@ -234,7 +382,13 @@ describe('SecurityValidator', () => {
           0x71, 0x74, 0x20, 0x20,  // 'qt  ' brand
           ...Array(100).fill(0x00)
         ]);
-        vi.mocked(fs.readFile).mockResolvedValue(validMOV);
+        vi.mocked(fs.open).mockResolvedValue({
+          read: vi.fn((buffer: Buffer) => {
+            validMOV.copy(buffer, 0, 0, Math.min(validMOV.length, buffer.length));
+            return Promise.resolve({ bytesRead: Math.min(validMOV.length, buffer.length), buffer });
+          }),
+          close: vi.fn(() => Promise.resolve()),
+        } as any);
 
         await expect(
           validator.validateFileContent('/test/valid.mov')
@@ -250,7 +404,13 @@ describe('SecurityValidator', () => {
           0x4E, 0x4F, 0x54, 0x20,  // 'NOT ' instead of 'AVI '
           ...Array(100).fill(0x00)
         ]);
-        vi.mocked(fs.readFile).mockResolvedValue(fakeAVI);
+        vi.mocked(fs.open).mockResolvedValue({
+          read: vi.fn((buffer: Buffer) => {
+            fakeAVI.copy(buffer, 0, 0, Math.min(fakeAVI.length, buffer.length));
+            return Promise.resolve({ bytesRead: Math.min(fakeAVI.length, buffer.length), buffer });
+          }),
+          close: vi.fn(() => Promise.resolve()),
+        } as any);
 
         // This test will FAIL initially (RED phase)
         await expect(
@@ -265,7 +425,13 @@ describe('SecurityValidator', () => {
           0x41, 0x56, 0x49, 0x20,  // 'AVI '
           ...Array(100).fill(0x00)
         ]);
-        vi.mocked(fs.readFile).mockResolvedValue(validAVI);
+        vi.mocked(fs.open).mockResolvedValue({
+          read: vi.fn((buffer: Buffer) => {
+            validAVI.copy(buffer, 0, 0, Math.min(validAVI.length, buffer.length));
+            return Promise.resolve({ bytesRead: Math.min(validAVI.length, buffer.length), buffer });
+          }),
+          close: vi.fn(() => Promise.resolve()),
+        } as any);
 
         await expect(
           validator.validateFileContent('/test/valid.avi')
@@ -277,7 +443,13 @@ describe('SecurityValidator', () => {
           0x1A, 0x45, 0xDF, 0xA3,  // EBML header
           ...Array(100).fill(0x00)
         ]);
-        vi.mocked(fs.readFile).mockResolvedValue(validWebM);
+        vi.mocked(fs.open).mockResolvedValue({
+          read: vi.fn((buffer: Buffer) => {
+            validWebM.copy(buffer, 0, 0, Math.min(validWebM.length, buffer.length));
+            return Promise.resolve({ bytesRead: Math.min(validWebM.length, buffer.length), buffer });
+          }),
+          close: vi.fn(() => Promise.resolve()),
+        } as any);
 
         await expect(
           validator.validateFileContent('/test/valid.webm')
@@ -292,7 +464,13 @@ describe('SecurityValidator', () => {
           0x58, 0x58, 0x58, 0x58,  // 'XXXX' (invalid brand)
           ...Array(100).fill(0x00)
         ]);
-        vi.mocked(fs.readFile).mockResolvedValue(invalidMP4);
+        vi.mocked(fs.open).mockResolvedValue({
+          read: vi.fn((buffer: Buffer) => {
+            invalidMP4.copy(buffer, 0, 0, Math.min(invalidMP4.length, buffer.length));
+            return Promise.resolve({ bytesRead: Math.min(invalidMP4.length, buffer.length), buffer });
+          }),
+          close: vi.fn(() => Promise.resolve()),
+        } as any);
 
         await expect(
           validator.validateFileContent('/test/invalid.mp4')
@@ -307,7 +485,13 @@ describe('SecurityValidator', () => {
           0x42, 0x4D,  // 'BM'
           ...Array(100).fill(0x00)
         ]);
-        vi.mocked(fs.readFile).mockResolvedValue(validBMP);
+        vi.mocked(fs.open).mockResolvedValue({
+          read: vi.fn((buffer: Buffer) => {
+            validBMP.copy(buffer, 0, 0, Math.min(validBMP.length, buffer.length));
+            return Promise.resolve({ bytesRead: Math.min(validBMP.length, buffer.length), buffer });
+          }),
+          close: vi.fn(() => Promise.resolve()),
+        } as any);
 
         await expect(
           validator.validateFileContent('/test/valid.bmp')
@@ -316,7 +500,13 @@ describe('SecurityValidator', () => {
 
       it('should reject invalid BMP file', async () => {
         const invalidBMP = Buffer.from([0x00, 0x00, ...Array(100).fill(0x00)]);
-        vi.mocked(fs.readFile).mockResolvedValue(invalidBMP);
+        vi.mocked(fs.open).mockResolvedValue({
+          read: vi.fn((buffer: Buffer) => {
+            invalidBMP.copy(buffer, 0, 0, Math.min(invalidBMP.length, buffer.length));
+            return Promise.resolve({ bytesRead: Math.min(invalidBMP.length, buffer.length), buffer });
+          }),
+          close: vi.fn(() => Promise.resolve()),
+        } as any);
 
         await expect(
           validator.validateFileContent('/test/invalid.bmp')
@@ -328,7 +518,13 @@ describe('SecurityValidator', () => {
           0x1A, 0x45, 0xDF, 0xA3,  // EBML header
           ...Array(100).fill(0x00)
         ]);
-        vi.mocked(fs.readFile).mockResolvedValue(validMKV);
+        vi.mocked(fs.open).mockResolvedValue({
+          read: vi.fn((buffer: Buffer) => {
+            validMKV.copy(buffer, 0, 0, Math.min(validMKV.length, buffer.length));
+            return Promise.resolve({ bytesRead: Math.min(validMKV.length, buffer.length), buffer });
+          }),
+          close: vi.fn(() => Promise.resolve()),
+        } as any);
 
         await expect(
           validator.validateFileContent('/test/valid.mkv')
@@ -337,7 +533,13 @@ describe('SecurityValidator', () => {
 
       it('should reject invalid MKV file', async () => {
         const invalidMKV = Buffer.from([0x00, 0x00, 0x00, 0x00, ...Array(100).fill(0x00)]);
-        vi.mocked(fs.readFile).mockResolvedValue(invalidMKV);
+        vi.mocked(fs.open).mockResolvedValue({
+          read: vi.fn((buffer: Buffer) => {
+            invalidMKV.copy(buffer, 0, 0, Math.min(invalidMKV.length, buffer.length));
+            return Promise.resolve({ bytesRead: Math.min(invalidMKV.length, buffer.length), buffer });
+          }),
+          close: vi.fn(() => Promise.resolve()),
+        } as any);
 
         await expect(
           validator.validateFileContent('/test/invalid.mkv')

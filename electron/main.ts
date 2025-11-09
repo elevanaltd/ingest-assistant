@@ -5,6 +5,8 @@ dotenv.config();
 import { app, BrowserWindow, ipcMain, dialog } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs/promises';
+import * as fsSync from 'fs';
+import * as http from 'http';
 import { z } from 'zod';
 import { FileManager } from './services/fileManager';
 import { SecurityValidator } from './services/securityValidator';
@@ -13,13 +15,17 @@ import { MetadataStore } from './services/metadataStore';
 import { ConfigManager } from './services/configManager';
 import { AIService } from './services/aiService';
 import { MetadataWriter } from './services/metadataWriter';
+import { VideoFrameExtractor } from './services/videoFrameExtractor';
+import { VideoTranscoder } from './services/videoTranscoder';
 import { convertToYAMLFormat, convertToUIFormat } from './utils/lexiconConverter';
 import { sanitizeError } from './utils/errorSanitization';
-import { FileRenameSchema, FileUpdateMetadataSchema, AIBatchProcessSchema } from './schemas/ipcSchemas';
+import { FileRenameSchema, FileUpdateMetadataSchema, FileStructuredUpdateSchema, AIBatchProcessSchema } from './schemas/ipcSchemas';
 import type { AppConfig, LexiconConfig, ShotType } from '../src/types';
 import { migrateToKeychain } from './services/keychainMigration';
 
 let mainWindow: BrowserWindow | null = null;
+let mediaServer: http.Server | null = null;
+const MEDIA_SERVER_PORT = 8765;
 // Initialize SecurityValidator and FileManager with dependency injection
 const securityValidator = new SecurityValidator();
 const fileManager: FileManager = new FileManager(securityValidator);
@@ -31,7 +37,17 @@ const configManager: ConfigManager = (() => {
   return new ConfigManager(configPath);
 })();
 const metadataWriter: MetadataWriter = new MetadataWriter();
+const videoTranscoder: VideoTranscoder = new VideoTranscoder();
 let aiService: AIService | null = null;
+
+// Register transcode cache directory with security validator
+// This allows the media server to serve transcoded files
+// IMPORTANT: Resolve symlinks (macOS /var -> /private/var) to match validation behavior
+(async () => {
+  const cacheDir = videoTranscoder.getCacheDirectory();
+  const resolvedCacheDir = await fs.realpath(cacheDir);
+  await securityValidator.addAllowedPath(resolvedCacheDir);
+})();
 
 // Helper function to get or create metadata store for a specific folder
 function getMetadataStoreForFolder(folderPath: string): MetadataStore {
@@ -41,6 +57,109 @@ function getMetadataStoreForFolder(folderPath: string): MetadataStore {
     metadataStore = new MetadataStore(metadataPath);
   }
   return metadataStore;
+}
+
+// Get MIME type for video file based on extension
+function getVideoMimeType(filePath: string): string {
+  const ext = path.extname(filePath).toLowerCase();
+  const mimeTypes: Record<string, string> = {
+    '.mp4': 'video/mp4',
+    '.mov': 'video/quicktime',
+    '.avi': 'video/x-msvideo',
+    '.mkv': 'video/x-matroska',
+    '.webm': 'video/webm',
+    '.m4v': 'video/x-m4v',
+    '.wmv': 'video/x-ms-wmv',
+    '.flv': 'video/x-flv',
+    '.3gp': 'video/3gpp',
+    '.mpg': 'video/mpeg',
+    '.mpeg': 'video/mpeg',
+  };
+  return mimeTypes[ext] || 'video/mp4';
+}
+
+// Create local HTTP server for streaming video files
+// This approach works reliably with Chromium's media element security
+function createMediaServer(): http.Server {
+  const server = http.createServer(async (req, res) => {
+    try {
+      console.log('[MediaServer] Request:', req.method, req.url);
+
+      // Extract file path from URL query parameter
+      const url = new URL(req.url!, `http://localhost:${MEDIA_SERVER_PORT}`);
+      const filePath = url.searchParams.get('path');
+
+      if (!filePath) {
+        res.writeHead(400, { 'Content-Type': 'text/plain' });
+        res.end('Missing path parameter');
+        return;
+      }
+
+      console.log('[MediaServer] File path:', filePath);
+
+      // Security: Validate file path
+      try {
+        await securityValidator.validateFilePath(filePath);
+      } catch (error) {
+        console.error('[MediaServer] Security validation failed:', error);
+        res.writeHead(403, { 'Content-Type': 'text/plain' });
+        res.end('Access denied');
+        return;
+      }
+
+      // Get file stats and MIME type
+      const stat = fsSync.statSync(filePath);
+      const fileSize = stat.size;
+      const mimeType = getVideoMimeType(filePath);
+      const range = req.headers.range;
+
+      console.log('[MediaServer] File info:', { fileSize, mimeType, hasRange: !!range });
+
+      // Handle range requests for video seeking
+      if (range) {
+        const parts = range.replace(/bytes=/, '').split('-');
+        const start = parseInt(parts[0], 10);
+        const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+        const chunkSize = end - start + 1;
+
+        console.log('[MediaServer] Range request:', { start, end, chunkSize, fileSize });
+
+        const fileStream = fsSync.createReadStream(filePath, { start, end });
+
+        res.writeHead(206, {
+          'Content-Range': `bytes ${start}-${end}/${fileSize}`,
+          'Accept-Ranges': 'bytes',
+          'Content-Length': chunkSize,
+          'Content-Type': mimeType,
+          'Access-Control-Allow-Origin': '*',
+        });
+
+        fileStream.pipe(res);
+      } else {
+        // No range request - send entire file
+        console.log('[MediaServer] Full file request, size:', fileSize);
+
+        res.writeHead(200, {
+          'Content-Length': fileSize,
+          'Content-Type': mimeType,
+          'Accept-Ranges': 'bytes',
+          'Access-Control-Allow-Origin': '*',
+        });
+
+        fsSync.createReadStream(filePath).pipe(res);
+      }
+    } catch (error) {
+      console.error('[MediaServer] Error:', error);
+      res.writeHead(500, { 'Content-Type': 'text/plain' });
+      res.end('Internal server error');
+    }
+  });
+
+  server.listen(MEDIA_SERVER_PORT, 'localhost', () => {
+    console.log(`[MediaServer] Listening on http://localhost:${MEDIA_SERVER_PORT}`);
+  });
+
+  return server;
 }
 
 async function createWindow() {
@@ -76,6 +195,9 @@ async function createWindow() {
 }
 
 app.whenReady().then(async () => {
+  // Start local HTTP server for video streaming
+  mediaServer = createMediaServer();
+
   // Run migration from plaintext electron-store to Keychain (one-time for existing users)
   try {
     const migrated = await migrateToKeychain();
@@ -98,6 +220,14 @@ app.on('window-all-closed', () => {
 app.on('activate', () => {
   if (mainWindow === null) {
     createWindow();
+  }
+});
+
+app.on('quit', () => {
+  // Clean up media server
+  if (mediaServer) {
+    console.log('[MediaServer] Shutting down');
+    mediaServer.close();
   }
 });
 
@@ -124,16 +254,73 @@ ipcMain.handle('file:select-folder', async () => {
 });
 
 // Read file as base64 data URL for display in renderer
+// Note: For videos, returns file:// URL to avoid loading large files into memory
 ipcMain.handle('file:read-as-data-url', async (_event, filePath: string) => {
   try {
     // Security: Validate path (prevents path traversal)
     const validPath = await securityValidator.validateFilePath(filePath);
 
-    // Security: Validate file size (prevents DoS)
-    await securityValidator.validateFileSize(validPath, 100 * 1024 * 1024); // 100MB
+    // Determine file type
+    const fileType = fileManager.getFileType(validPath);
 
     // Security: Validate file content matches extension (prevents malware upload)
     await securityValidator.validateFileContent(validPath);
+
+    // For video files, return HTTP URL pointing to local media server
+    // This prevents DoS from large video files (can be 5GB+)
+    // The HTTP server supports streaming and range requests for seeking
+    if (fileType === 'video') {
+      console.log('[IPC] Returning HTTP URL for video streaming:', validPath);
+
+      // Check video codec compatibility
+      let shouldTranscode = false;
+      try {
+        const extractor = new VideoFrameExtractor();
+        const codecInfo = await extractor.getVideoCodec(validPath);
+        console.log('[IPC] Video codec:', codecInfo);
+
+        if (!codecInfo.supported) {
+          console.warn('[IPC] ⚠️  Unsupported codec detected - will transcode for preview');
+          console.warn('[IPC]     Codec:', codecInfo.codec_name, '-', codecInfo.codec_long_name);
+          console.warn('[IPC]     Supported codecs: H.264, VP8, VP9, Theora');
+          shouldTranscode = true;
+        }
+      } catch (error) {
+        console.error('[IPC] Failed to check video codec:', error);
+      }
+
+      // If codec is unsupported, transcode to H.264 for preview
+      if (shouldTranscode) {
+        try {
+          console.log('[IPC] Starting transcode for preview...');
+          const transcodedPath = await videoTranscoder.transcodeForPreview(validPath);
+          const encodedPath = encodeURIComponent(transcodedPath);
+          const httpUrl = `http://localhost:${MEDIA_SERVER_PORT}/?path=${encodedPath}`;
+          console.log('[IPC] Transcode complete, serving:', httpUrl);
+
+          // Return URL with success indicator
+          const successMessage = 'H.264 Preview (AI analysis on original)';
+          return `data:text/plain;base64,${Buffer.from(successMessage, 'utf8').toString('base64')}|||${httpUrl}`;
+        } catch (error) {
+          console.error('[IPC] Transcode failed:', error);
+          // Fall back to original file URL (may show codec warning in browser)
+          const encodedPath = encodeURIComponent(validPath);
+          const httpUrl = `http://localhost:${MEDIA_SERVER_PORT}/?path=${encodedPath}`;
+          const errorMessage = `⚠️ Transcode failed: ${error instanceof Error ? error.message : 'Unknown error'}. Showing original file (may not play correctly).`;
+          return `data:text/plain;base64,${Buffer.from(errorMessage).toString('base64')}|||${httpUrl}`;
+        }
+      }
+
+      // Codec is supported - return original file URL
+      const encodedPath = encodeURIComponent(validPath);
+      const httpUrl = `http://localhost:${MEDIA_SERVER_PORT}/?path=${encodedPath}`;
+      console.log('[IPC] Codec supported, HTTP URL:', httpUrl);
+      return httpUrl;
+    }
+
+    // For images, validate size and load into memory as base64
+    // Security: Validate file size (prevents DoS) - only for images
+    await securityValidator.validateFileSize(validPath, 100 * 1024 * 1024); // 100MB
 
     const buffer = await fs.readFile(validPath);
     const base64 = buffer.toString('base64');
@@ -146,10 +333,7 @@ ipcMain.handle('file:read-as-data-url', async (_event, filePath: string) => {
       '.png': 'image/png',
       '.gif': 'image/gif',
       '.webp': 'image/webp',
-      '.mp4': 'video/mp4',
-      '.mov': 'video/quicktime',
-      '.avi': 'video/x-msvideo',
-      '.webm': 'video/webm',
+      '.bmp': 'image/bmp',
     };
 
     const mimeType = mimeTypes[ext] || 'application/octet-stream';
@@ -194,12 +378,12 @@ ipcMain.handle('file:load-files', async () => {
   return files;
 });
 
-ipcMain.handle('file:rename', async (_event, fileId: string, mainName: string, currentPath: string, structured?: { location?: string; subject?: string; shotType?: string }) => {
+ipcMain.handle('file:rename', async (_event, fileId: string, mainName: string, currentPath: string, structured?: { location?: string; subject?: string; action?: string; shotType?: string }) => {
   try {
     console.log('[main.ts] file:rename called with:', { fileId, mainName, structured });
 
     // Security: Validate input schema (prevents type confusion attacks)
-    const validated = FileRenameSchema.parse({ fileId, mainName, currentPath });
+    const validated = FileRenameSchema.parse({ fileId, mainName, currentPath, structured });
 
     // Rename the file using validated data
     const newPath = await fileManager.renameFile(
@@ -230,6 +414,7 @@ ipcMain.handle('file:rename', async (_event, fileId: string, mainName: string, c
         // Store structured components if provided
         location: structured?.location,
         subject: structured?.subject,
+        action: structured?.action,
         shotType: structured?.shotType as ShotType | undefined,
       };
     } else {
@@ -237,10 +422,11 @@ ipcMain.handle('file:rename', async (_event, fileId: string, mainName: string, c
       fileMetadata.mainName = mainName;
       fileMetadata.currentFilename = path.basename(newPath);
       fileMetadata.filePath = newPath;
-      // Update structured components if provided
-      if (structured?.location) fileMetadata.location = structured.location;
-      if (structured?.subject) fileMetadata.subject = structured.subject;
-      if (structured?.shotType) fileMetadata.shotType = structured.shotType as ShotType;
+      // Update structured components if provided (allow clearing action with empty string)
+      if (structured && 'location' in structured) fileMetadata.location = structured.location;
+      if (structured && 'subject' in structured) fileMetadata.subject = structured.subject;
+      if (structured && 'action' in structured) fileMetadata.action = structured.action || undefined;
+      if (structured && 'shotType' in structured) fileMetadata.shotType = structured.shotType as ShotType;
     }
 
     console.log('[main.ts] Saving fileMetadata to store:', JSON.stringify({
@@ -276,24 +462,38 @@ ipcMain.handle('file:rename', async (_event, fileId: string, mainName: string, c
 
 ipcMain.handle('file:update-metadata', async (_event, fileId: string, metadata: string[]) => {
   try {
+    console.log('[main.ts] file:update-metadata called with fileId:', fileId, 'metadata:', metadata);
+
     // Security: Validate input schema
     const validated = FileUpdateMetadataSchema.parse({ fileId, metadata });
 
-    if (!currentFolderPath) return false;
+    if (!currentFolderPath) {
+      throw new Error('No folder selected');
+    }
 
     const store = getMetadataStoreForFolder(currentFolderPath);
+
+    // Re-fetch metadata to get latest mainName (in case updateStructuredMetadata was called first)
     const fileMetadata = await store.getFileMetadata(validated.fileId);
-    if (!fileMetadata) return false;
+    if (!fileMetadata) {
+      throw new Error(`File metadata not found for ID: ${validated.fileId}`);
+    }
+
+    console.log('[main.ts] Updating file metadata - current mainName:', fileMetadata.mainName);
 
     fileMetadata.metadata = validated.metadata;
     await store.updateFileMetadata(validated.fileId, fileMetadata);
 
     // Write metadata INTO the actual file using exiftool
+    // Use the current mainName from fileMetadata (which may have been updated by updateStructuredMetadata)
+    console.log('[main.ts] Writing to XMP - title:', fileMetadata.mainName, 'tags:', validated.metadata);
     await metadataWriter.writeMetadataToFile(
       fileMetadata.filePath,
       fileMetadata.mainName,
       validated.metadata
     );
+
+    console.log('[main.ts] file:update-metadata - Successfully wrote XMP with title:', fileMetadata.mainName, 'and tags:', validated.metadata);
 
     return true;
   } catch (error) {
@@ -309,28 +509,70 @@ ipcMain.handle('file:update-metadata', async (_event, fileId: string, metadata: 
   }
 });
 
-ipcMain.handle('file:update-structured-metadata', async (_event, fileId: string, structured: { location: string; subject: string; shotType: string }) => {
+ipcMain.handle('file:update-structured-metadata', async (_event, fileId: string, structured: { location: string; subject: string; action?: string; shotType: string }, filePath?: string, fileType?: 'image' | 'video') => {
   try {
-    console.log('[main.ts] file:update-structured-metadata called with:', { fileId, structured });
+    console.log('[main.ts] file:update-structured-metadata called with:', { fileId, structured, filePath, fileType });
 
-    if (!currentFolderPath) return false;
+    // Security: Validate input schema (prevents oversized payloads and injection)
+    const validated = FileStructuredUpdateSchema.parse({ fileId, structured });
+
+    if (!currentFolderPath) {
+      throw new Error('No folder selected');
+    }
 
     const store = getMetadataStoreForFolder(currentFolderPath);
-    const fileMetadata = await store.getFileMetadata(fileId);
-    if (!fileMetadata) return false;
+    let fileMetadata = await store.getFileMetadata(fileId);
 
-    // Update structured components
-    fileMetadata.location = structured.location;
-    fileMetadata.subject = structured.subject;
-    fileMetadata.shotType = structured.shotType as ShotType;
+    // If metadata doesn't exist yet, create it (for new files)
+    if (!fileMetadata) {
+      console.log('[main.ts] Creating new metadata entry for file ID:', fileId);
+
+      if (!filePath) {
+        throw new Error(`File metadata not found and filePath not provided for ID: ${fileId}`);
+      }
+
+      fileMetadata = {
+        id: fileId,
+        originalFilename: path.basename(filePath),
+        currentFilename: path.basename(filePath),
+        filePath: filePath,
+        extension: path.extname(filePath),
+        mainName: '',
+        metadata: [],
+        processedByAI: false,
+        lastModified: new Date(),
+        fileType: fileType || 'image',
+      };
+    }
+
+    // Update structured components (allow clearing action with empty string)
+    const validatedStructured = validated.structured as any;
+    fileMetadata.location = validatedStructured.location;
+    fileMetadata.subject = validatedStructured.subject;
+    fileMetadata.action = validatedStructured.action || undefined;
+    fileMetadata.shotType = validatedStructured.shotType as ShotType;
+
+    // Build generated title from structured components
+    const generatedTitle = fileMetadata.fileType === 'video' && structured.action
+      ? `${structured.location}-${structured.subject}-${structured.action}-${structured.shotType}`
+      : `${structured.location}-${structured.subject}-${structured.shotType}`;
+
+    // Update mainName to match generated title
+    fileMetadata.mainName = generatedTitle;
 
     console.log('[main.ts] Updating structured metadata in store:', {
       location: fileMetadata.location,
       subject: fileMetadata.subject,
-      shotType: fileMetadata.shotType
+      action: fileMetadata.action,
+      shotType: fileMetadata.shotType,
+      generatedTitle
     });
 
+    // Save to JSON store
     await store.updateFileMetadata(fileId, fileMetadata);
+
+    // NOTE: We do NOT write to file here - let updateMetadata handle the file write
+    // This prevents duplicate writes and ensures metadata tags are included
 
     return true;
   } catch (error) {
@@ -352,11 +594,24 @@ ipcMain.handle('ai:analyze-file', async (_event, filePath: string) => {
     // Security: Validate file content (prevents sending malware to AI API)
     await securityValidator.validateFileContent(validPath);
 
-    // Security: Validate file size
-    await securityValidator.validateFileSize(validPath, 100 * 1024 * 1024);
-
     const lexicon = await configManager.getLexicon();
-    return await aiService.analyzeImage(validPath, lexicon);
+
+    // Detect file type and route to appropriate analysis method
+    const fileType = fileManager.getFileType(validPath);
+
+    if (fileType === 'video') {
+      // For videos, we extract frames (not load entire file), so no size limit needed
+      // Video files can be 5GB+ which is fine since we only extract ~5 JPEG frames
+      console.log('[IPC] Analyzing video file (frame extraction):', validPath);
+      return await aiService.analyzeVideo(validPath, lexicon);
+    } else {
+      // For images, validate size before loading into memory for AI analysis
+      // Security: Validate file size (prevents DoS)
+      await securityValidator.validateFileSize(validPath, 100 * 1024 * 1024); // 100MB
+
+      console.log('[IPC] Analyzing image file:', validPath);
+      return await aiService.analyzeImage(validPath, lexicon);
+    }
   } catch (error) {
     console.error('Failed to analyze file:', error);
 
