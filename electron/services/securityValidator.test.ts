@@ -24,6 +24,10 @@ describe('SecurityValidator', () => {
   beforeEach(() => {
     validator = new SecurityValidator();
     vi.clearAllMocks();
+
+    // Default mock: fs.realpath returns input path (pass-through)
+    // Individual tests override this for specific scenarios
+    vi.mocked(fs.realpath).mockImplementation((path) => Promise.resolve(path.toString()));
   });
 
   describe('Path Traversal Protection', () => {
@@ -150,6 +154,107 @@ describe('SecurityValidator', () => {
           validator.validateFilePath('/app/data-backup/secrets.txt')
         ).rejects.toThrow(SecurityViolationError);
       });
+    });
+  });
+
+  describe('Additional Allowed Paths', () => {
+    it('should allow files in additional allowed paths', async () => {
+      validator.setAllowedBasePath('/selected/folder');
+      await validator.addAllowedPath('/tmp/cache');
+
+      // File in cache directory (not in base path)
+      vi.mocked(fs.realpath).mockResolvedValue('/tmp/cache/transcoded.mp4');
+
+      const cachePath = '/tmp/cache/transcoded.mp4';
+      await expect(
+        validator.validateFilePath(cachePath)
+      ).resolves.toBe(cachePath);
+    });
+
+    it('should allow files in subdirectories of additional paths', async () => {
+      validator.setAllowedBasePath('/selected/folder');
+      await validator.addAllowedPath('/var/tmp/previews');
+
+      // File in subdirectory of additional path
+      vi.mocked(fs.realpath).mockResolvedValue('/var/tmp/previews/subdir/video.mp4');
+
+      const subPath = '/var/tmp/previews/subdir/video.mp4';
+      await expect(
+        validator.validateFilePath(subPath)
+      ).resolves.toBe(subPath);
+    });
+
+    it('should reject files outside both base and additional paths', async () => {
+      validator.setAllowedBasePath('/selected/folder');
+      await validator.addAllowedPath('/tmp/cache');
+
+      // File in neither base nor additional path
+      vi.mocked(fs.realpath).mockResolvedValue('/etc/passwd');
+
+      await expect(
+        validator.validateFilePath('/etc/passwd')
+      ).rejects.toThrow(SecurityViolationError);
+    });
+
+    it('should support multiple additional allowed paths', async () => {
+      validator.setAllowedBasePath('/selected/folder');
+      await validator.addAllowedPath('/tmp/cache');
+      await validator.addAllowedPath('/var/previews');
+
+      // File in second additional path
+      vi.mocked(fs.realpath).mockResolvedValue('/var/previews/video.mp4');
+
+      await expect(
+        validator.validateFilePath('/var/previews/video.mp4')
+      ).resolves.toBe('/var/previews/video.mp4');
+    });
+
+    it('should not add duplicate additional paths', async () => {
+      validator.setAllowedBasePath('/selected/folder');
+      await validator.addAllowedPath('/tmp/cache');
+      await validator.addAllowedPath('/tmp/cache'); // Duplicate
+
+      // Verify it still works (no error from duplicates)
+      vi.mocked(fs.realpath).mockResolvedValue('/tmp/cache/file.mp4');
+
+      await expect(
+        validator.validateFilePath('/tmp/cache/file.mp4')
+      ).resolves.toBe('/tmp/cache/file.mp4');
+    });
+
+    it('should reject path traversal from additional allowed paths', async () => {
+      validator.setAllowedBasePath('/selected/folder');
+      await validator.addAllowedPath('/tmp/cache');
+
+      // Attempt to traverse outside additional path
+      vi.mocked(fs.realpath).mockResolvedValue('/etc/passwd');
+
+      await expect(
+        validator.validateFilePath('/tmp/cache/../../etc/passwd')
+      ).rejects.toThrow(SecurityViolationError);
+    });
+
+    it('should handle macOS symlink resolution in additional paths', async () => {
+      // macOS /var -> /private/var symlink scenario
+      validator.setAllowedBasePath('/selected/folder');
+
+      // Mock realpath to resolve /var -> /private/var for both directory and file
+      vi.mocked(fs.realpath).mockImplementation((path) => {
+        const pathStr = path.toString();
+        if (pathStr.startsWith('/var/folders/')) {
+          return Promise.resolve(pathStr.replace('/var/', '/private/var/'));
+        }
+        return Promise.resolve(pathStr);
+      });
+
+      // Register with unresolved path (what app currently does)
+      // addAllowedPath() will call realpath() and store: /private/var/folders/xyz/catalog-previews
+      await validator.addAllowedPath('/var/folders/xyz/catalog-previews');
+
+      // validateFilePath() will call realpath() and validate against: /private/var/folders/xyz/catalog-previews
+      await expect(
+        validator.validateFilePath('/var/folders/xyz/catalog-previews/file.mp4')
+      ).resolves.toBe('/private/var/folders/xyz/catalog-previews/file.mp4');
     });
   });
 
