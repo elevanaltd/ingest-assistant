@@ -688,29 +688,28 @@ ipcMain.handle('ai:batch-process', async (_event, fileIds: string[]) => {
     if (!fileMetadata || fileMetadata.processedByAI) continue;
 
     try {
-      // Security: Validate path before AI processing
-      const validPath = await securityValidator.validateFilePath(fileMetadata.filePath);
-
-      // Security: Validate file content (prevents sending malware to AI API)
-      await securityValidator.validateFileContent(validPath);
+      // CRITICAL-8: Security validation for each file in batch
+      // Mitigates: Path traversal, content type confusion, resource exhaustion
+      // Pattern: Same 3-layer validation as ai:analyze-file handler
+      const validatedPath = await securityValidator.validateFilePath(fileMetadata.filePath);
+      await securityValidator.validateFileContent(validatedPath);
 
       // Detect file type and route to appropriate analysis method
-      const fileType = fileManager.getFileType(validPath);
+      const fileType = fileManager.getFileType(validatedPath);
 
       let result: AIAnalysisResult;
       if (fileType === 'video') {
         // For videos, we extract frames (not load entire file), so no size limit needed
-        console.log('[IPC] Batch analyzing video file (frame extraction):', validPath);
-        result = await aiService.analyzeVideo(validPath, lexicon);
+        console.log('[IPC] Batch analyzing video file (frame extraction):', validatedPath);
+        result = await aiService.analyzeVideo(validatedPath, lexicon);
       } else {
         // For images, validate size before loading into memory for AI analysis
         // Security: Validate file size (prevents DoS)
-        await securityValidator.validateFileSize(validPath, 100 * 1024 * 1024); // 100MB
+        await securityValidator.validateFileSize(validatedPath, 100 * 1024 * 1024); // 100MB
 
-        console.log('[IPC] Batch analyzing image file:', validPath);
-        result = await aiService.analyzeImage(validPath, lexicon);
+        console.log('[IPC] Batch analyzing image file:', validatedPath);
+        result = await aiService.analyzeImage(validatedPath, lexicon);
       }
-
       results.set(fileId, result);
 
       // Auto-update if confidence is high
@@ -721,8 +720,13 @@ ipcMain.handle('ai:batch-process', async (_event, fileIds: string[]) => {
         await store.updateFileMetadata(fileId, fileMetadata);
       }
     } catch (error) {
-      console.error(`Failed to process ${fileId}:`, error);
-      // Continue processing other files even if one fails
+      // Security validation errors are logged with their type for audit trail
+      if (error instanceof SecurityViolationError) {
+        console.error(`Security violation for ${fileId}:`, error.type, error.details);
+      } else {
+        console.error(`Failed to process ${fileId}:`, error);
+      }
+      // Continue with remaining files (partial batch failure is acceptable)
     }
   }
 
