@@ -414,6 +414,7 @@ ipcMain.handle('file:load-files', async () => {
       // Preserve structured naming components
       file.location = existingMetadata.location;
       file.subject = existingMetadata.subject;
+      file.action = existingMetadata.action;
       file.shotType = existingMetadata.shotType;
     }
   }
