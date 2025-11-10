@@ -1,10 +1,48 @@
 # GitHub Agent Constitutional Activation Guide
 
 ## PURPOSE
-GitHub agents operate in sandboxed environments without `/role` commands or MCP tools.
-This guide enables self-activation of constitutional discipline through direct file reading.
+Enable constitutional activation in GitHub environments using `/activate` command.
 
-## ACTIVATION PATTERN
+**Quick Start:** Use `/activate {role-name}` in your first prompt for automatic constitutional loading.
+
+**Complete Documentation:** See [COMPLETE-ACTIVATION-SYSTEM.md](./COMPLETE-ACTIVATION-SYSTEM.md) for full system architecture.
+
+## NEW: /ACTIVATE COMMAND (Recommended)
+
+The easiest activation method is using the `/activate` command:
+
+```
+/activate implementation-lead
+
+[Your task here]
+```
+
+**What it does automatically:**
+1. Reads `.claude/agents/{role}.oct.md`
+2. Extracts SHANK overlay behavioral constraints
+3. Auto-loads skills based on role mapping
+4. Performs integration check (behavioral prediction)
+5. Executes task with constitutional discipline
+
+**Modes:**
+- `/activate {role}` - Quick mode (2-3 min, default)
+- `/activate {role} deep` - Deep RAPH mode (5-10 min, full evidence-based integration)
+
+**Multi-agent consultation:**
+```
+/activate implementation-lead
+
+[Your task]
+
+@consult:code-review-specialist
+@consult:security-specialist
+```
+
+See `.claude/commands/activate.md` for full protocol.
+
+---
+
+## MANUAL ACTIVATION PATTERN (Alternative)
 
 When working on this codebase, GitHub agents should:
 
