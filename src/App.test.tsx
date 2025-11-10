@@ -23,6 +23,15 @@ const mockElectronAPI = {
     load: vi.fn(),
     save: vi.fn(),
   },
+  // Batch operations methods
+  batchStart: vi.fn(async () => 'mock-queue-id'),
+  batchCancel: vi.fn(async () => ({ success: true })),
+  batchGetStatus: vi.fn(async () => ({
+    items: [],
+    status: 'idle',
+    currentFile: null
+  })),
+  onBatchProgress: vi.fn(() => () => {}), // Returns cleanup function
 };
 
 beforeEach(() => {
