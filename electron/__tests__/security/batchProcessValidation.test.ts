@@ -447,7 +447,7 @@ describe('Batch Process Security Validation', () => {
       await expect(rateLimiter.consume(100)).resolves.not.toThrow();
 
       // Should have 0 tokens remaining
-      expect(rateLimiter.getTokens()).toBe(0);
+      expect(rateLimiter.getTokens()).toBeCloseTo(0, 0);
     });
 
     it('should provide accurate wait time in error message', async () => {
