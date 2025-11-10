@@ -58,13 +58,13 @@ Before writing ANY code, analyze system ripples:
    - TypeScript types (type safety)
 
 2. Integration Points:
-   - scripts-web app (primary consumer)
+   - copy-editor app (primary consumer)
    - @workspace/shared package (exports this service)
    - Existing getScripts() function (consistency pattern)
    - Error handling architecture (service-level errors)
 
 3. Ripple Paths:
-   - Add getScriptById → impacts imports in scripts-web
+   - Add getScriptById → impacts imports in copy-editor
    - Database query → must respect RLS policies
    - Type definitions → must update exported types
    - Tests → must cover new function + edge cases
