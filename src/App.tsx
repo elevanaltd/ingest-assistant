@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import type { FileMetadata, LexiconConfig, ShotType } from './types';
 import { SettingsModal } from './components/SettingsModal';
 import { Sidebar } from './components/Sidebar';
+import { CommandPalette, type Command } from './components/CommandPalette';
+import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import './App.css';
 
 function App() {
@@ -28,9 +30,11 @@ function App() {
   const [codecWarning, setCodecWarning] = useState<string>('');
   const [statusMessage, setStatusMessage] = useState<string>('');
   const [showSettings, setShowSettings] = useState(false);
+  const [showCommandPalette, setShowCommandPalette] = useState(false);
   const [lexiconConfig, setLexiconConfig] = useState<LexiconConfig | undefined>();
 
   const currentFile = files[currentFileIndex];
+  const canSave = Boolean(location && subject && shotType);
 
   // Auto-dismiss status message after 3 seconds
   useEffect(() => {
@@ -137,22 +141,11 @@ function App() {
     }
   }, [currentFile, shotTypes]);
 
-  // Check if running in Electron (user-friendly UI check)
-  if (!window.electronAPI) {
-    return (
-      <div className="app" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', flexDirection: 'column', gap: '16px' }}>
-        <h2>⚠️ Electron API not available</h2>
-        <p>This app must be run in Electron, not in a browser.</p>
-        <p>Run: <code>npm run dev</code></p>
-      </div>
-    );
-  }
-
   const handleSelectFolder = async () => {
+    if (!window.electronAPI) return;
     const path = await window.electronAPI.selectFolder();
     if (path) {
       setFolderPath(path);
-      // CRITICAL-1 FIX: loadFiles() no longer accepts path parameter
       const loadedFiles = await window.electronAPI.loadFiles();
       setFiles(loadedFiles);
       setCurrentFileIndex(0);
@@ -308,6 +301,62 @@ function App() {
       setIsAIConfigured(configured);
     }
   };
+
+  // Define command palette commands (after all handlers are declared)
+  const commands: Command[] = [
+    {
+      id: 'save',
+      label: 'Save metadata',
+      shortcut: 'Cmd+S',
+      action: handleSave,
+    },
+    {
+      id: 'ai-assist',
+      label: 'AI assist',
+      shortcut: 'Cmd+I',
+      action: handleAIAssist,
+    },
+    {
+      id: 'next',
+      label: 'Next file',
+      shortcut: '→',
+      action: handleNext,
+    },
+    {
+      id: 'previous',
+      label: 'Previous file',
+      shortcut: '←',
+      action: handlePrevious,
+    },
+    {
+      id: 'settings',
+      label: 'Settings',
+      shortcut: '',
+      action: handleOpenSettings,
+    },
+  ];
+
+  // Setup keyboard shortcuts (must be unconditional per React hooks rules)
+  useKeyboardShortcuts({
+    onSave: handleSave,
+    onAIAssist: handleAIAssist,
+    onNext: handleNext,
+    onPrevious: handlePrevious,
+    onCommandPalette: () => setShowCommandPalette(true),
+    isLoading,
+    canSave,
+  });
+
+  // Check if running in Electron (user-friendly UI check)
+  if (!window.electronAPI) {
+    return (
+      <div className="app" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', flexDirection: 'column', gap: '16px' }}>
+        <h2>⚠️ Electron API not available</h2>
+        <p>This app must be run in Electron, not in a browser.</p>
+        <p>Run: <code>npm run dev</code></p>
+      </div>
+    );
+  }
 
   return (
     <div className="app">
@@ -633,6 +682,12 @@ function App() {
           initialConfig={lexiconConfig}
         />
       )}
+
+      <CommandPalette
+        isOpen={showCommandPalette}
+        onClose={() => setShowCommandPalette(false)}
+        commands={commands}
+      />
     </div>
   );
 }

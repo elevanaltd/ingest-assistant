@@ -1,5 +1,16 @@
 # Ingest Assistant - Project Context
 
+---
+
+## 🌐 Ecosystem Position
+
+**For complete pipeline positioning (where we fit in EAV production workflow):**
+→ **[`.coord/ECOSYSTEM-POSITION.md`](.coord/ECOSYSTEM-POSITION.md)**
+
+**Pipeline Step:** 6 of 10 | **Role:** AI pre-tagging gateway | **Downstream:** CEP Panel (Premiere Pro ingestion)
+
+---
+
 ## Project Identity
 **Name:** Ingest Assistant
 **Purpose:** AI-powered media file ingestion and metadata assistant for macOS
