@@ -53,6 +53,23 @@ contextBridge.exposeInMainWorld('electronAPI', {
   batchProcess: (fileIds: string[]): Promise<Record<string, AIAnalysisResult>> =>
     ipcRenderer.invoke('ai:batch-process', fileIds),
 
+  // Batch operations (Issue #24)
+  batchStart: (fileIds: string[]): Promise<string> =>
+    ipcRenderer.invoke('batch:start', fileIds),
+
+  batchCancel: (): Promise<{ success: boolean }> =>
+    ipcRenderer.invoke('batch:cancel'),
+
+  batchGetStatus: (): Promise<import('../src/types').BatchQueueState> =>
+    ipcRenderer.invoke('batch:get-status'),
+
+  onBatchProgress: (callback: (progress: import('../src/types').BatchProgress) => void): (() => void) => {
+    const listener = (_event: any, progress: import('../src/types').BatchProgress) => callback(progress);
+    ipcRenderer.on('batch:progress', listener);
+    // Return cleanup function
+    return () => ipcRenderer.removeListener('batch:progress', listener);
+  },
+
   // Config operations
   loadConfig: (): Promise<AppConfig> =>
     ipcRenderer.invoke('config:load'),
