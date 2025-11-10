@@ -79,9 +79,9 @@ describe('Batch IPC Handlers', () => {
 
       await mockBatchQueueManager.addToQueue(fileIds);
       await mockBatchQueueManager.startProcessing(
-        expect.any(Function),
-        expect.any(Function),
-        expect.any(Function)
+        vi.fn(),
+        vi.fn(),
+        vi.fn()
       );
 
       expect(mockBatchQueueManager.startProcessing).toHaveBeenCalled();

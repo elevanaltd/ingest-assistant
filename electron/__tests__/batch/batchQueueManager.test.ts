@@ -139,9 +139,12 @@ describe('BatchQueueManager', () => {
       await queueManager.addToQueue(fileIds);
       await queueManager.startProcessing(mockProcessor, progressCallback, mockCompleteCallback);
 
-      expect(progressEvents[0].status).toBe('processing');
-      expect(progressEvents[1].status).toBe('error');
-      expect(progressEvents[1].error).toBe('Processing failed');
+      // Implementation emits progress event before processing, then error event on failure
+      expect(progressEvents).toHaveLength(3);
+      expect(progressEvents[0].status).toBe('processing'); // file1
+      expect(progressEvents[1].status).toBe('processing'); // file2 before error
+      expect(progressEvents[2].status).toBe('error'); // file2 after error
+      expect(progressEvents[2].error).toBe('Processing failed');
     });
   });
 
@@ -219,8 +222,8 @@ describe('BatchQueueManager', () => {
       await queueManager.addToQueue(fileIds);
       await queueManager.startProcessing(mockProcessor, mockProgressCallback, mockCompleteCallback);
 
-      // Should write after file1, after file2, and on completion
-      expect(fs.writeFile).toHaveBeenCalledTimes(3);
+      // Should write: after addToQueue, after file1, after file2, and on completion
+      expect(fs.writeFile).toHaveBeenCalledTimes(4);
       expect(fs.writeFile).toHaveBeenCalledWith(
         testQueuePath,
         expect.stringContaining('"fileId":"file1"'),
@@ -242,6 +245,10 @@ describe('BatchQueueManager', () => {
       vi.mocked(fs.access).mockResolvedValue(undefined);
 
       const restoredManager = new BatchQueueManager(testQueuePath);
+
+      // Wait for async loadState to complete (constructor calls it without await)
+      await new Promise(resolve => setImmediate(resolve));
+
       const status = restoredManager.getStatus();
 
       expect(status.items).toHaveLength(2);
