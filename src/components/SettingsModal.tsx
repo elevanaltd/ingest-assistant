@@ -38,6 +38,22 @@ export function SettingsModal({ onClose, onSave, initialConfig }: SettingsModalP
   const [lexiconSaveSuccess, setLexiconSaveSuccess] = useState(false);
   const [aiSaveSuccess, setAiSaveSuccess] = useState(false);
 
+  // Handle Escape key to close modal
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        onClose();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [onClose]);
+
   // Load initial lexicon config
   useEffect(() => {
     if (initialConfig) {
