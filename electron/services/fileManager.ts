@@ -2,13 +2,19 @@ import * as fs from 'fs/promises';
 import * as path from 'path';
 import type { FileMetadata } from '../../src/types';
 import { SecurityValidator } from './securityValidator';
+import { LRUCache } from '../utils/lruCache';
 
 const IMAGE_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp'];
 const VIDEO_EXTENSIONS = ['.mp4', '.mov', '.avi', '.mkv', '.webm'];
 const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB in bytes
 
 export class FileManager {
-  constructor(private readonly securityValidator: SecurityValidator) {}
+  private scanCache: LRUCache<string, FileMetadata[]>;
+
+  constructor(private readonly securityValidator: SecurityValidator) {
+    // Cache up to 5 folder scans (meets <50ms cached requirement)
+    this.scanCache = new LRUCache(5);
+  }
 
   /**
    * Validate file size to prevent DoS attacks from large files
@@ -23,6 +29,12 @@ export class FileManager {
    * Scan a folder and return all media files as FileMetadata
    */
   async scanFolder(folderPath: string): Promise<FileMetadata[]> {
+    // Check cache first
+    const cached = this.scanCache.get(folderPath);
+    if (cached) {
+      return cached;
+    }
+
     // Set allowed base path for security validation
     this.securityValidator.setAllowedBasePath(folderPath);
 
@@ -68,6 +80,9 @@ export class FileManager {
         fileType: this.getFileType(filename),
       });
     }
+
+    // Cache the result
+    this.scanCache.set(folderPath, files);
 
     return files;
   }
@@ -129,5 +144,37 @@ export class FileManager {
     if (IMAGE_EXTENSIONS.includes(ext)) return 'image';
     if (VIDEO_EXTENSIONS.includes(ext)) return 'video';
     return 'image'; // Default fallback
+  }
+
+  /**
+   * Scan a folder and return a paginated range of files
+   */
+  async scanFolderRange(
+    folderPath: string,
+    startIndex: number,
+    pageSize: number
+  ): Promise<{
+    files: import('../../src/types').FileMetadata[];
+    totalCount: number;
+    startIndex: number;
+    pageSize: number;
+    hasMore: boolean;
+  }> {
+    // Get all files first (reuse existing scanFolder logic)
+    const allFiles = await this.scanFolder(folderPath);
+
+    // Calculate pagination
+    const totalCount = allFiles.length;
+    const endIndex = Math.min(startIndex + pageSize, totalCount);
+    const files = allFiles.slice(startIndex, endIndex);
+    const hasMore = endIndex < totalCount;
+
+    return {
+      files,
+      totalCount,
+      startIndex,
+      pageSize,
+      hasMore,
+    };
   }
 }

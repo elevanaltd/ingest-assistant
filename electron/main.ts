@@ -416,6 +416,40 @@ ipcMain.handle('file:load-files', async () => {
   return files;
 });
 
+// Paginated file listing (issue #19)
+ipcMain.handle('file:list-range', async (_event, startIndex: number, pageSize: number) => {
+  // Validate inputs
+  const { FileListRangeSchema } = await import('./schemas/ipcSchemas');
+  const validated = FileListRangeSchema.parse({ startIndex, pageSize });
+
+  if (!currentFolderPath) {
+    throw new Error('No folder selected');
+  }
+
+  // Get paginated files
+  const result = await fileManager.scanFolderRange(
+    currentFolderPath,
+    validated.startIndex,
+    validated.pageSize
+  );
+
+  // Hydrate metadata for files in this range
+  const store = getMetadataStoreForFolder(currentFolderPath);
+  for (const file of result.files) {
+    const existingMetadata = await store.getFileMetadata(file.id);
+    if (existingMetadata) {
+      file.mainName = existingMetadata.mainName;
+      file.metadata = existingMetadata.metadata;
+      file.processedByAI = existingMetadata.processedByAI;
+      file.location = existingMetadata.location;
+      file.subject = existingMetadata.subject;
+      file.shotType = existingMetadata.shotType;
+    }
+  }
+
+  return result;
+});
+
 ipcMain.handle('file:rename', async (_event, fileId: string, mainName: string, currentPath: string, structured?: { location?: string; subject?: string; action?: string; shotType?: string }) => {
   try {
     console.log('[main.ts] file:rename called with:', { fileId, mainName, structured });
