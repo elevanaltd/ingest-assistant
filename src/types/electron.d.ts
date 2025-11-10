@@ -20,6 +20,12 @@ export interface ElectronAPI {
   analyzeFile: (filePath: string) => Promise<AIAnalysisResult>;
   batchProcess: (fileIds: string[]) => Promise<Record<string, AIAnalysisResult>>;
 
+  // Batch operations (Issue #24)
+  batchStart: (fileIds: string[]) => Promise<string>;
+  batchCancel: () => Promise<{ success: boolean }>;
+  batchGetStatus: () => Promise<import('./index').BatchQueueState>;
+  onBatchProgress: (callback: (progress: import('./index').BatchProgress) => void) => () => void;
+
   // Config operations
   loadConfig: () => Promise<AppConfig>;
   saveConfig: (config: AppConfig) => Promise<boolean>;

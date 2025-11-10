@@ -56,6 +56,11 @@ export const AIBatchProcessSchema = z.object({
   fileIds: z.array(z.string()).min(1).max(100), // Max 100 files per batch
 });
 
+// Batch operations (Issue #24)
+export const BatchStartSchema = z.object({
+  fileIds: z.array(z.string()).min(1).max(100), // Max 100 files per batch
+});
+
 // Config operations
 export const ConfigSaveSchema = z.object({
   provider: z.enum(['openai', 'anthropic']),

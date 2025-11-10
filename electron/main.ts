@@ -19,9 +19,10 @@ import { VideoFrameExtractor } from './services/videoFrameExtractor';
 import { VideoTranscoder } from './services/videoTranscoder';
 import { convertToYAMLFormat, convertToUIFormat } from './utils/lexiconConverter';
 import { sanitizeError } from './utils/errorSanitization';
-import { FileRenameSchema, FileUpdateMetadataSchema, FileStructuredUpdateSchema, AIBatchProcessSchema } from './schemas/ipcSchemas';
+import { FileRenameSchema, FileUpdateMetadataSchema, FileStructuredUpdateSchema, AIBatchProcessSchema, BatchStartSchema } from './schemas/ipcSchemas';
 import type { AppConfig, LexiconConfig, ShotType, AIAnalysisResult } from '../src/types';
 import { migrateToKeychain } from './services/keychainMigration';
+import { BatchQueueManager } from './services/batchQueueManager';
 
 let mainWindow: BrowserWindow | null = null;
 let mediaServer: http.Server | null = null;
@@ -77,6 +78,10 @@ const configManager: ConfigManager = (() => {
 const metadataWriter: MetadataWriter = new MetadataWriter();
 const videoTranscoder: VideoTranscoder = new VideoTranscoder();
 let aiService: AIService | null = null;
+
+// Initialize batch queue manager with persistent storage
+const batchQueuePath = path.join(app.getPath('userData'), '.ingest-batch-queue.json');
+const batchQueueManager: BatchQueueManager = new BatchQueueManager(batchQueuePath);
 
 // Register transcode cache directory with security validator
 // This allows the media server to serve transcoded files
@@ -224,7 +229,7 @@ async function createWindow() {
     mainWindow.loadURL('http://localhost:5173');
     mainWindow.webContents.openDevTools();
   } else {
-    mainWindow.loadFile(path.join(__dirname, '../../index.html'));
+    await mainWindow.loadFile(path.join(__dirname, '../../index.html'));
   }
 
   mainWindow.on('closed', () => {
@@ -780,6 +785,120 @@ ipcMain.handle('ai:batch-process', async (_event, fileIds: string[]) => {
       throw new Error('File validation failed');
     }
 
+    throw sanitizeError(error);
+  }
+});
+
+// Batch operations (Issue #24)
+ipcMain.handle('batch:start', async (_event, fileIds: string[]) => {
+  try {
+    // Security: Validate input schema
+    const validated = BatchStartSchema.parse({ fileIds });
+
+    // Security: Rate limiting (prevents abuse)
+    await batchProcessRateLimiter.consume(validated.fileIds.length);
+
+    if (!aiService) {
+      throw new Error('AI service not configured.');
+    }
+
+    if (!currentFolderPath) {
+      throw new Error('No folder selected');
+    }
+
+    // Add files to queue
+    const queueId = await batchQueueManager.addToQueue(validated.fileIds);
+
+    const store = getMetadataStoreForFolder(currentFolderPath);
+    const lexicon = await configManager.getLexicon();
+
+    // Define processor function that will be called for each file
+    const processor = async (fileId: string) => {
+      try {
+        const fileMetadata = await store.getFileMetadata(fileId);
+        if (!fileMetadata || fileMetadata.processedByAI) {
+          return { success: false };
+        }
+
+        // CRITICAL-8: Security validation for each file in batch
+        const validatedPath = await securityValidator.validateFilePath(fileMetadata.filePath);
+        await securityValidator.validateFileContent(validatedPath);
+
+        // Detect file type and route to appropriate analysis method
+        const fileType = fileManager.getFileType(validatedPath);
+
+        let result: AIAnalysisResult;
+        if (fileType === 'video') {
+          console.log('[IPC] Batch analyzing video file:', validatedPath);
+          result = await aiService!.analyzeVideo(validatedPath, lexicon);
+        } else {
+          await securityValidator.validateFileSize(validatedPath, 100 * 1024 * 1024);
+          console.log('[IPC] Batch analyzing image file:', validatedPath);
+          result = await aiService!.analyzeImage(validatedPath, lexicon);
+        }
+
+        // Auto-update if confidence is high
+        if (result.confidence > 0.7) {
+          fileMetadata.mainName = result.mainName;
+          fileMetadata.metadata = result.metadata;
+          fileMetadata.processedByAI = true;
+          await store.updateFileMetadata(fileId, fileMetadata);
+        }
+
+        return { success: true, result };
+      } catch (error) {
+        console.error(`Failed to process ${fileId}:`, error);
+        throw error;
+      }
+    };
+
+    // Define progress callback that emits events to renderer
+    const progressCallback = (progress: import('../src/types').BatchProgress) => {
+      if (mainWindow) {
+        mainWindow.webContents.send('batch:progress', progress);
+      }
+    };
+
+    // Define complete callback that emits completion event
+    const completeCallback = (summary: import('../src/types').BatchCompleteSummary) => {
+      if (mainWindow) {
+        mainWindow.webContents.send('batch:complete', summary);
+      }
+    };
+
+    // Start processing in background (don't await - return immediately)
+    batchQueueManager.startProcessing(processor, progressCallback, completeCallback, batchProcessRateLimiter)
+      .catch(error => {
+        console.error('Batch processing failed:', error);
+      });
+
+    return queueId;
+  } catch (error) {
+    console.error('Failed to start batch:', error);
+
+    if (error instanceof z.ZodError) {
+      throw new Error('Invalid request parameters');
+    }
+
+    throw sanitizeError(error);
+  }
+});
+
+ipcMain.handle('batch:cancel', async () => {
+  try {
+    const result = batchQueueManager.cancel();
+    return result;
+  } catch (error) {
+    console.error('Failed to cancel batch:', error);
+    throw sanitizeError(error);
+  }
+});
+
+ipcMain.handle('batch:get-status', async () => {
+  try {
+    return batchQueueManager.getStatus();
+  } catch (error) {
+    console.error('Failed to get batch status:', error);
     throw sanitizeError(error);
   }
 });

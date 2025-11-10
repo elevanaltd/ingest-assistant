@@ -181,6 +181,65 @@ export interface FileListRangeResponse {
   hasMore: boolean;
 }
 
+/**
+ * Batch Operation Types (Issue #24)
+ * Support for batch processing with progress tracking and cancellation
+ */
+
+/** Status of a single file in the batch queue */
+export type BatchItemStatus = 'pending' | 'processing' | 'completed' | 'error' | 'cancelled';
+
+/** Status of the overall batch queue */
+export type BatchQueueStatus = 'idle' | 'processing' | 'completed' | 'cancelled' | 'error';
+
+/** Single item in the batch queue */
+export interface BatchQueueItem {
+  /** File ID being processed */
+  fileId: string;
+  /** Current status of this item */
+  status: BatchItemStatus;
+  /** AI analysis result if completed successfully */
+  result?: AIAnalysisResult;
+  /** Error message if processing failed */
+  error?: string;
+}
+
+/** Current state of the batch queue */
+export interface BatchQueueState {
+  /** All items in the queue */
+  items: BatchQueueItem[];
+  /** Overall queue status */
+  status: BatchQueueStatus;
+  /** File ID currently being processed */
+  currentFile: string | null;
+}
+
+/** Progress event emitted during batch processing */
+export interface BatchProgress {
+  /** Current file number being processed (1-indexed) */
+  current: number;
+  /** Total number of files in batch */
+  total: number;
+  /** File ID being processed */
+  fileId: string;
+  /** Status of current file */
+  status: BatchItemStatus;
+  /** Error message if status is 'error' */
+  error?: string;
+}
+
+/** Summary emitted when batch completes */
+export interface BatchCompleteSummary {
+  /** Final status of the batch */
+  status: BatchQueueStatus;
+  /** Number of files completed successfully */
+  completed: number;
+  /** Number of files that failed */
+  failed: number;
+  /** Number of files cancelled */
+  cancelled: number;
+}
+
 export interface IPCChannels {
   // File operations
   'file:select-folder': () => Promise<string | null>;
@@ -196,6 +255,11 @@ export interface IPCChannels {
   'ai:analyze-file': (filePath: string) => Promise<AIAnalysisResult>;
   'ai:batch-process': (fileIds: string[]) => Promise<Record<string, AIAnalysisResult>>;
   'ai:get-config': () => Promise<AIConfigForUI>;
+
+  // Batch operations (Issue #24)
+  'batch:start': (fileIds: string[]) => Promise<string>; // Returns queue ID
+  'batch:cancel': () => Promise<{ success: boolean }>;
+  'batch:get-status': () => Promise<BatchQueueState>;
   'ai:update-config': (config: { provider: 'openai' | 'anthropic' | 'openrouter'; model: string; apiKey: string }) => Promise<{ success: boolean; error?: string }>;
   'ai:test-connection': (provider: 'openai' | 'anthropic' | 'openrouter', model: string, apiKey: string) => Promise<AIConnectionTestResult>;
   'ai:test-saved-connection': () => Promise<AIConnectionTestResult>;

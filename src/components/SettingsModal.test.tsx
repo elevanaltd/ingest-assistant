@@ -234,6 +234,15 @@ describe('SettingsModal', () => {
           { id: 'anthropic/claude-3.5-sonnet', name: 'Claude 3.5 Sonnet', description: 'Latest model' },
           { id: 'openai/gpt-4', name: 'GPT-4', description: 'OpenAI GPT-4' },
         ]),
+        // Batch operations methods
+        batchStart: vi.fn(async () => 'mock-queue-id'),
+        batchCancel: vi.fn(async () => ({ success: true })),
+        batchGetStatus: vi.fn(async () => ({
+          items: [],
+          status: 'idle',
+          currentFile: null
+        })),
+        onBatchProgress: vi.fn(() => () => {}), // Returns cleanup function
       } as any;
     });
 

@@ -4,6 +4,7 @@ import { SettingsModal } from './components/SettingsModal';
 import { Sidebar } from './components/Sidebar';
 import { CommandPalette, type Command } from './components/CommandPalette';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
+import { BatchOperationsPanel } from './components/BatchOperationsPanel';
 import './App.css';
 
 function App() {
@@ -302,6 +303,18 @@ function App() {
     }
   };
 
+  const handleBatchComplete = async () => {
+    // Reload files after batch completion
+    if (folderPath && window.electronAPI) {
+      try {
+        const updatedFiles = await window.electronAPI.loadFiles();
+        setFiles(updatedFiles);
+      } catch (error) {
+        console.error('Failed to reload files after batch:', error);
+      }
+    }
+  };
+
   // Define command palette commands (after all handlers are declared)
   const commands: Command[] = [
     {
@@ -368,6 +381,18 @@ function App() {
           </button>
         </div>
       </header>
+
+      {/* Batch Operations Panel */}
+      {folderPath && isAIConfigured && (
+        <BatchOperationsPanel
+          availableFiles={files.map(f => ({
+            id: f.id,
+            filename: f.currentFilename,
+            processedByAI: f.processedByAI,
+          }))}
+          onBatchComplete={handleBatchComplete}
+        />
+      )}
 
       {folderPath && (
         <div className="folder-info">
