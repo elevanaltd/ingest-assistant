@@ -141,22 +141,11 @@ function App() {
     }
   }, [currentFile, shotTypes]);
 
-  // Check if running in Electron (user-friendly UI check)
-  if (!window.electronAPI) {
-    return (
-      <div className="app" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', flexDirection: 'column', gap: '16px' }}>
-        <h2>⚠️ Electron API not available</h2>
-        <p>This app must be run in Electron, not in a browser.</p>
-        <p>Run: <code>npm run dev</code></p>
-      </div>
-    );
-  }
-
   const handleSelectFolder = async () => {
+    if (!window.electronAPI) return;
     const path = await window.electronAPI.selectFolder();
     if (path) {
       setFolderPath(path);
-      // CRITICAL-1 FIX: loadFiles() no longer accepts path parameter
       const loadedFiles = await window.electronAPI.loadFiles();
       setFiles(loadedFiles);
       setCurrentFileIndex(0);
@@ -357,6 +346,17 @@ function App() {
     isLoading,
     canSave,
   });
+
+  // Check if running in Electron (user-friendly UI check)
+  if (!window.electronAPI) {
+    return (
+      <div className="app" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', flexDirection: 'column', gap: '16px' }}>
+        <h2>⚠️ Electron API not available</h2>
+        <p>This app must be run in Electron, not in a browser.</p>
+        <p>Run: <code>npm run dev</code></p>
+      </div>
+    );
+  }
 
   return (
     <div className="app">
