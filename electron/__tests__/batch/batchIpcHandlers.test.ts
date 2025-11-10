@@ -90,6 +90,7 @@ describe('Batch IPC Handlers', () => {
     it('should apply rate limiting via batchProcessRateLimiter', async () => {
       const fileIds = ['file1', 'file2'];
       const mockRateLimiter = {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         consume: vi.fn(async (_tokens: number) => {}),
       };
 
@@ -215,7 +216,9 @@ describe('Batch IPC Handlers', () => {
     it('should validate each file path through SecurityValidator', async () => {
       const mockSecurityValidator = {
         validateFilePath: vi.fn(async (filePath: string) => filePath),
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         validateFileContent: vi.fn(async (_filePath: string) => true),
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         validateFileSize: vi.fn(async (_filePath: string, _maxSize: number) => true),
       };
 
@@ -264,6 +267,7 @@ describe('Batch IPC Handlers', () => {
           mainName: '',
           metadata: [] as string[],
         })),
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         updateFileMetadata: vi.fn(async (_fileId: string, _metadata: any) => true),
       };
 
