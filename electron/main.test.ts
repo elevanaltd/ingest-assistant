@@ -384,7 +384,7 @@ describe('IPC Handlers: Structured Metadata Persistence', () => {
       });
 
       it('should generate 3-part filename for video without action', () => {
-        const structured = {
+        const structured: { location: string; subject: string; shotType: 'WS'; action?: string } = {
           location: 'kitchen',
           subject: 'oven',
           shotType: 'WS' as const,
@@ -394,8 +394,8 @@ describe('IPC Handlers: Structured Metadata Persistence', () => {
 
         // Simulate handler logic
         const generatedTitle =
-          fileType === 'video' && (structured as any).action
-            ? `${structured.location}-${structured.subject}-${(structured as any).action}-${structured.shotType}`
+          fileType === 'video' && structured.action
+            ? `${structured.location}-${structured.subject}-${structured.action}-${structured.shotType}`
             : `${structured.location}-${structured.subject}-${structured.shotType}`;
 
         expect(generatedTitle).toBe('kitchen-oven-WS');

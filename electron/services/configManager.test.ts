@@ -4,6 +4,17 @@ import { ConfigManager } from './configManager';
 import type { AppConfig } from '../../src/types';
 import * as keytar from 'keytar';
 
+// Helper interface for Store methods
+interface StoreWithMethods<T> {
+  get<K extends keyof T>(key: K): T[K];
+  set<K extends keyof T>(key: K, value: T[K]): void;
+}
+
+// Test interface to access private properties
+interface ConfigManagerTestInterface {
+  aiConfigStore: StoreWithMethods<unknown>;
+}
+
 // Mock fs module
 vi.mock('fs/promises');
 
@@ -333,8 +344,9 @@ lexicon:
         };
 
         // Mock store.set to throw error
-        const originalSet = (configManager['aiConfigStore'] as any).set;
-        (configManager['aiConfigStore'] as any).set = vi.fn().mockImplementation(() => {
+        const configManagerTest = configManager as unknown as ConfigManagerTestInterface;
+        const originalSet = configManagerTest.aiConfigStore.set;
+        configManagerTest.aiConfigStore.set = vi.fn().mockImplementation(() => {
           throw new Error('Store error');
         });
 
@@ -343,7 +355,7 @@ lexicon:
         expect(result).toBe(false);
 
         // Restore
-        (configManager['aiConfigStore'] as any).set = originalSet;
+        configManagerTest.aiConfigStore.set = originalSet;
       });
     });
 

@@ -19,7 +19,7 @@ import { VideoFrameExtractor } from './services/videoFrameExtractor';
 import { VideoTranscoder } from './services/videoTranscoder';
 import { convertToYAMLFormat, convertToUIFormat } from './utils/lexiconConverter';
 import { sanitizeError } from './utils/errorSanitization';
-import { FileRenameSchema, FileUpdateMetadataSchema, FileStructuredUpdateSchema, AIBatchProcessSchema, BatchStartSchema } from './schemas/ipcSchemas';
+import { FileRenameSchema, FileUpdateMetadataSchema, FileStructuredUpdateSchema, AIBatchProcessSchema, BatchStartSchema, FileStructuredUpdateInput } from './schemas/ipcSchemas';
 import type { AppConfig, LexiconConfig, ShotType, AIAnalysisResult } from '../src/types';
 import { migrateToKeychain } from './services/keychainMigration';
 import { BatchQueueManager } from './services/batchQueueManager';
@@ -623,7 +623,7 @@ ipcMain.handle('file:update-structured-metadata', async (_event, fileId: string,
     }
 
     // Update structured components (allow clearing action with empty string)
-    const validatedStructured = validated.structured as any;
+    const validatedStructured = validated.structured as FileStructuredUpdateInput['structured'];
     fileMetadata.location = validatedStructured.location;
     fileMetadata.subject = validatedStructured.subject;
     fileMetadata.action = validatedStructured.action || undefined;

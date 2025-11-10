@@ -123,6 +123,7 @@ describe('BatchQueueManager', () => {
 
     it('should include error information in progress events for failed files', async () => {
       const fileIds = ['file1', 'file2'];
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const progressEvents: any[] = [];
 
       const progressCallback = vi.fn((progress) => {

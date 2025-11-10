@@ -2,6 +2,11 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { PromptLoader } from './promptLoader';
 import type { Lexicon } from '../../src/types';
 
+// Test interface to access private methods
+interface PromptLoaderTestInterface {
+  replaceVariables: (template: string, lexicon: Lexicon) => string;
+}
+
 describe('PromptLoader', () => {
   beforeEach(() => {
     // Clear cache before each test
@@ -15,7 +20,7 @@ describe('PromptLoader', () => {
       };
 
       // Access private method via type assertion for testing
-      const replaceVariables = (PromptLoader as any).replaceVariables.bind(PromptLoader);
+      const replaceVariables = (PromptLoader as unknown as PromptLoaderTestInterface).replaceVariables.bind(PromptLoader);
       const template = 'Common actions: {{actions}}';
       const result = replaceVariables(template, lexicon);
 
@@ -27,7 +32,7 @@ describe('PromptLoader', () => {
         goodExamples: ['kitchen-oven-CU', 'hall-door-MID', 'utility-sink-WS'],
       };
 
-      const replaceVariables = (PromptLoader as any).replaceVariables.bind(PromptLoader);
+      const replaceVariables = (PromptLoader as unknown as PromptLoaderTestInterface).replaceVariables.bind(PromptLoader);
       const template = 'Good examples:\n{{goodExamples}}';
       const result = replaceVariables(template, lexicon);
 
@@ -42,7 +47,7 @@ describe('PromptLoader', () => {
         ],
       };
 
-      const replaceVariables = (PromptLoader as any).replaceVariables.bind(PromptLoader);
+      const replaceVariables = (PromptLoader as unknown as PromptLoaderTestInterface).replaceVariables.bind(PromptLoader);
       const template = 'Bad examples:\n{{badExamples}}';
       const result = replaceVariables(template, lexicon);
 
@@ -52,7 +57,7 @@ describe('PromptLoader', () => {
     it('handles missing new lexicon fields with defaults', () => {
       const lexicon: Lexicon = {};
 
-      const replaceVariables = (PromptLoader as any).replaceVariables.bind(PromptLoader);
+      const replaceVariables = (PromptLoader as unknown as PromptLoaderTestInterface).replaceVariables.bind(PromptLoader);
       const template = 'Actions: {{actions}}, Examples: {{goodExamples}}, Bad: {{badExamples}}';
       const result = replaceVariables(template, lexicon);
 
@@ -68,7 +73,7 @@ describe('PromptLoader', () => {
         badExamples: [],
       };
 
-      const replaceVariables = (PromptLoader as any).replaceVariables.bind(PromptLoader);
+      const replaceVariables = (PromptLoader as unknown as PromptLoaderTestInterface).replaceVariables.bind(PromptLoader);
       const template = 'Actions: {{actions}}, Examples: {{goodExamples}}, Bad: {{badExamples}}';
       const result = replaceVariables(template, lexicon);
 
@@ -84,7 +89,7 @@ describe('PromptLoader', () => {
         badExamples: [{ wrong: 'Kitchen-Oven', reason: 'missing shot type' }],
       };
 
-      const replaceVariables = (PromptLoader as any).replaceVariables.bind(PromptLoader);
+      const replaceVariables = (PromptLoader as unknown as PromptLoaderTestInterface).replaceVariables.bind(PromptLoader);
       const template = 'Locations: {{locations}}, Subjects: {{subjects}}, Actions: {{actions}}, Good: {{goodExamples}}, Bad: {{badExamples}}';
       const result = replaceVariables(template, lexicon);
 
@@ -102,7 +107,7 @@ describe('PromptLoader', () => {
         badExamples: [{ wrong: 'costs-$100', reason: 'includes currency in name' }],
       };
 
-      const replaceVariables = (PromptLoader as any).replaceVariables.bind(PromptLoader);
+      const replaceVariables = (PromptLoader as unknown as PromptLoaderTestInterface).replaceVariables.bind(PromptLoader);
       const template = 'Actions: {{actions}}, Good: {{goodExamples}}, Bad: {{badExamples}}';
       const result = replaceVariables(template, lexicon);
 
@@ -119,7 +124,7 @@ describe('PromptLoader', () => {
         aiInstructions: 'Variables like $& should work fine',
       };
 
-      const replaceVariables = (PromptLoader as any).replaceVariables.bind(PromptLoader);
+      const replaceVariables = (PromptLoader as unknown as PromptLoaderTestInterface).replaceVariables.bind(PromptLoader);
       const template = 'Actions: {{actions}}, Bad: {{badExamples}}, Instructions: {{aiInstructions}}';
       const result = replaceVariables(template, lexicon);
 

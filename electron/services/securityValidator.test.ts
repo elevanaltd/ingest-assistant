@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { SecurityValidator } from './securityValidator';
 import { SecurityViolationError } from '../utils/securityViolationError';
 import type { Stats } from 'fs';
+import type { FileHandle } from 'fs/promises';
 
 // Mock fs/promises module at the top level
 vi.mock('fs/promises', () => ({
@@ -268,7 +269,7 @@ describe('SecurityValidator', () => {
           return Promise.resolve({ bytesRead: Math.min(jpegBuffer.length, buffer.length), buffer });
         }),
         close: vi.fn(() => Promise.resolve()),
-      } as any);
+      } as unknown as FileHandle);
 
       await expect(
         validator.validateFileContent('/test/image.jpg')
@@ -283,7 +284,7 @@ describe('SecurityValidator', () => {
           return Promise.resolve({ bytesRead: Math.min(pngBuffer.length, buffer.length), buffer });
         }),
         close: vi.fn(() => Promise.resolve()),
-      } as any);
+      } as unknown as FileHandle);
 
       await expect(
         validator.validateFileContent('/test/image.png')
@@ -298,7 +299,7 @@ describe('SecurityValidator', () => {
           return Promise.resolve({ bytesRead: Math.min(exeBuffer.length, buffer.length), buffer });
         }),
         close: vi.fn(() => Promise.resolve()),
-      } as any);
+      } as unknown as FileHandle);
 
       await expect(
         validator.validateFileContent('/test/malware.jpg')
@@ -319,7 +320,7 @@ describe('SecurityValidator', () => {
           return Promise.resolve({ bytesRead: Math.min(pngBuffer.length, buffer.length), buffer });
         }),
         close: vi.fn(() => Promise.resolve()),
-      } as any);
+      } as unknown as FileHandle);
 
       // PNG magic bytes but .jpg extension
       await expect(
@@ -339,7 +340,7 @@ describe('SecurityValidator', () => {
             return Promise.resolve({ bytesRead: Math.min(fakeMP4.length, buffer.length), buffer });
           }),
           close: vi.fn(() => Promise.resolve()),
-        } as any);
+        } as unknown as FileHandle);
 
         // This test will FAIL initially (RED phase)
         // Because current code only checks first 3 bytes
@@ -368,7 +369,7 @@ describe('SecurityValidator', () => {
             return Promise.resolve({ bytesRead: Math.min(validMP4.length, buffer.length), buffer });
           }),
           close: vi.fn(() => Promise.resolve()),
-        } as any);
+        } as unknown as FileHandle);
 
         await expect(
           validator.validateFileContent('/test/valid.mp4')
@@ -388,7 +389,7 @@ describe('SecurityValidator', () => {
             return Promise.resolve({ bytesRead: Math.min(validMOV.length, buffer.length), buffer });
           }),
           close: vi.fn(() => Promise.resolve()),
-        } as any);
+        } as unknown as FileHandle);
 
         await expect(
           validator.validateFileContent('/test/valid.mov')
@@ -410,7 +411,7 @@ describe('SecurityValidator', () => {
             return Promise.resolve({ bytesRead: Math.min(fakeAVI.length, buffer.length), buffer });
           }),
           close: vi.fn(() => Promise.resolve()),
-        } as any);
+        } as unknown as FileHandle);
 
         // This test will FAIL initially (RED phase)
         await expect(
@@ -431,7 +432,7 @@ describe('SecurityValidator', () => {
             return Promise.resolve({ bytesRead: Math.min(validAVI.length, buffer.length), buffer });
           }),
           close: vi.fn(() => Promise.resolve()),
-        } as any);
+        } as unknown as FileHandle);
 
         await expect(
           validator.validateFileContent('/test/valid.avi')
@@ -449,7 +450,7 @@ describe('SecurityValidator', () => {
             return Promise.resolve({ bytesRead: Math.min(validWebM.length, buffer.length), buffer });
           }),
           close: vi.fn(() => Promise.resolve()),
-        } as any);
+        } as unknown as FileHandle);
 
         await expect(
           validator.validateFileContent('/test/valid.webm')
@@ -470,7 +471,7 @@ describe('SecurityValidator', () => {
             return Promise.resolve({ bytesRead: Math.min(invalidMP4.length, buffer.length), buffer });
           }),
           close: vi.fn(() => Promise.resolve()),
-        } as any);
+        } as unknown as FileHandle);
 
         await expect(
           validator.validateFileContent('/test/invalid.mp4')
@@ -491,7 +492,7 @@ describe('SecurityValidator', () => {
             return Promise.resolve({ bytesRead: Math.min(validBMP.length, buffer.length), buffer });
           }),
           close: vi.fn(() => Promise.resolve()),
-        } as any);
+        } as unknown as FileHandle);
 
         await expect(
           validator.validateFileContent('/test/valid.bmp')
@@ -506,7 +507,7 @@ describe('SecurityValidator', () => {
             return Promise.resolve({ bytesRead: Math.min(invalidBMP.length, buffer.length), buffer });
           }),
           close: vi.fn(() => Promise.resolve()),
-        } as any);
+        } as unknown as FileHandle);
 
         await expect(
           validator.validateFileContent('/test/invalid.bmp')
@@ -524,7 +525,7 @@ describe('SecurityValidator', () => {
             return Promise.resolve({ bytesRead: Math.min(validMKV.length, buffer.length), buffer });
           }),
           close: vi.fn(() => Promise.resolve()),
-        } as any);
+        } as unknown as FileHandle);
 
         await expect(
           validator.validateFileContent('/test/valid.mkv')
@@ -539,7 +540,7 @@ describe('SecurityValidator', () => {
             return Promise.resolve({ bytesRead: Math.min(invalidMKV.length, buffer.length), buffer });
           }),
           close: vi.fn(() => Promise.resolve()),
-        } as any);
+        } as unknown as FileHandle);
 
         await expect(
           validator.validateFileContent('/test/invalid.mkv')

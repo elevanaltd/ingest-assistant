@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+import type { Mock } from 'vitest';
 
 /**
  * Batch IPC Handlers Tests (Issue #24)
@@ -12,9 +13,24 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
  * TDD Evidence: RED phase - These tests FAIL before implementation
  */
 
+// Mock types for testing
+interface MockMainWindow {
+  webContents: {
+    send: Mock;
+  };
+}
+
+interface MockBatchQueueManager {
+  start: Mock;
+  cancel: Mock;
+  getStatus: Mock;
+  startProcessing: Mock;
+  addToQueue: Mock;
+}
+
 describe('Batch IPC Handlers', () => {
-  let mockMainWindow: any;
-  let mockBatchQueueManager: any;
+  let mockMainWindow: MockMainWindow;
+  let mockBatchQueueManager: MockBatchQueueManager;
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -28,6 +44,7 @@ describe('Batch IPC Handlers', () => {
 
     // Mock BatchQueueManager
     mockBatchQueueManager = {
+      start: vi.fn(),
       addToQueue: vi.fn(async () => 'queue-123'),
       startProcessing: vi.fn(async (processor, progressCb, completeCb) => {
         // Simulate processing 2 files
@@ -268,7 +285,7 @@ describe('Batch IPC Handlers', () => {
           metadata: [] as string[],
         })),
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        updateFileMetadata: vi.fn(async (_fileId: string, _metadata: any) => true),
+        updateFileMetadata: vi.fn(async (_fileId: string, _metadata: unknown) => true),
       };
 
       const fileId = 'file1';

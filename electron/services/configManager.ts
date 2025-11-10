@@ -15,6 +15,12 @@ type AIConfigSchema = {
   apiKey: string | null; // Deprecated: now stored in Keychain
 };
 
+// Helper interface for Store methods
+interface StoreWithMethods<T> {
+  get<K extends keyof T>(key: K): T[K];
+  set<K extends keyof T>(key: K, value: T[K]): void;
+}
+
 export class ConfigManager {
   private configPath: string;
   private cachedConfig: AppConfig | null = null;
@@ -233,16 +239,18 @@ export class ConfigManager {
    * Note: API keys are now stored in Keychain, use getAIConfigWithKeychain() for full config
    */
   getAIConfigFromStore(): AIConfig | null {
-    const provider = (this.aiConfigStore as any).get('provider');
-    const model = (this.aiConfigStore as any).get('model');
-    const apiKey = (this.aiConfigStore as any).get('apiKey');
+    const store = this.aiConfigStore as unknown as StoreWithMethods<AIConfigSchema>;
+    const provider = store.get('provider');
+    const model = store.get('model');
+    const apiKey = store.get('apiKey');
 
     if (!provider || !model) {
       return null;
     }
 
     // Return config with apiKey (will be null for Keychain-stored keys)
-    return { provider, model, apiKey };
+    // Type assertion needed because apiKey can be null in store schema but AIConfig expects string
+    return { provider, model, apiKey: apiKey as string } as AIConfig;
   }
 
   /**
@@ -258,9 +266,10 @@ export class ConfigManager {
       }
 
       // Store non-sensitive metadata in electron-store
-      (this.aiConfigStore as any).set('provider', config.provider);
-      (this.aiConfigStore as any).set('model', config.model);
-      (this.aiConfigStore as any).set('apiKey', null); // Don't store in plaintext anymore
+      const store = this.aiConfigStore as unknown as StoreWithMethods<AIConfigSchema>;
+      store.set('provider', config.provider);
+      store.set('model', config.model);
+      store.set('apiKey', null); // Don't store in plaintext anymore
       return true;
     } catch (error) {
       console.error('Failed to save AI config:', error);
@@ -273,8 +282,9 @@ export class ConfigManager {
    * Returns full config with sensitive data retrieved from macOS Keychain
    */
   async getAIConfigWithKeychain(): Promise<AIConfig | null> {
-    const provider = (this.aiConfigStore as any).get('provider');
-    const model = (this.aiConfigStore as any).get('model');
+    const store = this.aiConfigStore as unknown as StoreWithMethods<AIConfigSchema>;
+    const provider = store.get('provider');
+    const model = store.get('model');
 
     if (!provider || !model) {
       // Fall back to .env
@@ -301,10 +311,11 @@ export class ConfigManager {
     await keytar.deletePassword(KEYCHAIN_SERVICE, keychainAccount);
 
     // Clear electron-store if this was active provider
-    if ((this.aiConfigStore as any).get('provider') === provider) {
-      (this.aiConfigStore as any).set('provider', null);
-      (this.aiConfigStore as any).set('model', null);
-      (this.aiConfigStore as any).set('apiKey', null);
+    const store = this.aiConfigStore as unknown as StoreWithMethods<AIConfigSchema>;
+    if (store.get('provider') === provider) {
+      store.set('provider', null);
+      store.set('model', null);
+      store.set('apiKey', null);
     }
   }
 
@@ -465,8 +476,9 @@ export class ConfigManager {
   static async getAIConfig(): Promise<AIConfig | null> {
     // Priority 1: Check electron-store + Keychain
     if (ConfigManager.staticAIConfigStore) {
-      const provider = (ConfigManager.staticAIConfigStore as any).get('provider');
-      const model = (ConfigManager.staticAIConfigStore as any).get('model');
+      const store = ConfigManager.staticAIConfigStore as unknown as StoreWithMethods<AIConfigSchema>;
+      const provider = store.get('provider');
+      const model = store.get('model');
 
       if (provider && model) {
         const keychainAccount = `${provider}-key`;

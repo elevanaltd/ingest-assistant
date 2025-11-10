@@ -363,6 +363,7 @@ describe('aiResultSchemas', () => {
           mainName: 'test',
           metadata: [],
           confidence: 0.8,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } as any;
 
         expect(isV1Result(legacy)).toBe(true);
@@ -408,6 +409,7 @@ describe('aiResultSchemas', () => {
           mainName: 'test',
           metadata: [],
           confidence: 0.8,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } as any;
 
         expect(isV2Result(legacy)).toBe(false);
