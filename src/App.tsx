@@ -5,6 +5,8 @@ import { Sidebar } from './components/Sidebar';
 import { CommandPalette, type Command } from './components/CommandPalette';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { BatchOperationsPanel } from './components/BatchOperationsPanel';
+import { CommandPalette, type Command } from './components/CommandPalette';
+import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import './App.css';
 
 function App() {
