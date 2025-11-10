@@ -19,6 +19,11 @@ export const StructuredMetadataSchema = z.object({
 }).optional();
 
 // File operations
+export const FileListRangeSchema = z.object({
+  startIndex: z.number().int().min(0).max(1000000), // Prevent excessive values
+  pageSize: z.number().int().min(1).max(100), // Limit page size to 100 items
+});
+
 export const FileRenameSchema = z.object({
   fileId: z.string().min(1).max(50),
   mainName: z.string().min(1).max(500),
@@ -67,6 +72,7 @@ export const LexiconSaveSchema = z.object({
 });
 
 // Type exports for TypeScript
+export type FileListRangeInput = z.infer<typeof FileListRangeSchema>;
 export type StructuredMetadataInput = z.infer<typeof StructuredMetadataSchema>;
 export type FileRenameInput = z.infer<typeof FileRenameSchema>;
 export type FileUpdateMetadataInput = z.infer<typeof FileUpdateMetadataSchema>;

@@ -82,4 +82,23 @@ export class MetadataStore {
     this.cache![fileId] = metadata;
     return await this.saveMetadata(this.cache!);
   }
+
+  /**
+   * Get metadata for a range of file IDs (pagination support)
+   */
+  async getMetadataForRange(fileIds: string[]): Promise<FileMetadata[]> {
+    if (!this.cache) {
+      await this.loadMetadata();
+    }
+
+    const results: FileMetadata[] = [];
+    for (const fileId of fileIds) {
+      const metadata = this.cache![fileId];
+      if (metadata) {
+        results.push(metadata);
+      }
+    }
+
+    return results;
+  }
 }

@@ -12,6 +12,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   loadFiles: (): Promise<FileMetadata[]> =>
     ipcRenderer.invoke('file:load-files'),
 
+  // Paginated file listing (issue #19)
+  listFilesRange: (startIndex: number, pageSize: number): Promise<import('../src/types').FileListRangeResponse> =>
+    ipcRenderer.invoke('file:list-range', startIndex, pageSize),
+
   readFileAsDataUrl: (filePath: string): Promise<string> =>
     ipcRenderer.invoke('file:read-as-data-url', filePath),
 
