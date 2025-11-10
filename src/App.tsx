@@ -11,6 +11,7 @@ function App() {
   const [folderPath, setFolderPath] = useState<string>('');
   const [files, setFiles] = useState<FileMetadata[]>([]);
   const [currentFileIndex, setCurrentFileIndex] = useState<number>(0);
+  const [skipNextVideoLoad, setSkipNextVideoLoad] = useState<boolean>(false);
 
   // Structured naming fields
   const [location, setLocation] = useState<string>('');
@@ -64,6 +65,12 @@ function App() {
   // Update form and load media when current file changes
   useEffect(() => {
     if (!window.electronAPI) return;
+
+    // Skip video reload after save to prevent unnecessary re-transcoding
+    if (skipNextVideoLoad) {
+      setSkipNextVideoLoad(false);
+      return;
+    }
 
     if (currentFile) {
       // Parse structured naming if available
@@ -140,7 +147,7 @@ function App() {
     } else {
       setMediaDataUrl('');
     }
-  }, [currentFile, shotTypes]);
+  }, [currentFile, shotTypes, skipNextVideoLoad]);
 
   const handleSelectFolder = async () => {
     if (!window.electronAPI) return;
@@ -209,15 +216,37 @@ function App() {
         await window.electronAPI.updateMetadata(currentFile.id, metadataTags);
       }
 
-      // Reload files to reflect changes
-      // CRITICAL-1 FIX: loadFiles() no longer accepts path parameter
-      const updatedFiles = await window.electronAPI.loadFiles();
-      setFiles(updatedFiles);
+      // Performance optimization: Only reload files if renamed (to get new filePath)
+      // Otherwise update in-place to avoid re-transcoding video
+      if (renameFileEnabled && generatedTitle && generatedTitle !== currentFile.mainName) {
+        // File was renamed - need to reload to get updated filePath
+        const updatedFiles = await window.electronAPI.loadFiles();
+        setFiles(updatedFiles);
 
-      // Find the file we just saved by ID and update the index
-      const newIndex = updatedFiles.findIndex(f => f.id === currentFileId);
-      if (newIndex !== -1) {
-        setCurrentFileIndex(newIndex);
+        // Find the file we just saved by ID and update the index
+        const newIndex = updatedFiles.findIndex(f => f.id === currentFileId);
+        if (newIndex !== -1) {
+          setCurrentFileIndex(newIndex);
+        }
+      } else {
+        // File not renamed - update in place without reloading
+        setSkipNextVideoLoad(true);
+
+        const updatedFiles = files.map(f => {
+          if (f.id === currentFileId) {
+            return {
+              ...f,
+              mainName: generatedTitle,
+              metadata: metadataTags,
+              location,
+              subject,
+              action: action || undefined,
+              shotType: shotType as ShotType,
+            };
+          }
+          return f;
+        });
+        setFiles(updatedFiles);
       }
 
       setStatusMessage('✓ Saved successfully');
