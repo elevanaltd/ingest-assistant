@@ -58,9 +58,10 @@ import { z } from 'zod';
  */
 export function serializeResult(result: unknown): AIAnalysisResultV2 {
   // Add version field for new results (default to v2)
+  // Cast to Record<string, unknown> to allow spreading
   const versionedResult = {
     version: '2',
-    ...result,
+    ...(result as Record<string, unknown>),
   };
 
   // Validate before serialization
