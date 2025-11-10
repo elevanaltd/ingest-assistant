@@ -226,7 +226,7 @@ describe('BatchQueueManager', () => {
       expect(fs.writeFile).toHaveBeenCalledTimes(4);
       expect(fs.writeFile).toHaveBeenCalledWith(
         testQueuePath,
-        expect.stringContaining('"fileId":"file1"'),
+        expect.stringContaining('"fileId": "file1"'),
         'utf-8'
       );
     });
