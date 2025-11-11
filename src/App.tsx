@@ -425,7 +425,7 @@ function App() {
       <header className="header">
         <h1>Ingest Assistant</h1>
         <div className="header-buttons">
-          <button onClick={handleOpenSettings} className="btn" title="Settings">
+          <button onClick={handleOpenSettings} className="settings-icon" title="Settings">
             ⚙️
           </button>
         </div>
