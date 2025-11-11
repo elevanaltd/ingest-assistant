@@ -168,19 +168,17 @@ export class MetadataWriter {
     // Build exiftool arguments (array, NOT string concatenation)
     const args: string[] = [];
 
-    // SIMPLIFIED METADATA STRATEGY (Issue #54):
-    // Only write 2 fields that survive proxy conversion:
-    // 1. XMP-dc:Title = combined entity (location-subject-action-shotType)
-    // 2. XMP-dc:Description = keywords (comma-separated) for search
-    // Structured components (location, subject, action, shotType) are stored in JSON sidecar
+    // PREMIERE PRO NATIVE FIELDS (Issue #54):
+    // Use XMP Dynamic Media namespace - maps directly to PP Shot field
+    // XMP-xmpDM:shotName → PP Shot field (survives offline, even without proxies!)
+    // Structured components (location, subject, action, shotType) stored in JSON sidecar
 
-    // XMP-dc:Title = Combined entity (editor-friendly, survives proxies)
+    // XMP-xmpDM:shotName = Combined entity (maps directly to PP Shot field)
     if (mainName) {
-      args.push(`-Title=${mainName}`);
-      args.push(`-XMP-dc:Title=${mainName}`);
+      args.push(`-XMP-xmpDM:shotName=${mainName}`);
     }
 
-    // XMP-dc:Description = Keywords OR custom description (searchable, survives proxies)
+    // XMP-dc:Description = Keywords OR custom description (searchable)
     const descriptionValue = description || (tags.length > 0 ? tags.join(', ') : undefined);
     if (descriptionValue) {
       args.push(`-Description=${descriptionValue}`);
@@ -227,8 +225,8 @@ export class MetadataWriter {
   /**
    * Read metadata from file using exiftool.
    *
-   * Matches the simplified write strategy (Issue #54):
-   * - Reads dc:Title (combined entity)
+   * Matches the PP native field strategy (Issue #54):
+   * - Reads XMP-xmpDM:shotName (maps to PP Shot field)
    * - Reads dc:Description (contains keywords comma-separated)
    * - Parses Description back into keywords array for backward compatibility
    *
@@ -241,7 +239,7 @@ export class MetadataWriter {
     description?: string;
   }> {
     try {
-      const args = ['-Title', '-Description', '-json', filePath];
+      const args = ['-XMP-xmpDM:shotName', '-Description', '-json', filePath];
       const exiftoolPath = findExiftool();
 
       const { stdout } = await execFileAsync(exiftoolPath, args, {
@@ -261,7 +259,7 @@ export class MetadataWriter {
           : [];
 
         return {
-          title: metadata.Title,
+          title: metadata.ShotName,
           keywords,
           description: metadata.Description,
         };

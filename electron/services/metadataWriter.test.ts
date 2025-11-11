@@ -266,8 +266,8 @@ describe('MetadataWriter (Integration)', () => {
     });
   });
 
-  describe('simplified XMP strategy (Issue #54 - proxy-safe metadata)', () => {
-    it('should write dc:Title and dc:Description (combined entity approach)', async () => {
+  describe('PP native XMP fields (Issue #54 - xmpDM:shotName)', () => {
+    it('should write xmpDM:shotName and dc:Description (PP Shot field mapping)', async () => {
       if (!exiftoolAvailable) {
         console.log('⏭️  Skipping - exiftool not available');
         return;
@@ -284,13 +284,13 @@ describe('MetadataWriter (Integration)', () => {
 
       await metadataWriter.writeMetadataToFile(testFilePath, mainName, tags, structured);
 
-      // Read Dublin Core fields (these survive proxy conversion)
-      const { stdout } = await execAsync(`exiftool -XMP-dc:Title -XMP-dc:Description -json "${testFilePath}"`);
+      // Read XMP-xmpDM:shotName (maps to PP Shot field) and dc:Description
+      const { stdout } = await execAsync(`exiftool -XMP-xmpDM:shotName -XMP-dc:Description -json "${testFilePath}"`);
       const data = JSON.parse(stdout);
       const xmpData = data[0];
 
-      // XMP-dc:Title should contain the combined entity
-      expect(xmpData['Title']).toBe('kitchen-oven-cleaning-WS');
+      // XMP-xmpDM:shotName should contain the combined entity (maps to PP Shot field)
+      expect(xmpData['ShotName']).toBe('kitchen-oven-cleaning-WS');
 
       // XMP-dc:Description should contain keywords (comma-separated)
       expect(xmpData['Description']).toBe('appliance, demo');
@@ -354,8 +354,8 @@ describe('MetadataWriter (Integration)', () => {
       const data = JSON.parse(stdout);
       const xmpData = data[0];
 
-      // Should only have Title and Description, not individual components
-      expect(xmpData['Title']).toBe('kitchen-oven-WS');
+      // Should only have ShotName (xmpDM) and Description (dc), not individual components
+      expect(xmpData['ShotName']).toBe('kitchen-oven-WS');
       expect(xmpData['Description']).toBe('appliance');
 
       // Individual components should NOT exist in XMP (they're in JSON instead)
