@@ -11,7 +11,7 @@
     "package": "electron-builder",
     "postinstall": "electron-rebuild -f -w keytar",
     "rebuild": "electron-rebuild -f -w keytar",
-    "test": "vitest",
+    "test": "vitest run",
     "test:ui": "vitest --ui",
     "test:coverage": "vitest --coverage",
     "test:ai-structured": "tsc -p electron/tsconfig.json && node dist/electron/electron/scripts/test-structured-analysis.js",
