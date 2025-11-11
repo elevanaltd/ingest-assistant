@@ -3,8 +3,8 @@
  * Run with: npx tsx test-prompt-output.ts
  */
 
-import { PromptLoader } from './electron/utils/promptLoader';
-import type { Lexicon } from './src/types';
+import { PromptLoader } from '../utils/promptLoader';
+import type { Lexicon } from '../../src/types';
 
 // Mock lexicon with actual config.yaml values
 const mockLexicon: Lexicon = {
