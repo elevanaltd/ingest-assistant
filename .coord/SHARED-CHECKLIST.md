@@ -2,14 +2,15 @@
 
 ## Current Status (2025-11-11)
 
-### ✅ B4 Phase - Production Ready
+### ✅ B4 Phase - Production Ready + Security Hardened
 
 **All Quality Gates GREEN:**
 - ✅ **Lint:** 0 errors, 0 warnings in production code
 - ✅ **Typecheck:** 0 errors
-- ✅ **Tests:** 446/446 passing (28 test files, ~18s execution)
+- ✅ **Tests:** 469/469 passing (29 test files, ~18s execution)
+- ✅ **Security:** Both BLOCKING vulnerabilities resolved (Security Report 007)
 
-**Phase Progression:** B3 → B4 ✅ APPROVED
+**Phase Progression:** B3 → B4 ✅ APPROVED → Security Hardening ✅ COMPLETE
 
 ---
 
@@ -40,6 +41,26 @@
 - [x] **Test script fix (Nov 11)** - Changed `vitest` to `vitest run` in package.json
   - Fixed: Tests no longer hang in watch mode
   - Result: Clean exit after ~18s execution
+
+### ✅ Security Hardening (COMPLETE - Nov 11)
+- [x] **BLOCKING #1: Command Injection (Security Report 007)** - Fixed exec() vulnerability
+  - Replaced exec() with spawn() in videoFrameExtractor
+  - Comprehensive shell metacharacter validation
+  - Flag injection protection (leading dash rejection)
+  - +12 security tests (15 total command injection tests)
+  - Commits: e1a1cf8 (test) → 6b1d92f (feat) → f01436b (refactor)
+  - Critical-Engineer validated: CONDITIONAL→requirements met
+
+- [x] **BLOCKING #2: Media Server Auth (Security Report 007)** - Fixed cross-origin probing
+  - Capability token authentication (32-byte crypto.randomBytes)
+  - Token validation before path validation
+  - Prevents localhost probing by malicious websites
+  - +11 security tests
+  - Commits: a0c6b00 (test) → fa99be1 (feat)
+
+- [x] **Test Coverage:** +23 security tests total (469 tests, 29 test files)
+- [x] **TDD Discipline:** All fixes follow RED→GREEN→REFACTOR pattern
+- [x] **Zero Regressions:** All existing functionality preserved
 
 ---
 
@@ -79,11 +100,13 @@
 ## Production Readiness Checklist
 
 ### Code Quality
-- [x] All tests passing (446/446)
+- [x] All tests passing (469/469)
 - [x] Zero TypeScript errors
 - [x] Zero ESLint errors in production code
 - [x] Security validation complete
+- [x] Security hardening complete (BLOCKING #1 & #2 resolved)
 - [x] Test infrastructure reliable (no hanging)
+- [x] +23 security tests (command injection + media server auth)
 
 ### Features
 - [x] Manual metadata entry
@@ -111,15 +134,24 @@
 
 ## Notes
 
-- **Branch:** `main` (7 commits ahead of origin)
-- **Version:** v1.1.0 (November 2025)
-- **Last Major Feature:** Batch processing with bug fixes + Action field for videos
-- **Working Tree:** Clean
-- **Test Suite:** 446 tests across 28 test files (all passing)
-- **Performance:** ~18s test execution (includes timing tests), 60fps UI with 1000+ files
-- **Recent Fix:** Test script now exits cleanly (`vitest run` instead of watch mode)
+- **Branch:** `fix/ce-issues` (6 commits: security hardening complete)
+- **Version:** v1.1.0 + Security Hardening (November 2025)
+- **Last Major Work:** Security hardening (BLOCKING #1 & #2 resolved)
+- **Working Tree:** Clean (ready for PR)
+- **Test Suite:** 469 tests across 29 test files (all passing)
+- **Performance:** ~18s test execution (includes security + timing tests), 60fps UI with 1000+ files
+- **Security Status:** Production-ready with command injection + media server auth protection
+
+**Recent Work (Nov 11, 2025):**
+- Security Report 007: Both BLOCKING vulnerabilities resolved
+- Command injection: exec() → spawn() with comprehensive validation
+- Media server auth: Capability token prevents cross-origin access
+- TDD discipline: All changes follow TEST→FEAT→REFACTOR pattern
+- Critical-Engineer consultation: Requirements met, awaiting final approval
+
+**Ready for:** Pull request creation → Code review → Production deployment
 
 ---
 
 ## Last Updated
-2025-11-11 (Test script fix + documentation update - implementation-lead)
+2025-11-11 (Security hardening complete - implementation-lead)
