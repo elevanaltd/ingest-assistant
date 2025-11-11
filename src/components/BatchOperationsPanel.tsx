@@ -106,12 +106,21 @@ export function BatchOperationsPanel({ availableFiles, onBatchComplete }: BatchO
   };
 
   const handleReprocess = async () => {
-    if (!window.electronAPI) return;
+    console.log('[BatchPanel] Reprocess button clicked');
+
+    if (!window.electronAPI) {
+      console.error('[BatchPanel] window.electronAPI is not available');
+      return;
+    }
 
     // Reprocess ALL files, regardless of processing status
     const filesToProcess = availableFiles.map(f => f.id);
+    console.log('[BatchPanel] Files to reprocess:', filesToProcess);
 
-    if (filesToProcess.length === 0) return;
+    if (filesToProcess.length === 0) {
+      console.log('[BatchPanel] No files to reprocess');
+      return;
+    }
 
     // Limit to 100 files per batch
     const actualFiles = filesToProcess.slice(0, 100);
@@ -124,20 +133,28 @@ export function BatchOperationsPanel({ availableFiles, onBatchComplete }: BatchO
         `${remainingFiles} files will remain for the next batch.\n\n` +
         `Continue?`
       );
-      if (!proceed) return;
+      if (!proceed) {
+        console.log('[BatchPanel] User cancelled reprocess (100+ files)');
+        return;
+      }
     } else {
       const proceed = confirm(
         `This will reprocess ALL ${actualFiles.length} file${actualFiles.length !== 1 ? 's' : ''}, including those already processed.\n\n` +
         `Continue?`
       );
-      if (!proceed) return;
+      if (!proceed) {
+        console.log('[BatchPanel] User cancelled reprocess');
+        return;
+      }
     }
 
+    console.log('[BatchPanel] Starting reprocess with files:', actualFiles);
     try {
       await window.electronAPI.batchStart(actualFiles);
+      console.log('[BatchPanel] Reprocess batch started successfully');
       setIsExpanded(true);
     } catch (error) {
-      console.error('Failed to start reprocess:', error);
+      console.error('[BatchPanel] Failed to start reprocess:', error);
       alert('Failed to start reprocess: ' + (error instanceof Error ? error.message : 'Unknown error'));
     }
   };
@@ -199,7 +216,10 @@ export function BatchOperationsPanel({ availableFiles, onBatchComplete }: BatchO
 
           {totalFiles > 0 && (
             <button
-              onClick={handleReprocess}
+              onClick={(e) => {
+                console.log('[BatchPanel] Button click event:', e);
+                handleReprocess();
+              }}
               style={{
                 width: '100%',
                 padding: '10px 16px',
@@ -211,6 +231,8 @@ export function BatchOperationsPanel({ availableFiles, onBatchComplete }: BatchO
                 cursor: 'pointer',
                 fontWeight: '600',
                 marginBottom: '16px',
+                position: 'relative',
+                zIndex: 1,
               }}
             >
               {totalFiles > 100
