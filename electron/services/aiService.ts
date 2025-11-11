@@ -391,7 +391,41 @@ Lexicon rules:
       max_tokens: 300,
     });
 
-    const content = response.choices[0]?.message?.content || '{}';
+    // Validate response structure before accessing choices
+    if (!response || typeof response !== 'object') {
+      console.error('[AIService] Invalid OpenAI response structure:', response);
+      throw new Error('OpenAI API returned invalid response (not an object)');
+    }
+
+    if (!('choices' in response) || !Array.isArray(response.choices)) {
+      console.error('[AIService] OpenAI response missing choices array');
+      console.error('[AIService] Full response:', JSON.stringify(response, null, 2));
+
+      // Check if response contains an error field
+      if ('error' in response && response.error) {
+        const error = response.error as { message?: string; type?: string; code?: string };
+        throw new Error(
+          `OpenAI API error: ${error.message || 'Unknown error'} (type: ${error.type || 'unknown'}, code: ${error.code || 'unknown'})`
+        );
+      }
+
+      throw new Error('OpenAI API returned response without choices array. Check API key, model availability, and rate limits.');
+    }
+
+    if (response.choices.length === 0) {
+      console.error('[AIService] OpenAI response has empty choices array');
+      console.error('[AIService] Full response:', JSON.stringify(response, null, 2));
+      throw new Error('OpenAI API returned empty choices array (no completions generated)');
+    }
+
+    const content = response.choices[0]?.message?.content;
+
+    if (!content) {
+      console.error('[AIService] OpenAI choice missing message content');
+      console.error('[AIService] Choice object:', JSON.stringify(response.choices[0], null, 2));
+      throw new Error('OpenAI API returned choice without message content');
+    }
+
     return this.parseAIResponse(content);
   }
 
