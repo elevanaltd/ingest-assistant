@@ -10,14 +10,14 @@
    - Quality gate status
    - Phase progression tracking
 
-2. **`001-DOC-ARCHITECTURE.md`** 📘 **MAIN ARCHITECTURE DOC**
+2. **`architecture/001-DOC-ARCHITECTURE.md`** 📘 **MAIN ARCHITECTURE DOC**
    - Complete Electron app architecture (ACTIVE production path)
    - Service layer design and relationships
    - Technical decisions with rationale
    - Technology stack and dependencies
    - Recent updates: v1.1.0 features integrated
 
-3. **`006-DOC-INGEST-ASSISTANT-ARCHITECTURE-D1-STRATEGIC-ANALYSIS.md`** 🎯 **ENHANCEMENT ROADMAP**
+3. **`architecture/006-DOC-INGEST-ASSISTANT-ARCHITECTURE-D1-STRATEGIC-ANALYSIS.md`** 🎯 **ENHANCEMENT ROADMAP**
    - Four-tier enhancement strategy
    - Phase 0 prerequisites (✅ COMPLETED)
    - Tier 2-3 features (✅ IMPLEMENTED: keyboard shortcuts, virtual scrolling)
@@ -25,40 +25,40 @@
 
 ### **Strategic Exploration (Alternative Approaches):**
 
-4. **`000-DOC-CRITICAL-DISCOVERY-PP-METADATA-BEHAVIOR.md`** 🔬 **WORKFLOW ANALYSIS**
+4. **`architecture/000-DOC-CRITICAL-DISCOVERY-PP-METADATA-BEHAVIOR.md`** 🔬 **WORKFLOW ANALYSIS**
    - Empirical testing of Premiere Pro metadata behavior
    - Discovery of offline file limitations
    - Analysis that identified UXP panel as strategic alternative
    - Historical context for architectural thinking
 
-5. **`004-DOC-UXP-PANEL-ARCHITECTURE.md`** 📋 **UXP PANEL EXPLORATION**
+5. **`architecture/004-DOC-UXP-PANEL-ARCHITECTURE.md`** 📋 **UXP PANEL EXPLORATION**
    - Comprehensive UXP panel design (strategic alternative)
    - Technical decisions for potential future direction
    - Code reusability analysis (60-70% from Electron app)
    - Complementary workflow positioning
 
-6. **`003-DOC-POC-SCOPE.md`** 🧪 **UXP POC PLAN**
+6. **`guides/implementation/003-DOC-POC-SCOPE.md`** 🧪 **UXP POC PLAN**
    - Minimal feature set for UXP validation (if pursued)
    - GO/NO-GO criteria for future evaluation
    - Testing checklist for alternative approach
 
 ### **Historical Reference:**
 
-7. **`002-REPORT-PHASE-1-COMPLETION.md`**
+7. **`../reports/002-REPORT-PHASE-1-COMPLETION.md`**
    - Electron app Phase 1 completion status
    - What was built and tested initially
    - Foundation for v1.0.0 release
 
 ### **Additional Context:**
 
-7. **`REPO_REVIEW.md`**
+8. **`../reports/REPO_REVIEW.md`**
    - Electron app code review
    - Security assessment
    - Quality analysis
 
-8. **`adrs/001-DOC-ADR-006-SECURITY-HARDENING-STRATEGY.md`**
+9. **`adrs/ADR-006-SECURITY-HARDENING-STRATEGY.md`**
    - Security considerations (Electron app context)
-   - Some principles applicable to UXP panel
+   - Production security hardening strategy
 
 ---
 
@@ -68,19 +68,19 @@
 → `../PROJECT-CONTEXT.md` (updated 2025-11-11)
 
 ### **"What are we building?"**
-→ `001-DOC-ARCHITECTURE.md` (Electron app - ACTIVE) + `006-DOC-INGEST-ASSISTANT-ARCHITECTURE-D1-STRATEGIC-ANALYSIS.md` (roadmap)
+→ `architecture/001-DOC-ARCHITECTURE.md` (Electron app - ACTIVE) + `architecture/006-DOC-INGEST-ASSISTANT-ARCHITECTURE-D1-STRATEGIC-ANALYSIS.md` (roadmap)
 
 ### **"What features were recently added?"**
 → `../PROJECT-CONTEXT.md` (v1.1.0: keyboard shortcuts, virtual scrolling, pagination, security hardening)
 
 ### **"What's the UXP panel about?"**
-→ `000-DOC-CRITICAL-DISCOVERY-PP-METADATA-BEHAVIOR.md` (discovery) + `004-DOC-UXP-PANEL-ARCHITECTURE.md` (design)
+→ `architecture/000-DOC-CRITICAL-DISCOVERY-PP-METADATA-BEHAVIOR.md` (discovery) + `architecture/004-DOC-UXP-PANEL-ARCHITECTURE.md` (design)
 
 ### **"What architectural decisions were made?"**
-→ `001-DOC-ARCHITECTURE.md` (core architecture) + `adrs/` directory (specific decisions)
+→ `architecture/001-DOC-ARCHITECTURE.md` (core architecture) + `adrs/` directory (specific decisions)
 
 ### **"What's next in development?"**
-→ `006-DOC-INGEST-ASSISTANT-ARCHITECTURE-D1-STRATEGIC-ANALYSIS.md` (Tier 4: component decomposition, error handling)
+→ `architecture/006-DOC-INGEST-ASSISTANT-ARCHITECTURE-D1-STRATEGIC-ANALYSIS.md` (Tier 4: component decomposition, error handling)
 
 ---
 
