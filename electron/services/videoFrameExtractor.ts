@@ -25,7 +25,9 @@ function validateFilename(filePath: string): void {
   // 2. Comprehensive shell metacharacter blocking
   // Covers: quotes (single/double), command separators, redirects, wildcards,
   // variable expansion, command substitution, control characters
-  const dangerousChars = /["'`;$&|<>(){}[\]\\*?~\n\r\t%]/;
+  // Note: Parentheses removed - safe with spawn() (no shell expansion)
+  // Issue #1: Real paths like "Video (Proxy)" must be allowed
+  const dangerousChars = /["'`;$&|<>{}[\]\\*?~\n\r\t%]/;
 
   if (dangerousChars.test(filePath)) {
     throw new Error(`Security: Invalid filename contains forbidden characters: ${filePath}`);
