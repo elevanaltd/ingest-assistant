@@ -266,8 +266,8 @@ describe('MetadataWriter (Integration)', () => {
     });
   });
 
-  describe('Dublin Core XMP fields (Issue #54 - Simplified Approach)', () => {
-    it('should write Title to Dublin Core (survives PP proxy conversion)', async () => {
+  describe('simplified XMP strategy (Issue #54 - proxy-safe metadata)', () => {
+    it('should write dc:Title and dc:Description (combined entity approach)', async () => {
       if (!exiftoolAvailable) {
         console.log('⏭️  Skipping - exiftool not available');
         return;
@@ -275,68 +275,97 @@ describe('MetadataWriter (Integration)', () => {
 
       const mainName = 'kitchen-oven-cleaning-WS';
       const tags = ['appliance', 'demo'];
+      const structured = {
+        location: 'kitchen',
+        subject: 'oven',
+        action: 'cleaning',
+        shotType: 'WS'
+      };
 
-      await metadataWriter.writeMetadataToFile(testFilePath, mainName, tags);
+      await metadataWriter.writeMetadataToFile(testFilePath, mainName, tags, structured);
 
-      // Verify Title is written to XMP-dc:Title (Dublin Core)
-      const { stdout } = await execAsync(`exiftool -XMP-dc:Title -json "${testFilePath}"`);
+      // Read Dublin Core fields (these survive proxy conversion)
+      const { stdout } = await execAsync(`exiftool -XMP-dc:Title -XMP-dc:Description -json "${testFilePath}"`);
       const data = JSON.parse(stdout);
       const xmpData = data[0];
 
+      // XMP-dc:Title should contain the combined entity
       expect(xmpData['Title']).toBe('kitchen-oven-cleaning-WS');
+
+      // XMP-dc:Description should contain keywords (comma-separated)
+      expect(xmpData['Description']).toBe('appliance, demo');
     });
 
-    it('should write Description to Dublin Core with keywords (survives PP proxy conversion)', async () => {
+    it('should write custom description when provided', async () => {
       if (!exiftoolAvailable) {
         console.log('⏭️  Skipping - exiftool not available');
         return;
       }
 
-      const mainName = 'bathroom-sink-WS';
-      const tags = ['plumbing', 'renovation', 'demo'];
+      const mainName = 'test-name';
+      const tags = ['tag1', 'tag2'];
+      const description = 'This is a custom description field';
 
-      await metadataWriter.writeMetadataToFile(testFilePath, mainName, tags);
+      await metadataWriter.writeMetadataToFile(testFilePath, mainName, tags, undefined, description);
 
-      // Verify Description is written to XMP-dc:Description (Dublin Core)
-      const { stdout } = await execAsync(`exiftool -XMP-dc:Description -json "${testFilePath}"`);
+      const { stdout } = await execAsync(`exiftool -Description -XMP-dc:Description -json "${testFilePath}"`);
       const data = JSON.parse(stdout);
-      const xmpData = data[0];
+      const metadata = data[0];
 
-      expect(xmpData['Description']).toBe('plumbing, renovation, demo');
+      // Custom description should override tag-based description
+      expect(metadata['Description']).toBe(description);
     });
 
-    it('should write keywords to XMP:Subject (Dublin Core keywords array)', async () => {
+    it('should work without structured components (backward compatibility)', async () => {
+      if (!exiftoolAvailable) {
+        console.log('⏭️  Skipping - exiftool not available');
+        return;
+      }
+
+      const mainName = 'simple-name';
+      const tags = ['tag1', 'tag2'];
+
+      // Call without structured parameter (backward compatibility)
+      await metadataWriter.writeMetadataToFile(testFilePath, mainName, tags);
+
+      const result = await metadataWriter.readMetadataFromFile(testFilePath);
+      expect(result.title).toBe(mainName);
+      expect(result.description).toBe('tag1, tag2');
+    });
+
+    it('should not write individual component fields (JSON-only strategy)', async () => {
       if (!exiftoolAvailable) {
         console.log('⏭️  Skipping - exiftool not available');
         return;
       }
 
       const mainName = 'kitchen-oven-WS';
-      const tags = ['keyword1', 'keyword2', 'keyword3'];
+      const tags = ['appliance'];
+      const structured = {
+        location: 'kitchen',
+        subject: 'oven',
+        shotType: 'WS'
+      };
 
-      await metadataWriter.writeMetadataToFile(testFilePath, mainName, tags);
+      await metadataWriter.writeMetadataToFile(testFilePath, mainName, tags, structured);
 
-      // Verify keywords array
-      const result = await metadataWriter.readMetadataFromFile(testFilePath);
-      expect(result.keywords).toContain('keyword1');
-      expect(result.keywords).toContain('keyword2');
-      expect(result.keywords).toContain('keyword3');
-    });
+      // Verify individual components are NOT written to XMP
+      const { stdout } = await execAsync(`exiftool -XMP:all -json "${testFilePath}"`);
+      const data = JSON.parse(stdout);
+      const xmpData = data[0];
 
-    it('should handle empty tags array gracefully', async () => {
-      if (!exiftoolAvailable) {
-        console.log('⏭️  Skipping - exiftool not available');
-        return;
-      }
+      // Should only have Title and Description, not individual components
+      expect(xmpData['Title']).toBe('kitchen-oven-WS');
+      expect(xmpData['Description']).toBe('appliance');
 
-      const mainName = 'test-only-title';
+      // Individual components should NOT exist in XMP (they're in JSON instead)
+      expect(xmpData['Location']).toBeUndefined();
+      expect(xmpData['Action']).toBeUndefined();
+      expect(xmpData['Shot']).toBeUndefined();
 
-      await metadataWriter.writeMetadataToFile(testFilePath, mainName, []);
-
-      const result = await metadataWriter.readMetadataFromFile(testFilePath);
-      expect(result.title).toBe(mainName);
-      // Description only written when tags.length > 0
-      expect(result.description).toBeUndefined();
+      // Subject should NOT exist as a separate component field
+      // (XMP-dc:Subject would be something else, not our structured component)
+      expect(xmpData['Subject']).toBeUndefined();
     });
   });
 });

@@ -104,24 +104,36 @@ export class MetadataWriter {
    * Security: Uses execFile() (NOT exec()) to prevent shell injection.
    * Validates all user input before processing.
    *
-   * METADATA STRATEGY (Issue #54 - Simplified):
-   * - XMP-dc:Title = mainName (structured title: location-subject-action-shotType)
-   *   → Survives Premiere Pro proxy conversion, searchable by editors
-   * - XMP-dc:Description = tags (comma-separated keywords)
-   *   → Survives proxy conversion, searchable via "Search All" in PP
-   * - Structured components (location, subject, action, shotType) stored in JSON sidecar
-   *   → Enables cataloguer editing in Ingest Assistant and CEP Panel
-   *   → JSON stays with files throughout project lifecycle
+   * This embeds EXIF/XMP metadata that Premiere Pro and other tools can read.
+   *
+   * METADATA STRATEGY (Issue #54):
+   * Simplified approach that survives proxy conversion:
+   * - XMP-dc:Title = mainName (combined entity: location-subject-action-shotType)
+   *   → Survives proxy conversion, searchable in PP, editor-friendly
+   * - XMP-dc:Description = keywords (comma-separated) OR custom description
+   *   → Survives proxy conversion, searchable in PP
+   *
+   * Structured components (location, subject, action, shotType) are stored in JSON sidecar
+   * for cataloguer editing in both Ingest Assistant and CEP Panel.
    *
    * @param filePath Absolute path to media file
    * @param mainName Structured title (location-subject-action-shotType)
    * @param tags Array of keyword tags
+   * @param structured Optional structured components (reserved for future JSON integration)
+   * @param description Optional custom description (if not provided, uses tags.join(', '))
    * @throws Error if metadata contains shell metacharacters or file operation fails
    */
   async writeMetadataToFile(
     filePath: string,
     mainName: string,
-    tags: string[]
+    tags: string[],
+    structured?: {
+      location?: string;
+      subject?: string;
+      action?: string;
+      shotType?: string;
+    },
+    description?: string
   ): Promise<void> {
     // Validate inputs for shell metacharacters
     if (mainName) {
@@ -132,32 +144,47 @@ export class MetadataWriter {
       this.validateInput(tag, `tag[${index}]`);
     });
 
+    // Validate structured components if provided
+    if (structured) {
+      if (structured.location) {
+        this.validateInput(structured.location, 'structured.location');
+      }
+      if (structured.subject) {
+        this.validateInput(structured.subject, 'structured.subject');
+      }
+      if (structured.action) {
+        this.validateInput(structured.action, 'structured.action');
+      }
+      if (structured.shotType) {
+        this.validateInput(structured.shotType, 'structured.shotType');
+      }
+    }
+
+    // Validate custom description if provided
+    if (description) {
+      this.validateInput(description, 'description');
+    }
+
     // Build exiftool arguments (array, NOT string concatenation)
     const args: string[] = [];
 
-    // XMP Title = Structured title (location-subject-action-shotType)
-    // Automatically writes to XMP-dc:Title (Dublin Core)
+    // SIMPLIFIED METADATA STRATEGY (Issue #54):
+    // Only write 2 fields that survive proxy conversion:
+    // 1. XMP-dc:Title = combined entity (location-subject-action-shotType)
+    // 2. XMP-dc:Description = keywords (comma-separated) for search
+    // Structured components (location, subject, action, shotType) are stored in JSON sidecar
+
+    // XMP-dc:Title = Combined entity (editor-friendly, survives proxies)
     if (mainName) {
       args.push(`-Title=${mainName}`);
-      args.push(`-XMP:Title=${mainName}`);
-      args.push(`-IPTC:ObjectName=${mainName}`);
+      args.push(`-XMP-dc:Title=${mainName}`);
     }
 
-    // Keywords - Array of tags for searchability
-    // Write each tag individually so exiftool creates proper array structure
-    tags.forEach(tag => {
-      args.push(`-Keywords=${tag}`);
-      args.push(`-XMP:Subject=${tag}`); // Dublin Core Subject (keywords array)
-    });
-
-    // XMP Description = Metadata tags (comma-separated for editor search)
-    // Automatically writes to XMP-dc:Description (Dublin Core)
-    // This field survives Premiere Pro proxy conversion
-    if (tags.length > 0) {
-      const descriptionValue = tags.join(', ');
+    // XMP-dc:Description = Keywords OR custom description (searchable, survives proxies)
+    const descriptionValue = description || (tags.length > 0 ? tags.join(', ') : undefined);
+    if (descriptionValue) {
       args.push(`-Description=${descriptionValue}`);
-      args.push(`-XMP:Description=${descriptionValue}`);
-      args.push(`-IPTC:Caption-Abstract=${descriptionValue}`);
+      args.push(`-XMP-dc:Description=${descriptionValue}`);
     }
 
     // Don't create backup files
@@ -200,8 +227,13 @@ export class MetadataWriter {
   /**
    * Read metadata from file using exiftool.
    *
+   * Matches the simplified write strategy (Issue #54):
+   * - Reads dc:Title (combined entity)
+   * - Reads dc:Description (contains keywords comma-separated)
+   * - Parses Description back into keywords array for backward compatibility
+   *
    * @param filePath Absolute path to media file
-   * @returns Object with title and keywords
+   * @returns Object with title, keywords (parsed from description), and description
    */
   async readMetadataFromFile(filePath: string): Promise<{
     title?: string;
@@ -209,7 +241,7 @@ export class MetadataWriter {
     description?: string;
   }> {
     try {
-      const args = ['-Title', '-Keywords', '-Description', '-json', filePath];
+      const args = ['-Title', '-Description', '-json', filePath];
       const exiftoolPath = findExiftool();
 
       const { stdout } = await execFileAsync(exiftoolPath, args, {
@@ -221,9 +253,16 @@ export class MetadataWriter {
 
       if (data && data.length > 0) {
         const metadata = data[0];
+
+        // Parse keywords from Description field (comma-separated)
+        // This maintains backward compatibility with code expecting keywords array
+        const keywords = metadata.Description
+          ? this.parseKeywords(metadata.Description)
+          : [];
+
         return {
           title: metadata.Title,
-          keywords: this.parseKeywords(metadata.Keywords),
+          keywords,
           description: metadata.Description,
         };
       }
