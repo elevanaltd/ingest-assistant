@@ -41,6 +41,10 @@ export class FileManager {
     const entries = await fs.readdir(folderPath, { withFileTypes: true });
     const files: FileMetadata[] = [];
 
+    // Track seen IDs to detect duplicates
+    // Map<baseId, count> - first occurrence gets count=1, duplicates get 2, 3, etc.
+    const seenIds = new Map<string, number>();
+
     for (const entry of entries) {
       if (!entry.isFile()) continue;
 
@@ -57,18 +61,31 @@ export class FileManager {
       await this.securityValidator.validateFilePath(filePath);
 
       const stats = await fs.stat(filePath);
-      const id = this.extractFileId(filename);
+      const baseId = this.extractFileId(filename);
+
+      // Handle duplicate IDs by adding counter suffix
+      let finalId = baseId;
+      if (seenIds.has(baseId)) {
+        const count = seenIds.get(baseId)! + 1;
+        seenIds.set(baseId, count);
+        // Trim whitespace before adding counter (e.g., "Utility " -> "Utility-2")
+        finalId = `${baseId.trim()}-${count}`;
+      } else {
+        seenIds.set(baseId, 1);
+      }
+
       const extension = path.extname(filename);
 
       // Check if filename already has a main name (format: ID-name.ext)
+      // Use baseId (not finalId) for extraction since filename has original ID
       const namePart = filename
         .slice(0, -extension.length) // Remove extension
-        .slice(id.length); // Remove ID
+        .slice(baseId.length); // Remove ID
 
       const mainName = namePart.startsWith('-') ? namePart.slice(1) : '';
 
       files.push({
-        id,
+        id: finalId,
         originalFilename: filename,
         currentFilename: filename,
         filePath,
