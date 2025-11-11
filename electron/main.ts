@@ -101,6 +101,12 @@ const batchQueueManager: BatchQueueManager = new BatchQueueManager(batchQueuePat
 // Helper function to get or create metadata store for a specific folder
 function getMetadataStoreForFolder(folderPath: string): MetadataStore {
   if (currentFolderPath !== folderPath || !metadataStore) {
+    // Folder is changing - clear stale batch queue (Issue #24)
+    if (currentFolderPath && currentFolderPath !== folderPath) {
+      console.log(`[main.ts] Folder changing from ${currentFolderPath} to ${folderPath}`);
+      batchQueueManager.clearQueue();
+    }
+
     currentFolderPath = folderPath;
     const metadataPath = path.join(folderPath, '.ingest-metadata.json');
     metadataStore = new MetadataStore(metadataPath);

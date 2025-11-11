@@ -249,6 +249,9 @@ export class BatchQueueManager {
    * Issue #24: Prevents 99/100 failures when user opens new folder after app restart
    */
   clearQueue(): void {
+    const itemCount = this.state.items.length;
+    console.log(`[BatchQueueManager] Clearing queue (had ${itemCount} items)`);
+
     this.state = {
       items: [],
       status: 'idle',
