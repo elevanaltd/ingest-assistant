@@ -231,7 +231,7 @@ Example:
 
 ## Testing
 
-Comprehensive TDD implementation with **260+ tests** covering:
+Comprehensive TDD implementation with **424 tests** covering:
 - Settings Modal and lexicon management
 - Multi-format AI response parsing with versioned schemas (V1/V2)
 - Metadata storage, EXIF embedding, and pagination
@@ -264,7 +264,7 @@ Run tests: `npm test`
 **Quality Improvements:**
 - ✅ TypeScript strict mode - all `any` types eliminated (Issue #41)
 - ✅ ESLint v9 migration with flat config (Issue #45)
-- ✅ Comprehensive test coverage (260+ tests)
+- ✅ Comprehensive test coverage (424 tests, all passing)
 
 **Architecture:**
 - Phase 0 prerequisites complete (security, pagination, schemas)

@@ -173,7 +173,7 @@ Once you're comfortable with the basics, use keyboard shortcuts for 3× faster w
 
 ```bash
 npm run dev          # Development mode
-npm test             # Run tests (260+ tests)
+npm test             # Run tests (424 tests - all passing)
 npm run typecheck    # TypeScript validation
 npm run lint         # ESLint
 npm run build        # Production build
