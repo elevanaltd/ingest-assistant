@@ -58,8 +58,14 @@ class RateLimiter {
     this.refill();
 
     if (this.tokens < tokens) {
-      const waitTime = ((tokens - this.tokens) / this.refillRate) * 1000;
-      throw new Error(`Rate limit exceeded. Please wait ${Math.ceil(waitTime / 1000)} seconds before retrying.`);
+      // Wait for tokens to be available instead of throwing error
+      const waitTime = Math.ceil(((tokens - this.tokens) / this.refillRate) * 1000);
+      console.log(`[RateLimiter] Waiting ${waitTime}ms for ${tokens} token(s)...`);
+
+      await new Promise(resolve => setTimeout(resolve, waitTime));
+
+      // Refill after waiting
+      this.refill();
     }
 
     this.tokens -= tokens;
@@ -95,6 +101,12 @@ const batchQueueManager: BatchQueueManager = new BatchQueueManager(batchQueuePat
 // Helper function to get or create metadata store for a specific folder
 function getMetadataStoreForFolder(folderPath: string): MetadataStore {
   if (currentFolderPath !== folderPath || !metadataStore) {
+    // Folder is changing - clear stale batch queue (Issue #24)
+    if (currentFolderPath && currentFolderPath !== folderPath) {
+      console.log(`[main.ts] Folder changing from ${currentFolderPath} to ${folderPath}`);
+      batchQueueManager.clearQueue();
+    }
+
     currentFolderPath = folderPath;
     const metadataPath = path.join(folderPath, '.ingest-metadata.json');
     metadataStore = new MetadataStore(metadataPath);
@@ -290,6 +302,10 @@ ipcMain.handle('file:select-folder', async () => {
     currentFolderPath = folderPath;
     securityValidator.setAllowedBasePath(folderPath);
 
+    // Issue #24: Clear stale batch queue when folder changes
+    // Prevents 99/100 failures from fileIds belonging to previous folder
+    batchQueueManager.clearQueue();
+
     return folderPath;
   }
 
@@ -404,10 +420,16 @@ ipcMain.handle('file:load-files', async () => {
   const files = await fileManager.scanFolder(currentFolderPath);
   const store = getMetadataStoreForFolder(currentFolderPath);
 
-  // Load metadata for each file
+  // Load or create metadata for each file (Issue #24)
   for (const file of files) {
     const existingMetadata = await store.getFileMetadata(file.id);
-    if (existingMetadata) {
+
+    if (!existingMetadata) {
+      // Save the file metadata from scanFolder to the store
+      // scanFolder already created a complete FileMetadata object
+      await store.updateFileMetadata(file.id, file);
+    } else {
+      // Use existing metadata (which may have been AI-processed)
       file.mainName = existingMetadata.mainName;
       file.metadata = existingMetadata.metadata;
       file.processedByAI = existingMetadata.processedByAI;
@@ -708,9 +730,6 @@ ipcMain.handle('ai:batch-process', async (_event, fileIds: string[]) => {
     // Security: Validate input schema
     const validated = AIBatchProcessSchema.parse({ fileIds });
 
-    // Security: Rate limiting (prevents abuse)
-    await batchProcessRateLimiter.consume(validated.fileIds.length);
-
     if (!aiService) {
       throw new Error('AI service not configured.');
     }
@@ -724,6 +743,9 @@ ipcMain.handle('ai:batch-process', async (_event, fileIds: string[]) => {
     const lexicon = await configManager.getLexicon();
 
     for (const fileId of validated.fileIds) {
+    // Security: Rate limiting per file (prevents abuse)
+    await batchProcessRateLimiter.consume(1);
+
     const fileMetadata = await store.getFileMetadata(fileId);
     if (!fileMetadata || fileMetadata.processedByAI) continue;
 
@@ -796,8 +818,8 @@ ipcMain.handle('batch:start', async (_event, fileIds: string[]) => {
     // Security: Validate input schema
     const validated = BatchStartSchema.parse({ fileIds });
 
-    // Security: Rate limiting (prevents abuse)
-    await batchProcessRateLimiter.consume(validated.fileIds.length);
+    // Note: Rate limiting is applied per-file during processing (not upfront)
+    // This allows the rate limiter to properly pace the batch
 
     if (!aiService) {
       throw new Error('AI service not configured.');

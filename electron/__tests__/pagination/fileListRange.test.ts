@@ -135,9 +135,9 @@ describe('file:list-range - Pagination', () => {
     });
 
     it('should return middle page of files', async () => {
-      // Mock 100 files
+      // Mock 100 files with unique 8-char IDs (camera-style)
       const mockFiles = Array.from({ length: 100 }, (_, i) =>
-        createMockDirent(`FILE_${String(i).padStart(4, '0')}.jpg`)
+        createMockDirent(`EA${String(i).padStart(6, '0')}.jpg`)
       );
 
       mockFs.readdir.mockResolvedValue(mockFiles as Dirent[]);
@@ -149,8 +149,8 @@ describe('file:list-range - Pagination', () => {
       expect(result.totalCount).toBe(100);
       expect(result.startIndex).toBe(40);
       expect(result.hasMore).toBe(true);
-      expect(result.files[0].id).toBe('FILE_004');
-      expect(result.files[19].id).toBe('FILE_005');
+      expect(result.files[0].id).toBe('EA000040');
+      expect(result.files[19].id).toBe('EA000059');
     });
 
     it('should return last partial page', async () => {

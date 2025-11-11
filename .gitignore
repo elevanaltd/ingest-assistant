@@ -43,5 +43,4 @@ config/config.yaml
 # Testing
 coverage
 .nyc_output
-constitution.txt
-constitution_numbered.txt
+test-output.log

@@ -93,6 +93,118 @@ describe('FileManager', () => {
 
       await expect(fileManager.scanFolder('/nonexistent')).rejects.toThrow();
     });
+
+    it('should preserve unique camera IDs without modification', async () => {
+      // Test that primary workflow (camera files) is unchanged
+      const mockFiles = [
+        { name: 'EA001234.jpg', isFile: () => true, isDirectory: () => false },
+        { name: 'EA001235.jpg', isFile: () => true, isDirectory: () => false },
+        { name: 'EA001236.mov', isFile: () => true, isDirectory: () => false },
+      ];
+
+      mockFs.readdir.mockResolvedValue(mockFiles);
+      mockFs.stat.mockResolvedValue({
+        isFile: () => true,
+        mtime: new Date('2024-01-01'),
+      });
+
+      const files = await fileManager.scanFolder(testFolderPath);
+
+      // Camera IDs should be preserved exactly (no counters)
+      expect(files).toHaveLength(3);
+      expect(files[0].id).toBe('EA001234');
+      expect(files[1].id).toBe('EA001235');
+      expect(files[2].id).toBe('EA001236');
+    });
+
+    it('should add counter suffix to duplicate IDs', async () => {
+      // Test edge case: renamed files with duplicate 8-char prefixes
+      const mockFiles = [
+        { name: 'Utility shot 1.mov', isFile: () => true, isDirectory: () => false },
+        { name: 'Utility shot 2.mov', isFile: () => true, isDirectory: () => false },
+        { name: 'Utility shot 3.mov', isFile: () => true, isDirectory: () => false },
+      ];
+
+      mockFs.readdir.mockResolvedValue(mockFiles);
+      mockFs.stat.mockResolvedValue({
+        isFile: () => true,
+        mtime: new Date('2024-01-01'),
+      });
+
+      const files = await fileManager.scanFolder(testFolderPath);
+
+      // First "Utility " gets ID as-is, duplicates get trimmed counters
+      expect(files).toHaveLength(3);
+      expect(files[0].id).toBe('Utility '); // First occurrence (preserves trailing space)
+      expect(files[1].id).toBe('Utility-2'); // Second occurrence (trimmed + counter)
+      expect(files[2].id).toBe('Utility-3'); // Third occurrence (trimmed + counter)
+    });
+
+    it('should handle mixed unique and duplicate IDs', async () => {
+      const mockFiles = [
+        { name: 'EA001234.jpg', isFile: () => true, isDirectory: () => false }, // Unique
+        { name: 'Utility shot 1.mov', isFile: () => true, isDirectory: () => false }, // First "Utility "
+        { name: 'EA001235.jpg', isFile: () => true, isDirectory: () => false }, // Unique
+        { name: 'Utility shot 2.mov', isFile: () => true, isDirectory: () => false }, // Duplicate "Utility "
+        { name: 'VD002341.mp4', isFile: () => true, isDirectory: () => false }, // Unique
+      ];
+
+      mockFs.readdir.mockResolvedValue(mockFiles);
+      mockFs.stat.mockResolvedValue({
+        isFile: () => true,
+        mtime: new Date('2024-01-01'),
+      });
+
+      const files = await fileManager.scanFolder(testFolderPath);
+
+      expect(files).toHaveLength(5);
+      expect(files[0].id).toBe('EA001234'); // Unique - unchanged
+      expect(files[1].id).toBe('Utility '); // First occurrence (preserves trailing space)
+      expect(files[2].id).toBe('EA001235'); // Unique - unchanged
+      expect(files[3].id).toBe('Utility-2'); // Duplicate detected (trimmed + counter)
+      expect(files[4].id).toBe('VD002341'); // Unique - unchanged
+    });
+
+    it('should handle many duplicates (stress test)', async () => {
+      // Test with 10 files all having same 8-char prefix
+      const mockFiles = Array.from({ length: 10 }, (_, i) => ({
+        name: `Test fil ${i + 1}.jpg`,
+        isFile: () => true,
+        isDirectory: () => false,
+      }));
+
+      mockFs.readdir.mockResolvedValue(mockFiles);
+      mockFs.stat.mockResolvedValue({
+        isFile: () => true,
+        mtime: new Date('2024-01-01'),
+      });
+
+      const files = await fileManager.scanFolder(testFolderPath);
+
+      expect(files).toHaveLength(10);
+      expect(files[0].id).toBe('Test fil'); // First
+      expect(files[1].id).toBe('Test fil-2'); // Counter
+      expect(files[9].id).toBe('Test fil-10'); // 10th duplicate
+    });
+
+    it('should trim whitespace before adding counter', async () => {
+      // Test that "Utility " becomes "Utility-2" not "Utility -2"
+      const mockFiles = [
+        { name: 'Utility 1.mov', isFile: () => true, isDirectory: () => false },
+        { name: 'Utility 2.mov', isFile: () => true, isDirectory: () => false },
+      ];
+
+      mockFs.readdir.mockResolvedValue(mockFiles);
+      mockFs.stat.mockResolvedValue({
+        isFile: () => true,
+        mtime: new Date('2024-01-01'),
+      });
+
+      const files = await fileManager.scanFolder(testFolderPath);
+
+      expect(files[0].id).toBe('Utility '); // First gets ID as extracted
+      expect(files[1].id).toBe('Utility-2'); // Trimmed before counter
+    });
   });
 
   describe('extractFileId', () => {

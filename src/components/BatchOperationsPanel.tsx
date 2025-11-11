@@ -66,8 +66,25 @@ export function BatchOperationsPanel({ availableFiles, onBatchComplete }: BatchO
       return;
     }
 
+    // Limit to 100 files per batch (schema constraint)
+    const BATCH_LIMIT = 100;
+    const filesToProcess = unprocessedFiles.slice(0, BATCH_LIMIT);
+    const remainingFiles = unprocessedFiles.length - filesToProcess.length;
+
+    // Warn user if files exceed limit
+    if (remainingFiles > 0) {
+      const proceed = confirm(
+        `You have ${unprocessedFiles.length} unprocessed files.\n\n` +
+        `Due to API rate limits, batches are limited to ${BATCH_LIMIT} files at a time.\n\n` +
+        `This batch will process the first ${BATCH_LIMIT} files.\n` +
+        `${remainingFiles} files will remain for the next batch.\n\n` +
+        `Continue?`
+      );
+      if (!proceed) return;
+    }
+
     try {
-      await window.electronAPI.batchStart(unprocessedFiles);
+      await window.electronAPI.batchStart(filesToProcess);
       setIsExpanded(true);
     } catch (error) {
       console.error('Failed to start batch:', error);
@@ -176,7 +193,7 @@ export function BatchOperationsPanel({ availableFiles, onBatchComplete }: BatchO
                 fontWeight: '500',
               }}
             >
-              Process {unprocessedCount} File{unprocessedCount !== 1 ? 's' : ''}
+              Process {unprocessedCount > 100 ? 'First 100' : `${unprocessedCount}`} File{unprocessedCount !== 1 ? 's' : ''}
             </button>
           )}
 

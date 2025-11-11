@@ -5,6 +5,13 @@ AI-powered media file ingestion and metadata assistant for MacOS.
 ## Features
 
 - **Manual Mode**: View photos/videos and add descriptive names and metadata tags
+- **Batch Processing**: AI-analyze multiple files automatically (Issue #24)
+  - Process up to 100 files per batch with progress tracking
+  - Rate limiting: 100 files/minute (burst then throttle)
+  - Queue persistence survives app restarts
+  - Graceful cancellation (finishes current file)
+  - Same metadata storage as manual processing
+  - See: [Batch Processing Documentation](.coord/docs/007-DOC-BATCH-PROCESSING-IMPLEMENTATION.md)
 - **Auto-Rename**: Files automatically renamed to `{ID}-{kebab-case-name}.{ext}`
   - **Photos**: 3-part naming `{location}-{subject}-{shotType}`
   - **Videos**: 4-part naming `{location}-{subject}-{action}-{shotType}`
@@ -140,6 +147,8 @@ npm run package
 
 ## Usage
 
+### Manual Processing
+
 1. **Select Folder**: Click "Select Folder" to choose a directory with images/videos
 2. **Configure Lexicon** (Optional): Click ⚙️ Settings button
    - Define term preferences (e.g., "bin" instead of "trash")
@@ -155,6 +164,36 @@ npm run package
    - Click "AI Assist" to analyze the current file
    - Review the suggested name and metadata
    - Edit if needed, then Save
+
+### Batch Processing (NEW - Issue #24)
+
+Process multiple files automatically with AI analysis:
+
+1. **Open folder** with unprocessed media files
+2. **Batch Operations panel** shows: "68 files available"
+3. **Click "Process 68 Files"** button
+   - If >100 files: "Process First 100 Files" (batch limit)
+   - Remaining files can be processed in subsequent batches
+4. **Monitor progress**:
+   - Progress bar shows percentage complete
+   - Current file being processed
+   - Completed/Failed counts update in real-time
+5. **Processing completes**:
+   - All files have AI-generated names and metadata
+   - Metadata saved to `.ingest-metadata.json` (same as manual)
+   - Files marked as processed (`processedByAI: true`)
+
+**Rate Limiting:**
+- First ~100 files process immediately (burst)
+- Subsequent files: ~600ms delay each (100 files/minute)
+- Console shows: `[RateLimiter] Waiting 598ms for 1 token(s)...`
+
+**Cancellation:**
+- Click "Cancel" button during processing
+- Finishes current file, then stops
+- Cancelled files can be reprocessed later
+
+**Detailed Documentation:** See [Batch Processing Implementation](.coord/docs/007-DOC-BATCH-PROCESSING-IMPLEMENTATION.md)
 
 ## File Naming Convention
 
@@ -231,13 +270,17 @@ Example:
 
 ## Testing
 
-Comprehensive TDD implementation with **424 tests** covering:
+Comprehensive TDD implementation with **446 tests** covering:
 - Settings Modal and lexicon management
 - Multi-format AI response parsing with versioned schemas (V1/V2)
 - Metadata storage, EXIF embedding, and pagination
 - File operations and configuration management
 - Security validation (path traversal, content validation, rate limiting)
-- Batch operations and queue management
+- **Batch operations and queue management** (Issue #24)
+  - Queue clearing on folder changes
+  - Rate limiter waiting behavior
+  - Metadata entry creation for new files
+  - Queue persistence and restoration
 - Type definitions and integration
 - Component tests (ErrorBoundary, SettingsModal, keyboard shortcuts)
 
@@ -246,6 +289,7 @@ Run tests: `npm test`
 **Test Coverage Areas:**
 - **Service Layer**: High coverage (business logic critical)
 - **Security**: Comprehensive tests for SecurityValidator, batch IPC validation
+- **Batch Processing**: Queue management, rate limiting, folder-scoped clearing
 - **AI Integration**: Multi-provider parsing, result schema validation
 - **Performance**: Pagination, caching, virtual scrolling integration
 - **UI Components**: React component behavior, accessibility
@@ -258,17 +302,30 @@ Run tests: `npm test`
 - ✅ Virtual scrolling for large folders (1000+ files at 60fps)
 - ✅ Paginated file loading (<300ms initial, <50ms cached)
 - ✅ Video 4-part naming with action field (location-subject-action-shotType)
+- ✅ **Batch Processing** (Issue #24) - AI-analyze multiple files automatically
+  - Process up to 100 files per batch with progress tracking
+  - Rate limiting: 100 files/minute (burst then throttle)
+  - Queue persistence with folder-scoped clearing
+  - Three critical bugs fixed (stale queue, missing metadata, rate limiter)
 - ✅ Security hardening: batch IPC validation, rate limiting, content validation
 - ✅ Result type schemas with versioning (ADR-008, Zod validation)
 
 **Quality Improvements:**
 - ✅ TypeScript strict mode - all `any` types eliminated (Issue #41)
 - ✅ ESLint v9 migration with flat config (Issue #45)
-- ✅ Comprehensive test coverage (424 tests, all passing)
+- ✅ Comprehensive test coverage (446 tests, all passing)
+- ✅ Batch processing fixes validated with TDD (RED→GREEN→REFACTOR)
+
+**Bug Fixes (Issue #24):**
+- ✅ Fixed: Stale queue persistence across folder changes (99/100 failures)
+- ✅ Fixed: Missing metadata entries for unprocessed files (68/69 skipped)
+- ✅ Fixed: Rate limiter throwing errors instead of waiting
+- Documentation: [Batch Processing Implementation](.coord/docs/007-DOC-BATCH-PROCESSING-IMPLEMENTATION.md)
 
 **Architecture:**
 - Phase 0 prerequisites complete (security, pagination, schemas)
 - Tier 2-3 features implemented (virtual scrolling, keyboard shortcuts)
+- Batch processing production-ready with comprehensive testing
 
 ### v1.0.0 (January 2025) - Initial Release
 - Core manual workflow (view, rename, tag, save)

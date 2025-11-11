@@ -479,7 +479,7 @@ function App() {
           <div className="form">
             {/* Row 1: ID, Location, Subject, Action, Shot Type */}
             <div className="form-row" style={{ display: 'flex', gap: '8px', flexWrap: 'nowrap' }}>
-              <div className="form-group" style={{ flex: '0 0 70px', minWidth: 0 }}>
+              <div className="form-group" style={{ flex: '0 0 77px', minWidth: 0 }}>
                 <label style={{ fontSize: '13px' }}>ID</label>
                 <input
                   type="text"
