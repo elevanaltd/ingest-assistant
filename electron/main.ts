@@ -420,10 +420,16 @@ ipcMain.handle('file:load-files', async () => {
   const files = await fileManager.scanFolder(currentFolderPath);
   const store = getMetadataStoreForFolder(currentFolderPath);
 
-  // Load metadata for each file
+  // Load or create metadata for each file (Issue #24)
   for (const file of files) {
     const existingMetadata = await store.getFileMetadata(file.id);
-    if (existingMetadata) {
+
+    if (!existingMetadata) {
+      // Save the file metadata from scanFolder to the store
+      // scanFolder already created a complete FileMetadata object
+      await store.updateFileMetadata(file.id, file);
+    } else {
+      // Use existing metadata (which may have been AI-processed)
       file.mainName = existingMetadata.mainName;
       file.metadata = existingMetadata.metadata;
       file.processedByAI = existingMetadata.processedByAI;
