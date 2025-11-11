@@ -58,8 +58,14 @@ class RateLimiter {
     this.refill();
 
     if (this.tokens < tokens) {
-      const waitTime = ((tokens - this.tokens) / this.refillRate) * 1000;
-      throw new Error(`Rate limit exceeded. Please wait ${Math.ceil(waitTime / 1000)} seconds before retrying.`);
+      // Wait for tokens to be available instead of throwing error
+      const waitTime = Math.ceil(((tokens - this.tokens) / this.refillRate) * 1000);
+      console.log(`[RateLimiter] Waiting ${waitTime}ms for ${tokens} token(s)...`);
+
+      await new Promise(resolve => setTimeout(resolve, waitTime));
+
+      // Refill after waiting
+      this.refill();
     }
 
     this.tokens -= tokens;
@@ -708,9 +714,6 @@ ipcMain.handle('ai:batch-process', async (_event, fileIds: string[]) => {
     // Security: Validate input schema
     const validated = AIBatchProcessSchema.parse({ fileIds });
 
-    // Security: Rate limiting (prevents abuse)
-    await batchProcessRateLimiter.consume(validated.fileIds.length);
-
     if (!aiService) {
       throw new Error('AI service not configured.');
     }
@@ -724,6 +727,9 @@ ipcMain.handle('ai:batch-process', async (_event, fileIds: string[]) => {
     const lexicon = await configManager.getLexicon();
 
     for (const fileId of validated.fileIds) {
+    // Security: Rate limiting per file (prevents abuse)
+    await batchProcessRateLimiter.consume(1);
+
     const fileMetadata = await store.getFileMetadata(fileId);
     if (!fileMetadata || fileMetadata.processedByAI) continue;
 
@@ -796,8 +802,8 @@ ipcMain.handle('batch:start', async (_event, fileIds: string[]) => {
     // Security: Validate input schema
     const validated = BatchStartSchema.parse({ fileIds });
 
-    // Security: Rate limiting (prevents abuse)
-    await batchProcessRateLimiter.consume(validated.fileIds.length);
+    // Note: Rate limiting is applied per-file during processing (not upfront)
+    // This allows the rate limiter to properly pace the batch
 
     if (!aiService) {
       throw new Error('AI service not configured.');
