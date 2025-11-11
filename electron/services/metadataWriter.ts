@@ -104,12 +104,14 @@ export class MetadataWriter {
    * Security: Uses execFile() (NOT exec()) to prevent shell injection.
    * Validates all user input before processing.
    *
-   * This embeds EXIF/XMP metadata that Premiere Pro and other tools can read
-   *
-   * NEW WORKFLOW:
-   * - XMP Title = mainName (structured title: location-subject-action-shotType)
-   * - XMP Description = tags (comma-separated metadata tags)
-   * - Keywords = tags (searchable keywords)
+   * METADATA STRATEGY (Issue #54 - Simplified):
+   * - XMP-dc:Title = mainName (structured title: location-subject-action-shotType)
+   *   → Survives Premiere Pro proxy conversion, searchable by editors
+   * - XMP-dc:Description = tags (comma-separated keywords)
+   *   → Survives proxy conversion, searchable via "Search All" in PP
+   * - Structured components (location, subject, action, shotType) stored in JSON sidecar
+   *   → Enables cataloguer editing in Ingest Assistant and CEP Panel
+   *   → JSON stays with files throughout project lifecycle
    *
    * @param filePath Absolute path to media file
    * @param mainName Structured title (location-subject-action-shotType)
@@ -134,6 +136,7 @@ export class MetadataWriter {
     const args: string[] = [];
 
     // XMP Title = Structured title (location-subject-action-shotType)
+    // Automatically writes to XMP-dc:Title (Dublin Core)
     if (mainName) {
       args.push(`-Title=${mainName}`);
       args.push(`-XMP:Title=${mainName}`);
@@ -142,18 +145,19 @@ export class MetadataWriter {
 
     // Keywords - Array of tags for searchability
     // Write each tag individually so exiftool creates proper array structure
-    // This ensures Premiere Pro and other tools see them as separate searchable keywords
     tags.forEach(tag => {
       args.push(`-Keywords=${tag}`);
-      args.push(`-XMP:Subject=${tag}`);
+      args.push(`-XMP:Subject=${tag}`); // Dublin Core Subject (keywords array)
     });
 
-    // XMP Description = Metadata tags (comma-separated)
+    // XMP Description = Metadata tags (comma-separated for editor search)
+    // Automatically writes to XMP-dc:Description (Dublin Core)
+    // This field survives Premiere Pro proxy conversion
     if (tags.length > 0) {
-      const description = tags.join(', ');
-      args.push(`-Description=${description}`);
-      args.push(`-XMP:Description=${description}`);
-      args.push(`-IPTC:Caption-Abstract=${description}`);
+      const descriptionValue = tags.join(', ');
+      args.push(`-Description=${descriptionValue}`);
+      args.push(`-XMP:Description=${descriptionValue}`);
+      args.push(`-IPTC:Caption-Abstract=${descriptionValue}`);
     }
 
     // Don't create backup files
