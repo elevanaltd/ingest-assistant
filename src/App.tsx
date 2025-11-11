@@ -35,6 +35,10 @@ function App() {
   const [showCommandPalette, setShowCommandPalette] = useState(false);
   const [lexiconConfig, setLexiconConfig] = useState<LexiconConfig | undefined>();
 
+  // Force re-render on window resize to ensure UI layout recalculates
+  // Fixes issue where batch processing causes UI to stop responding to window resize
+  const [, forceUpdate] = useState(0);
+
   const currentFile = files[currentFileIndex];
   const canSave = Boolean(location && subject && shotType);
 
@@ -60,6 +64,22 @@ function App() {
           setShotTypes(['WS', 'MID', 'CU', 'UNDER', 'FP', 'TRACK', 'ESTAB']);
         });
     }
+  }, []);
+
+  // Handle window resize events to force React layout recalculation
+  // This ensures UI responds to window resize after batch processing
+  useEffect(() => {
+    const handleResize = () => {
+      // Force component re-render to recalculate layout
+      forceUpdate(prev => prev + 1);
+    };
+
+    window.addEventListener('resize', handleResize);
+
+    // Cleanup listener on unmount
+    return () => {
+      window.removeEventListener('resize', handleResize);
+    };
   }, []);
 
   // Update form and load media when current file changes
@@ -405,23 +425,11 @@ function App() {
       <header className="header">
         <h1>Ingest Assistant</h1>
         <div className="header-buttons">
-          <button onClick={handleOpenSettings} className="btn" title="Settings">
+          <button onClick={handleOpenSettings} className="settings-icon" title="Settings">
             ⚙️
           </button>
         </div>
       </header>
-
-      {/* Batch Operations Panel */}
-      {folderPath && isAIConfigured && (
-        <BatchOperationsPanel
-          availableFiles={files.map(f => ({
-            id: f.id,
-            filename: f.currentFilename,
-            processedByAI: f.processedByAI,
-          }))}
-          onBatchComplete={handleBatchComplete}
-        />
-      )}
 
       {folderPath && (
         <div className="folder-info">
@@ -725,6 +733,20 @@ function App() {
         {!folderPath && (
           <div className="empty-state">
             <p>Select a folder to get started.</p>
+          </div>
+        )}
+
+        {/* Batch Operations Panel - Right Side */}
+        {folderPath && isAIConfigured && (
+          <div className="batch-panel-right">
+            <BatchOperationsPanel
+              availableFiles={files.map(f => ({
+                id: f.id,
+                filename: f.currentFilename,
+                processedByAI: f.processedByAI,
+              }))}
+              onBatchComplete={handleBatchComplete}
+            />
           </div>
         )}
       </div>

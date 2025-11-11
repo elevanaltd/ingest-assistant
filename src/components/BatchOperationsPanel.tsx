@@ -105,6 +105,60 @@ export function BatchOperationsPanel({ availableFiles, onBatchComplete }: BatchO
     }
   };
 
+  const handleReprocess = async () => {
+    console.log('[BatchPanel] Reprocess button clicked');
+
+    if (!window.electronAPI) {
+      console.error('[BatchPanel] window.electronAPI is not available');
+      return;
+    }
+
+    // Reprocess ALL files, regardless of processing status
+    const filesToProcess = availableFiles.map(f => f.id);
+    console.log('[BatchPanel] Files to reprocess:', filesToProcess);
+
+    if (filesToProcess.length === 0) {
+      console.log('[BatchPanel] No files to reprocess');
+      return;
+    }
+
+    // Limit to 100 files per batch
+    const actualFiles = filesToProcess.slice(0, 100);
+
+    if (filesToProcess.length > 100) {
+      const remainingFiles = filesToProcess.length - 100;
+      const proceed = confirm(
+        `Batch processing is limited to 100 files at a time.\n\n` +
+        `${actualFiles.length} files will be reprocessed now.\n` +
+        `${remainingFiles} files will remain for the next batch.\n\n` +
+        `Continue?`
+      );
+      if (!proceed) {
+        console.log('[BatchPanel] User cancelled reprocess (100+ files)');
+        return;
+      }
+    } else {
+      const proceed = confirm(
+        `This will reprocess ALL ${actualFiles.length} file${actualFiles.length !== 1 ? 's' : ''}, including those already processed.\n\n` +
+        `Continue?`
+      );
+      if (!proceed) {
+        console.log('[BatchPanel] User cancelled reprocess');
+        return;
+      }
+    }
+
+    console.log('[BatchPanel] Starting reprocess with files:', actualFiles);
+    try {
+      await window.electronAPI.batchStart(actualFiles);
+      console.log('[BatchPanel] Reprocess batch started successfully');
+      setIsExpanded(true);
+    } catch (error) {
+      console.error('[BatchPanel] Failed to start reprocess:', error);
+      alert('Failed to start reprocess: ' + (error instanceof Error ? error.message : 'Unknown error'));
+    }
+  };
+
   const getStatusColor = (status: string): string => {
     switch (status) {
       case 'processing': return '#2563eb'; // blue
@@ -124,97 +178,143 @@ export function BatchOperationsPanel({ availableFiles, onBatchComplete }: BatchO
   };
 
   const unprocessedCount = availableFiles.filter(f => !f.processedByAI).length;
+  const totalFiles = availableFiles.length;
   const isProcessing = queueState?.status === 'processing';
 
   return (
     <div style={{
       backgroundColor: '#f9fafb',
       borderBottom: '1px solid #e5e7eb',
-      padding: '12px 16px',
+      padding: '16px',
     }}>
-      {/* Header */}
+      {/* Action Buttons - At Top */}
+      {!isProcessing && (
+        <>
+          <button
+            onClick={handleStartBatch}
+            disabled={unprocessedCount === 0}
+            style={{
+              width: '100%',
+              padding: '10px 16px',
+              fontSize: '14px',
+              borderRadius: '6px',
+              border: 'none',
+              backgroundColor: unprocessedCount > 0 ? '#3b82f6' : '#e5e7eb',
+              color: unprocessedCount > 0 ? 'white' : '#9ca3af',
+              cursor: unprocessedCount > 0 ? 'pointer' : 'not-allowed',
+              fontWeight: '600',
+              marginBottom: '8px',
+            }}
+          >
+            {unprocessedCount > 100
+              ? `Process First 100 Files`
+              : unprocessedCount > 0
+              ? `Process ${unprocessedCount} File${unprocessedCount !== 1 ? 's' : ''}`
+              : 'No Files to Process'
+            }
+          </button>
+
+          {totalFiles > 0 && (
+            <button
+              onClick={(e) => {
+                console.log('[BatchPanel] Button click event:', e);
+                handleReprocess();
+              }}
+              style={{
+                width: '100%',
+                padding: '10px 16px',
+                fontSize: '14px',
+                borderRadius: '6px',
+                border: '1px solid #9ca3af',
+                backgroundColor: 'white',
+                color: '#374151',
+                cursor: 'pointer',
+                fontWeight: '600',
+                marginBottom: '16px',
+                position: 'relative',
+                zIndex: 1,
+              }}
+            >
+              {totalFiles > 100
+                ? `Reprocess First 100 Files`
+                : `Reprocess All ${totalFiles} File${totalFiles !== 1 ? 's' : ''}`
+              }
+            </button>
+          )}
+        </>
+      )}
+
+      {isProcessing && (
+        <button
+          onClick={handleCancel}
+          style={{
+            width: '100%',
+            padding: '10px 16px',
+            fontSize: '14px',
+            borderRadius: '6px',
+            border: '1px solid #dc2626',
+            backgroundColor: '#fee2e2',
+            color: '#dc2626',
+            cursor: 'pointer',
+            fontWeight: '600',
+            marginBottom: '16px',
+          }}
+        >
+          Cancel Processing
+        </button>
+      )}
+
+      {/* Header - Compact */}
       <div style={{
         display: 'flex',
         alignItems: 'center',
-        gap: '12px',
-        justifyContent: 'space-between',
+        gap: '8px',
+        marginBottom: '12px',
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <button
-            onClick={() => setIsExpanded(!isExpanded)}
-            style={{
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
-              fontSize: '14px',
-              padding: '4px',
-            }}
-            title={isExpanded ? 'Collapse' : 'Expand'}
-          >
-            {isExpanded ? '▼' : '▶'}
-          </button>
+        <button
+          onClick={() => setIsExpanded(!isExpanded)}
+          style={{
+            background: 'none',
+            border: 'none',
+            cursor: 'pointer',
+            fontSize: '14px',
+            padding: '4px',
+          }}
+          title={isExpanded ? 'Collapse' : 'Expand'}
+        >
+          {isExpanded ? '▼' : '▶'}
+        </button>
 
-          <span style={{ fontSize: '14px', fontWeight: '600' }}>
-            Batch Operations
+        <span style={{ fontSize: '14px', fontWeight: '600', flex: 1 }}>
+          Batch Operations
+        </span>
+
+        {queueState && (
+          <span style={{
+            fontSize: '11px',
+            padding: '3px 8px',
+            borderRadius: '12px',
+            backgroundColor: getStatusColor(queueState.status),
+            color: 'white',
+            textTransform: 'capitalize',
+          }}>
+            {queueState.status}
           </span>
+        )}
+      </div>
 
-          {queueState && (
-            <span style={{
-              fontSize: '12px',
-              padding: '2px 8px',
-              borderRadius: '12px',
-              backgroundColor: getStatusColor(queueState.status),
-              color: 'white',
-            }}>
-              {queueState.status}
-            </span>
-          )}
-
-          {unprocessedCount > 0 && !isProcessing && (
-            <span style={{ fontSize: '12px', color: '#6b7280' }}>
-              {unprocessedCount} file{unprocessedCount !== 1 ? 's' : ''} available
-            </span>
-          )}
-        </div>
-
-        <div style={{ display: 'flex', gap: '8px' }}>
-          {!isProcessing && (
-            <button
-              onClick={handleStartBatch}
-              disabled={unprocessedCount === 0}
-              style={{
-                padding: '6px 12px',
-                fontSize: '13px',
-                borderRadius: '4px',
-                border: '1px solid #d1d5db',
-                backgroundColor: unprocessedCount > 0 ? '#3b82f6' : '#e5e7eb',
-                color: unprocessedCount > 0 ? 'white' : '#9ca3af',
-                cursor: unprocessedCount > 0 ? 'pointer' : 'not-allowed',
-                fontWeight: '500',
-              }}
-            >
-              Process {unprocessedCount > 100 ? 'First 100' : `${unprocessedCount}`} File{unprocessedCount !== 1 ? 's' : ''}
-            </button>
-          )}
-
-          {isProcessing && (
-            <button
-              onClick={handleCancel}
-              style={{
-                padding: '6px 12px',
-                fontSize: '13px',
-                borderRadius: '4px',
-                border: '1px solid #dc2626',
-                backgroundColor: '#fee2e2',
-                color: '#dc2626',
-                cursor: 'pointer',
-                fontWeight: '500',
-              }}
-            >
-              Cancel
-            </button>
-          )}
-        </div>
+      {/* Status Message */}
+      <div style={{
+        fontSize: '13px',
+        color: unprocessedCount > 0 ? '#374151' : '#6b7280',
+        marginBottom: '12px',
+        lineHeight: '1.5',
+      }}>
+        {unprocessedCount > 0 ? (
+          <strong>{unprocessedCount} file{unprocessedCount !== 1 ? 's' : ''} ready to process</strong>
+        ) : (
+          'All files processed'
+        )}
       </div>
 
       {/* Expanded Details */}
