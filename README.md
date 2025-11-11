@@ -6,15 +6,35 @@ AI-powered media file ingestion and metadata assistant for MacOS.
 
 - **Manual Mode**: View photos/videos and add descriptive names and metadata tags
 - **Auto-Rename**: Files automatically renamed to `{ID}-{kebab-case-name}.{ext}`
+  - **Photos**: 3-part naming `{location}-{subject}-{shotType}`
+  - **Videos**: 4-part naming `{location}-{subject}-{action}-{shotType}`
 - **AI Assistance**: Analyze images with AI to suggest names and metadata
   - **OpenRouter** (recommended): Access to 100+ models with one API key
   - Direct APIs: OpenAI, Anthropic
+  - Structured output with versioned schemas (V1/V2 compatibility)
 - **Lexicon System**: Configure preferred/excluded terms to guide AI analysis
+- **Keyboard Shortcuts**: Power user workflow (3× faster than mouse)
+  - **Cmd+S**: Save metadata
+  - **Cmd+I**: AI assist current file
+  - **Cmd+K**: Open command palette
+  - **Arrow Keys**: Navigate files
+  - **Escape**: Close modals
+- **Command Palette**: VS Code-style command interface (Cmd+K)
+- **Performance Optimizations**:
+  - Virtual scrolling for large folders (1000+ files at 60fps)
+  - Paginated file loading (<300ms initial, <50ms cached)
+  - LRU cache for folder scans
 - **Video Support**:
   - Hardware-accelerated transcoding (ProRes, HEVC → H.264)
   - On-the-fly preview generation with VideoToolbox (macOS)
   - Disk-based caching for optimal performance
-- **Security**: Defense-in-depth validation (path traversal, magic bytes, file size limits)
+  - 4-part naming with action field (e.g., kitchen-mixer-whipping-CU)
+- **Security**: Defense-in-depth validation
+  - Path traversal protection with symlink resolution
+  - Content validation (magic bytes)
+  - File size limits (100MB images, configurable)
+  - Rate limiting for batch operations (100 files/min)
+  - Batch IPC security validation
 - **Simple Storage**: Metadata stored in JSON, easy to backup and version control
 
 ## Setup
@@ -138,43 +158,127 @@ npm run package
 
 ## File Naming Convention
 
-Files are renamed to: `{ID}-{main-name}.{ext}`
+Files are renamed using structured naming patterns:
+
+### Photos (3-part naming)
+Format: `{ID}-{location}-{subject}-{shotType}.{ext}`
 
 Example:
 - Original: `EB001537.jpg`
-- After naming "Oven Control Panel": `EB001537-oven-control-panel.jpg`
+- After AI analysis: `EB001537-kitchen-oven-WS.jpg`
+  - Location: kitchen
+  - Subject: oven
+  - Shot Type: WS (Wide Shot)
+
+### Videos (4-part naming)
+Format: `{ID}-{location}-{subject}-{action}-{shotType}.{ext}`
+
+Example:
+- Original: `VID_0042.mov`
+- After AI analysis: `VID_0042-kitchen-mixer-whipping-CU.mov`
+  - Location: kitchen
+  - Subject: mixer
+  - Action: whipping
+  - Shot Type: CU (Close-Up)
+
+### Shot Type Vocabulary
+- **Static Shots**: WS (Wide Shot), MS (Medium Shot), CU (Close-Up), ECU (Extreme Close-Up), OTS (Over The Shoulder)
+- **Moving Shots**: PAN, TILT, DOLLY, TRACK, ZOOM, CRANE
 
 ## Architecture
 
 ### Core Services (Electron Main Process)
 
-- **FileManager**: Scans folders, manages file operations, handles renaming
-- **MetadataStore**: JSON-based metadata persistence
-- **ConfigManager**: YAML configuration management
-- **AIService**: Multi-format AI response parser (OpenAI, Anthropic, OpenRouter)
-- **MetadataWriter**: Embeds metadata into files via exiftool
+**File Management:**
+- **FileManager**: Scans folders, manages file operations, handles renaming with pagination support
+- **MetadataStore**: JSON-based metadata persistence with range queries for pagination
+
+**AI & Configuration:**
+- **AIService**: Multi-format AI response parser with versioned schemas (V1/V2)
+  - Supports OpenAI, Anthropic, OpenRouter
+  - Structured output parsing for photo/video naming
+  - Result type validation with Zod schemas
+- **ConfigManager**: YAML configuration management for lexicon system
+
+**Media Processing:**
 - **VideoTranscoder**: Hardware-accelerated video transcoding with caching
 - **VideoFrameExtractor**: Generates thumbnails from video files
-- **SecurityValidator**: Defense-in-depth security (path traversal, content validation, size limits)
+- **MetadataWriter**: Embeds metadata into files via exiftool (EXIF/XMP/IPTC)
+
+**Performance & Security:**
+- **SecurityValidator**: Defense-in-depth security layer
+  - Path traversal protection with symlink resolution
+  - Content validation (magic bytes)
+  - File size limits and rate limiting
+  - Batch operation validation
+- **BatchQueueManager**: Task queue for batch AI processing with progress tracking
+- **LRU Cache**: Least Recently Used cache for folder scans (5 folders, <50ms cached access)
 
 ### UI (React)
 
 - Single-page app with image/video viewer
-- Form for ID, Main Name, and Metadata
+- Form for ID, Main Name, and Metadata (photos: 3-part, videos: 4-part with action)
 - Settings Modal for lexicon configuration (⚙️ button)
-- Navigation between files
-- AI assistance button
+- **Command Palette**: VS Code-style command interface (Cmd+K)
+  - Quick access to all commands
+  - Keyboard-first workflow
+  - Fuzzy search for actions
+- **Virtual Scrolling**: Performance-optimized file list (react-window)
+  - Smooth 60fps scrolling for 1000+ files
+  - Only renders visible items (~15 DOM nodes)
+- Navigation with keyboard shortcuts (arrow keys, Cmd+S, Cmd+I)
+- AI assistance button with structured analysis
 
 ## Testing
 
-Full TDD implementation with **100+ passing tests** covering:
+Comprehensive TDD implementation with **424 tests** covering:
 - Settings Modal and lexicon management
-- Multi-format AI response parsing
-- Metadata storage and EXIF embedding
-- File operations and configuration
+- Multi-format AI response parsing with versioned schemas (V1/V2)
+- Metadata storage, EXIF embedding, and pagination
+- File operations and configuration management
+- Security validation (path traversal, content validation, rate limiting)
+- Batch operations and queue management
 - Type definitions and integration
+- Component tests (ErrorBoundary, SettingsModal, keyboard shortcuts)
 
 Run tests: `npm test`
+
+**Test Coverage Areas:**
+- **Service Layer**: High coverage (business logic critical)
+- **Security**: Comprehensive tests for SecurityValidator, batch IPC validation
+- **AI Integration**: Multi-provider parsing, result schema validation
+- **Performance**: Pagination, caching, virtual scrolling integration
+- **UI Components**: React component behavior, accessibility
+
+## Version History
+
+### v1.1.0 (November 2025) - Performance & Usability Release
+**Major Features:**
+- ✅ Keyboard shortcuts & command palette (Cmd+K) - 3× faster workflow
+- ✅ Virtual scrolling for large folders (1000+ files at 60fps)
+- ✅ Paginated file loading (<300ms initial, <50ms cached)
+- ✅ Video 4-part naming with action field (location-subject-action-shotType)
+- ✅ Security hardening: batch IPC validation, rate limiting, content validation
+- ✅ Result type schemas with versioning (ADR-008, Zod validation)
+
+**Quality Improvements:**
+- ✅ TypeScript strict mode - all `any` types eliminated (Issue #41)
+- ✅ ESLint v9 migration with flat config (Issue #45)
+- ✅ Comprehensive test coverage (424 tests, all passing)
+
+**Architecture:**
+- Phase 0 prerequisites complete (security, pagination, schemas)
+- Tier 2-3 features implemented (virtual scrolling, keyboard shortcuts)
+
+### v1.0.0 (January 2025) - Initial Release
+- Core manual workflow (view, rename, tag, save)
+- Dual metadata storage (JSON + embedded EXIF)
+- AI assist (single file, OpenAI/Anthropic/OpenRouter)
+- Lexicon-based AI guidance
+- Error boundary for UI resilience
+- CI/CD pipeline with quality gates
+- Settings modal with lexicon editor
+- Video transcoding with hardware acceleration
 
 ## License
 

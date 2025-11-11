@@ -582,11 +582,24 @@ npm run package      # Create macOS DMG/ZIP (electron-builder)
 
 ---
 
-## Architectural Evolution & Pivot Decision
+## Architectural Evolution & Strategic Exploration
 
-### November 2025: Critical Discovery - Premiere Pro Workflow Integration
+### November 2025: Concurrent Development Paths
 
-**Context:** During production use validation, a fundamental constraint was discovered that changes the optimal architecture.
+**CURRENT STATUS (2025-11-11): Electron App is ACTIVE Production Path**
+
+**Active Development Evidence:**
+- Recent commits through November 11, 2025 (action field, keyboard shortcuts, virtual scrolling)
+- Phase 0 prerequisites completed (Issues #18, #19, #20)
+- Tier 2-3 features implemented (Issues #22, #23)
+- Version 1.1.0 release (November 2025)
+- Quality improvements ongoing (TypeScript strict mode, ESLint v9)
+
+**Strategic Alternative Explored: UXP Panel**
+
+### Critical Discovery - Premiere Pro Workflow Integration
+
+**Context:** During production use validation (November 6, 2025), a workflow analysis revealed potential architectural alternatives.
 
 **Discovery:** Premiere Pro displays **master file metadata only** when proxies are attached. Metadata written to proxy files is invisible in the editing workflow. This means:
 1. Metadata must be written to RAW files (stored on restricted-access NAS)
@@ -602,41 +615,52 @@ ACTUAL WORKFLOW (How editors work):
 Camera Cards → Copy to NAS → Import to PP → Edit with proxies (offline RAW files)
 ```
 
-**Architectural Pivot Decision:**
+**Strategic Analysis: UXP Panel as Potential Alternative**
 
-After comprehensive analysis, the optimal solution is a **Premiere Pro UXP Panel** rather than standalone Electron app:
+The November 6 analysis identified a **Premiere Pro UXP Panel** as a potentially compelling alternative architecture:
 
-**Why UXP Panel is Superior:**
+**UXP Panel Advantages (If Pursued):**
 1. **Access Boundary:** Editors work in PP with offline files → PP metadata doesn't require file access
 2. **Search Integration:** PP project metadata is immediately searchable in bins (no relink needed)
 3. **Workflow Integration:** Editors never leave PP → Zero tool-switching friction
 4. **AI Advantage:** Can analyze exact frame editor is viewing (better than blind file analysis)
 5. **Simplicity:** No file access choreography, no server infrastructure, no queue systems
 
-**Code Reusability:** 60-70% of Electron app code reusable in UXP:
+**Code Reusability from Electron App (If UXP Pursued):** 60-70%
 - React components (UI layout, forms, state management)
 - AIService (HTTP API calls work identically)
 - ConfigManager (lexicon loading adaptable)
 - Type definitions (interfaces remain valid)
 
-**Electron App Future:**
-- **Status:** Proof-of-concept complete, mission accomplished
-- **Value:** Validated UI/UX concepts, AI integration patterns, lexicon system
-- **Lessons:** File-system approach taught us what editors actually need
-- **Potential Future Use:** Ingest-time workflow (optional, complementary to UXP panel)
+**Electron App Status: ACTIVE - Production Development Continues**
 
-**Next Steps:**
-- New project: `ingest-assistant-uxp` (Premiere Pro panel)
-- Fresh repository: Clean architecture based on lessons learned
-- POC-first approach: Validate PP integration before full build
+- **Current State:** Production-grade application with v1.1.0 release
+- **Recent Accomplishments:**
+  - Phase 0 architectural prerequisites completed (security, pagination, schemas)
+  - Major UX improvements (keyboard shortcuts, command palette, virtual scrolling)
+  - Quality gates strengthened (TypeScript strict, comprehensive tests)
+- **Value Delivered:** Full-featured standalone application for file ingestion workflows
+- **Use Case:** Ingest-time metadata tagging, batch processing, pre-import organization
+
+**Relationship Between Approaches:**
+
+The Electron app and potential UXP panel serve **complementary workflows**:
+- **Electron App (ACTIVE):** Pre-import file organization, batch ingestion, standalone metadata tagging
+- **UXP Panel (EXPLORED):** Post-import in-editing metadata enhancement, editor-centric workflow
+
+**Decision Status:**
+- Electron app development continues as primary production path
+- UXP panel remains strategic option for future evaluation
+- Both approaches have distinct value propositions for different workflow stages
 
 **References:**
-- UXP Panel Architecture: See `ingest-assistant-uxp/ARCHITECTURE.md` (forthcoming)
-- Pivot Analysis Session: November 6, 2025 (Holistic Orchestrator review)
+- UXP Panel Exploration: `.coord/docs/000-DOC-CRITICAL-DISCOVERY-PP-METADATA-BEHAVIOR.md`
+- UXP Panel Architecture Analysis: `.coord/docs/004-DOC-UXP-PANEL-ARCHITECTURE.md`
+- Strategic Analysis Session: November 6, 2025 (Holistic Orchestrator review)
 
 ---
 
-**Document Version:** 1.1.0
-**Last Updated:** 2025-11-06
+**Document Version:** 1.2.0
+**Last Updated:** 2025-11-11
 **Author:** Holistic Orchestrator (Claude Code)
-**Status:** Historical reference - Electron app architecture preserved, UXP panel is future direction
+**Status:** Living document - Electron app is active production path, architectural options documented for strategic planning

@@ -2,46 +2,52 @@
 
 ## Reading Order (Recommended)
 
-### **Start Here:**
+### **Start Here - Current Project Status:**
 
-1. **`000-DOC-CRITICAL-DISCOVERY-PP-METADATA-BEHAVIOR.md`** ⭐ **READ THIS FIRST**
-   - The empirical testing that drove all architectural decisions
-   - Why file-based metadata failed
-   - Why UXP panel is the solution
-   - **Without reading this, other docs won't make sense**
+1. **`../PROJECT-CONTEXT.md`** ⭐ **START HERE**
+   - Current development status (updated 2025-11-11)
+   - Active features and recent commits
+   - Quality gate status
+   - Phase progression tracking
 
-### **Context (Electron App POC):**
+2. **`001-DOC-ARCHITECTURE.md`** 📘 **MAIN ARCHITECTURE DOC**
+   - Complete Electron app architecture (ACTIVE production path)
+   - Service layer design and relationships
+   - Technical decisions with rationale
+   - Technology stack and dependencies
+   - Recent updates: v1.1.0 features integrated
 
-2. **`001-DOC-ARCHITECTURE.md`**
-   - Original Electron app architecture
-   - Proof-of-concept that validated UI/UX concepts
-   - Lessons learned
-   - Architectural pivot decision (at end)
+3. **`006-DOC-INGEST-ASSISTANT-ARCHITECTURE-D1-STRATEGIC-ANALYSIS.md`** 🎯 **ENHANCEMENT ROADMAP**
+   - Four-tier enhancement strategy
+   - Phase 0 prerequisites (✅ COMPLETED)
+   - Tier 2-3 features (✅ IMPLEMENTED: keyboard shortcuts, virtual scrolling)
+   - Implementation phases and success criteria
 
-3. **`002-REPORT-PHASE-1-COMPLETION.md`**
-   - Electron app completion status
-   - What was built and tested
-   - Historical reference
+### **Strategic Exploration (Alternative Approaches):**
 
-### **New Direction (UXP Panel):**
+4. **`000-DOC-CRITICAL-DISCOVERY-PP-METADATA-BEHAVIOR.md`** 🔬 **WORKFLOW ANALYSIS**
+   - Empirical testing of Premiere Pro metadata behavior
+   - Discovery of offline file limitations
+   - Analysis that identified UXP panel as strategic alternative
+   - Historical context for architectural thinking
 
-4. **`004-DOC-UXP-PANEL-ARCHITECTURE.md`** 📘 **MAIN ARCHITECTURE DOC**
-   - Comprehensive UXP panel design
-   - Technical decisions explained
-   - Development phases (POC → Full build)
-   - Code reusability from Electron app (60-70%)
+5. **`004-DOC-UXP-PANEL-ARCHITECTURE.md`** 📋 **UXP PANEL EXPLORATION**
+   - Comprehensive UXP panel design (strategic alternative)
+   - Technical decisions for potential future direction
+   - Code reusability analysis (60-70% from Electron app)
+   - Complementary workflow positioning
 
-5. **`003-DOC-POC-SCOPE.md`** 🎯 **POC VALIDATION PLAN**
-   - Minimal feature set for validation
-   - GO/NO-GO criteria
-   - Testing checklist
-   - 1-2 day timeline
+6. **`003-DOC-POC-SCOPE.md`** 🧪 **UXP POC PLAN**
+   - Minimal feature set for UXP validation (if pursued)
+   - GO/NO-GO criteria for future evaluation
+   - Testing checklist for alternative approach
 
-6. **`NEW-PROJECT-SETUP-GUIDE.md`** 🚀 **SETUP INSTRUCTIONS**
-   - Step-by-step project creation
-   - npm/Webpack/TypeScript configuration
-   - UXP manifest setup
-   - GitHub repository connection
+### **Historical Reference:**
+
+7. **`002-REPORT-PHASE-1-COMPLETION.md`**
+   - Electron app Phase 1 completion status
+   - What was built and tested initially
+   - Foundation for v1.0.0 release
 
 ### **Additional Context:**
 
@@ -58,39 +64,55 @@
 
 ## Quick Navigation by Topic
 
-### **"Why are we doing this?"**
-→ `000-DOC-CRITICAL-DISCOVERY-PP-METADATA-BEHAVIOR.md`
+### **"What's the current state of the project?"**
+→ `../PROJECT-CONTEXT.md` (updated 2025-11-11)
 
 ### **"What are we building?"**
-→ `004-DOC-UXP-PANEL-ARCHITECTURE.md`
+→ `001-DOC-ARCHITECTURE.md` (Electron app - ACTIVE) + `006-DOC-INGEST-ASSISTANT-ARCHITECTURE-D1-STRATEGIC-ANALYSIS.md` (roadmap)
 
-### **"How do I start the POC?"**
-→ `003-DOC-POC-SCOPE.md` + `NEW-PROJECT-SETUP-GUIDE.md`
+### **"What features were recently added?"**
+→ `../PROJECT-CONTEXT.md` (v1.1.0: keyboard shortcuts, virtual scrolling, pagination, security hardening)
 
-### **"What happened to the Electron app?"**
-→ `001-DOC-ARCHITECTURE.md` (see "Architectural Evolution & Pivot Decision" section)
+### **"What's the UXP panel about?"**
+→ `000-DOC-CRITICAL-DISCOVERY-PP-METADATA-BEHAVIOR.md` (discovery) + `004-DOC-UXP-PANEL-ARCHITECTURE.md` (design)
 
-### **"What code can we reuse?"**
-→ `004-DOC-UXP-PANEL-ARCHITECTURE.md` (section: "Code Reusability from Electron App")
+### **"What architectural decisions were made?"**
+→ `001-DOC-ARCHITECTURE.md` (core architecture) + `adrs/` directory (specific decisions)
+
+### **"What's next in development?"**
+→ `006-DOC-INGEST-ASSISTANT-ARCHITECTURE-D1-STRATEGIC-ANALYSIS.md` (Tier 4: component decomposition, error handling)
 
 ---
 
 ## Document Status
 
 ### Current Project Status:
-🚧 **POC Phase** - UXP panel proof-of-concept pending
+🚀 **ACTIVE PRODUCTION DEVELOPMENT** - Electron app v1.1.0 (November 2025)
 
-### Decisions Made:
-- ✅ Architectural pivot: Electron app → UXP panel
-- ✅ Approach: PP project metadata (not file metadata)
-- ✅ POC scope defined (1-2 days)
-- ⏳ POC not yet started
+### Recent Accomplishments (November 2025):
+- ✅ Phase 0 prerequisites complete (Issues #18, #19, #20)
+  - Security hardening with batch IPC validation
+  - Paginated file loading with LRU cache
+  - Result type schemas with Zod validation (ADR-008)
+- ✅ Tier 2-3 features implemented (Issues #22, #23)
+  - Keyboard shortcuts & command palette (Cmd+K, Cmd+S, Cmd+I)
+  - Virtual scrolling for large folders (1000+ files at 60fps)
+- ✅ Quality improvements
+  - TypeScript strict mode (all `any` types eliminated)
+  - ESLint v9 migration with flat config
+- ✅ Video 4-part naming with action field
+- ✅ 424 comprehensive tests (all passing, validated 2025-11-11)
+
+### Strategic Explorations:
+- 📋 UXP Panel design documented as potential future direction
+- 📋 Complementary workflow analysis (pre-import vs in-editing)
+- ⏸️ UXP POC deferred - Electron app provides immediate value
 
 ### Next Steps:
-1. Create new project: `ingest-assistant-uxp`
-2. Follow `NEW-PROJECT-SETUP-GUIDE.md`
-3. Execute POC validation per `003-DOC-POC-SCOPE.md`
-4. Make GO/NO-GO decision
+1. Test validation (verify 260+ tests passing after recent changes)
+2. Tier 4 enhancements (component decomposition, error handling)
+3. Production deployment readiness assessment
+4. Consider UXP panel POC as strategic future option
 
 ---
 
@@ -117,17 +139,23 @@
 
 ## Timeline
 
-### November 2025:
-- **Nov 6:** Critical discovery testing performed
-- **Nov 6:** Architectural pivot decision
-- **Nov 6:** Documentation created (this index)
-- **Next:** POC validation (1-2 days)
+### November 2025 - v1.1.0 Development Sprint:
+- **Nov 6:** Critical discovery analysis (UXP panel exploration)
+- **Nov 6:** Documentation restructuring
+- **Nov 7-10:** Phase 0 prerequisites (Issues #18, #19, #20 - security, pagination, schemas)
+- **Nov 10:** Tier 2-3 features (Issues #22, #23 - keyboard shortcuts, virtual scrolling)
+- **Nov 10:** Quality improvements (Issues #41, #45 - TypeScript strict, ESLint v9)
+- **Nov 11:** Action field for video 4-part naming (commit 38a85f4)
+- **Nov 11:** Documentation restoration (system coherence review)
+- **Status:** v1.1.0 feature-complete, test validation pending
 
-### January 2025:
+### January 2025 - v1.0.0 Initial Release:
 - Electron app v1.0.0 completed
 - Initial architecture validated
 - UI/UX concepts proven
-- AI integration working
+- AI integration working (OpenAI, Anthropic, OpenRouter)
+- Dual metadata storage (JSON + EXIF)
+- Settings modal with lexicon editor
 
 ---
 
