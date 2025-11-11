@@ -107,6 +107,9 @@ const batchQueueManager: BatchQueueManager = new BatchQueueManager(batchQueuePat
 
 // Helper function to get or create metadata store for a specific folder
 function getMetadataStoreForFolder(folderPath: string): MetadataStore {
+  console.log('[main.ts] getMetadataStoreForFolder called with folderPath:', folderPath);
+  console.log('[main.ts] currentFolderPath is:', currentFolderPath);
+
   if (currentFolderPath !== folderPath || !metadataStore) {
     // Folder is changing - clear stale batch queue (Issue #24)
     if (currentFolderPath && currentFolderPath !== folderPath) {
@@ -116,6 +119,7 @@ function getMetadataStoreForFolder(folderPath: string): MetadataStore {
 
     currentFolderPath = folderPath;
     const metadataPath = path.join(folderPath, '.ingest-metadata.json');
+    console.log('[main.ts] Creating MetadataStore with path:', metadataPath);
     metadataStore = new MetadataStore(metadataPath);
   }
   return metadataStore;
@@ -314,12 +318,18 @@ app.on('quit', () => {
 
 // File operations
 ipcMain.handle('file:select-folder', async () => {
+  console.log('[main.ts] file:select-folder - Opening folder dialog');
   const result = await dialog.showOpenDialog({
     properties: ['openDirectory'],
   });
 
+  console.log('[main.ts] Dialog result:', { canceled: result.canceled, filePaths: result.filePaths });
+
   if (!result.canceled && result.filePaths.length > 0) {
     const folderPath = result.filePaths[0];
+
+    console.log('[main.ts] Selected folder path:', folderPath);
+    console.log('[main.ts] Setting currentFolderPath to:', folderPath);
 
     // CRITICAL-1 FIX: Store selected folder in main process (trusted source)
     // Only dialog.showOpenDialog() can set the security boundary
@@ -330,6 +340,7 @@ ipcMain.handle('file:select-folder', async () => {
     // Prevents 99/100 failures from fileIds belonging to previous folder
     batchQueueManager.clearQueue();
 
+    console.log('[main.ts] currentFolderPath is now:', currentFolderPath);
     return folderPath;
   }
 
@@ -604,15 +615,24 @@ ipcMain.handle('file:update-metadata', async (_event, fileId: string, metadata: 
     }
 
     console.log('[main.ts] Updating file metadata - current mainName:', fileMetadata.mainName);
+    console.log('[main.ts] Stored filePath:', fileMetadata.filePath);
+    console.log('[main.ts] Original filename:', fileMetadata.originalFilename);
+    console.log('[main.ts] Current filename:', fileMetadata.currentFilename);
 
     fileMetadata.metadata = validated.metadata;
     await store.updateFileMetadata(validated.fileId, fileMetadata);
+
+    // BUG FIX: Use path based on what file actually exists on disk
+    // The stored filePath might reflect a conceptual rename that never happened
+    // For now, use originalFilename which is based on camera ID (never changes)
+    const actualFilePath = path.join(currentFolderPath, fileMetadata.originalFilename);
+    console.log('[main.ts] Actual file path to write:', actualFilePath);
 
     // Write metadata INTO the actual file using exiftool
     // Use the current mainName from fileMetadata (which may have been updated by updateStructuredMetadata)
     console.log('[main.ts] Writing to XMP - title:', fileMetadata.mainName, 'tags:', validated.metadata);
     await metadataWriter.writeMetadataToFile(
-      fileMetadata.filePath,
+      actualFilePath,
       fileMetadata.mainName,
       validated.metadata
     );
