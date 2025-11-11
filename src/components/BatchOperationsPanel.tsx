@@ -130,92 +130,107 @@ export function BatchOperationsPanel({ availableFiles, onBatchComplete }: BatchO
     <div style={{
       backgroundColor: '#f9fafb',
       borderBottom: '1px solid #e5e7eb',
-      padding: '12px 16px',
+      padding: '16px',
     }}>
-      {/* Header */}
+      {/* Header - Compact */}
       <div style={{
         display: 'flex',
         alignItems: 'center',
-        gap: '12px',
-        justifyContent: 'space-between',
+        gap: '8px',
+        marginBottom: '12px',
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <button
-            onClick={() => setIsExpanded(!isExpanded)}
-            style={{
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
-              fontSize: '14px',
-              padding: '4px',
-            }}
-            title={isExpanded ? 'Collapse' : 'Expand'}
-          >
-            {isExpanded ? '▼' : '▶'}
-          </button>
+        <button
+          onClick={() => setIsExpanded(!isExpanded)}
+          style={{
+            background: 'none',
+            border: 'none',
+            cursor: 'pointer',
+            fontSize: '14px',
+            padding: '4px',
+          }}
+          title={isExpanded ? 'Collapse' : 'Expand'}
+        >
+          {isExpanded ? '▼' : '▶'}
+        </button>
 
-          <span style={{ fontSize: '14px', fontWeight: '600' }}>
-            Batch Operations
+        <span style={{ fontSize: '14px', fontWeight: '600', flex: 1 }}>
+          Batch Operations
+        </span>
+
+        {queueState && (
+          <span style={{
+            fontSize: '11px',
+            padding: '3px 8px',
+            borderRadius: '12px',
+            backgroundColor: getStatusColor(queueState.status),
+            color: 'white',
+            textTransform: 'capitalize',
+          }}>
+            {queueState.status}
           </span>
-
-          {queueState && (
-            <span style={{
-              fontSize: '12px',
-              padding: '2px 8px',
-              borderRadius: '12px',
-              backgroundColor: getStatusColor(queueState.status),
-              color: 'white',
-            }}>
-              {queueState.status}
-            </span>
-          )}
-
-          {unprocessedCount > 0 && !isProcessing && (
-            <span style={{ fontSize: '12px', color: '#6b7280' }}>
-              {unprocessedCount} file{unprocessedCount !== 1 ? 's' : ''} available
-            </span>
-          )}
-        </div>
-
-        <div style={{ display: 'flex', gap: '8px' }}>
-          {!isProcessing && (
-            <button
-              onClick={handleStartBatch}
-              disabled={unprocessedCount === 0}
-              style={{
-                padding: '6px 12px',
-                fontSize: '13px',
-                borderRadius: '4px',
-                border: '1px solid #d1d5db',
-                backgroundColor: unprocessedCount > 0 ? '#3b82f6' : '#e5e7eb',
-                color: unprocessedCount > 0 ? 'white' : '#9ca3af',
-                cursor: unprocessedCount > 0 ? 'pointer' : 'not-allowed',
-                fontWeight: '500',
-              }}
-            >
-              Process {unprocessedCount > 100 ? 'First 100' : `${unprocessedCount}`} File{unprocessedCount !== 1 ? 's' : ''}
-            </button>
-          )}
-
-          {isProcessing && (
-            <button
-              onClick={handleCancel}
-              style={{
-                padding: '6px 12px',
-                fontSize: '13px',
-                borderRadius: '4px',
-                border: '1px solid #dc2626',
-                backgroundColor: '#fee2e2',
-                color: '#dc2626',
-                cursor: 'pointer',
-                fontWeight: '500',
-              }}
-            >
-              Cancel
-            </button>
-          )}
-        </div>
+        )}
       </div>
+
+      {/* Status Message */}
+      <div style={{
+        fontSize: '13px',
+        color: unprocessedCount > 0 ? '#374151' : '#6b7280',
+        marginBottom: '12px',
+        lineHeight: '1.5',
+      }}>
+        {unprocessedCount > 0 ? (
+          <strong>{unprocessedCount} file{unprocessedCount !== 1 ? 's' : ''} ready to process</strong>
+        ) : (
+          'All files processed'
+        )}
+      </div>
+
+      {/* Action Button */}
+      {!isProcessing && (
+        <button
+          onClick={handleStartBatch}
+          disabled={unprocessedCount === 0}
+          style={{
+            width: '100%',
+            padding: '10px 16px',
+            fontSize: '14px',
+            borderRadius: '6px',
+            border: 'none',
+            backgroundColor: unprocessedCount > 0 ? '#3b82f6' : '#e5e7eb',
+            color: unprocessedCount > 0 ? 'white' : '#9ca3af',
+            cursor: unprocessedCount > 0 ? 'pointer' : 'not-allowed',
+            fontWeight: '600',
+            marginBottom: '8px',
+          }}
+        >
+          {unprocessedCount > 100
+            ? `Process First 100 Files`
+            : unprocessedCount > 0
+            ? `Process ${unprocessedCount} File${unprocessedCount !== 1 ? 's' : ''}`
+            : 'No Files to Process'
+          }
+        </button>
+      )}
+
+      {isProcessing && (
+        <button
+          onClick={handleCancel}
+          style={{
+            width: '100%',
+            padding: '10px 16px',
+            fontSize: '14px',
+            borderRadius: '6px',
+            border: '1px solid #dc2626',
+            backgroundColor: '#fee2e2',
+            color: '#dc2626',
+            cursor: 'pointer',
+            fontWeight: '600',
+            marginBottom: '8px',
+          }}
+        >
+          Cancel Processing
+        </button>
+      )}
 
       {/* Expanded Details */}
       {isExpanded && queueState && queueState.items.length > 0 && (
