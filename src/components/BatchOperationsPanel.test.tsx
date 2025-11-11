@@ -56,7 +56,7 @@ describe('BatchOperationsPanel', () => {
       />
     );
 
-    expect(screen.getByRole('button', { name: /process/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^process.*file/i })).toBeInTheDocument();
   });
 
   it('should disable process button when no unprocessed files', () => {
@@ -69,7 +69,7 @@ describe('BatchOperationsPanel', () => {
       />
     );
 
-    const processButton = screen.getByRole('button', { name: /process/i });
+    const processButton = screen.getByRole('button', { name: /no files to process/i });
     expect(processButton).toBeDisabled();
   });
 
@@ -83,5 +83,35 @@ describe('BatchOperationsPanel', () => {
 
     const collapseButton = screen.getByTitle(/expand|collapse/i);
     expect(collapseButton).toBeInTheDocument();
+  });
+
+  it('should show reprocess button when files have been processed', () => {
+    render(
+      <BatchOperationsPanel
+        availableFiles={[
+          { id: '1', filename: 'test1.jpg', processedByAI: true },
+          { id: '2', filename: 'test2.jpg', processedByAI: false },
+        ]}
+        onBatchComplete={vi.fn()}
+      />
+    );
+
+    expect(screen.getByRole('button', { name: /reprocess all/i })).toBeInTheDocument();
+  });
+
+  it('should show total file count for reprocess button', () => {
+    render(
+      <BatchOperationsPanel
+        availableFiles={[
+          { id: '1', filename: 'test1.jpg', processedByAI: true },
+          { id: '2', filename: 'test2.jpg', processedByAI: true },
+          { id: '3', filename: 'test3.jpg', processedByAI: false },
+        ]}
+        onBatchComplete={vi.fn()}
+      />
+    );
+
+    // Should show reprocess for all 3 files
+    expect(screen.getByRole('button', { name: /reprocess.*3.*file/i })).toBeInTheDocument();
   });
 });

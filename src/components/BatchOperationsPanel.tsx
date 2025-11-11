@@ -105,6 +105,43 @@ export function BatchOperationsPanel({ availableFiles, onBatchComplete }: BatchO
     }
   };
 
+  const handleReprocess = async () => {
+    if (!window.electronAPI) return;
+
+    // Reprocess ALL files, regardless of processing status
+    const filesToProcess = availableFiles.map(f => f.id);
+
+    if (filesToProcess.length === 0) return;
+
+    // Limit to 100 files per batch
+    const actualFiles = filesToProcess.slice(0, 100);
+
+    if (filesToProcess.length > 100) {
+      const remainingFiles = filesToProcess.length - 100;
+      const proceed = confirm(
+        `Batch processing is limited to 100 files at a time.\n\n` +
+        `${actualFiles.length} files will be reprocessed now.\n` +
+        `${remainingFiles} files will remain for the next batch.\n\n` +
+        `Continue?`
+      );
+      if (!proceed) return;
+    } else {
+      const proceed = confirm(
+        `This will reprocess ALL ${actualFiles.length} file${actualFiles.length !== 1 ? 's' : ''}, including those already processed.\n\n` +
+        `Continue?`
+      );
+      if (!proceed) return;
+    }
+
+    try {
+      await window.electronAPI.batchStart(actualFiles);
+      setIsExpanded(true);
+    } catch (error) {
+      console.error('Failed to start reprocess:', error);
+      alert('Failed to start reprocess: ' + (error instanceof Error ? error.message : 'Unknown error'));
+    }
+  };
+
   const getStatusColor = (status: string): string => {
     switch (status) {
       case 'processing': return '#2563eb'; // blue
@@ -124,6 +161,7 @@ export function BatchOperationsPanel({ availableFiles, onBatchComplete }: BatchO
   };
 
   const unprocessedCount = availableFiles.filter(f => !f.processedByAI).length;
+  const totalFiles = availableFiles.length;
   const isProcessing = queueState?.status === 'processing';
 
   return (
@@ -132,6 +170,78 @@ export function BatchOperationsPanel({ availableFiles, onBatchComplete }: BatchO
       borderBottom: '1px solid #e5e7eb',
       padding: '16px',
     }}>
+      {/* Action Buttons - At Top */}
+      {!isProcessing && (
+        <>
+          <button
+            onClick={handleStartBatch}
+            disabled={unprocessedCount === 0}
+            style={{
+              width: '100%',
+              padding: '10px 16px',
+              fontSize: '14px',
+              borderRadius: '6px',
+              border: 'none',
+              backgroundColor: unprocessedCount > 0 ? '#3b82f6' : '#e5e7eb',
+              color: unprocessedCount > 0 ? 'white' : '#9ca3af',
+              cursor: unprocessedCount > 0 ? 'pointer' : 'not-allowed',
+              fontWeight: '600',
+              marginBottom: '8px',
+            }}
+          >
+            {unprocessedCount > 100
+              ? `Process First 100 Files`
+              : unprocessedCount > 0
+              ? `Process ${unprocessedCount} File${unprocessedCount !== 1 ? 's' : ''}`
+              : 'No Files to Process'
+            }
+          </button>
+
+          {totalFiles > 0 && (
+            <button
+              onClick={handleReprocess}
+              style={{
+                width: '100%',
+                padding: '10px 16px',
+                fontSize: '14px',
+                borderRadius: '6px',
+                border: '1px solid #9ca3af',
+                backgroundColor: 'white',
+                color: '#374151',
+                cursor: 'pointer',
+                fontWeight: '600',
+                marginBottom: '16px',
+              }}
+            >
+              {totalFiles > 100
+                ? `Reprocess First 100 Files`
+                : `Reprocess All ${totalFiles} File${totalFiles !== 1 ? 's' : ''}`
+              }
+            </button>
+          )}
+        </>
+      )}
+
+      {isProcessing && (
+        <button
+          onClick={handleCancel}
+          style={{
+            width: '100%',
+            padding: '10px 16px',
+            fontSize: '14px',
+            borderRadius: '6px',
+            border: '1px solid #dc2626',
+            backgroundColor: '#fee2e2',
+            color: '#dc2626',
+            cursor: 'pointer',
+            fontWeight: '600',
+            marginBottom: '16px',
+          }}
+        >
+          Cancel Processing
+        </button>
+      )}
+
       {/* Header - Compact */}
       <div style={{
         display: 'flex',
@@ -184,53 +294,6 @@ export function BatchOperationsPanel({ availableFiles, onBatchComplete }: BatchO
           'All files processed'
         )}
       </div>
-
-      {/* Action Button */}
-      {!isProcessing && (
-        <button
-          onClick={handleStartBatch}
-          disabled={unprocessedCount === 0}
-          style={{
-            width: '100%',
-            padding: '10px 16px',
-            fontSize: '14px',
-            borderRadius: '6px',
-            border: 'none',
-            backgroundColor: unprocessedCount > 0 ? '#3b82f6' : '#e5e7eb',
-            color: unprocessedCount > 0 ? 'white' : '#9ca3af',
-            cursor: unprocessedCount > 0 ? 'pointer' : 'not-allowed',
-            fontWeight: '600',
-            marginBottom: '8px',
-          }}
-        >
-          {unprocessedCount > 100
-            ? `Process First 100 Files`
-            : unprocessedCount > 0
-            ? `Process ${unprocessedCount} File${unprocessedCount !== 1 ? 's' : ''}`
-            : 'No Files to Process'
-          }
-        </button>
-      )}
-
-      {isProcessing && (
-        <button
-          onClick={handleCancel}
-          style={{
-            width: '100%',
-            padding: '10px 16px',
-            fontSize: '14px',
-            borderRadius: '6px',
-            border: '1px solid #dc2626',
-            backgroundColor: '#fee2e2',
-            color: '#dc2626',
-            cursor: 'pointer',
-            fontWeight: '600',
-            marginBottom: '8px',
-          }}
-        >
-          Cancel Processing
-        </button>
-      )}
 
       {/* Expanded Details */}
       {isExpanded && queueState && queueState.items.length > 0 && (
