@@ -243,7 +243,7 @@ describe('SettingsModal', () => {
           currentFile: null
         })),
         onBatchProgress: vi.fn(() => () => {}), // Returns cleanup function
-      } as any;
+      } as Partial<typeof window.electronAPI> as typeof window.electronAPI;
     });
 
     it('should render tabs for Lexicon and AI Connection', () => {
@@ -515,8 +515,8 @@ describe('SettingsModal', () => {
         { id: 'gpt-3.5-turbo', name: 'GPT-3.5 Turbo' },
       ];
 
-      let openRouterResolve: any;
-      let openAIResolve: any;
+      let openRouterResolve: ((value: unknown) => void) | undefined;
+      let openAIResolve: ((value: unknown) => void) | undefined;
 
       window.electronAPI.getAIModels = vi.fn().mockImplementation((provider: string) => {
         if (provider === 'openrouter') {
@@ -549,10 +549,10 @@ describe('SettingsModal', () => {
       fireEvent.change(providerSelect, { target: { value: 'openai' } });
 
       // Resolve openrouter AFTER switching to openai (stale response)
-      openRouterResolve(openRouterModels);
+      openRouterResolve?.(openRouterModels);
 
       // Resolve openai (current provider)
-      openAIResolve(openAIModels);
+      openAIResolve?.(openAIModels);
 
       // Final state should show OpenAI models (not stale OpenRouter models)
       await waitFor(() => {

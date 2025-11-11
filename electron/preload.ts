@@ -64,7 +64,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.invoke('batch:get-status'),
 
   onBatchProgress: (callback: (progress: import('../src/types').BatchProgress) => void): (() => void) => {
-    const listener = (_event: any, progress: import('../src/types').BatchProgress) => callback(progress);
+    const listener = (_event: Electron.IpcRendererEvent, progress: import('../src/types').BatchProgress) => callback(progress);
     ipcRenderer.on('batch:progress', listener);
     // Return cleanup function
     return () => ipcRenderer.removeListener('batch:progress', listener);

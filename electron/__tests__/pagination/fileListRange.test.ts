@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import * as fs from 'fs/promises';
+import type { Dirent, Stats } from 'fs';
 import { FileListRangeSchema } from '../../schemas/ipcSchemas';
 import { FileManager } from '../../services/fileManager';
 import { MetadataStore } from '../../services/metadataStore';
@@ -102,13 +103,13 @@ describe('file:list-range - Pagination', () => {
       vi.restoreAllMocks();
     });
 
-    const createMockDirent = (name: string, isFile = true) => ({
+    const createMockDirent = (name: string, isFile = true): Partial<Dirent> => ({
       name,
       isFile: () => isFile,
       isDirectory: () => !isFile,
     });
 
-    const createMockStats = () => ({
+    const createMockStats = (): Partial<Stats> => ({
       mtime: new Date('2024-01-01'),
       size: 1024,
     });
@@ -119,8 +120,8 @@ describe('file:list-range - Pagination', () => {
         createMockDirent(`IMG_${String(i).padStart(4, '0')}.jpg`)
       );
 
-      mockFs.readdir.mockResolvedValue(mockFiles as any);
-      mockFs.stat.mockResolvedValue(createMockStats() as any);
+      mockFs.readdir.mockResolvedValue(mockFiles as Dirent[]);
+      mockFs.stat.mockResolvedValue(createMockStats() as Stats);
 
       const result = await fileManager.scanFolderRange(testFolderPath, 0, 20);
 
@@ -139,8 +140,8 @@ describe('file:list-range - Pagination', () => {
         createMockDirent(`FILE_${String(i).padStart(4, '0')}.jpg`)
       );
 
-      mockFs.readdir.mockResolvedValue(mockFiles as any);
-      mockFs.stat.mockResolvedValue(createMockStats() as any);
+      mockFs.readdir.mockResolvedValue(mockFiles as Dirent[]);
+      mockFs.stat.mockResolvedValue(createMockStats() as Stats);
 
       const result = await fileManager.scanFolderRange(testFolderPath, 40, 20);
 
@@ -158,8 +159,8 @@ describe('file:list-range - Pagination', () => {
         createMockDirent(`TEST_${String(i).padStart(4, '0')}.jpg`)
       );
 
-      mockFs.readdir.mockResolvedValue(mockFiles as any);
-      mockFs.stat.mockResolvedValue(createMockStats() as any);
+      mockFs.readdir.mockResolvedValue(mockFiles as Dirent[]);
+      mockFs.stat.mockResolvedValue(createMockStats() as Stats);
 
       const result = await fileManager.scanFolderRange(testFolderPath, 40, 20);
 
@@ -174,8 +175,8 @@ describe('file:list-range - Pagination', () => {
         createMockDirent(`IMG_${String(i).padStart(4, '0')}.jpg`)
       );
 
-      mockFs.readdir.mockResolvedValue(mockFiles as any);
-      mockFs.stat.mockResolvedValue(createMockStats() as any);
+      mockFs.readdir.mockResolvedValue(mockFiles as Dirent[]);
+      mockFs.stat.mockResolvedValue(createMockStats() as Stats);
 
       const result = await fileManager.scanFolderRange(testFolderPath, 50, 20);
 
@@ -204,8 +205,8 @@ describe('file:list-range - Pagination', () => {
         createMockDirent('._IMG_0004.jpg'), // macOS resource fork
       ];
 
-      mockFs.readdir.mockResolvedValue(mockFiles as any);
-      mockFs.stat.mockResolvedValue(createMockStats() as any);
+      mockFs.readdir.mockResolvedValue(mockFiles as Dirent[]);
+      mockFs.stat.mockResolvedValue(createMockStats() as Stats);
 
       const result = await fileManager.scanFolderRange(testFolderPath, 0, 20);
 

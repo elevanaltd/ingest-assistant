@@ -9,16 +9,22 @@ type OldAIConfigSchema = {
   apiKey: string | null; // Old plaintext storage
 };
 
+// Helper interface for Store methods
+interface StoreWithMethods<T> {
+  get<K extends keyof T>(key: K): T[K];
+  set<K extends keyof T>(key: K, value: T[K]): void;
+}
+
 /**
  * Migrate API keys from electron-store (plaintext) to macOS Keychain (encrypted)
  * This is a one-time migration for existing users
  * Returns true if migration was performed, false if nothing to migrate
  */
 export async function migrateToKeychain(): Promise<boolean> {
-  const oldStore = new Store<OldAIConfigSchema>({ name: 'ai-config' });
+  const oldStore = new Store<OldAIConfigSchema>({ name: 'ai-config' }) as unknown as StoreWithMethods<OldAIConfigSchema>;
 
-  const provider = (oldStore as any).get('provider');
-  const apiKey = (oldStore as any).get('apiKey');
+  const provider = oldStore.get('provider');
+  const apiKey = oldStore.get('apiKey');
 
   if (!provider || !apiKey) {
     // Nothing to migrate (either not configured or already migrated)
@@ -31,7 +37,7 @@ export async function migrateToKeychain(): Promise<boolean> {
     await keytar.setPassword(KEYCHAIN_SERVICE, keychainAccount, apiKey);
 
     // Clear old plaintext key from electron-store
-    (oldStore as any).set('apiKey', null);
+    oldStore.set('apiKey', null);
 
     console.log(`Successfully migrated ${provider} API key to Keychain`);
     return true;

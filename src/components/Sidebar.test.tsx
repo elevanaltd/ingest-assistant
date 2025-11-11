@@ -5,8 +5,16 @@ import type { FileMetadata } from '../types';
 
 // Mock react-window for testing environment (jsdom doesn't support all layout calculations)
 vi.mock('react-window', () => {
+  interface FixedSizeListProps {
+    children: (props: { index: number; style: React.CSSProperties }) => React.ReactNode;
+    itemCount: number;
+    itemSize: number;
+    height: number;
+    className?: string;
+  }
+
   return {
-    FixedSizeList: ({ children, itemCount, itemSize, height, className }: any) => {
+    FixedSizeList: ({ children, itemCount, itemSize, height, className }: FixedSizeListProps) => {
       // Render a subset of items for testing (simulate virtual scrolling behavior)
       const visibleItems = Math.min(itemCount, Math.ceil(height / itemSize));
       return (
