@@ -16,7 +16,7 @@
     "test:coverage": "vitest --coverage",
     "test:ai-structured": "tsc -p electron/tsconfig.json && node dist/electron/electron/scripts/test-structured-analysis.js",
     "typecheck": "tsc --noEmit && tsc -p electron/tsconfig.json --noEmit",
-    "lint": "eslint . --ext .ts,.tsx"
+    "lint": "eslint ."
   },
   "keywords": [
     "electron",
