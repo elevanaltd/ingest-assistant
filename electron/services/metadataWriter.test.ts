@@ -265,4 +265,78 @@ describe('MetadataWriter (Integration)', () => {
       });
     });
   });
+
+  describe('Dublin Core XMP fields (Issue #54 - Simplified Approach)', () => {
+    it('should write Title to Dublin Core (survives PP proxy conversion)', async () => {
+      if (!exiftoolAvailable) {
+        console.log('⏭️  Skipping - exiftool not available');
+        return;
+      }
+
+      const mainName = 'kitchen-oven-cleaning-WS';
+      const tags = ['appliance', 'demo'];
+
+      await metadataWriter.writeMetadataToFile(testFilePath, mainName, tags);
+
+      // Verify Title is written to XMP-dc:Title (Dublin Core)
+      const { stdout } = await execAsync(`exiftool -XMP-dc:Title -json "${testFilePath}"`);
+      const data = JSON.parse(stdout);
+      const xmpData = data[0];
+
+      expect(xmpData['Title']).toBe('kitchen-oven-cleaning-WS');
+    });
+
+    it('should write Description to Dublin Core with keywords (survives PP proxy conversion)', async () => {
+      if (!exiftoolAvailable) {
+        console.log('⏭️  Skipping - exiftool not available');
+        return;
+      }
+
+      const mainName = 'bathroom-sink-WS';
+      const tags = ['plumbing', 'renovation', 'demo'];
+
+      await metadataWriter.writeMetadataToFile(testFilePath, mainName, tags);
+
+      // Verify Description is written to XMP-dc:Description (Dublin Core)
+      const { stdout } = await execAsync(`exiftool -XMP-dc:Description -json "${testFilePath}"`);
+      const data = JSON.parse(stdout);
+      const xmpData = data[0];
+
+      expect(xmpData['Description']).toBe('plumbing, renovation, demo');
+    });
+
+    it('should write keywords to XMP:Subject (Dublin Core keywords array)', async () => {
+      if (!exiftoolAvailable) {
+        console.log('⏭️  Skipping - exiftool not available');
+        return;
+      }
+
+      const mainName = 'kitchen-oven-WS';
+      const tags = ['keyword1', 'keyword2', 'keyword3'];
+
+      await metadataWriter.writeMetadataToFile(testFilePath, mainName, tags);
+
+      // Verify keywords array
+      const result = await metadataWriter.readMetadataFromFile(testFilePath);
+      expect(result.keywords).toContain('keyword1');
+      expect(result.keywords).toContain('keyword2');
+      expect(result.keywords).toContain('keyword3');
+    });
+
+    it('should handle empty tags array gracefully', async () => {
+      if (!exiftoolAvailable) {
+        console.log('⏭️  Skipping - exiftool not available');
+        return;
+      }
+
+      const mainName = 'test-only-title';
+
+      await metadataWriter.writeMetadataToFile(testFilePath, mainName, []);
+
+      const result = await metadataWriter.readMetadataFromFile(testFilePath);
+      expect(result.title).toBe(mainName);
+      // Description only written when tags.length > 0
+      expect(result.description).toBeUndefined();
+    });
+  });
 });
