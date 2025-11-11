@@ -244,6 +244,25 @@ export class BatchQueueManager {
   }
 
   /**
+   * Clear the queue
+   * Used when folder changes to prevent stale fileIds from previous folder
+   * Issue #24: Prevents 99/100 failures when user opens new folder after app restart
+   */
+  clearQueue(): void {
+    this.state = {
+      items: [],
+      status: 'idle',
+      currentFile: null,
+    };
+    this.isCancelled = false;
+
+    // Persist cleared state immediately
+    this.saveState().catch(error => {
+      console.error('[BatchQueueManager] Failed to persist cleared state:', error);
+    });
+  }
+
+  /**
    * Cleanup resources
    * Called on app shutdown
    */

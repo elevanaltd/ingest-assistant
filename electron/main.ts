@@ -296,6 +296,10 @@ ipcMain.handle('file:select-folder', async () => {
     currentFolderPath = folderPath;
     securityValidator.setAllowedBasePath(folderPath);
 
+    // Issue #24: Clear stale batch queue when folder changes
+    // Prevents 99/100 failures from fileIds belonging to previous folder
+    batchQueueManager.clearQueue();
+
     return folderPath;
   }
 
