@@ -5,12 +5,27 @@ import ffmpeg from '@ffmpeg-installer/ffmpeg';
 import ffprobe from '@ffprobe-installer/ffprobe';
 
 /**
- * Validate filename to prevent command injection
- * Rejects filenames containing shell metacharacters that could enable command injection
+ * Validate filename to prevent command injection and flag injection
+ * Per Critical-Engineer review: Comprehensive validation covering all attack vectors
+ *
+ * Security approach:
+ * - spawn() with argument arrays prevents shell interpolation (primary defense)
+ * - This validator provides defense-in-depth against flag injection and edge cases
+ * - Rejects shell metacharacters, wildcards, control characters, and option-like names
  */
 function validateFilename(filePath: string): void {
-  // Shell metacharacters that enable command injection
-  const dangerousChars = /["`;$&|<>(){}[\]\\]/;
+  // Critical-Engineer: consulted for Security vulnerability assessment
+
+  // 1. Reject filenames starting with dash (flag injection protection)
+  const filename = filePath.split('/').pop() || '';
+  if (filename.startsWith('-')) {
+    throw new Error(`Security: Filename cannot start with dash (flag injection risk): ${filePath}`);
+  }
+
+  // 2. Comprehensive shell metacharacter blocking
+  // Covers: quotes (single/double), command separators, redirects, wildcards,
+  // variable expansion, command substitution, control characters
+  const dangerousChars = /["'`;$&|<>(){}[\]\\*?~\n\r\t%]/;
 
   if (dangerousChars.test(filePath)) {
     throw new Error(`Security: Invalid filename contains forbidden characters: ${filePath}`);
@@ -20,10 +35,13 @@ function validateFilename(filePath: string): void {
 /**
  * Execute command using spawn (safe from command injection)
  * Returns stdout as string
+ *
+ * Per Critical-Engineer: Explicitly disable shell for defensive clarity
  */
 function spawnCommand(command: string, args: string[]): Promise<string> {
   return new Promise((resolve, reject) => {
-    const proc = spawn(command, args);
+    // Explicitly disable shell (defense-in-depth, spawn default is false)
+    const proc = spawn(command, args, { shell: false });
     let stdout = '';
     let stderr = '';
 

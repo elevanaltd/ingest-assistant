@@ -32,12 +32,22 @@ describe('VideoFrameExtractor', () => {
   });
 
   describe('Security - Command Injection Prevention', () => {
+    // Per Critical-Engineer: Comprehensive test coverage for all attack vectors
+
     it('should reject filenames with double quotes', async () => {
       const extractor = new VideoFrameExtractor();
       const maliciousPath = '/tmp/video".mp4';
 
-      // Expected: Should reject filename with shell metacharacters
-      // Current: exec() would allow command injection via quotes
+      await expect(
+        extractor.extractFrames(maliciousPath, [0.5])
+      ).rejects.toThrow(/invalid.*filename|forbidden.*character|security/i);
+    });
+
+    it('should reject filenames with single quotes', async () => {
+      const extractor = new VideoFrameExtractor();
+      const maliciousPath = "/tmp/video'.mp4";
+
+      // Per Critical-Engineer: Missing from original regex
       await expect(
         extractor.extractFrames(maliciousPath, [0.5])
       ).rejects.toThrow(/invalid.*filename|forbidden.*character|security/i);
@@ -47,7 +57,6 @@ describe('VideoFrameExtractor', () => {
       const extractor = new VideoFrameExtractor();
       const maliciousPath = '/tmp/video;rm -rf test;.mp4';
 
-      // Expected: Should reject filename with command separators
       await expect(
         extractor.extractFrames(maliciousPath, [0.5])
       ).rejects.toThrow(/invalid.*filename|forbidden.*character|security/i);
@@ -57,7 +66,6 @@ describe('VideoFrameExtractor', () => {
       const extractor = new VideoFrameExtractor();
       const maliciousPath = '/tmp/video`whoami`.mp4';
 
-      // Expected: Should reject filename with command substitution
       await expect(
         extractor.extractFrames(maliciousPath, [0.5])
       ).rejects.toThrow(/invalid.*filename|forbidden.*character|security/i);
@@ -67,23 +75,82 @@ describe('VideoFrameExtractor', () => {
       const extractor = new VideoFrameExtractor();
       const maliciousPath = '/tmp/video$HOME.mp4';
 
-      // Expected: Should reject filename with variable expansion
       await expect(
         extractor.extractFrames(maliciousPath, [0.5])
       ).rejects.toThrow(/invalid.*filename|forbidden.*character|security/i);
     });
 
-    it('should accept safe filenames with spaces and dashes', async () => {
+    it('should reject filenames with wildcards (*)', async () => {
+      const extractor = new VideoFrameExtractor();
+      const maliciousPath = '/tmp/video*.mp4';
+
+      // Per Critical-Engineer: Missing from original regex
+      await expect(
+        extractor.extractFrames(maliciousPath, [0.5])
+      ).rejects.toThrow(/invalid.*filename|forbidden.*character|security/i);
+    });
+
+    it('should reject filenames with wildcards (?)', async () => {
+      const extractor = new VideoFrameExtractor();
+      const maliciousPath = '/tmp/video?.mp4';
+
+      // Per Critical-Engineer: Missing from original regex
+      await expect(
+        extractor.extractFrames(maliciousPath, [0.5])
+      ).rejects.toThrow(/invalid.*filename|forbidden.*character|security/i);
+    });
+
+    it('should reject filenames with tildes', async () => {
+      const extractor = new VideoFrameExtractor();
+      const maliciousPath = '/tmp/video~.mp4';
+
+      // Per Critical-Engineer: Missing from original regex
+      await expect(
+        extractor.extractFrames(maliciousPath, [0.5])
+      ).rejects.toThrow(/invalid.*filename|forbidden.*character|security/i);
+    });
+
+    it('should reject filenames with newlines', async () => {
+      const extractor = new VideoFrameExtractor();
+      const maliciousPath = '/tmp/video\n.mp4';
+
+      // Per Critical-Engineer: Control character validation
+      await expect(
+        extractor.extractFrames(maliciousPath, [0.5])
+      ).rejects.toThrow(/invalid.*filename|forbidden.*character|security/i);
+    });
+
+    it('should reject filenames with tabs', async () => {
+      const extractor = new VideoFrameExtractor();
+      const maliciousPath = '/tmp/video\t.mp4';
+
+      // Per Critical-Engineer: Control character validation
+      await expect(
+        extractor.extractFrames(maliciousPath, [0.5])
+      ).rejects.toThrow(/invalid.*filename|forbidden.*character|security/i);
+    });
+
+    it('should reject filenames starting with dash (flag injection)', async () => {
+      const extractor = new VideoFrameExtractor();
+      const maliciousPath = '/tmp/-i-malicious.mp4';
+
+      // Per Critical-Engineer: Flag injection protection
+      await expect(
+        extractor.extractFrames(maliciousPath, [0.5])
+      ).rejects.toThrow(/dash|flag injection/i);
+    });
+
+    it('should accept safe filenames with spaces and dashes in middle', async () => {
       const extractor = new VideoFrameExtractor();
       const safePath = '/tmp/my-video file.mp4';
 
-      // This should NOT throw - spaces and dashes are safe
+      // Dashes in middle are safe, only leading dash is dangerous
       // Note: Will fail for other reasons (file doesn't exist) but shouldn't reject as malicious
       try {
         await extractor.extractFrames(safePath, [0.5]);
       } catch (error) {
         // Should fail with file access error, NOT security validation error
-        expect((error as Error).message).not.toMatch(/invalid.*filename|forbidden.*character|security/i);
+        expect((error as Error).message).not.toMatch(/invalid.*filename|forbidden.*character|security|flag injection/i);
       }
     });
   });
