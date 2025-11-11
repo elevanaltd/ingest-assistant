@@ -1,11 +1,53 @@
-import { exec } from 'child_process';
-import { promisify } from 'util';
+import { spawn } from 'child_process';
 import * as path from 'path';
 import { tmpdir } from 'os';
 import ffmpeg from '@ffmpeg-installer/ffmpeg';
 import ffprobe from '@ffprobe-installer/ffprobe';
 
-const execAsync = promisify(exec);
+/**
+ * Validate filename to prevent command injection
+ * Rejects filenames containing shell metacharacters that could enable command injection
+ */
+function validateFilename(filePath: string): void {
+  // Shell metacharacters that enable command injection
+  const dangerousChars = /["`;$&|<>(){}[\]\\]/;
+
+  if (dangerousChars.test(filePath)) {
+    throw new Error(`Security: Invalid filename contains forbidden characters: ${filePath}`);
+  }
+}
+
+/**
+ * Execute command using spawn (safe from command injection)
+ * Returns stdout as string
+ */
+function spawnCommand(command: string, args: string[]): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const proc = spawn(command, args);
+    let stdout = '';
+    let stderr = '';
+
+    proc.stdout.on('data', (data) => {
+      stdout += data.toString();
+    });
+
+    proc.stderr.on('data', (data) => {
+      stderr += data.toString();
+    });
+
+    proc.on('close', (code) => {
+      if (code !== 0) {
+        reject(new Error(`Command failed with code ${code}: ${stderr}`));
+      } else {
+        resolve(stdout);
+      }
+    });
+
+    proc.on('error', (error) => {
+      reject(error);
+    });
+  });
+}
 
 /**
  * VideoFrameExtractor
@@ -58,6 +100,9 @@ export class VideoFrameExtractor {
     videoPath: string,
     timestamp: number
   ): Promise<string> {
+    // Security: Validate filename to prevent command injection
+    validateFilename(videoPath);
+
     // Get video duration first
     const duration = await this.getVideoDuration(videoPath);
     const seconds = duration * timestamp;
@@ -68,14 +113,18 @@ export class VideoFrameExtractor {
       `frame-${Date.now()}-${timestamp}.jpg`
     );
 
-    // Execute ffmpeg command to extract frame
+    // Execute ffmpeg command to extract frame using spawn (safe from injection)
     // -ss: seek to timestamp (in seconds)
     // -i: input video file
     // -frames:v 1: extract exactly 1 frame
     // -q:v 2: quality (2 is high quality for JPEG)
-    const command = `"${this.ffmpegPath}" -ss ${seconds} -i "${videoPath}" -frames:v 1 -q:v 2 "${outputPath}"`;
-
-    await execAsync(command);
+    await spawnCommand(this.ffmpegPath, [
+      '-ss', seconds.toString(),
+      '-i', videoPath,
+      '-frames:v', '1',
+      '-q:v', '2',
+      outputPath
+    ]);
 
     return outputPath;
   }
@@ -87,9 +136,16 @@ export class VideoFrameExtractor {
    * @private
    */
   private async getVideoDuration(videoPath: string): Promise<number> {
-    const command = `"${this.ffprobePath}" -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "${videoPath}"`;
+    // Security: Validate filename to prevent command injection
+    validateFilename(videoPath);
 
-    const { stdout } = await execAsync(command);
+    const stdout = await spawnCommand(this.ffprobePath, [
+      '-v', 'error',
+      '-show_entries', 'format=duration',
+      '-of', 'default=noprint_wrappers=1:nokey=1',
+      videoPath
+    ]);
+
     return parseFloat(stdout.trim());
   }
 
@@ -99,9 +155,17 @@ export class VideoFrameExtractor {
    * @returns Object containing codec_name and codec_long_name
    */
   async getVideoCodec(videoPath: string): Promise<{ codec_name: string; codec_long_name: string; supported: boolean }> {
-    const command = `"${this.ffprobePath}" -v error -select_streams v:0 -show_entries stream=codec_name,codec_long_name -of json "${videoPath}"`;
+    // Security: Validate filename to prevent command injection
+    validateFilename(videoPath);
 
-    const { stdout } = await execAsync(command);
+    const stdout = await spawnCommand(this.ffprobePath, [
+      '-v', 'error',
+      '-select_streams', 'v:0',
+      '-show_entries', 'stream=codec_name,codec_long_name',
+      '-of', 'json',
+      videoPath
+    ]);
+
     const result = JSON.parse(stdout);
     const stream = result.streams?.[0] || {};
 
