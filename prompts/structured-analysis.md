@@ -38,7 +38,7 @@ RULES::{{aiInstructions}}
 
 REF::[GOOD::{{goodExamples}}|BAD::{{badExamples}}]
 
-OUT::JSON{"location":"str","subject":"str","shotType":"WS","mainName":"loc-sub-shot","metadata":["max4","brand_if_visible"]}
+OUT::JSON{"location":"str","subject":"str","action":"str[video_only|optional]","shotType":"WS","mainName":"loc-sub-shot|loc-sub-act-shot[if_video_with_action]","metadata":["max4","brand_if_visible"]}
 
 ---
 
