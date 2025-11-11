@@ -114,7 +114,8 @@ VOCAB::[
       prompt += ']';
     }
 
-    prompt += `\n\nOUT::JSON{"location":"str","subject":"str","shotType":"${staticShots.split(', ')[0]}","mainName":"loc-sub-shot","metadata":["max4","brand_if_visible"]}`;
+    // Include action field in output schema for videos
+    prompt += `\n\nOUT::JSON{"location":"str","subject":"str","action":"str[video_only|optional]","shotType":"${staticShots.split(', ')[0]}","mainName":"loc-sub-shot|loc-sub-act-shot[if_video_with_action]","metadata":["max4","brand_if_visible"]}`;
 
     return prompt;
   }
@@ -187,9 +188,22 @@ Lexicon rules:
         // Handle structured format (with location, subject, shotType)
         if (parsed.location && parsed.subject && parsed.shotType) {
           console.log('[AIService] Using structured format (separate fields provided)');
+
+          // If action is missing but mainName has 4 parts, extract action from mainName
+          let action = parsed.action;
+          if (!action && parsed.mainName) {
+            const nameParts = parsed.mainName.split('-');
+            const shotTypes = ['WS', 'MID', 'CU', 'UNDER', 'FP', 'TRACK', 'ESTAB'];
+            if (nameParts.length === 4 && shotTypes.includes(nameParts[3].toUpperCase())) {
+              action = nameParts[2];
+              console.log('[AIService] Extracted action from mainName:', action);
+            }
+          }
+
           return {
             location: parsed.location,
             subject: parsed.subject,
+            action: action || undefined,
             shotType: parsed.shotType,
             mainName: parsed.mainName || `${parsed.location}-${parsed.subject}-${parsed.shotType}`,
             metadata: Array.isArray(parsed.metadata) ? parsed.metadata : [],
@@ -206,8 +220,23 @@ Lexicon rules:
         console.log('[AIService] Split parts:', parts);
         console.log('[AIService] Last part uppercase:', parts.length > 0 ? parts[parts.length - 1].toUpperCase() : 'N/A');
 
+        // Check for 4-part pattern: {location}-{subject}-{action}-{shotType} (videos)
+        if (parts.length === 4 && shotTypes.includes(parts[3].toUpperCase())) {
+          const result = {
+            location: parts[0],
+            subject: parts[1],
+            action: parts[2],
+            shotType: parts[3].toUpperCase(),
+            mainName: mainName,
+            metadata: Array.isArray(parsed.metadata) ? parsed.metadata : [],
+            confidence: 0.8,
+          };
+          console.log('[AIService] 4-part pattern matched! Extracted structured components:', result);
+          return result;
+        }
+
+        // Check for 3-part pattern: {location}-{subject}-{shotType} (photos)
         if (parts.length === 3 && shotTypes.includes(parts[2].toUpperCase())) {
-          // mainName follows {location}-{subject}-{shotType} pattern
           const result = {
             location: parts[0],
             subject: parts[1],
@@ -216,7 +245,7 @@ Lexicon rules:
             metadata: Array.isArray(parsed.metadata) ? parsed.metadata : [],
             confidence: 0.8,
           };
-          console.log('[AIService] Pattern matched! Extracted structured components:', result);
+          console.log('[AIService] 3-part pattern matched! Extracted structured components:', result);
           return result;
         }
 

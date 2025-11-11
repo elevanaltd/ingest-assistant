@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import type { FileMetadata, LexiconConfig, ShotType } from './types';
 import { SettingsModal } from './components/SettingsModal';
 import { Sidebar } from './components/Sidebar';
@@ -11,7 +11,7 @@ function App() {
   const [folderPath, setFolderPath] = useState<string>('');
   const [files, setFiles] = useState<FileMetadata[]>([]);
   const [currentFileIndex, setCurrentFileIndex] = useState<number>(0);
-  const [skipNextVideoLoad, setSkipNextVideoLoad] = useState<boolean>(false);
+  const skipNextVideoLoadRef = useRef<boolean>(false);
 
   // Structured naming fields
   const [location, setLocation] = useState<string>('');
@@ -67,8 +67,8 @@ function App() {
     if (!window.electronAPI) return;
 
     // Skip video reload after save to prevent unnecessary re-transcoding
-    if (skipNextVideoLoad) {
-      setSkipNextVideoLoad(false);
+    if (skipNextVideoLoadRef.current) {
+      skipNextVideoLoadRef.current = false;
       return;
     }
 
@@ -147,7 +147,7 @@ function App() {
     } else {
       setMediaDataUrl('');
     }
-  }, [currentFile, shotTypes, skipNextVideoLoad]);
+  }, [currentFile, shotTypes]);
 
   const handleSelectFolder = async () => {
     if (!window.electronAPI) return;
@@ -230,7 +230,7 @@ function App() {
         }
       } else {
         // File not renamed - update in place without reloading
-        setSkipNextVideoLoad(true);
+        skipNextVideoLoadRef.current = true;
 
         const updatedFiles = files.map(f => {
           if (f.id === currentFileId) {
