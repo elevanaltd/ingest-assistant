@@ -7,6 +7,7 @@ import * as path from 'path';
 import * as fs from 'fs/promises';
 import * as fsSync from 'fs';
 import * as http from 'http';
+import * as crypto from 'crypto';
 import { z } from 'zod';
 import { FileManager } from './services/fileManager';
 import { SecurityValidator } from './services/securityValidator';
@@ -27,6 +28,12 @@ import { BatchQueueManager } from './services/batchQueueManager';
 let mainWindow: BrowserWindow | null = null;
 let mediaServer: http.Server | null = null;
 const MEDIA_SERVER_PORT = 8765;
+
+// Security: Media server capability token (per Security Report 007 - BLOCKING #2)
+// Prevents cross-origin localhost probing and unauthorized media access
+// Generated once per session using cryptographically secure random bytes
+let MEDIA_SERVER_TOKEN: string = '';
+
 // Initialize SecurityValidator and FileManager with dependency injection
 const securityValidator = new SecurityValidator();
 const fileManager: FileManager = new FileManager(securityValidator);
@@ -140,9 +147,20 @@ function createMediaServer(): http.Server {
     try {
       console.log('[MediaServer] Request:', req.method, req.url);
 
-      // Extract file path from URL query parameter
+      // Extract token and file path from URL query parameters
       const url = new URL(req.url!, `http://localhost:${MEDIA_SERVER_PORT}`);
+      const token = url.searchParams.get('token');
       const filePath = url.searchParams.get('path');
+
+      // Security: Validate capability token BEFORE path validation
+      // Per Security Report 007 - BLOCKING #2: Prevent cross-origin localhost probing
+      // Token check must happen first to avoid leaking file existence via error messages
+      if (!token || token !== MEDIA_SERVER_TOKEN) {
+        console.warn('[MediaServer] Invalid or missing token');
+        res.writeHead(403, { 'Content-Type': 'text/plain' });
+        res.end('Forbidden: Invalid authentication token');
+        return;
+      }
 
       if (!filePath) {
         res.writeHead(400, { 'Content-Type': 'text/plain' });
@@ -250,6 +268,12 @@ async function createWindow() {
 }
 
 app.whenReady().then(async () => {
+  // Generate secure random token for media server authentication
+  // Per Security Report 007 - BLOCKING #2: Capability token prevents cross-origin access
+  // 32 bytes = 256 bits of entropy (cryptographically secure)
+  MEDIA_SERVER_TOKEN = crypto.randomBytes(32).toString('hex');
+  console.log('[Security] Media server token generated (length:', MEDIA_SERVER_TOKEN.length, 'chars)');
+
   // Start local HTTP server for video streaming
   mediaServer = createMediaServer();
 
@@ -354,7 +378,7 @@ ipcMain.handle('file:read-as-data-url', async (_event, filePath: string) => {
           console.log('[IPC] Starting transcode for preview...');
           const transcodedPath = await videoTranscoder.transcodeForPreview(validPath);
           const encodedPath = encodeURIComponent(transcodedPath);
-          const httpUrl = `http://localhost:${MEDIA_SERVER_PORT}/?path=${encodedPath}`;
+          const httpUrl = `http://localhost:${MEDIA_SERVER_PORT}/?path=${encodedPath}&token=${MEDIA_SERVER_TOKEN}`;
           console.log('[IPC] Transcode complete, serving:', httpUrl);
 
           // Return URL with success indicator
@@ -364,15 +388,15 @@ ipcMain.handle('file:read-as-data-url', async (_event, filePath: string) => {
           console.error('[IPC] Transcode failed:', error);
           // Fall back to original file URL (may show codec warning in browser)
           const encodedPath = encodeURIComponent(validPath);
-          const httpUrl = `http://localhost:${MEDIA_SERVER_PORT}/?path=${encodedPath}`;
+          const httpUrl = `http://localhost:${MEDIA_SERVER_PORT}/?path=${encodedPath}&token=${MEDIA_SERVER_TOKEN}`;
           const errorMessage = `⚠️ Transcode failed: ${error instanceof Error ? error.message : 'Unknown error'}. Showing original file (may not play correctly).`;
           return `data:text/plain;base64,${Buffer.from(errorMessage).toString('base64')}|||${httpUrl}`;
         }
       }
 
-      // Codec is supported - return original file URL
+      // Codec is supported - return original file URL with token
       const encodedPath = encodeURIComponent(validPath);
-      const httpUrl = `http://localhost:${MEDIA_SERVER_PORT}/?path=${encodedPath}`;
+      const httpUrl = `http://localhost:${MEDIA_SERVER_PORT}/?path=${encodedPath}&token=${MEDIA_SERVER_TOKEN}`;
       console.log('[IPC] Codec supported, HTTP URL:', httpUrl);
       return httpUrl;
     }
