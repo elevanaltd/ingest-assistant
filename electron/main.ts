@@ -890,6 +890,14 @@ ipcMain.handle('batch:start', async (_event, fileIds: string[]) => {
           fileMetadata.metadata = result.metadata;
           fileMetadata.processedByAI = true;
           await store.updateFileMetadata(fileId, fileMetadata);
+
+          // Issue #2: Write metadata to actual file (not just JSON store)
+          // This ensures batch processing updates both the JSON store AND the file's EXIF/XMP metadata
+          await metadataWriter.writeMetadataToFile(
+            fileMetadata.filePath,
+            fileMetadata.mainName,
+            fileMetadata.metadata
+          );
         }
 
         return { success: true, result };
