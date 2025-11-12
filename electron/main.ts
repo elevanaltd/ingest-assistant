@@ -895,9 +895,13 @@ ipcMain.handle('batch:start', async (_event, fileIds: string[]) => {
     const processor = async (fileId: string) => {
       try {
         const fileMetadata = await store.getFileMetadata(fileId);
-        if (!fileMetadata || fileMetadata.processedByAI) {
+        if (!fileMetadata) {
           return { success: false };
         }
+
+        // Note: Removed processedByAI check to allow reprocessing
+        // The "Reprocess" button should reprocess ALL files, including those already processed
+        // This is useful when prompt updates require re-analyzing existing files
 
         // CRITICAL-8: Security validation for each file in batch
         const validatedPath = await securityValidator.validateFilePath(fileMetadata.filePath);
