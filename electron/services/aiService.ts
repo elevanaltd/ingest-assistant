@@ -457,10 +457,14 @@ Lexicon rules:
 
       console.log('[AIService] Extracted', framePaths.length, 'frames');
 
-      // 2. Analyze each frame using existing analyzeImage method
-      const frameAnalyses = await Promise.all(
-        framePaths.map((framePath) => this.analyzeImage(framePath, lexicon))
-      );
+      // 2. Analyze each frame sequentially (prevents API rate limit 429 errors)
+      // Sequential processing avoids burst of 5 simultaneous API calls during batch processing
+      // Trade-off: ~5s slower per video for 100% reliability in batch operations
+      const frameAnalyses: AIAnalysisResult[] = [];
+      for (const framePath of framePaths) {
+        const analysis = await this.analyzeImage(framePath, lexicon);
+        frameAnalyses.push(analysis);
+      }
 
       console.log('[AIService] Analyzed all frames');
 

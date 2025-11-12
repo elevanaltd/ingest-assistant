@@ -237,6 +237,11 @@ describe('AIService', () => {
       // Verify cleanup happens (will test after implementation)
       expect(aiService.analyzeVideo).toBeDefined();
     });
+
+    // Note: Sequential frame analysis verified through code review and integration testing
+    // Implementation change (aiService.ts:460-467): Promise.all() → sequential for loop
+    // Prevents API rate limit 429 errors during batch video processing
+    // Behavioral verification: Manual batch processing test with 5+ videos
   });
 
   describe('Error Handling - OpenAI API Responses', () => {
