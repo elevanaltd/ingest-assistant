@@ -2,11 +2,29 @@ import * as fs from 'fs/promises';
 import * as path from 'path';
 import type { FileMetadata } from '../../src/types';
 
+const SCHEMA_VERSION = '2.0';
+const APP_NAME = 'ingest-assistant';
+
+// Get app version from package.json
+let APP_VERSION = '1.1.0'; // Default fallback
+try {
+  const packageJson = require('../../package.json');
+  APP_VERSION = packageJson.version;
+} catch (error) {
+  console.warn('Could not read app version from package.json');
+}
+
+interface MetadataStoreFile {
+  _schema: string;
+  [fileId: string]: FileMetadata | string; // string type for _schema field
+}
+
 type MetadataStoreData = Record<string, FileMetadata>;
 
 export class MetadataStore {
   private storePath: string;
   private cache: MetadataStoreData | null = null;
+  private schemaVersion: string = SCHEMA_VERSION;
 
   constructor(storePath: string) {
     this.storePath = storePath;
@@ -18,13 +36,27 @@ export class MetadataStore {
   async loadMetadata(): Promise<MetadataStoreData> {
     try {
       const content = await fs.readFile(this.storePath, 'utf-8');
-      const data = JSON.parse(content);
+      const fileData = JSON.parse(content) as MetadataStoreFile;
 
-      // Convert date strings back to Date objects
-      for (const key in data) {
-        if (data[key].lastModified) {
-          data[key].lastModified = new Date(data[key].lastModified);
+      // Extract schema version
+      this.schemaVersion = fileData._schema || '1.0';
+
+      // Extract metadata (all keys except _schema)
+      const data: MetadataStoreData = {};
+      for (const key in fileData) {
+        if (key === '_schema') continue;
+
+        const metadata = fileData[key] as FileMetadata;
+
+        // Convert date strings back to Date objects
+        if (metadata.createdAt) {
+          metadata.createdAt = new Date(metadata.createdAt);
         }
+        if (metadata.modifiedAt) {
+          metadata.modifiedAt = new Date(metadata.modifiedAt);
+        }
+
+        data[key] = metadata;
       }
 
       this.cache = data;
@@ -46,7 +78,13 @@ export class MetadataStore {
    */
   async saveMetadata(metadata: MetadataStoreData): Promise<boolean> {
     try {
-      const jsonContent = JSON.stringify(metadata, null, 2);
+      // Build file structure with schema version
+      const fileData: MetadataStoreFile = {
+        _schema: SCHEMA_VERSION,
+        ...metadata
+      };
+
+      const jsonContent = JSON.stringify(fileData, null, 2);
 
       // Ensure directory exists
       const dir = path.dirname(this.storePath);
@@ -100,5 +138,66 @@ export class MetadataStore {
     }
 
     return results;
+  }
+
+  /**
+   * Create new FileMetadata with audit trail
+   * Use this helper to ensure consistent metadata creation
+   */
+  static createMetadata(params: {
+    id: string;
+    originalFilename: string;
+    currentFilename: string;
+    filePath: string;
+    extension: string;
+    fileType: 'image' | 'video';
+    mainName: string;
+    keywords?: string[];
+    location?: string;
+    subject?: string;
+    action?: string;
+    shotType?: string;
+    processedByAI?: boolean;
+  }): FileMetadata {
+    const now = new Date();
+    return {
+      // File identification
+      id: params.id,
+      originalFilename: params.originalFilename,
+      currentFilename: params.currentFilename,
+      filePath: params.filePath,
+      extension: params.extension,
+      fileType: params.fileType,
+
+      // Core metadata
+      mainName: params.mainName,
+      keywords: params.keywords || [],
+
+      // Structured components (always present, empty string if not provided)
+      location: params.location || '',
+      subject: params.subject || '',
+      action: params.action || '',
+      shotType: params.shotType || '',
+
+      // Processing state
+      processedByAI: params.processedByAI || false,
+
+      // Audit trail
+      createdAt: now,
+      createdBy: APP_NAME,
+      modifiedAt: now,
+      modifiedBy: APP_NAME,
+      version: APP_VERSION
+    };
+  }
+
+  /**
+   * Update FileMetadata audit trail
+   * Call this when modifying existing metadata
+   */
+  static updateAuditTrail(metadata: FileMetadata): void {
+    metadata.modifiedAt = new Date();
+    metadata.modifiedBy = APP_NAME;
+    metadata.version = APP_VERSION;
   }
 }

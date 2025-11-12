@@ -3,6 +3,7 @@ import * as path from 'path';
 import type { FileMetadata } from '../../src/types';
 import { SecurityValidator } from './securityValidator';
 import { LRUCache } from '../utils/lruCache';
+import { MetadataStore } from './metadataStore';
 
 const IMAGE_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp'];
 const VIDEO_EXTENSIONS = ['.mp4', '.mov', '.avi', '.mkv', '.webm'];
@@ -84,18 +85,20 @@ export class FileManager {
 
       const mainName = namePart.startsWith('-') ? namePart.slice(1) : '';
 
-      files.push({
+      // Create FileMetadata with audit trail using helper
+      const fileMetadata = MetadataStore.createMetadata({
         id: finalId,
         originalFilename: filename,
         currentFilename: filename,
         filePath,
         extension,
         mainName,
-        metadata: [],
-        processedByAI: false,
-        lastModified: stats.mtime,
+        keywords: [],
         fileType: this.getFileType(filename),
+        processedByAI: false
       });
+
+      files.push(fileMetadata);
     }
 
     // Cache the result

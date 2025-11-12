@@ -15,36 +15,51 @@ export type ShotType =
   | 'ESTAB'; // Establishing
 
 export interface FileMetadata {
+  // === File Identification ===
   /** First 8 digits extracted from filename */
   id: string;
   /** Original filename */
   originalFilename: string;
-  /** Current filename (may be renamed) */
+  /** Current filename (may be renamed or unchanged) */
   currentFilename: string;
   /** Full path to the file */
   filePath: string;
   /** File extension */
   extension: string;
-  /** Main descriptive name (kebab-case) - format: {location}-{subject}-{shotType} */
-  mainName: string;
-  /** Array of metadata tags */
-  metadata: string[];
-  /** Whether this file has been processed by AI */
-  processedByAI: boolean;
-  /** Last modified timestamp */
-  lastModified: Date;
   /** File type: image or video */
   fileType: 'image' | 'video';
 
-  // Structured naming fields (optional for backward compatibility)
+  // === Core Metadata (matches XMP) ===
+  /** Main descriptive name (kebab-case) - XMP-xmpDM:shotName */
+  mainName: string;
+  /** Array of keyword tags - XMP-dc:Description */
+  keywords: string[];
+
+  // === Structured Components (XMP-xmpDM:LogComment) ===
   /** Location where shot takes place (e.g., "kitchen", "bathroom") */
-  location?: string;
+  location: string;
   /** Main subject/object in shot (e.g., "oven", "sink") */
-  subject?: string;
-  /** Action being performed (videos only, e.g., "cleaning", "installing") */
-  action?: string;
+  subject: string;
+  /** Action being performed (empty string for images, e.g., "cleaning" for videos) */
+  action: string;
   /** Shot type from controlled vocabulary */
-  shotType?: ShotType;
+  shotType: ShotType | '';
+
+  // === Processing State ===
+  /** Whether this file has been processed by AI */
+  processedByAI: boolean;
+
+  // === Audit Trail (CEP Panel alignment) ===
+  /** When metadata was first created */
+  createdAt: Date;
+  /** System that created metadata: "ingest-assistant" | "cep-panel" | "manual" */
+  createdBy: string;
+  /** When metadata was last modified */
+  modifiedAt: Date;
+  /** System that last modified metadata */
+  modifiedBy: string;
+  /** App version that created/modified this metadata */
+  version: string;
 }
 
 /**
@@ -149,20 +164,20 @@ export interface AIConnectionTestResult {
 export interface AIAnalysisResult {
   /** Structured main name: {location}-{subject}-{shotType} or {location}-{subject}-{action}-{shotType} */
   mainName: string;
-  /** Array of metadata tags */
-  metadata: string[];
+  /** Array of keyword tags */
+  keywords: string[];
   /** AI confidence score (0-1) */
   confidence: number;
 
-  // Structured components (optional - parsed from mainName or provided directly)
+  // Structured components (required - parsed from mainName or provided directly)
   /** Location component */
-  location?: string;
+  location: string;
   /** Subject component */
-  subject?: string;
-  /** Action component (videos only) */
-  action?: string;
+  subject: string;
+  /** Action component (empty string for images) */
+  action: string;
   /** Shot type component */
-  shotType?: ShotType;
+  shotType: ShotType | '';
 }
 
 /**
