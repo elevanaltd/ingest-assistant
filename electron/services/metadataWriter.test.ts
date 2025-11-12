@@ -367,5 +367,76 @@ describe('MetadataWriter (Integration)', () => {
       // (XMP-dc:Subject would be something else, not our structured component)
       expect(xmpData['Subject']).toBeUndefined();
     });
+
+    it('should write XMP-xmpDM:LogComment for CEP panel parsing (Issue #54)', async () => {
+      if (!exiftoolAvailable) {
+        console.log('⏭️  Skipping - exiftool not available');
+        return;
+      }
+
+      const mainName = 'kitchen-oven-cleaning-WS';
+      const tags = ['plumbing', 'renovation', 'demo'];
+      const structured = {
+        location: 'kitchen',
+        subject: 'oven',
+        action: 'cleaning',
+        shotType: 'WS'
+      };
+
+      await metadataWriter.writeMetadataToFile(testFilePath, mainName, tags, structured);
+
+      // Read XMP-xmpDM:LogComment specifically (CEP panel requirement)
+      const { stdout } = await execAsync(`exiftool -XMP-xmpDM:LogComment -json "${testFilePath}"`);
+      const data = JSON.parse(stdout);
+      const xmpData = data[0];
+
+      // XMP-xmpDM:LogComment should contain structured key=value pairs for CEP parsing
+      expect(xmpData['LogComment']).toBe('location=kitchen, subject=oven, action=cleaning, shotType=WS');
+    });
+
+    it('should write LogComment with partial structured components', async () => {
+      if (!exiftoolAvailable) {
+        console.log('⏭️  Skipping - exiftool not available');
+        return;
+      }
+
+      const mainName = 'kitchen-oven-WS';
+      const tags = ['appliance'];
+      const structured = {
+        location: 'kitchen',
+        subject: 'oven',
+        shotType: 'WS'
+        // action is omitted
+      };
+
+      await metadataWriter.writeMetadataToFile(testFilePath, mainName, tags, structured);
+
+      const { stdout } = await execAsync(`exiftool -XMP-xmpDM:LogComment -json "${testFilePath}"`);
+      const data = JSON.parse(stdout);
+      const xmpData = data[0];
+
+      // LogComment should only include provided components
+      expect(xmpData['LogComment']).toBe('location=kitchen, subject=oven, shotType=WS');
+    });
+
+    it('should not write LogComment when structured components not provided', async () => {
+      if (!exiftoolAvailable) {
+        console.log('⏭️  Skipping - exiftool not available');
+        return;
+      }
+
+      const mainName = 'simple-name';
+      const tags = ['tag1', 'tag2'];
+
+      // Call without structured parameter
+      await metadataWriter.writeMetadataToFile(testFilePath, mainName, tags);
+
+      const { stdout } = await execAsync(`exiftool -XMP-xmpDM:LogComment -json "${testFilePath}"`);
+      const data = JSON.parse(stdout);
+      const xmpData = data[0];
+
+      // LogComment should not exist without structured components
+      expect(xmpData['LogComment']).toBeUndefined();
+    });
   });
 });
