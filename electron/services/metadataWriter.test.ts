@@ -265,4 +265,178 @@ describe('MetadataWriter (Integration)', () => {
       });
     });
   });
+
+  describe('PP native XMP fields (Issue #54 - xmpDM:shotName)', () => {
+    it('should write xmpDM:shotName and dc:Description (PP Shot field mapping)', async () => {
+      if (!exiftoolAvailable) {
+        console.log('⏭️  Skipping - exiftool not available');
+        return;
+      }
+
+      const mainName = 'kitchen-oven-cleaning-WS';
+      const tags = ['appliance', 'demo'];
+      const structured = {
+        location: 'kitchen',
+        subject: 'oven',
+        action: 'cleaning',
+        shotType: 'WS'
+      };
+
+      await metadataWriter.writeMetadataToFile(testFilePath, mainName, tags, structured);
+
+      // Read XMP-xmpDM:shotName (maps to PP Shot field) and dc:Description
+      const { stdout } = await execAsync(`exiftool -XMP-xmpDM:shotName -XMP-dc:Description -json "${testFilePath}"`);
+      const data = JSON.parse(stdout);
+      const xmpData = data[0];
+
+      // XMP-xmpDM:shotName should contain the combined entity (maps to PP Shot field)
+      expect(xmpData['ShotName']).toBe('kitchen-oven-cleaning-WS');
+
+      // XMP-dc:Description should contain keywords (comma-separated)
+      expect(xmpData['Description']).toBe('appliance, demo');
+    });
+
+    it('should write custom description when provided', async () => {
+      if (!exiftoolAvailable) {
+        console.log('⏭️  Skipping - exiftool not available');
+        return;
+      }
+
+      const mainName = 'test-name';
+      const tags = ['tag1', 'tag2'];
+      const description = 'This is a custom description field';
+
+      await metadataWriter.writeMetadataToFile(testFilePath, mainName, tags, undefined, description);
+
+      const { stdout } = await execAsync(`exiftool -Description -XMP-dc:Description -json "${testFilePath}"`);
+      const data = JSON.parse(stdout);
+      const metadata = data[0];
+
+      // Custom description should override tag-based description
+      expect(metadata['Description']).toBe(description);
+    });
+
+    it('should work without structured components (backward compatibility)', async () => {
+      if (!exiftoolAvailable) {
+        console.log('⏭️  Skipping - exiftool not available');
+        return;
+      }
+
+      const mainName = 'simple-name';
+      const tags = ['tag1', 'tag2'];
+
+      // Call without structured parameter (backward compatibility)
+      await metadataWriter.writeMetadataToFile(testFilePath, mainName, tags);
+
+      const result = await metadataWriter.readMetadataFromFile(testFilePath);
+      expect(result.title).toBe(mainName);
+      expect(result.description).toBe('tag1, tag2');
+    });
+
+    it('should not write individual component fields (JSON-only strategy)', async () => {
+      if (!exiftoolAvailable) {
+        console.log('⏭️  Skipping - exiftool not available');
+        return;
+      }
+
+      const mainName = 'kitchen-oven-WS';
+      const tags = ['appliance'];
+      const structured = {
+        location: 'kitchen',
+        subject: 'oven',
+        shotType: 'WS'
+      };
+
+      await metadataWriter.writeMetadataToFile(testFilePath, mainName, tags, structured);
+
+      // Verify individual components are NOT written to XMP
+      const { stdout } = await execAsync(`exiftool -XMP:all -json "${testFilePath}"`);
+      const data = JSON.parse(stdout);
+      const xmpData = data[0];
+
+      // Should only have ShotName (xmpDM) and Description (dc), not individual components
+      expect(xmpData['ShotName']).toBe('kitchen-oven-WS');
+      expect(xmpData['Description']).toBe('appliance');
+
+      // Individual components should NOT exist in XMP (they're in JSON instead)
+      expect(xmpData['Location']).toBeUndefined();
+      expect(xmpData['Action']).toBeUndefined();
+      expect(xmpData['Shot']).toBeUndefined();
+
+      // Subject should NOT exist as a separate component field
+      // (XMP-dc:Subject would be something else, not our structured component)
+      expect(xmpData['Subject']).toBeUndefined();
+    });
+
+    it('should write XMP-xmpDM:LogComment for CEP panel parsing (Issue #54)', async () => {
+      if (!exiftoolAvailable) {
+        console.log('⏭️  Skipping - exiftool not available');
+        return;
+      }
+
+      const mainName = 'kitchen-oven-cleaning-WS';
+      const tags = ['plumbing', 'renovation', 'demo'];
+      const structured = {
+        location: 'kitchen',
+        subject: 'oven',
+        action: 'cleaning',
+        shotType: 'WS'
+      };
+
+      await metadataWriter.writeMetadataToFile(testFilePath, mainName, tags, structured);
+
+      // Read XMP-xmpDM:LogComment specifically (CEP panel requirement)
+      const { stdout } = await execAsync(`exiftool -XMP-xmpDM:LogComment -json "${testFilePath}"`);
+      const data = JSON.parse(stdout);
+      const xmpData = data[0];
+
+      // XMP-xmpDM:LogComment should contain structured key=value pairs for CEP parsing
+      expect(xmpData['LogComment']).toBe('location=kitchen, subject=oven, action=cleaning, shotType=WS');
+    });
+
+    it('should write LogComment with partial structured components', async () => {
+      if (!exiftoolAvailable) {
+        console.log('⏭️  Skipping - exiftool not available');
+        return;
+      }
+
+      const mainName = 'kitchen-oven-WS';
+      const tags = ['appliance'];
+      const structured = {
+        location: 'kitchen',
+        subject: 'oven',
+        shotType: 'WS'
+        // action is omitted
+      };
+
+      await metadataWriter.writeMetadataToFile(testFilePath, mainName, tags, structured);
+
+      const { stdout } = await execAsync(`exiftool -XMP-xmpDM:LogComment -json "${testFilePath}"`);
+      const data = JSON.parse(stdout);
+      const xmpData = data[0];
+
+      // LogComment should only include provided components
+      expect(xmpData['LogComment']).toBe('location=kitchen, subject=oven, shotType=WS');
+    });
+
+    it('should not write LogComment when structured components not provided', async () => {
+      if (!exiftoolAvailable) {
+        console.log('⏭️  Skipping - exiftool not available');
+        return;
+      }
+
+      const mainName = 'simple-name';
+      const tags = ['tag1', 'tag2'];
+
+      // Call without structured parameter
+      await metadataWriter.writeMetadataToFile(testFilePath, mainName, tags);
+
+      const { stdout } = await execAsync(`exiftool -XMP-xmpDM:LogComment -json "${testFilePath}"`);
+      const data = JSON.parse(stdout);
+      const xmpData = data[0];
+
+      // LogComment should not exist without structured components
+      expect(xmpData['LogComment']).toBeUndefined();
+    });
+  });
 });

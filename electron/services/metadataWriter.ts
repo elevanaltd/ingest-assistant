@@ -104,22 +104,36 @@ export class MetadataWriter {
    * Security: Uses execFile() (NOT exec()) to prevent shell injection.
    * Validates all user input before processing.
    *
-   * This embeds EXIF/XMP metadata that Premiere Pro and other tools can read
+   * This embeds EXIF/XMP metadata that Premiere Pro and other tools can read.
    *
-   * NEW WORKFLOW:
-   * - XMP Title = mainName (structured title: location-subject-action-shotType)
-   * - XMP Description = tags (comma-separated metadata tags)
-   * - Keywords = tags (searchable keywords)
+   * METADATA STRATEGY (Issue #54):
+   * Simplified approach that survives proxy conversion:
+   * - XMP-dc:Title = mainName (combined entity: location-subject-action-shotType)
+   *   → Survives proxy conversion, searchable in PP, editor-friendly
+   * - XMP-dc:Description = keywords (comma-separated) OR custom description
+   *   → Survives proxy conversion, searchable in PP
+   *
+   * Structured components (location, subject, action, shotType) are stored in JSON sidecar
+   * for cataloguer editing in both Ingest Assistant and CEP Panel.
    *
    * @param filePath Absolute path to media file
    * @param mainName Structured title (location-subject-action-shotType)
    * @param tags Array of keyword tags
+   * @param structured Optional structured components (reserved for future JSON integration)
+   * @param description Optional custom description (if not provided, uses tags.join(', '))
    * @throws Error if metadata contains shell metacharacters or file operation fails
    */
   async writeMetadataToFile(
     filePath: string,
     mainName: string,
-    tags: string[]
+    tags: string[],
+    structured?: {
+      location?: string;
+      subject?: string;
+      action?: string;
+      shotType?: string;
+    },
+    description?: string
   ): Promise<void> {
     // Validate inputs for shell metacharacters
     if (mainName) {
@@ -130,30 +144,68 @@ export class MetadataWriter {
       this.validateInput(tag, `tag[${index}]`);
     });
 
+    // Validate structured components if provided
+    if (structured) {
+      if (structured.location) {
+        this.validateInput(structured.location, 'structured.location');
+      }
+      if (structured.subject) {
+        this.validateInput(structured.subject, 'structured.subject');
+      }
+      if (structured.action) {
+        this.validateInput(structured.action, 'structured.action');
+      }
+      if (structured.shotType) {
+        this.validateInput(structured.shotType, 'structured.shotType');
+      }
+    }
+
+    // Validate custom description if provided
+    if (description) {
+      this.validateInput(description, 'description');
+    }
+
     // Build exiftool arguments (array, NOT string concatenation)
     const args: string[] = [];
 
-    // XMP Title = Structured title (location-subject-action-shotType)
+    // PREMIERE PRO NATIVE FIELDS (Issue #54):
+    // Use XMP Dynamic Media namespace - maps directly to PP Shot field
+    // XMP-xmpDM:shotName → PP Shot field (survives offline, even without proxies!)
+    // XMP-xmpDM:LogComment → Structured data for CEP panel parsing
+    // Structured components (location, subject, action, shotType) stored in JSON sidecar
+
+    // XMP-xmpDM:shotName = Combined entity (maps directly to PP Shot field)
     if (mainName) {
-      args.push(`-Title=${mainName}`);
-      args.push(`-XMP:Title=${mainName}`);
-      args.push(`-IPTC:ObjectName=${mainName}`);
+      args.push(`-XMP-xmpDM:shotName=${mainName}`);
     }
 
-    // Keywords - Array of tags for searchability
-    // Write each tag individually so exiftool creates proper array structure
-    // This ensures Premiere Pro and other tools see them as separate searchable keywords
-    tags.forEach(tag => {
-      args.push(`-Keywords=${tag}`);
-      args.push(`-XMP:Subject=${tag}`);
-    });
+    // XMP-xmpDM:LogComment = Structured key=value pairs for CEP panel parsing
+    if (structured) {
+      const logCommentParts: string[] = [];
 
-    // XMP Description = Metadata tags (comma-separated)
-    if (tags.length > 0) {
-      const description = tags.join(', ');
-      args.push(`-Description=${description}`);
-      args.push(`-XMP:Description=${description}`);
-      args.push(`-IPTC:Caption-Abstract=${description}`);
+      if (structured.location) {
+        logCommentParts.push(`location=${structured.location}`);
+      }
+      if (structured.subject) {
+        logCommentParts.push(`subject=${structured.subject}`);
+      }
+      if (structured.action) {
+        logCommentParts.push(`action=${structured.action}`);
+      }
+      if (structured.shotType) {
+        logCommentParts.push(`shotType=${structured.shotType}`);
+      }
+
+      if (logCommentParts.length > 0) {
+        args.push(`-XMP-xmpDM:LogComment=${logCommentParts.join(', ')}`);
+      }
+    }
+
+    // XMP-dc:Description = Keywords OR custom description (searchable)
+    const descriptionValue = description || (tags.length > 0 ? tags.join(', ') : undefined);
+    if (descriptionValue) {
+      args.push(`-Description=${descriptionValue}`);
+      args.push(`-XMP-dc:Description=${descriptionValue}`);
     }
 
     // Don't create backup files
@@ -196,8 +248,13 @@ export class MetadataWriter {
   /**
    * Read metadata from file using exiftool.
    *
+   * Matches the PP native field strategy (Issue #54):
+   * - Reads XMP-xmpDM:shotName (maps to PP Shot field)
+   * - Reads dc:Description (contains keywords comma-separated)
+   * - Parses Description back into keywords array for backward compatibility
+   *
    * @param filePath Absolute path to media file
-   * @returns Object with title and keywords
+   * @returns Object with title, keywords (parsed from description), and description
    */
   async readMetadataFromFile(filePath: string): Promise<{
     title?: string;
@@ -205,7 +262,7 @@ export class MetadataWriter {
     description?: string;
   }> {
     try {
-      const args = ['-Title', '-Keywords', '-Description', '-json', filePath];
+      const args = ['-XMP-xmpDM:shotName', '-Description', '-json', filePath];
       const exiftoolPath = findExiftool();
 
       const { stdout } = await execFileAsync(exiftoolPath, args, {
@@ -217,9 +274,16 @@ export class MetadataWriter {
 
       if (data && data.length > 0) {
         const metadata = data[0];
+
+        // Parse keywords from Description field (comma-separated)
+        // This maintains backward compatibility with code expecting keywords array
+        const keywords = metadata.Description
+          ? this.parseKeywords(metadata.Description)
+          : [];
+
         return {
-          title: metadata.Title,
-          keywords: this.parseKeywords(metadata.Keywords),
+          title: metadata.ShotName,
+          keywords,
           description: metadata.Description,
         };
       }

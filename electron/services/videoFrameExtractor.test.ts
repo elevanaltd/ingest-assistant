@@ -153,5 +153,22 @@ describe('VideoFrameExtractor', () => {
         expect((error as Error).message).not.toMatch(/invalid.*filename|forbidden.*character|security|flag injection/i);
       }
     });
+
+    it('should accept filenames with parentheses in directory names (Issue #1)', async () => {
+      // Issue #1: Video player regression - paths with parentheses blocked
+      // Real-world case: "/Volumes/videos-current/Project/04. Media/Video (Proxy)/file.mov"
+      // Parentheses are SAFE with spawn() - no shell expansion occurs
+      const extractor = new VideoFrameExtractor();
+      const safePath = '/Volumes/videos-current/Project/Video (Proxy)/01. Introduction_Proxy.mov';
+
+      // Per Security: spawn() prevents shell interpolation, so parentheses are safe
+      // Note: Will fail for other reasons (file doesn't exist) but shouldn't reject as malicious
+      try {
+        await extractor.extractFrames(safePath, [0.5]);
+      } catch (error) {
+        // Should fail with file access error, NOT security validation error
+        expect((error as Error).message).not.toMatch(/invalid.*filename|forbidden.*character|security/i);
+      }
+    });
   });
 });
