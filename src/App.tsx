@@ -11,6 +11,7 @@ function App() {
   const [folderPath, setFolderPath] = useState<string>('');
   const [files, setFiles] = useState<FileMetadata[]>([]);
   const [currentFileIndex, setCurrentFileIndex] = useState<number>(0);
+  const [selectedFileIds, setSelectedFileIds] = useState<Set<string>>(new Set());
   const skipNextVideoLoadRef = useRef<boolean>(false);
 
   // Structured naming fields
@@ -177,7 +178,21 @@ function App() {
       const loadedFiles = await window.electronAPI.loadFiles();
       setFiles(loadedFiles);
       setCurrentFileIndex(0);
+      // Clear selection when switching folders
+      setSelectedFileIds(new Set());
     }
+  };
+
+  const handleToggleSelection = (fileId: string, selected: boolean) => {
+    setSelectedFileIds(prev => {
+      const newSelection = new Set(prev);
+      if (selected) {
+        newSelection.add(fileId);
+      } else {
+        newSelection.delete(fileId);
+      }
+      return newSelection;
+    });
   };
 
   const handleSave = async () => {
@@ -444,6 +459,8 @@ function App() {
           currentFileIndex={currentFileIndex}
           onSelectFolder={handleSelectFolder}
           onSelectFile={setCurrentFileIndex}
+          selectedFileIds={selectedFileIds}
+          onToggleSelection={handleToggleSelection}
         />
 
         {currentFile && (
@@ -745,6 +762,7 @@ function App() {
                 filename: f.currentFilename,
                 processedByAI: f.processedByAI,
               }))}
+              selectedFileIds={selectedFileIds}
               onBatchComplete={handleBatchComplete}
             />
           </div>
