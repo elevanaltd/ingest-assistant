@@ -309,6 +309,96 @@ describe('FileManager', () => {
     });
   });
 
+  describe('invalidateCache', () => {
+    it('should provide public method to invalidate cache for a folder', async () => {
+      // First scan - populate cache
+      const mockFiles = [
+        { name: 'EB001537.jpg', isFile: () => true, isDirectory: () => false },
+      ];
+      mockFs.readdir.mockResolvedValue(mockFiles);
+      mockFs.stat.mockResolvedValue({
+        isFile: () => true,
+        mtime: new Date('2024-01-01'),
+      });
+
+      await fileManager.scanFolder(testFolderPath);
+      expect(mockFs.readdir).toHaveBeenCalledTimes(1);
+
+      // Second scan - should hit cache (no new readdir)
+      await fileManager.scanFolder(testFolderPath);
+      expect(mockFs.readdir).toHaveBeenCalledTimes(1); // Still 1 (cached)
+
+      // Invalidate cache
+      fileManager.invalidateCache(testFolderPath);
+
+      // Third scan - cache cleared, should trigger new readdir
+      await fileManager.scanFolder(testFolderPath);
+      expect(mockFs.readdir).toHaveBeenCalledTimes(2); // Now 2 (cache was cleared)
+    });
+
+    it('should only invalidate cache for specific folder path', async () => {
+      const folder1 = '/test/folder1';
+      const folder2 = '/test/folder2';
+
+      const mockFiles = [
+        { name: 'test.jpg', isFile: () => true, isDirectory: () => false },
+      ];
+      mockFs.readdir.mockResolvedValue(mockFiles);
+      mockFs.stat.mockResolvedValue({
+        isFile: () => true,
+        mtime: new Date(),
+      });
+
+      // Populate both caches
+      await fileManager.scanFolder(folder1);
+      await fileManager.scanFolder(folder2);
+      expect(mockFs.readdir).toHaveBeenCalledTimes(2);
+
+      // Invalidate only folder1
+      fileManager.invalidateCache(folder1);
+
+      // Scan folder1 - should trigger new readdir (cache cleared)
+      await fileManager.scanFolder(folder1);
+      expect(mockFs.readdir).toHaveBeenCalledTimes(3);
+
+      // Scan folder2 - should NOT trigger readdir (cache still valid)
+      await fileManager.scanFolder(folder2);
+      expect(mockFs.readdir).toHaveBeenCalledTimes(3); // Still 3
+    });
+  });
+
+  describe('renameFile - cache invalidation', () => {
+    it('should automatically invalidate cache after successful rename', async () => {
+      const originalPath = path.join(testFolderPath, 'EB001537.jpg');
+
+      // First, populate cache with a scan
+      const mockFiles = [
+        { name: 'EB001537.jpg', isFile: () => true, isDirectory: () => false },
+      ];
+      mockFs.readdir.mockResolvedValue(mockFiles);
+      mockFs.stat.mockResolvedValue({
+        isFile: () => true,
+        mtime: new Date('2024-01-01'),
+      });
+
+      await fileManager.scanFolder(testFolderPath);
+      expect(mockFs.readdir).toHaveBeenCalledTimes(1);
+
+      // Verify cache is working - second scan should not trigger readdir
+      await fileManager.scanFolder(testFolderPath);
+      expect(mockFs.readdir).toHaveBeenCalledTimes(1); // Still 1 (cached)
+
+      // Perform rename operation
+      mockFs.rename.mockResolvedValue(undefined);
+      await fileManager.renameFile(originalPath, 'EB001537', 'New Name');
+
+      // After rename, cache should be invalidated
+      // Next scan should trigger new readdir
+      await fileManager.scanFolder(testFolderPath);
+      expect(mockFs.readdir).toHaveBeenCalledTimes(2); // Now 2 (cache cleared by rename)
+    });
+  });
+
   describe('validateFileSize - Security', () => {
     it('should reject files larger than 100MB', async () => {
       const largeFilePath = '/test/huge-file.jpg';
