@@ -171,11 +171,34 @@ export class MetadataWriter {
     // PREMIERE PRO NATIVE FIELDS (Issue #54):
     // Use XMP Dynamic Media namespace - maps directly to PP Shot field
     // XMP-xmpDM:shotName → PP Shot field (survives offline, even without proxies!)
+    // XMP-xmpDM:LogComment → Structured data for CEP panel parsing
     // Structured components (location, subject, action, shotType) stored in JSON sidecar
 
     // XMP-xmpDM:shotName = Combined entity (maps directly to PP Shot field)
     if (mainName) {
       args.push(`-XMP-xmpDM:shotName=${mainName}`);
+    }
+
+    // XMP-xmpDM:LogComment = Structured key=value pairs for CEP panel parsing
+    if (structured) {
+      const logCommentParts: string[] = [];
+
+      if (structured.location) {
+        logCommentParts.push(`location=${structured.location}`);
+      }
+      if (structured.subject) {
+        logCommentParts.push(`subject=${structured.subject}`);
+      }
+      if (structured.action) {
+        logCommentParts.push(`action=${structured.action}`);
+      }
+      if (structured.shotType) {
+        logCommentParts.push(`shotType=${structured.shotType}`);
+      }
+
+      if (logCommentParts.length > 0) {
+        args.push(`-XMP-xmpDM:LogComment=${logCommentParts.join(', ')}`);
+      }
     }
 
     // XMP-dc:Description = Keywords OR custom description (searchable)
