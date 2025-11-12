@@ -79,6 +79,15 @@
         "zip"
       ]
     },
+    "linux": {
+      "category": "AudioVideo",
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "synopsis": "AI-powered media file ingestion and metadata assistant",
+      "description": "Electron desktop application for batch processing media files with AI analysis and XMP metadata embedding."
+    },
     "files": [
       "dist/**/*",
       "node_modules/**/*",
