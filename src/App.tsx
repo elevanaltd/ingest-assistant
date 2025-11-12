@@ -762,6 +762,7 @@ function App() {
                 filename: f.currentFilename,
                 processedByAI: f.processedByAI,
               }))}
+              selectedFileIds={selectedFileIds}
               onBatchComplete={handleBatchComplete}
             />
           </div>

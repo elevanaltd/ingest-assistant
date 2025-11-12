@@ -4,11 +4,13 @@ import type { BatchQueueState, BatchProgress } from '../types';
 interface BatchOperationsPanelProps {
   /** Available files that can be batched */
   availableFiles: Array<{ id: string; filename: string; processedByAI: boolean }>;
+  /** Currently selected file IDs (optional - for multi-select batch processing) */
+  selectedFileIds?: Set<string>;
   /** Callback when batch completes to refresh file list */
   onBatchComplete?: () => void;
 }
 
-export function BatchOperationsPanel({ availableFiles, onBatchComplete }: BatchOperationsPanelProps) {
+export function BatchOperationsPanel({ availableFiles, selectedFileIds, onBatchComplete }: BatchOperationsPanelProps) {
   const [queueState, setQueueState] = useState<BatchQueueState | null>(null);
   const [currentProgress, setCurrentProgress] = useState<BatchProgress | null>(null);
   const [isExpanded, setIsExpanded] = useState(false);
@@ -105,6 +107,23 @@ export function BatchOperationsPanel({ availableFiles, onBatchComplete }: BatchO
     }
   };
 
+  const handleProcessSelected = async () => {
+    if (!window.electronAPI || !selectedFileIds || selectedFileIds.size === 0) {
+      return;
+    }
+
+    // Convert Set to Array for batch processing
+    const filesToProcess = Array.from(selectedFileIds);
+
+    try {
+      await window.electronAPI.batchStart(filesToProcess);
+      setIsExpanded(true);
+    } catch (error) {
+      console.error('[BatchPanel] Failed to start selected batch:', error);
+      alert('Failed to start batch: ' + (error instanceof Error ? error.message : 'Unknown error'));
+    }
+  };
+
   const handleReprocess = async () => {
     console.log('[BatchPanel] Reprocess button clicked');
 
@@ -180,6 +199,8 @@ export function BatchOperationsPanel({ availableFiles, onBatchComplete }: BatchO
   const unprocessedCount = availableFiles.filter(f => !f.processedByAI).length;
   const totalFiles = availableFiles.length;
   const isProcessing = queueState?.status === 'processing';
+  const selectedCount = selectedFileIds?.size || 0;
+  const hasSelection = selectedCount > 0;
 
   return (
     <div style={{
@@ -190,29 +211,50 @@ export function BatchOperationsPanel({ availableFiles, onBatchComplete }: BatchO
       {/* Action Buttons - At Top */}
       {!isProcessing && (
         <>
-          <button
-            onClick={handleStartBatch}
-            disabled={unprocessedCount === 0}
-            style={{
-              width: '100%',
-              padding: '10px 16px',
-              fontSize: '14px',
-              borderRadius: '6px',
-              border: 'none',
-              backgroundColor: unprocessedCount > 0 ? '#3b82f6' : '#e5e7eb',
-              color: unprocessedCount > 0 ? 'white' : '#9ca3af',
-              cursor: unprocessedCount > 0 ? 'pointer' : 'not-allowed',
-              fontWeight: '600',
-              marginBottom: '8px',
-            }}
-          >
-            {unprocessedCount > 100
-              ? `Process First 100 Files`
-              : unprocessedCount > 0
-              ? `Process ${unprocessedCount} File${unprocessedCount !== 1 ? 's' : ''}`
-              : 'No Files to Process'
-            }
-          </button>
+          {/* Show "Process Selected" button when files are selected, otherwise show regular batch button */}
+          {hasSelection ? (
+            <button
+              onClick={handleProcessSelected}
+              style={{
+                width: '100%',
+                padding: '10px 16px',
+                fontSize: '14px',
+                borderRadius: '6px',
+                border: 'none',
+                backgroundColor: '#3b82f6',
+                color: 'white',
+                cursor: 'pointer',
+                fontWeight: '600',
+                marginBottom: '8px',
+              }}
+            >
+              {`Process Selected ${selectedCount} File${selectedCount !== 1 ? 's' : ''}`}
+            </button>
+          ) : (
+            <button
+              onClick={handleStartBatch}
+              disabled={unprocessedCount === 0}
+              style={{
+                width: '100%',
+                padding: '10px 16px',
+                fontSize: '14px',
+                borderRadius: '6px',
+                border: 'none',
+                backgroundColor: unprocessedCount > 0 ? '#3b82f6' : '#e5e7eb',
+                color: unprocessedCount > 0 ? 'white' : '#9ca3af',
+                cursor: unprocessedCount > 0 ? 'pointer' : 'not-allowed',
+                fontWeight: '600',
+                marginBottom: '8px',
+              }}
+            >
+              {unprocessedCount > 100
+                ? `Process First 100 Files`
+                : unprocessedCount > 0
+                ? `Process ${unprocessedCount} File${unprocessedCount !== 1 ? 's' : ''}`
+                : 'No Files to Process'
+              }
+            </button>
+          )}
 
           {totalFiles > 0 && (
             <button
