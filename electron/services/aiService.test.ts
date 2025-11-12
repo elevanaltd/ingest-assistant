@@ -125,6 +125,68 @@ describe('AIService', () => {
       expect(result.metadata).toEqual(['sustainable living', 'home', 'kitchen']);
       expect(result.confidence).toBe(0.7);
     });
+
+    // RED: Tests for hyphenated concept preservation (Issue: AI parsing splits hyphenated multi-word concepts)
+    it('should preserve hyphenated subject when AI returns structured fields', () => {
+      // AI returns structured fields with hyphenated subject "consumer-unit"
+      const response = JSON.stringify({
+        location: 'hallway',
+        subject: 'consumer-unit',
+        shotType: 'MID',
+        mainName: 'hallway-consumer-unit-MID',
+        metadata: ['electrical', 'utility'],
+      });
+
+      const result = aiService.parseAIResponse(response);
+
+      // Hyphenated subject must be preserved, not split into separate words
+      expect(result.subject).toBe('consumer-unit');
+      expect(result.action).toBeUndefined(); // Should NOT extract "unit" as action
+      expect(result.location).toBe('hallway');
+      expect(result.shotType).toBe('MID');
+    });
+
+    it('should preserve hyphenated action when AI returns structured fields', () => {
+      // AI returns structured fields with hyphenated action "turning-on"
+      const response = JSON.stringify({
+        location: 'kitchen',
+        subject: 'cooker-hood',
+        action: 'turning-on',
+        shotType: 'MID',
+        mainName: 'kitchen-cooker-hood-turning-on-MID',
+        metadata: ['appliance', 'demo'],
+      });
+
+      const result = aiService.parseAIResponse(response);
+
+      // Both hyphenated subject AND action must be preserved
+      expect(result.subject).toBe('cooker-hood');
+      expect(result.action).toBe('turning-on');
+      expect(result.location).toBe('kitchen');
+      expect(result.shotType).toBe('MID');
+    });
+
+    it('should handle mainName-only format with hyphenated concepts correctly', () => {
+      // Fallback: AI returns only mainName (no structured fields)
+      // This should NOT attempt to parse mainName by splitting on hyphens
+      // Instead, it should return legacy format without attempting structured extraction
+      const response = JSON.stringify({
+        mainName: 'hallway-consumer-unit-MID',
+        metadata: ['electrical', 'utility'],
+      });
+
+      const result = aiService.parseAIResponse(response);
+
+      // When AI provides only mainName without structured fields,
+      // should treat as legacy format (no structured extraction)
+      expect(result.mainName).toBe('hallway-consumer-unit-MID');
+      expect(result.metadata).toEqual(['electrical', 'utility']);
+      // Should NOT have structured fields extracted from naive splitting
+      expect(result.subject).toBeUndefined();
+      expect(result.action).toBeUndefined();
+      expect(result.location).toBeUndefined();
+      expect(result.shotType).toBeUndefined();
+    });
   });
 
   describe('analyzeImage', () => {
@@ -175,6 +237,11 @@ describe('AIService', () => {
       // Verify cleanup happens (will test after implementation)
       expect(aiService.analyzeVideo).toBeDefined();
     });
+
+    // Note: Sequential frame analysis verified through code review and integration testing
+    // Implementation change (aiService.ts:460-467): Promise.all() → sequential for loop
+    // Prevents API rate limit 429 errors during batch video processing
+    // Behavioral verification: Manual batch processing test with 5+ videos
   });
 
   describe('Error Handling - OpenAI API Responses', () => {

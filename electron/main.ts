@@ -578,7 +578,13 @@ ipcMain.handle('file:rename', async (_event, fileId: string, mainName: string, c
     await metadataWriter.writeMetadataToFile(
       newPath,
       fileMetadata.mainName,
-      fileMetadata.metadata
+      fileMetadata.metadata,
+      {
+        location: fileMetadata.location,
+        subject: fileMetadata.subject,
+        action: fileMetadata.action,
+        shotType: fileMetadata.shotType
+      }
     );
 
     return true;
@@ -634,7 +640,13 @@ ipcMain.handle('file:update-metadata', async (_event, fileId: string, metadata: 
     await metadataWriter.writeMetadataToFile(
       actualFilePath,
       fileMetadata.mainName,
-      validated.metadata
+      validated.metadata,
+      {
+        location: fileMetadata.location,
+        subject: fileMetadata.subject,
+        action: fileMetadata.action,
+        shotType: fileMetadata.shotType
+      }
     );
 
     console.log('[main.ts] file:update-metadata - Successfully wrote XMP with title:', fileMetadata.mainName, 'and tags:', validated.metadata);
@@ -908,6 +920,10 @@ ipcMain.handle('batch:start', async (_event, fileIds: string[]) => {
         if (result.confidence > 0.7) {
           fileMetadata.mainName = result.mainName;
           fileMetadata.metadata = result.metadata;
+          fileMetadata.location = result.location;
+          fileMetadata.subject = result.subject;
+          fileMetadata.action = result.action;
+          fileMetadata.shotType = result.shotType;
           fileMetadata.processedByAI = true;
           await store.updateFileMetadata(fileId, fileMetadata);
 
@@ -916,7 +932,13 @@ ipcMain.handle('batch:start', async (_event, fileIds: string[]) => {
           await metadataWriter.writeMetadataToFile(
             fileMetadata.filePath,
             fileMetadata.mainName,
-            fileMetadata.metadata
+            fileMetadata.metadata,
+            {
+              location: fileMetadata.location,
+              subject: fileMetadata.subject,
+              action: fileMetadata.action,
+              shotType: fileMetadata.shotType
+            }
           );
         }
 
