@@ -71,12 +71,24 @@ This creates **system coherence**: App can track progress + Professional tools c
 
 **1. FileManager + MetadataStore → Working Memory**
 ```
-FileManager.scanFolder() → Discovers media files
+FileManager.scanFolder() → Discovers media files (with LRU caching for performance)
                          → Extracts ID (first 8 chars)
                          ↓
 MetadataStore.getFileMetadata() → Checks for existing metadata
                                 → Merges with file list
                                 → Returns enriched FileMetadata[]
+```
+
+**Performance: LRU Cache for Folder Scans**
+```
+FileManager maintains 5-folder LRU cache for scanFolder() results
+→ Cache hit: <50ms (meets Issue #19 requirements)
+→ Cache miss: Full directory scan
+
+Cache invalidation triggers:
+- FileManager.renameFile() → Automatic cache clear for parent directory
+- FileManager.invalidateCache(path) → Manual cache invalidation
+- Prevents stale filename display after file operations
 ```
 
 **2. User Edits → Dual Persistence**
@@ -258,6 +270,7 @@ IPC: file:rename + file:update-metadata
 1. FileManager.renameFile()
    - Build new filename: [id]-[kebab-case-name].[ext]
    - fs.rename() on disk
+   - Invalidate LRU cache for parent directory (prevents stale UI)
   ↓
 2. MetadataStore.updateFileMetadata()
    - Update JSON object in memory
@@ -557,12 +570,16 @@ npm run package      # Create macOS DMG/ZIP (electron-builder)
 - ✅ Error boundary for UI resilience
 - ✅ CI/CD pipeline with quality gates
 
-### Recent Enhancements (November 6, 2025)
+### Recent Enhancements (November 2025)
 - ✅ **Settings Modal** - In-app lexicon editor with table-based term mapping (⚙️ button)
 - ✅ **Robust AI Parsing** - Handles multiple response formats (JSON, markdown, prose)
 - ✅ **dotenv Integration** - Automatic .env loading for API keys
 - ✅ **Custom AI Instructions** - Free-form guidance field in lexicon
-- ✅ **Test Coverage** - Increased from 43 to 100+ passing tests
+- ✅ **Test Coverage** - Increased from 43 to 518 passing tests
+- ✅ **LRU Cache Invalidation** - Fixed file rename reversion bug with automatic cache clearing
+- ✅ **Multi-Select & Batch Operations** - Select multiple files, process with "Process Selected" button
+- ✅ **Keyboard Shortcuts** - Command palette (Cmd+K), Save (Cmd+S), AI Assist (Cmd+I)
+- ✅ **Virtual Scrolling** - 60fps performance with 1000+ files
 
 ### Initial Release Fixes
 - Fixed critical console error (window.electronAPI undefined)

@@ -38,22 +38,22 @@
 ## Current State
 
 ### Active Branch
-`main` (production baseline) + active feature development
+`fix/ce-issues-2` (cache invalidation + multi-select features)
 
 ### Recent Work (Last 10 Commits - November 2025)
-1. `276518c` - docs: add comprehensive batch processing documentation (Issue #24)
-2. `07a1916` - fix: create metadata entries for all files during scan (Issue #24)
-3. `a420566` - fix: increase ID field width to prevent digit cutoff
-4. `0685757` - fix: add duplicate ID detection with counter suffix
-5. `bbc1390` - fix: clear stale batch queue on folder change (Issue #24)
-6. `c7e496c` - test: add retroactive validation for batch processing fixes (Issue #24)
-7. `bc41535` - Merge pull request #49 (system documentation update)
-8. `2949433` - docs: validate production readiness - all 424 tests passing
-9. `a819e33` - docs: restore system documentation coherence (v1.1.0)
-10. Previous: Video transcoding feature, coordination foundation
+1. `0259309` - feat: fix rename reversion with cache invalidation (GREEN)
+2. `2b8f2bc` - test: add cache invalidation tests for rename operations (RED)
+3. `5027c8a` - feat: implement 'Process Selected (N files)' button (GREEN)
+4. `8a09652` - test: add failing tests for 'Process Selected' button (RED)
+5. `655c473` - feat: wire up multi-select state management in App.tsx
+6. `842c8b2` - feat: implement Sidebar multi-select (GREEN phase)
+7. `93716bf` - test: add failing tests for Sidebar multi-select (RED phase)
+8. `276518c` - docs: add comprehensive batch processing documentation (Issue #24)
+9. `07a1916` - fix: create metadata entries for all files during scan (Issue #24)
+10. `a420566` - fix: increase ID field width to prevent digit cutoff
 
-### Current Implementation State (2025-11-11)
-- **Working Tree:** Clean (all changes committed)
+### Current Implementation State (2025-11-12)
+- **Working Tree:** Clean (all changes committed on fix/ce-issues-2)
 - **Development Status:** ACTIVE - Electron app is production path
 - **Major Features Completed:**
   - ✅ Keyboard shortcuts & command palette (Issue #22, PR #40)
@@ -63,6 +63,8 @@
   - ✅ Result type schemas with versioning (Issue #20, PR #39, ADR-008)
   - ✅ Video 4-part naming with action field (Nov 11)
   - ✅ Batch processing with rate limiting (Issue #24)
+  - ✅ Multi-select file operations (Nov 12)
+  - ✅ LRU cache invalidation fix (Nov 12) - prevents file rename reversion
 - **Quality Improvements:**
   - ✅ TypeScript strict mode - all `any` types eliminated (Issue #41)
   - ✅ ESLint v9 migration with flat config (Issue #45)
@@ -80,18 +82,20 @@
 - **Command:** `npm run typecheck`
 
 ### ✅ Tests
-- **Status:** PASS - ALL TESTS PASSING (446 tests, 28 test files)
+- **Status:** PASS - ALL TESTS PASSING (518 tests, 33 test files)
 - **Command:** `npm test` (now uses `vitest run` for single execution)
-- **Validated:** 2025-11-11 (test script fixed to exit cleanly)
+- **Validated:** 2025-11-12 (cache invalidation tests added)
 - **Performance:** ~18s test suite execution (includes rate limiter timing tests)
+- **Recent Additions:**
+  - +3 cache invalidation tests (FileManager LRU cache behavior)
+  - +22 tests from batch processing validation (Issue #24)
 - **Previous Issues RESOLVED:**
   - Test hanging: Fixed by changing `vitest` to `vitest run` in package.json
   - 18 failing tests from Nov 9: All resolved (action field + metadata writer fixes)
-  - Test count increase: +22 tests from batch processing validation (Issue #24)
 
 ## Known Issues
 
-### ✅ ALL ISSUES RESOLVED (2025-11-11)
+### ✅ ALL ISSUES RESOLVED (2025-11-12)
 
 **Security Hardening Complete (Implementation-Lead, Nov 11):**
 - ✅ **BLOCKING #1:** Command injection vulnerability fixed (Security Report 007)
@@ -135,8 +139,8 @@
 - Tier 2-3 features: ✅ IMPLEMENTED (Virtual scrolling, Keyboard shortcuts, Batch processing)
 - Quality improvements: ✅ COMPLETE (TypeScript strict, ESLint v9, Test script fix)
 - Security hardening: ✅ COMPLETE (Command injection + Media server auth fixed)
-- Quality gates: Lint ✅, Typecheck ✅, Tests ✅ (469 passing, +23 security tests)
-- **Status:** Production deployment ready - all quality gates passed, security hardened
+- Quality gates: Lint ✅, Typecheck ✅, Tests ✅ (518 passing, +26 since security hardening)
+- **Status:** Production deployment ready - all quality gates passed, security hardened, cache bug fixed
 
 ## Security Status (Nov 11, 2025)
 **Security Report 007 - BLOCKING Issues:** ✅ RESOLVED
@@ -156,4 +160,4 @@
 **Security Test Coverage:** +23 security tests (command injection + media server auth)
 
 ## Last Updated
-2025-11-11 (Security hardening complete - implementation-lead)
+2025-11-12 (Cache invalidation fix + multi-select features - implementation-lead)
