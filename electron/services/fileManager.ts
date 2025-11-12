@@ -125,6 +125,14 @@ export class FileManager {
   }
 
   /**
+   * Invalidate scan cache for a specific folder path
+   * Call this after file system operations that modify folder contents (rename, delete, etc.)
+   */
+  invalidateCache(folderPath: string): void {
+    this.scanCache.delete(folderPath);
+  }
+
+  /**
    * Rename a file with the format: {ID}-{kebab-case-name}.{ext}
    */
   async renameFile(
@@ -142,6 +150,10 @@ export class FileManager {
     const newPath = path.join(dir, newFilename);
 
     await fs.rename(currentPath, newPath);
+
+    // Invalidate cache after successful rename - prevents stale filename in UI
+    this.invalidateCache(dir);
+
     return newPath;
   }
 
