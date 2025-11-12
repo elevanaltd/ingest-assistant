@@ -106,7 +106,9 @@ describe('Sidebar - Multi-Select Feature (TDD RED)', () => {
     const firstCheckbox = checkboxes[0];
 
     // Cmd+click to toggle selection
-    await user.click(firstCheckbox, { metaKey: true });
+    await user.keyboard('{Meta>}');
+    await user.click(firstCheckbox);
+    await user.keyboard('{/Meta}');
 
     // Expect: onToggleSelection called with file ID
     expect(onToggleSelection).toHaveBeenCalledWith('file-001', true);
@@ -193,7 +195,9 @@ describe('Sidebar - Multi-Select Feature (TDD RED)', () => {
     const thirdCheckbox = checkboxes[2]; // file-003
 
     // Shift+click third checkbox (should select file-002 and file-003)
-    await user.click(thirdCheckbox, { shiftKey: true });
+    await user.keyboard('{Shift>}');
+    await user.click(thirdCheckbox);
+    await user.keyboard('{/Shift}');
 
     // Expect: onToggleSelection called for range
     // Note: Implementation details - might call once with array or multiple times
