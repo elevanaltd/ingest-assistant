@@ -38,24 +38,30 @@
 ## Current State
 
 ### Active Branch
-`fix/ce-issues-2` (cache invalidation + multi-select features)
+`fix/ce-issues-2` (JSON v2.0 schema migration + cache invalidation + multi-select)
 
 ### Recent Work (Last 10 Commits - November 2025)
-1. `0259309` - feat: fix rename reversion with cache invalidation (GREEN)
-2. `2b8f2bc` - test: add cache invalidation tests for rename operations (RED)
-3. `5027c8a` - feat: implement 'Process Selected (N files)' button (GREEN)
-4. `8a09652` - test: add failing tests for 'Process Selected' button (RED)
-5. `655c473` - feat: wire up multi-select state management in App.tsx
-6. `842c8b2` - feat: implement Sidebar multi-select (GREEN phase)
-7. `93716bf` - test: add failing tests for Sidebar multi-select (RED phase)
-8. `276518c` - docs: add comprehensive batch processing documentation (Issue #24)
-9. `07a1916` - fix: create metadata entries for all files during scan (Issue #24)
-10. `a420566` - fix: increase ID field width to prevent digit cutoff
+1. `28e6827` - fix: resolve all TypeScript build errors for v2.0 schema (Nov 13)
+2. `d68685b` - fix: complete metadata→keywords migration in serializer and aiService (Nov 13)
+3. `6c0d596` - fix: update Zod schemas and aiService for v2.0 keywords field (Nov 13)
+4. `192b71d` - feat: migrate to JSON schema v2.0 (Issue #54 alignment) (Nov 13)
+5. `0259309` - feat: fix rename reversion with cache invalidation (GREEN)
+6. `2b8f2bc` - test: add cache invalidation tests for rename operations (RED)
+7. `5027c8a` - feat: implement 'Process Selected (N files)' button (GREEN)
+8. `8a09652` - test: add failing tests for 'Process Selected' button (RED)
+9. `655c473` - feat: wire up multi-select state management in App.tsx
+10. `842c8b2` - feat: implement Sidebar multi-select (GREEN phase)
 
-### Current Implementation State (2025-11-12)
+### Current Implementation State (2025-11-13)
 - **Working Tree:** Clean (all changes committed on fix/ce-issues-2)
 - **Development Status:** ACTIVE - Electron app is production path
 - **Major Features Completed:**
+  - ✅ **JSON Schema v2.0 Migration (Issue #54, Nov 13)** - Complete metadata schema overhaul
+    - metadata → keywords field rename (XMP-dc:Description alignment)
+    - Audit trail (createdAt, createdBy, modifiedAt, modifiedBy, version)
+    - Schema versioning (_schema: "2.0") for future migrations
+    - Structured fields required (location, subject, action, shotType)
+    - CEP Panel integration ready
   - ✅ Keyboard shortcuts & command palette (Issue #22, PR #40)
   - ✅ Virtual scrolling for file lists (Issue #23, PR #42)
   - ✅ Paginated file loading (Issue #19)
@@ -84,9 +90,10 @@
 ### ✅ Tests
 - **Status:** PASS - ALL TESTS PASSING (518 tests, 33 test files)
 - **Command:** `npm test` (now uses `vitest run` for single execution)
-- **Validated:** 2025-11-12 (cache invalidation tests added)
+- **Validated:** 2025-11-13 (JSON v2.0 migration complete)
 - **Performance:** ~18s test suite execution (includes rate limiter timing tests)
 - **Recent Additions:**
+  - JSON v2.0 migration: All test mocks updated with new schema
   - +3 cache invalidation tests (FileManager LRU cache behavior)
   - +22 tests from batch processing validation (Issue #24)
 - **Previous Issues RESOLVED:**
@@ -139,8 +146,9 @@
 - Tier 2-3 features: ✅ IMPLEMENTED (Virtual scrolling, Keyboard shortcuts, Batch processing)
 - Quality improvements: ✅ COMPLETE (TypeScript strict, ESLint v9, Test script fix)
 - Security hardening: ✅ COMPLETE (Command injection + Media server auth fixed)
-- Quality gates: Lint ✅, Typecheck ✅, Tests ✅ (518 passing, +26 since security hardening)
-- **Status:** Production deployment ready - all quality gates passed, security hardened, cache bug fixed
+- JSON v2.0 Migration: ✅ COMPLETE (Schema versioning, audit trail, CEP Panel alignment)
+- Quality gates: Lint ✅, Typecheck ✅, Tests ✅ (518 passing), Build ✅
+- **Status:** Production deployment ready - all quality gates passed, JSON v2.0 migration complete
 
 ## Security Status (Nov 11, 2025)
 **Security Report 007 - BLOCKING Issues:** ✅ RESOLVED
@@ -160,4 +168,4 @@
 **Security Test Coverage:** +23 security tests (command injection + media server auth)
 
 ## Last Updated
-2025-11-12 (Cache invalidation fix + multi-select features - implementation-lead)
+2025-11-13 (JSON v2.0 schema migration complete - implementation-lead + error-architect)
