@@ -42,23 +42,6 @@ export class MetadataStore {
 
         const metadata = fileData[key] as FileMetadata;
 
-        // V1.0 → V2.0 MIGRATION: Rename "metadata" field to "keywords"
-        if (this.schemaVersion === '1.0') {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const legacyMetadata = metadata as any;
-          if (legacyMetadata.metadata && !metadata.keywords) {
-            metadata.keywords = Array.isArray(legacyMetadata.metadata)
-              ? legacyMetadata.metadata
-              : [];
-            console.log(`[MetadataStore] Migrated v1.0 file ${key}: metadata → keywords`);
-          }
-        }
-
-        // Ensure keywords exists (defensive)
-        if (!metadata.keywords) {
-          metadata.keywords = [];
-        }
-
         // Convert date strings back to Date objects
         if (metadata.createdAt) {
           metadata.createdAt = new Date(metadata.createdAt);

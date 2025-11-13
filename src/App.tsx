@@ -134,10 +134,7 @@ function App() {
         setMainName('');
       }
 
-      // Backward compatibility: v1.0 used "metadata" field, v2.0 uses "keywords"
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const keywordsArray = currentFile.keywords || (currentFile as any).metadata || [];
-      setKeywords(Array.isArray(keywordsArray) ? keywordsArray.join(', ') : '');
+      setKeywords(currentFile.keywords.join(', '));
 
       // Load file as data URL
       window.electronAPI.readFileAsDataUrl(currentFile.filePath)
@@ -335,9 +332,7 @@ function App() {
         setMainName(result.mainName);
       }
 
-      // Backward compatibility: handle both array and potential v1.0 format
-      const keywordsArray = result.keywords || [];
-      setKeywords(Array.isArray(keywordsArray) ? keywordsArray.join(', ') : '');
+      setKeywords(result.keywords.join(', '));
       setStatusMessage(`✓ AI Analysis complete! Confidence: ${(result.confidence * 100).toFixed(0)}%`);
     } catch (error) {
       console.error('AI analysis failed:', error);

@@ -611,7 +611,7 @@ ipcMain.handle('file:update-metadata', async (_event, fileId: string, metadata: 
     console.log('[main.ts] file:update-metadata called with fileId:', fileId, 'metadata:', metadata);
 
     // Security: Validate input schema
-    const validated = FileUpdateMetadataSchema.parse({ fileId, metadata });
+    const validated = FileUpdateMetadataSchema.parse({ fileId, keywords: metadata });
 
     if (!currentFolderPath) {
       throw new Error('No folder selected');
