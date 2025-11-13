@@ -47,12 +47,16 @@ describe('Batch Processing - LogComment & Reprocess Integration', () => {
           processedByAI: false,
           mainName: '',
           keywords: [] as string[],
-          lastModified: new Date(),
           fileType: 'video',
-          location: undefined,
-          subject: undefined,
-          action: undefined,
-          shotType: undefined,
+          createdAt: new Date(),
+          createdBy: 'ingest-assistant',
+          modifiedAt: new Date(),
+          modifiedBy: 'ingest-assistant',
+          version: '2.0',
+          location: '',
+          subject: '',
+          action: '',
+          shotType: '',
         })),
         updateFileMetadata: vi.fn(async (_fileId: string, _metadata: FileMetadata) => true),
       };
@@ -64,7 +68,7 @@ describe('Batch Processing - LogComment & Reprocess Integration', () => {
         confidence: 0.85,
         location: 'kitchen',
         subject: 'hob-controls',
-        action: undefined,
+        action: '',
         shotType: 'CU',
       };
 
@@ -104,7 +108,7 @@ describe('Batch Processing - LogComment & Reprocess Integration', () => {
           {
             location: 'kitchen',
             subject: 'hob-controls',
-            action: undefined,
+            action: '',
             shotType: 'CU',
           }
         );
@@ -198,11 +202,15 @@ describe('Batch Processing - LogComment & Reprocess Integration', () => {
           processedByAI: true, // Already processed
           mainName: 'old-kitchen-oven-WS',
           keywords: ['old', 'metadata'],
-          lastModified: new Date(),
           fileType: 'image',
+          createdAt: new Date(),
+          createdBy: 'ingest-assistant',
+          modifiedAt: new Date(),
+          modifiedBy: 'ingest-assistant',
+          version: '2.0',
           location: 'old-location',
           subject: 'old-subject',
-          action: undefined,
+          action: '',
           shotType: 'WS',
         })),
         updateFileMetadata: vi.fn(async (_fileId: string, _metadata: FileMetadata) => true),
@@ -215,7 +223,7 @@ describe('Batch Processing - LogComment & Reprocess Integration', () => {
           confidence: 0.95,
           location: 'new-location',
           subject: 'new-subject',
-          action: undefined,
+          action: '',
           shotType: 'CU',
         })),
       };
@@ -274,7 +282,7 @@ describe('Batch Processing - LogComment & Reprocess Integration', () => {
           confidence: 0.88,
           location: 'kitchen',
           subject: 'sink',
-          action: undefined,
+          action: '',
           shotType: 'MID',
         })),
       };
@@ -289,8 +297,16 @@ describe('Batch Processing - LogComment & Reprocess Integration', () => {
           processedByAI: false, // Never processed
           mainName: '',
           keywords: [] as string[],
-          lastModified: new Date(),
           fileType: 'image',
+          createdAt: new Date(),
+          createdBy: 'ingest-assistant',
+          modifiedAt: new Date(),
+          modifiedBy: 'ingest-assistant',
+          version: '2.0',
+          location: '',
+          subject: '',
+          action: '',
+          shotType: '',
         })),
         updateFileMetadata: vi.fn(async (_fileId: string, _metadata: FileMetadata) => true),
       };

@@ -243,10 +243,15 @@ describe('file:list-range - Pagination', () => {
       mainName: 'test-name',
       keywords: ['tag1', 'tag2'],
       processedByAI: true,
-      lastModified: new Date('2024-01-01'),
       fileType: 'image',
+      createdAt: new Date('2024-01-01'),
+      createdBy: 'ingest-assistant',
+      modifiedAt: new Date('2024-01-01'),
+      modifiedBy: 'ingest-assistant',
+      version: '2.0',
       location: 'kitchen',
       subject: 'oven',
+      action: '',
       shotType: 'WS',
     });
 

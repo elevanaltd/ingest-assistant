@@ -215,7 +215,11 @@ describe('IPC Handlers: Structured Metadata Persistence', () => {
           mainName: 'kitchen-oven-cleaning-WS',
           keywords: [],
           processedByAI: false,
-          lastModified: new Date(),
+          createdAt: new Date(),
+          createdBy: 'ingest-assistant',
+          modifiedAt: new Date(),
+          modifiedBy: 'ingest-assistant',
+          version: '2.0',
           fileType: 'video',
           location: structured.location,
           subject: structured.subject,
@@ -246,15 +250,19 @@ describe('IPC Handlers: Structured Metadata Persistence', () => {
           mainName: 'kitchen-oven-CU',
           keywords: [],
           processedByAI: false,
-          lastModified: new Date(),
+          createdAt: new Date(),
+          createdBy: 'ingest-assistant',
+          modifiedAt: new Date(),
+          modifiedBy: 'ingest-assistant',
+          version: '2.0',
           fileType: 'image',
           location: structured.location,
           subject: structured.subject,
-          action: undefined,
+          action: '',
           shotType: structured.shotType,
         };
 
-        expect(fileMetadata.action).toBeUndefined();
+        expect(fileMetadata.action).toBe('');
         expect(fileMetadata.location).toBe('kitchen');
         expect(fileMetadata.subject).toBe('oven');
         expect(fileMetadata.shotType).toBe('CU');
@@ -272,10 +280,15 @@ describe('IPC Handlers: Structured Metadata Persistence', () => {
           mainName: 'kitchen-oven-WS',
           keywords: [],
           processedByAI: false,
-          lastModified: new Date(),
+          createdAt: new Date(),
+          createdBy: 'ingest-assistant',
+          modifiedAt: new Date(),
+          modifiedBy: 'ingest-assistant',
+          version: '2.0',
           fileType: 'video',
           location: 'kitchen',
           subject: 'oven',
+          action: '',
           shotType: 'WS',
         };
 
@@ -288,7 +301,7 @@ describe('IPC Handlers: Structured Metadata Persistence', () => {
 
         // Simulate handler update logic
         if (structured && 'action' in structured) {
-          fileMetadata.action = structured.action || undefined;
+          fileMetadata.action = structured.action || '';
         }
 
         // Assert action was added
@@ -305,7 +318,11 @@ describe('IPC Handlers: Structured Metadata Persistence', () => {
           mainName: 'kitchen-oven-cleaning-WS',
           keywords: [],
           processedByAI: false,
-          lastModified: new Date(),
+          createdAt: new Date(),
+          createdBy: 'ingest-assistant',
+          modifiedAt: new Date(),
+          modifiedBy: 'ingest-assistant',
+          version: '2.0',
           fileType: 'video',
           location: 'kitchen',
           subject: 'oven',
@@ -322,11 +339,11 @@ describe('IPC Handlers: Structured Metadata Persistence', () => {
 
         // Simulate handler update logic (the FIX)
         if (structured && 'action' in structured) {
-          fileMetadata.action = structured.action || undefined;
+          fileMetadata.action = structured.action || '';
         }
 
-        // Assert action was cleared
-        expect(fileMetadata.action).toBeUndefined();
+        // Assert action was cleared (v2.0: empty string, not undefined)
+        expect(fileMetadata.action).toBe('');
       });
 
       it('should not modify fields not provided in structured update', () => {
@@ -339,7 +356,11 @@ describe('IPC Handlers: Structured Metadata Persistence', () => {
           mainName: 'kitchen-oven-cleaning-WS',
           keywords: [],
           processedByAI: false,
-          lastModified: new Date(),
+          createdAt: new Date(),
+          createdBy: 'ingest-assistant',
+          modifiedAt: new Date(),
+          modifiedBy: 'ingest-assistant',
+          version: '2.0',
           fileType: 'video',
           location: 'kitchen',
           subject: 'oven',

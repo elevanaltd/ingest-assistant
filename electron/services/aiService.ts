@@ -210,6 +210,10 @@ Lexicon rules:
           mainName: parsed.mainName || '',
           keywords: Array.isArray(parsed.keywords) ? parsed.keywords : (Array.isArray(parsed.metadata) ? parsed.metadata : []),
           confidence: 0.8,
+          location: '',
+          subject: '',
+          action: '',
+          shotType: '',
         };
       } catch (jsonError) {
         // Strategy 3: Parse markdown/prose format
@@ -222,6 +226,10 @@ Lexicon rules:
         mainName: '',
         keywords: [],
         confidence: 0,
+        location: '',
+        subject: '',
+        action: '',
+        shotType: '',
       };
     }
   }
@@ -281,6 +289,10 @@ Lexicon rules:
       mainName: mainName || '',
       keywords: metadata.length > 0 ? metadata : [],
       confidence: mainName || metadata.length > 0 ? 0.7 : 0,
+      location: '',
+      subject: '',
+      action: '',
+      shotType: '',
     };
   }
 
@@ -309,6 +321,10 @@ Lexicon rules:
         mainName: '',
         keywords: [],
         confidence: 0,
+        location: '',
+        subject: '',
+        action: '',
+        shotType: '',
       };
     }
   }
@@ -485,6 +501,10 @@ Lexicon rules:
         mainName: '',
         keywords: [],
         confidence: 0,
+        location: '',
+        subject: '',
+        action: '',
+        shotType: '',
       };
     }
   }
@@ -531,15 +551,11 @@ Lexicon rules:
       mainName,
       keywords: metadata,
       confidence: avgConfidence,
-      // Include structured components if found
-      ...(firstWithStructure
-        ? {
-            location: firstWithStructure.location,
-            subject: firstWithStructure.subject,
-            action: firstWithStructure.action,
-            shotType: firstWithStructure.shotType,
-          }
-        : {}),
+      // Include structured components (required in v2.0)
+      location: firstWithStructure?.location || '',
+      subject: firstWithStructure?.subject || '',
+      action: firstWithStructure?.action || '',
+      shotType: firstWithStructure?.shotType || '',
     };
   }
 
@@ -596,7 +612,7 @@ Lexicon rules:
 
     // Count frequency of each tag
     for (const analysis of analyses) {
-      for (const tag of analysis.metadata) {
+      for (const tag of analysis.keywords) {
         tagFrequency.set(tag, (tagFrequency.get(tag) || 0) + 1);
       }
     }

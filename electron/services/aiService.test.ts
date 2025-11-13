@@ -181,11 +181,11 @@ describe('AIService', () => {
       // should treat as legacy format (no structured extraction)
       expect(result.mainName).toBe('hallway-consumer-unit-MID');
       expect(result.keywords).toEqual(['electrical', 'utility']);
-      // Should NOT have structured fields extracted from naive splitting
-      expect(result.subject).toBeUndefined();
-      expect(result.action).toBeUndefined();
-      expect(result.location).toBeUndefined();
-      expect(result.shotType).toBeUndefined();
+      // Should NOT have structured fields extracted from naive splitting (v2.0: empty string)
+      expect(result.subject).toBe('');
+      expect(result.action).toBe('');
+      expect(result.location).toBe('');
+      expect(result.shotType).toBe('');
     });
   });
 
@@ -211,7 +211,11 @@ describe('AIService', () => {
       const mockAnalysis = {
         mainName: 'kitchen-oven-CU',
         keywords: ['kitchen', 'oven', 'appliance'],
-        confidence: 0.9
+        confidence: 0.9,
+        location: 'kitchen',
+        subject: 'oven',
+        action: '',
+        shotType: 'CU' as const
       };
       vi.spyOn(aiService, 'analyzeImage').mockResolvedValue(mockAnalysis);
 

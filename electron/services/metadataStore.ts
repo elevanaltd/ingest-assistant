@@ -1,6 +1,6 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import type { FileMetadata } from '../../src/types';
+import type { FileMetadata, ShotType } from '../../src/types';
 
 const SCHEMA_VERSION = '2.0';
 const APP_NAME = 'ingest-assistant';
@@ -171,7 +171,7 @@ export class MetadataStore {
       location: params.location || '',
       subject: params.subject || '',
       action: params.action || '',
-      shotType: params.shotType || '',
+      shotType: (params.shotType as ShotType) || '',
 
       // Processing state
       processedByAI: params.processedByAI || false,
