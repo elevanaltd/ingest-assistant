@@ -1,0 +1,15 @@
+# Supabase Project Configuration
+# Used by global safety hooks for project-specific settings
+
+project_id: zbxvjyrbkycbfhwmmnmy
+migrations_dir: supabase/migrations
+skill_name: supabase-operations
+
+# Optional: Override destructive patterns (adds to defaults)
+# custom_destructive_patterns:
+#   - "CUSTOM_PATTERN"
+
+# Optional: Disable specific checks (use with caution)
+# disable_checks:
+#   - state_sync  # Skip remote sync validation
+#   - concurrent_indexes  # Allow non-concurrent index creation
