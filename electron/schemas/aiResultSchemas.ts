@@ -43,16 +43,24 @@ export const ShotTypeSchema = z.enum([
  * ```json
  * {
  *   "mainName": "kitchen-oven-controls",
- *   "metadata": ["kitchen", "oven", "controls"],
- *   "confidence": 0.85
+ *   "keywords": ["kitchen", "oven", "controls"],
+ *   "confidence": 0.85,
+ *   "location": "kitchen",
+ *   "subject": "oven",
+ *   "action": "",
+ *   "shotType": "CU"
  * }
  * ```
  */
 export const AIAnalysisResultV1Schema = z.object({
   version: z.literal('1').optional().default('1'),
   mainName: z.string(),
-  metadata: z.array(z.string()),
+  keywords: z.array(z.string()),
   confidence: z.number().min(0).max(1),
+  location: z.string().optional(),
+  subject: z.string().optional(),
+  action: z.string().optional(),
+  shotType: z.string().optional(),
 });
 
 /**
@@ -74,7 +82,7 @@ export const AIAnalysisResultV1Schema = z.object({
  * {
  *   "version": "2",
  *   "mainName": "kitchen-oven-installing-CU",
- *   "metadata": ["kitchen", "oven", "installation"],
+ *   "keywords": ["kitchen", "oven", "installation"],
  *   "confidence": 0.9,
  *   "location": "kitchen",
  *   "subject": "oven",
@@ -86,12 +94,12 @@ export const AIAnalysisResultV1Schema = z.object({
 export const AIAnalysisResultV2Schema = z.object({
   version: z.literal('2'),
   mainName: z.string(),
-  metadata: z.array(z.string()),
+  keywords: z.array(z.string()),
   confidence: z.number().min(0).max(1),
   location: z.string().optional(),
   subject: z.string().optional(),
   action: z.string().optional(),
-  shotType: ShotTypeSchema.optional(),
+  shotType: z.union([ShotTypeSchema, z.literal('')]).optional(),
 });
 
 /**

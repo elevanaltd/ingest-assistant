@@ -197,7 +197,7 @@ Lexicon rules:
             action: parsed.action || undefined,
             shotType: parsed.shotType,
             mainName: parsed.mainName || `${parsed.location}-${parsed.subject}-${parsed.shotType}`,
-            metadata: Array.isArray(parsed.metadata) ? parsed.metadata : [],
+            keywords: Array.isArray(parsed.keywords) ? parsed.keywords : (Array.isArray(parsed.metadata) ? parsed.metadata : []),
             confidence: 0.8,
           };
         }
@@ -208,8 +208,12 @@ Lexicon rules:
         console.log('[AIService] Legacy format detected (no structured fields)');
         return {
           mainName: parsed.mainName || '',
-          metadata: Array.isArray(parsed.metadata) ? parsed.metadata : [],
+          keywords: Array.isArray(parsed.keywords) ? parsed.keywords : (Array.isArray(parsed.metadata) ? parsed.metadata : []),
           confidence: 0.8,
+          location: '',
+          subject: '',
+          action: '',
+          shotType: '',
         };
       } catch (jsonError) {
         // Strategy 3: Parse markdown/prose format
@@ -220,8 +224,12 @@ Lexicon rules:
       console.error('Response was:', response);
       return {
         mainName: '',
-        metadata: [],
+        keywords: [],
         confidence: 0,
+        location: '',
+        subject: '',
+        action: '',
+        shotType: '',
       };
     }
   }
@@ -279,8 +287,12 @@ Lexicon rules:
 
     return {
       mainName: mainName || '',
-      metadata: metadata.length > 0 ? metadata : [],
+      keywords: metadata.length > 0 ? metadata : [],
       confidence: mainName || metadata.length > 0 ? 0.7 : 0,
+      location: '',
+      subject: '',
+      action: '',
+      shotType: '',
     };
   }
 
@@ -307,8 +319,12 @@ Lexicon rules:
       console.error('AI analysis failed:', error);
       return {
         mainName: '',
-        metadata: [],
+        keywords: [],
         confidence: 0,
+        location: '',
+        subject: '',
+        action: '',
+        shotType: '',
       };
     }
   }
@@ -483,8 +499,12 @@ Lexicon rules:
       console.error('[AIService] Video analysis failed:', error);
       return {
         mainName: '',
-        metadata: [],
+        keywords: [],
         confidence: 0,
+        location: '',
+        subject: '',
+        action: '',
+        shotType: '',
       };
     }
   }
@@ -503,8 +523,12 @@ Lexicon rules:
     if (analyses.length === 0) {
       return {
         mainName: '',
-        metadata: [],
+        keywords: [],
         confidence: 0,
+        location: "",
+        subject: "",
+        action: "",
+        shotType: "",
       };
     }
 
@@ -525,17 +549,13 @@ Lexicon rules:
 
     return {
       mainName,
-      metadata,
+      keywords: metadata,
       confidence: avgConfidence,
-      // Include structured components if found
-      ...(firstWithStructure
-        ? {
-            location: firstWithStructure.location,
-            subject: firstWithStructure.subject,
-            action: firstWithStructure.action,
-            shotType: firstWithStructure.shotType,
-          }
-        : {}),
+      // Include structured components (required in v2.0)
+      location: firstWithStructure?.location || '',
+      subject: firstWithStructure?.subject || '',
+      action: firstWithStructure?.action || '',
+      shotType: firstWithStructure?.shotType || '',
     };
   }
 
@@ -592,7 +612,7 @@ Lexicon rules:
 
     // Count frequency of each tag
     for (const analysis of analyses) {
-      for (const tag of analysis.metadata) {
+      for (const tag of analysis.keywords) {
         tagFrequency.set(tag, (tagFrequency.get(tag) || 0) + 1);
       }
     }

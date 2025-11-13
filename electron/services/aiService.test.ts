@@ -36,13 +36,13 @@ describe('AIService', () => {
     it('should parse valid JSON response', () => {
       const response = JSON.stringify({
         mainName: 'oven-control-panel',
-        metadata: ['oven', 'control panel'],
+        keywords: ['oven', 'control panel'],
       });
 
       const result = aiService.parseAIResponse(response);
 
       expect(result.mainName).toBe('oven-control-panel');
-      expect(result.metadata).toEqual(['oven', 'control panel']);
+      expect(result.keywords).toEqual(['oven', 'control panel']);
       expect(result.confidence).toBeGreaterThan(0);
     });
 
@@ -52,7 +52,7 @@ describe('AIService', () => {
       const result = aiService.parseAIResponse(response);
 
       expect(result.mainName).toBe('');
-      expect(result.metadata).toEqual([]);
+      expect(result.keywords).toEqual([]);
       expect(result.confidence).toBe(0);
     });
 
@@ -67,7 +67,7 @@ describe('AIService', () => {
       const result = aiService.parseAIResponse(response);
 
       expect(result.mainName).toBe('microwave-controls');
-      expect(result.metadata).toEqual(['microwave', 'control panel']);
+      expect(result.keywords).toEqual(['microwave', 'control panel']);
       expect(result.confidence).toBe(0.8);
     });
 
@@ -82,7 +82,7 @@ describe('AIService', () => {
       const result = aiService.parseAIResponse(response);
 
       expect(result.mainName).toBe('oven-panel');
-      expect(result.metadata).toEqual(['oven', 'panel']);
+      expect(result.keywords).toEqual(['oven', 'panel']);
       expect(result.confidence).toBe(0.8);
     });
 
@@ -92,7 +92,7 @@ describe('AIService', () => {
       const result = aiService.parseAIResponse(response);
 
       expect(result.mainName).toBe('siemens-microwave-control-panel');
-      expect(result.metadata).toEqual(['appliance', 'control panel', 'european', 'kitchen']);
+      expect(result.keywords).toEqual(['appliance', 'control panel', 'european', 'kitchen']);
       expect(result.confidence).toBe(0.8);
     });
 
@@ -108,8 +108,8 @@ describe('AIService', () => {
       const result = aiService.parseAIResponse(response);
 
       expect(result.mainName).toBe('under-sink-bin');
-      expect(result.metadata).toContain('furniture');
-      expect(result.metadata).toContain('household');
+      expect(result.keywords).toContain('furniture');
+      expect(result.keywords).toContain('household');
       expect(result.confidence).toBe(0.7);
     });
 
@@ -122,7 +122,7 @@ describe('AIService', () => {
       const result = aiService.parseAIResponse(response);
 
       expect(result.mainName).toBe('minimalist-sink-cabinet');
-      expect(result.metadata).toEqual(['sustainable living', 'home', 'kitchen']);
+      expect(result.keywords).toEqual(['sustainable living', 'home', 'kitchen']);
       expect(result.confidence).toBe(0.7);
     });
 
@@ -134,7 +134,7 @@ describe('AIService', () => {
         subject: 'consumer-unit',
         shotType: 'MID',
         mainName: 'hallway-consumer-unit-MID',
-        metadata: ['electrical', 'utility'],
+        keywords: ['electrical', 'utility'],
       });
 
       const result = aiService.parseAIResponse(response);
@@ -154,7 +154,7 @@ describe('AIService', () => {
         action: 'turning-on',
         shotType: 'MID',
         mainName: 'kitchen-cooker-hood-turning-on-MID',
-        metadata: ['appliance', 'demo'],
+        keywords: ['appliance', 'demo'],
       });
 
       const result = aiService.parseAIResponse(response);
@@ -172,7 +172,7 @@ describe('AIService', () => {
       // Instead, it should return legacy format without attempting structured extraction
       const response = JSON.stringify({
         mainName: 'hallway-consumer-unit-MID',
-        metadata: ['electrical', 'utility'],
+        keywords: ['electrical', 'utility'],
       });
 
       const result = aiService.parseAIResponse(response);
@@ -180,12 +180,12 @@ describe('AIService', () => {
       // When AI provides only mainName without structured fields,
       // should treat as legacy format (no structured extraction)
       expect(result.mainName).toBe('hallway-consumer-unit-MID');
-      expect(result.metadata).toEqual(['electrical', 'utility']);
-      // Should NOT have structured fields extracted from naive splitting
-      expect(result.subject).toBeUndefined();
-      expect(result.action).toBeUndefined();
-      expect(result.location).toBeUndefined();
-      expect(result.shotType).toBeUndefined();
+      expect(result.keywords).toEqual(['electrical', 'utility']);
+      // Should NOT have structured fields extracted from naive splitting (v2.0: empty string)
+      expect(result.subject).toBe('');
+      expect(result.action).toBe('');
+      expect(result.location).toBe('');
+      expect(result.shotType).toBe('');
     });
   });
 
@@ -210,8 +210,12 @@ describe('AIService', () => {
       // Spy on analyzeImage method
       const mockAnalysis = {
         mainName: 'kitchen-oven-CU',
-        metadata: ['kitchen', 'oven', 'appliance'],
-        confidence: 0.9
+        keywords: ['kitchen', 'oven', 'appliance'],
+        confidence: 0.9,
+        location: 'kitchen',
+        subject: 'oven',
+        action: '',
+        shotType: 'CU' as const
       };
       vi.spyOn(aiService, 'analyzeImage').mockResolvedValue(mockAnalysis);
 

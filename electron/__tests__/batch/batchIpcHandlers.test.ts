@@ -282,7 +282,7 @@ describe('Batch IPC Handlers', () => {
           filePath: `/path/${fileId}.jpg`,
           processedByAI: false,
           mainName: '',
-          metadata: [] as string[],
+          keywords: [] as string[],
         })),
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
         updateFileMetadata: vi.fn(async (_fileId: string, _metadata: unknown) => true),
@@ -291,13 +291,13 @@ describe('Batch IPC Handlers', () => {
       const fileId = 'file1';
       const aiResult = {
         mainName: 'kitchen-wine-cooler-WS',
-        metadata: ['built-in', 'wine cooler'],
+        keywords: ['built-in', 'wine cooler'],
         confidence: 0.85,
       };
 
       const fileMetadata = await mockMetadataStore.getFileMetadata(fileId);
       fileMetadata.mainName = aiResult.mainName;
-      fileMetadata.metadata = aiResult.metadata;
+      fileMetadata.keywords = aiResult.keywords;
       fileMetadata.processedByAI = true;
 
       await mockMetadataStore.updateFileMetadata(fileId, fileMetadata);
@@ -338,7 +338,7 @@ describe('Batch IPC Handlers', () => {
           filePath: `/path/to/${fileId}.jpg`,
           processedByAI: false,
           mainName: '',
-          metadata: [] as string[],
+          keywords: [] as string[],
         })),
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
         updateFileMetadata: vi.fn(async (_fileId: string, _metadata: unknown) => true),
@@ -347,14 +347,14 @@ describe('Batch IPC Handlers', () => {
       const fileId = 'test-file-001';
       const aiResult = {
         mainName: 'kitchen-oven-WS',
-        metadata: ['stainless steel', 'double oven'],
+        keywords: ['stainless steel', 'double oven'],
         confidence: 0.85,
       };
 
       // Simulate batch processor behavior
       const fileMetadata = await mockMetadataStore.getFileMetadata(fileId);
       fileMetadata.mainName = aiResult.mainName;
-      fileMetadata.metadata = aiResult.metadata;
+      fileMetadata.keywords = aiResult.keywords;
       fileMetadata.processedByAI = true;
 
       // Update JSON store
@@ -364,7 +364,7 @@ describe('Batch IPC Handlers', () => {
       await mockMetadataWriter.writeMetadataToFile(
         fileMetadata.filePath,
         fileMetadata.mainName,
-        fileMetadata.metadata
+        fileMetadata.keywords
       );
 
       // Verify both JSON store AND file metadata were updated
@@ -393,7 +393,7 @@ describe('Batch IPC Handlers', () => {
 
       const aiResult = {
         mainName: 'kitchen-sink-CU',
-        metadata: ['uncertain'],
+        keywords: ['uncertain'],
         confidence: 0.5,  // Below 0.7 threshold
       };
 
@@ -401,7 +401,7 @@ describe('Batch IPC Handlers', () => {
       const shouldUpdate = aiResult.confidence > 0.7;
 
       if (shouldUpdate) {
-        await mockMetadataWriter.writeMetadataToFile('/path/file.jpg', aiResult.mainName, aiResult.metadata);
+        await mockMetadataWriter.writeMetadataToFile('/path/file.jpg', aiResult.mainName, aiResult.keywords);
       }
 
       // Verify writeMetadataToFile was NOT called

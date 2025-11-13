@@ -11,15 +11,23 @@ describe('Type Definitions', () => {
         filePath: '/path/to/file.jpg',
         extension: '.jpg',
         mainName: 'oven-control-panel',
-        metadata: ['oven', 'control panel'],
+        keywords: ['oven', 'control panel'],
+        location: 'kitchen',
+        subject: 'oven',
+        action: '',
+        shotType: 'CU',
         processedByAI: false,
-        lastModified: new Date(),
         fileType: 'image',
+        createdAt: new Date(),
+        createdBy: 'ingest-assistant',
+        modifiedAt: new Date(),
+        modifiedBy: 'ingest-assistant',
+        version: '1.1.0',
       };
 
       expect(metadata.id).toBe('EB001537');
       expect(metadata.mainName).toBe('oven-control-panel');
-      expect(metadata.metadata).toHaveLength(2);
+      expect(metadata.keywords).toHaveLength(2);
       expect(metadata.fileType).toBe('image');
     });
 
@@ -31,10 +39,18 @@ describe('Type Definitions', () => {
         filePath: '/path/to/video.mp4',
         extension: '.mp4',
         mainName: '',
-        metadata: [],
+        keywords: [],
+        location: '',
+        subject: '',
+        action: '',
+        shotType: '',
         processedByAI: false,
-        lastModified: new Date(),
         fileType: 'video',
+        createdAt: new Date(),
+        createdBy: 'ingest-assistant',
+        modifiedAt: new Date(),
+        modifiedBy: 'ingest-assistant',
+        version: '1.1.0',
       };
 
       expect(metadata.fileType).toBe('video');
@@ -124,12 +140,16 @@ describe('Type Definitions', () => {
     it('should allow creation of valid AIAnalysisResult', () => {
       const result: AIAnalysisResult = {
         mainName: 'oven-control-panel',
-        metadata: ['oven', 'control panel', 'kitchen'],
+        keywords: ['oven', 'control panel', 'kitchen'],
+        location: 'kitchen',
+        subject: 'oven',
+        action: '',
+        shotType: 'CU',
         confidence: 0.95,
       };
 
       expect(result.mainName).toBe('oven-control-panel');
-      expect(result.metadata).toHaveLength(3);
+      expect(result.keywords).toHaveLength(3);
       expect(result.confidence).toBe(0.95);
     });
   });

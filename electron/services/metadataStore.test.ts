@@ -24,17 +24,25 @@ describe('MetadataStore', () => {
     vi.restoreAllMocks();
   });
 
-  const createMockFileMetadata = (id: string, mainName = '', metadata: string[] = []): FileMetadata => ({
+  const createMockFileMetadata = (id: string, mainName = '', keywords: string[] = []): FileMetadata => ({
     id,
     originalFilename: `${id}.jpg`,
     currentFilename: mainName ? `${id}-${mainName}.jpg` : `${id}.jpg`,
     filePath: `/path/${id}.jpg`,
     extension: '.jpg',
     mainName,
-    metadata,
+    keywords,
     processedByAI: false,
-    lastModified: new Date('2024-01-01'),
     fileType: 'image',
+    createdAt: new Date('2024-01-01'),
+    createdBy: 'ingest-assistant',
+    modifiedAt: new Date('2024-01-01'),
+    modifiedBy: 'ingest-assistant',
+    version: '2.0',
+    location: '',
+    subject: '',
+    action: '',
+    shotType: '',
   });
 
   describe('loadMetadata', () => {

@@ -3,6 +3,7 @@ import * as path from 'path';
 import type { FileMetadata } from '../../src/types';
 import { SecurityValidator } from './securityValidator';
 import { LRUCache } from '../utils/lruCache';
+import { MetadataStore } from './metadataStore';
 
 const IMAGE_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp'];
 const VIDEO_EXTENSIONS = ['.mp4', '.mov', '.avi', '.mkv', '.webm'];
@@ -84,18 +85,20 @@ export class FileManager {
 
       const mainName = namePart.startsWith('-') ? namePart.slice(1) : '';
 
-      files.push({
+      // Create FileMetadata with audit trail using helper
+      const fileMetadata = MetadataStore.createMetadata({
         id: finalId,
         originalFilename: filename,
         currentFilename: filename,
         filePath,
         extension,
         mainName,
-        metadata: [],
-        processedByAI: false,
-        lastModified: stats.mtime,
+        keywords: [],
         fileType: this.getFileType(filename),
+        processedByAI: false
       });
+
+      files.push(fileMetadata);
     }
 
     // Cache the result
@@ -125,6 +128,14 @@ export class FileManager {
   }
 
   /**
+   * Invalidate scan cache for a specific folder path
+   * Call this after file system operations that modify folder contents (rename, delete, etc.)
+   */
+  invalidateCache(folderPath: string): void {
+    this.scanCache.delete(folderPath);
+  }
+
+  /**
    * Rename a file with the format: {ID}-{kebab-case-name}.{ext}
    */
   async renameFile(
@@ -142,6 +153,10 @@ export class FileManager {
     const newPath = path.join(dir, newFilename);
 
     await fs.rename(currentPath, newPath);
+
+    // Invalidate cache after successful rename - prevents stale filename in UI
+    this.invalidateCache(dir);
+
     return newPath;
   }
 

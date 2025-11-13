@@ -23,7 +23,7 @@ describe('resultSerializer', () => {
     it('adds version field and validates v2 result', () => {
       const result = {
         mainName: 'kitchen-oven-CU',
-        metadata: ['kitchen', 'oven'],
+        keywords: ['kitchen', 'oven'],
         confidence: 0.9,
         location: 'kitchen',
         subject: 'oven',
@@ -51,7 +51,7 @@ describe('resultSerializer', () => {
     it('validates confidence is in range [0, 1]', () => {
       const invalidConfidence = {
         mainName: 'test',
-        metadata: [],
+        keywords: [],
         confidence: 1.5, // Invalid: > 1
       };
 
@@ -61,7 +61,7 @@ describe('resultSerializer', () => {
     it('validates shotType is valid enum value', () => {
       const invalidShotType = {
         mainName: 'test',
-        metadata: [],
+        keywords: [],
         confidence: 0.8,
         shotType: 'INVALID', // Not in enum
       };
@@ -72,7 +72,7 @@ describe('resultSerializer', () => {
     it('accepts result without optional fields', () => {
       const minimalResult = {
         mainName: 'test',
-        metadata: [],
+        keywords: [],
         confidence: 0.5,
       };
 
@@ -90,7 +90,7 @@ describe('resultSerializer', () => {
       const v2Data = {
         version: '2',
         mainName: 'kitchen-oven-CU',
-        metadata: ['kitchen', 'oven'],
+        keywords: ['kitchen', 'oven'],
         confidence: 0.9,
         location: 'kitchen',
         subject: 'oven',
@@ -121,7 +121,7 @@ describe('resultSerializer', () => {
       const v1Data = {
         version: '1',
         mainName: 'kitchen-oven-CU',
-        metadata: ['kitchen'],
+        keywords: ['kitchen'],
         confidence: 0.8,
       };
 
@@ -139,7 +139,7 @@ describe('resultSerializer', () => {
       const legacyV1 = {
         // No version field (legacy data)
         mainName: 'bathroom-sink-MID',
-        metadata: ['bathroom', 'sink'],
+        keywords: ['bathroom', 'sink'],
         confidence: 0.85,
       };
 
@@ -154,7 +154,7 @@ describe('resultSerializer', () => {
     it('handles case-insensitive shot type matching', () => {
       const v1Data = {
         mainName: 'garage-car-ws', // lowercase 'ws'
-        metadata: [],
+        keywords: [],
         confidence: 0.7,
       };
 
@@ -169,7 +169,7 @@ describe('resultSerializer', () => {
       for (const shotType of shotTypes) {
         const v1Data = {
           mainName: `location-subject-${shotType}`,
-          metadata: [],
+          keywords: [],
           confidence: 0.8,
         };
 
@@ -187,7 +187,7 @@ describe('resultSerializer', () => {
       const v1Data = {
         version: '1',
         mainName: 'kitchen-oven-installing-CU',
-        metadata: ['kitchen', 'installation'],
+        keywords: ['kitchen', 'installation'],
         confidence: 0.9,
       };
 
@@ -207,7 +207,7 @@ describe('resultSerializer', () => {
       for (const action of actions) {
         const v1Data = {
           mainName: `garage-toolbox-${action}-WS`,
-          metadata: [],
+          keywords: [],
           confidence: 0.8,
         };
 
@@ -225,7 +225,7 @@ describe('resultSerializer', () => {
     it('preserves mainName when pattern does not match', () => {
       const v1Data = {
         mainName: 'random-descriptive-name',
-        metadata: ['random'],
+        keywords: ['random'],
         confidence: 0.5,
       };
 
@@ -241,7 +241,7 @@ describe('resultSerializer', () => {
     it('does not parse when last part is not a valid shot type', () => {
       const v1Data = {
         mainName: 'kitchen-oven-description', // 'description' is not a shot type
-        metadata: [],
+        keywords: [],
         confidence: 0.7,
       };
 
@@ -256,7 +256,7 @@ describe('resultSerializer', () => {
     it('handles single-word mainName', () => {
       const v1Data = {
         mainName: 'singleword',
-        metadata: [],
+        keywords: [],
         confidence: 0.6,
       };
 
@@ -269,7 +269,7 @@ describe('resultSerializer', () => {
     it('handles two-part mainName', () => {
       const v1Data = {
         mainName: 'two-parts',
-        metadata: [],
+        keywords: [],
         confidence: 0.6,
       };
 
@@ -294,7 +294,7 @@ describe('resultSerializer', () => {
       const unknownVersion = {
         version: '99',
         mainName: 'test',
-        metadata: [],
+        keywords: [],
         confidence: 0.8,
       };
 
@@ -319,7 +319,7 @@ describe('resultSerializer', () => {
         const valid = {
           version: '2',
           mainName: 'test',
-          metadata: [],
+          keywords: [],
           confidence: 0.8,
         };
 
@@ -330,7 +330,7 @@ describe('resultSerializer', () => {
         const valid = {
           version: '1',
           mainName: 'test',
-          metadata: [],
+          keywords: [],
           confidence: 0.8,
         };
 
@@ -360,7 +360,7 @@ describe('resultSerializer', () => {
         const valid = {
           version: '2',
           mainName: 'test',
-          metadata: [],
+          keywords: [],
           confidence: 0.8,
         };
 
@@ -399,7 +399,7 @@ describe('resultSerializer', () => {
     it('serialize then deserialize preserves data', () => {
       const original = {
         mainName: 'kitchen-oven-CU',
-        metadata: ['kitchen', 'oven'],
+        keywords: ['kitchen', 'oven'],
         confidence: 0.9,
         location: 'kitchen',
         subject: 'oven',
@@ -410,7 +410,7 @@ describe('resultSerializer', () => {
       const deserialized = deserializeResult(serialized);
 
       expect(deserialized.mainName).toBe(original.mainName);
-      expect(deserialized.metadata).toEqual(original.metadata);
+      expect(deserialized.keywords).toEqual(original.keywords);
       expect(deserialized.confidence).toBe(original.confidence);
       expect(deserialized.location).toBe(original.location);
       expect(deserialized.subject).toBe(original.subject);
@@ -423,7 +423,7 @@ describe('resultSerializer', () => {
       // Simulates AIService.parseAIResponse() output
       const aiServiceResult = {
         mainName: 'bathroom-sink-installing-CU',
-        metadata: ['bathroom', 'sink', 'installation'],
+        keywords: ['bathroom', 'sink', 'installation'],
         confidence: 0.87,
         location: 'bathroom',
         subject: 'sink',
@@ -445,7 +445,7 @@ describe('resultSerializer', () => {
       // Simulates old data persisted before Phase 1
       const legacyData = {
         mainName: 'kitchen-microwave-WS',
-        metadata: ['kitchen', 'microwave'],
+        keywords: ['kitchen', 'microwave'],
         confidence: 0.75,
       };
 
@@ -460,7 +460,7 @@ describe('resultSerializer', () => {
     it('handles AI response with high confidence and all fields', () => {
       const fullResult = {
         mainName: 'garage-toolbox-organizing-MID',
-        metadata: ['garage', 'toolbox', 'organization', 'tools'],
+        keywords: ['garage', 'toolbox', 'organization', 'tools'],
         confidence: 0.95,
         location: 'garage',
         subject: 'toolbox',
@@ -472,14 +472,14 @@ describe('resultSerializer', () => {
       const deserialized = deserializeResult(serialized);
 
       expect(deserialized.confidence).toBe(0.95);
-      expect(deserialized.metadata).toHaveLength(4);
+      expect(deserialized.keywords).toHaveLength(4);
       expect(deserialized.action).toBe('organizing');
     });
 
     it('handles AI response with low confidence and minimal data', () => {
       const lowConfidenceResult = {
         mainName: 'unclear-image',
-        metadata: [],
+        keywords: [],
         confidence: 0.2,
       };
 
@@ -487,7 +487,7 @@ describe('resultSerializer', () => {
       const deserialized = deserializeResult(serialized);
 
       expect(deserialized.confidence).toBe(0.2);
-      expect(deserialized.metadata).toEqual([]);
+      expect(deserialized.keywords).toEqual([]);
       expect(deserialized.location).toBeUndefined();
     });
   });

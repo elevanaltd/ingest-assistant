@@ -38,24 +38,30 @@
 ## Current State
 
 ### Active Branch
-`main` (production baseline) + active feature development
+`fix/ce-issues-2` (JSON v2.0 schema migration + cache invalidation + multi-select)
 
 ### Recent Work (Last 10 Commits - November 2025)
-1. `276518c` - docs: add comprehensive batch processing documentation (Issue #24)
-2. `07a1916` - fix: create metadata entries for all files during scan (Issue #24)
-3. `a420566` - fix: increase ID field width to prevent digit cutoff
-4. `0685757` - fix: add duplicate ID detection with counter suffix
-5. `bbc1390` - fix: clear stale batch queue on folder change (Issue #24)
-6. `c7e496c` - test: add retroactive validation for batch processing fixes (Issue #24)
-7. `bc41535` - Merge pull request #49 (system documentation update)
-8. `2949433` - docs: validate production readiness - all 424 tests passing
-9. `a819e33` - docs: restore system documentation coherence (v1.1.0)
-10. Previous: Video transcoding feature, coordination foundation
+1. `28e6827` - fix: resolve all TypeScript build errors for v2.0 schema (Nov 13)
+2. `d68685b` - fix: complete metadata→keywords migration in serializer and aiService (Nov 13)
+3. `6c0d596` - fix: update Zod schemas and aiService for v2.0 keywords field (Nov 13)
+4. `192b71d` - feat: migrate to JSON schema v2.0 (Issue #54 alignment) (Nov 13)
+5. `0259309` - feat: fix rename reversion with cache invalidation (GREEN)
+6. `2b8f2bc` - test: add cache invalidation tests for rename operations (RED)
+7. `5027c8a` - feat: implement 'Process Selected (N files)' button (GREEN)
+8. `8a09652` - test: add failing tests for 'Process Selected' button (RED)
+9. `655c473` - feat: wire up multi-select state management in App.tsx
+10. `842c8b2` - feat: implement Sidebar multi-select (GREEN phase)
 
-### Current Implementation State (2025-11-11)
-- **Working Tree:** Clean (all changes committed)
+### Current Implementation State (2025-11-13)
+- **Working Tree:** Clean (all changes committed on fix/ce-issues-2)
 - **Development Status:** ACTIVE - Electron app is production path
 - **Major Features Completed:**
+  - ✅ **JSON Schema v2.0 Migration (Issue #54, Nov 13)** - Complete metadata schema overhaul
+    - metadata → keywords field rename (XMP-dc:Description alignment)
+    - Audit trail (createdAt, createdBy, modifiedAt, modifiedBy, version)
+    - Schema versioning (_schema: "2.0") for future migrations
+    - Structured fields required (location, subject, action, shotType)
+    - CEP Panel integration ready
   - ✅ Keyboard shortcuts & command palette (Issue #22, PR #40)
   - ✅ Virtual scrolling for file lists (Issue #23, PR #42)
   - ✅ Paginated file loading (Issue #19)
@@ -63,6 +69,8 @@
   - ✅ Result type schemas with versioning (Issue #20, PR #39, ADR-008)
   - ✅ Video 4-part naming with action field (Nov 11)
   - ✅ Batch processing with rate limiting (Issue #24)
+  - ✅ Multi-select file operations (Nov 12)
+  - ✅ LRU cache invalidation fix (Nov 12) - prevents file rename reversion
 - **Quality Improvements:**
   - ✅ TypeScript strict mode - all `any` types eliminated (Issue #41)
   - ✅ ESLint v9 migration with flat config (Issue #45)
@@ -80,18 +88,21 @@
 - **Command:** `npm run typecheck`
 
 ### ✅ Tests
-- **Status:** PASS - ALL TESTS PASSING (446 tests, 28 test files)
+- **Status:** PASS - ALL TESTS PASSING (518 tests, 33 test files)
 - **Command:** `npm test` (now uses `vitest run` for single execution)
-- **Validated:** 2025-11-11 (test script fixed to exit cleanly)
+- **Validated:** 2025-11-13 (JSON v2.0 migration complete)
 - **Performance:** ~18s test suite execution (includes rate limiter timing tests)
+- **Recent Additions:**
+  - JSON v2.0 migration: All test mocks updated with new schema
+  - +3 cache invalidation tests (FileManager LRU cache behavior)
+  - +22 tests from batch processing validation (Issue #24)
 - **Previous Issues RESOLVED:**
   - Test hanging: Fixed by changing `vitest` to `vitest run` in package.json
   - 18 failing tests from Nov 9: All resolved (action field + metadata writer fixes)
-  - Test count increase: +22 tests from batch processing validation (Issue #24)
 
 ## Known Issues
 
-### ✅ ALL ISSUES RESOLVED (2025-11-11)
+### ✅ ALL ISSUES RESOLVED (2025-11-12)
 
 **Security Hardening Complete (Implementation-Lead, Nov 11):**
 - ✅ **BLOCKING #1:** Command injection vulnerability fixed (Security Report 007)
@@ -135,8 +146,9 @@
 - Tier 2-3 features: ✅ IMPLEMENTED (Virtual scrolling, Keyboard shortcuts, Batch processing)
 - Quality improvements: ✅ COMPLETE (TypeScript strict, ESLint v9, Test script fix)
 - Security hardening: ✅ COMPLETE (Command injection + Media server auth fixed)
-- Quality gates: Lint ✅, Typecheck ✅, Tests ✅ (469 passing, +23 security tests)
-- **Status:** Production deployment ready - all quality gates passed, security hardened
+- JSON v2.0 Migration: ✅ COMPLETE (Schema versioning, audit trail, CEP Panel alignment)
+- Quality gates: Lint ✅, Typecheck ✅, Tests ✅ (518 passing), Build ✅
+- **Status:** Production deployment ready - all quality gates passed, JSON v2.0 migration complete
 
 ## Security Status (Nov 11, 2025)
 **Security Report 007 - BLOCKING Issues:** ✅ RESOLVED
@@ -156,4 +168,4 @@
 **Security Test Coverage:** +23 security tests (command injection + media server auth)
 
 ## Last Updated
-2025-11-11 (Security hardening complete - implementation-lead)
+2025-11-13 (JSON v2.0 schema migration complete - implementation-lead + error-architect)
