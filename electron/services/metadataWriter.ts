@@ -294,4 +294,102 @@ export class MetadataWriter {
       return {};
     }
   }
+
+  /**
+   * Extract creation timestamp from media file using exiftool.
+   *
+   * Tries multiple timestamp fields in order of preference:
+   * 1. DateTimeOriginal (EXIF standard for original capture time)
+   * 2. CreateDate (common in many formats)
+   * 3. MediaCreateDate (video files)
+   * 4. CreationDate (some video formats)
+   * 5. TrackCreateDate (QuickTime/MP4)
+   *
+   * @param filePath Absolute path to media file
+   * @returns Creation timestamp as Date object, or undefined if not found
+   */
+  async readCreationTimestamp(filePath: string): Promise<Date | undefined> {
+    try {
+      const args = [
+        '-DateTimeOriginal',
+        '-CreateDate',
+        '-MediaCreateDate',
+        '-CreationDate',
+        '-TrackCreateDate',
+        '-d', '%Y:%m:%d %H:%M:%S', // Format output consistently
+        '-json',
+        filePath
+      ];
+      const exiftoolPath = findExiftool();
+
+      const { stdout } = await execFileAsync(exiftoolPath, args, {
+        timeout: 30000,
+        maxBuffer: 10 * 1024 * 1024
+      });
+
+      const data = JSON.parse(stdout);
+
+      if (data && data.length > 0) {
+        const metadata = data[0];
+
+        // Try fields in order of preference
+        const timestampString =
+          metadata.DateTimeOriginal ||
+          metadata.CreateDate ||
+          metadata.MediaCreateDate ||
+          metadata.CreationDate ||
+          metadata.TrackCreateDate;
+
+        if (timestampString) {
+          // Parse EXIF timestamp format (YYYY:MM:DD HH:MM:SS)
+          const parsed = this.parseExifTimestamp(timestampString);
+          if (parsed) {
+            return parsed;
+          }
+        }
+      }
+
+      return undefined;
+    } catch (error) {
+      console.error('Failed to read creation timestamp from file:', error);
+      return undefined;
+    }
+  }
+
+  /**
+   * Parse EXIF timestamp string to Date object.
+   * EXIF format: "YYYY:MM:DD HH:MM:SS"
+   *
+   * @param timestamp EXIF timestamp string
+   * @returns Date object or undefined if parsing fails
+   */
+  private parseExifTimestamp(timestamp: string): Date | undefined {
+    try {
+      // EXIF format: "YYYY:MM:DD HH:MM:SS"
+      const match = timestamp.match(/^(\d{4}):(\d{2}):(\d{2})\s+(\d{2}):(\d{2}):(\d{2})$/);
+      if (!match) {
+        return undefined;
+      }
+
+      const [, year, month, day, hour, minute, second] = match;
+      const date = new Date(
+        parseInt(year, 10),
+        parseInt(month, 10) - 1, // Month is 0-indexed in JS
+        parseInt(day, 10),
+        parseInt(hour, 10),
+        parseInt(minute, 10),
+        parseInt(second, 10)
+      );
+
+      // Validate date is reasonable
+      if (isNaN(date.getTime())) {
+        return undefined;
+      }
+
+      return date;
+    } catch (error) {
+      console.error('Failed to parse EXIF timestamp:', error);
+      return undefined;
+    }
+  }
 }

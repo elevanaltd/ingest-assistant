@@ -33,6 +33,8 @@ export interface FileMetadata {
   processedByAI: boolean;
   /** Last modified timestamp */
   lastModified: Date;
+  /** Original creation timestamp from camera/device (used for unique naming) */
+  creationTimestamp?: Date;
   /** File type: image or video */
   fileType: 'image' | 'video';
 
