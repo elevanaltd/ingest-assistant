@@ -166,7 +166,7 @@ function migrateV1ToV2(v1: AIAnalysisResultV1): AIAnalysisResultV2 {
       return {
         version: '2',
         mainName: v1.mainName,
-        metadata: v1.metadata,
+        keywords: v1.keywords,
         confidence: v1.confidence,
         location: parts[0],
         subject: parts[1],
@@ -194,7 +194,7 @@ function migrateV1ToV2(v1: AIAnalysisResultV1): AIAnalysisResultV2 {
       return {
         version: '2',
         mainName: v1.mainName,
-        metadata: v1.metadata,
+        keywords: v1.keywords,
         confidence: v1.confidence,
         location: parts[0],
         subject: parts[1],
@@ -213,7 +213,7 @@ function migrateV1ToV2(v1: AIAnalysisResultV1): AIAnalysisResultV2 {
   return {
     version: '2',
     mainName: v1.mainName,
-    metadata: v1.metadata,
+    keywords: v1.keywords,
     confidence: v1.confidence,
   };
 }

@@ -505,6 +505,10 @@ Lexicon rules:
         mainName: '',
         keywords: [],
         confidence: 0,
+        location: "",
+        subject: "",
+        action: "",
+        shotType: "",
       };
     }
 
@@ -525,7 +529,7 @@ Lexicon rules:
 
     return {
       mainName,
-      metadata,
+      keywords: metadata,
       confidence: avgConfidence,
       // Include structured components if found
       ...(firstWithStructure
