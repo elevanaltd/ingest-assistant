@@ -96,6 +96,66 @@ let aiService: AIService | null = null;
 const batchQueuePath = path.join(app.getPath('userData'), '.ingest-batch-queue.json');
 const batchQueueManager: BatchQueueManager = new BatchQueueManager(batchQueuePath);
 
+/**
+ * Format a Date object as yyyymmddhhmm for use in filenames
+ * Example: 2025-11-03 10:05:30 -> 202511031005
+ */
+function formatTimestampForTitle(date: Date): string {
+  const year = date.getFullYear().toString();
+  const month = (date.getMonth() + 1).toString().padStart(2, '0');
+  const day = date.getDate().toString().padStart(2, '0');
+  const hour = date.getHours().toString().padStart(2, '0');
+  const minute = date.getMinutes().toString().padStart(2, '0');
+
+  return `${year}${month}${day}${hour}${minute}`;
+}
+
+/**
+ * Get or extract creation timestamp from file metadata.
+ * Returns cached timestamp if available, otherwise extracts from file using exiftool.
+ * Caches the result in the FileMetadata object for future use.
+ */
+async function getOrExtractCreationTimestamp(
+  fileMetadata: import('../src/types').FileMetadata
+): Promise<Date | undefined> {
+  // Return cached timestamp if available
+  if (fileMetadata.creationTimestamp) {
+    return fileMetadata.creationTimestamp;
+  }
+
+  // Extract from file using exiftool
+  const timestamp = await metadataWriter.readCreationTimestamp(fileMetadata.filePath);
+
+  // Cache in metadata object
+  if (timestamp) {
+    fileMetadata.creationTimestamp = timestamp;
+  }
+
+  return timestamp;
+}
+
+/**
+ * Generate title with timestamp suffix.
+ * Takes a base title and appends creation timestamp in yyyymmddhhmm format.
+ * Example: "kitchen-oven-CU" + timestamp -> "kitchen-oven-CU-202511031005"
+ */
+async function generateTitleWithTimestamp(
+  baseTitle: string,
+  fileMetadata: import('../src/types').FileMetadata
+): Promise<string> {
+  const timestamp = await getOrExtractCreationTimestamp(fileMetadata);
+
+  if (timestamp) {
+    const formattedTimestamp = formatTimestampForTitle(timestamp);
+    return `${baseTitle}-${formattedTimestamp}`;
+  }
+
+  // If no timestamp available, return base title as-is
+  // This maintains backward compatibility for files without timestamp metadata
+  console.warn(`[generateTitleWithTimestamp] No creation timestamp found for ${fileMetadata.filePath}, using base title only`);
+  return baseTitle;
+}
+
 // Register transcode cache directory with security validator
 // This allows the media server to serve transcoded files
 // IMPORTANT: Resolve symlinks (macOS /var -> /private/var) to match validation behavior
@@ -725,9 +785,12 @@ ipcMain.handle('file:update-structured-metadata', async (_event, fileId: string,
     fileMetadata.shotType = (validatedStructured.shotType as ShotType) || '';
 
     // Build generated title from structured components
-    const generatedTitle = fileMetadata.fileType === 'video' && structured.action
+    const baseTitle = fileMetadata.fileType === 'video' && structured.action
       ? `${structured.location}-${structured.subject}-${structured.action}-${structured.shotType}`
       : `${structured.location}-${structured.subject}-${structured.shotType}`;
+
+    // Append timestamp to title for uniqueness
+    const generatedTitle = await generateTitleWithTimestamp(baseTitle, fileMetadata);
 
     // Update mainName to match generated title
     fileMetadata.mainName = generatedTitle;
@@ -848,7 +911,8 @@ ipcMain.handle('ai:batch-process', async (_event, fileIds: string[]) => {
 
       // Auto-update if confidence is high
       if (result.confidence > 0.7) {
-        fileMetadata.mainName = result.mainName;
+        // Append timestamp to AI-generated name for uniqueness
+        fileMetadata.mainName = await generateTitleWithTimestamp(result.mainName, fileMetadata);
         fileMetadata.keywords = result.keywords;
         fileMetadata.location = result.location;
         fileMetadata.subject = result.subject;
@@ -943,7 +1007,8 @@ ipcMain.handle('batch:start', async (_event, fileIds: string[]) => {
 
         // Auto-update if confidence is high
         if (result.confidence > 0.7) {
-          fileMetadata.mainName = result.mainName;
+          // Append timestamp to AI-generated name for uniqueness
+          fileMetadata.mainName = await generateTitleWithTimestamp(result.mainName, fileMetadata);
           fileMetadata.keywords = result.keywords;
           fileMetadata.location = result.location;
           fileMetadata.subject = result.subject;
