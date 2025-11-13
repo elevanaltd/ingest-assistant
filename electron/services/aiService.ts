@@ -197,7 +197,7 @@ Lexicon rules:
             action: parsed.action || undefined,
             shotType: parsed.shotType,
             mainName: parsed.mainName || `${parsed.location}-${parsed.subject}-${parsed.shotType}`,
-            metadata: Array.isArray(parsed.metadata) ? parsed.metadata : [],
+            keywords: Array.isArray(parsed.keywords) ? parsed.keywords : (Array.isArray(parsed.metadata) ? parsed.metadata : []),
             confidence: 0.8,
           };
         }
@@ -208,7 +208,7 @@ Lexicon rules:
         console.log('[AIService] Legacy format detected (no structured fields)');
         return {
           mainName: parsed.mainName || '',
-          metadata: Array.isArray(parsed.metadata) ? parsed.metadata : [],
+          keywords: Array.isArray(parsed.keywords) ? parsed.keywords : (Array.isArray(parsed.metadata) ? parsed.metadata : []),
           confidence: 0.8,
         };
       } catch (jsonError) {
@@ -220,7 +220,7 @@ Lexicon rules:
       console.error('Response was:', response);
       return {
         mainName: '',
-        metadata: [],
+        keywords: [],
         confidence: 0,
       };
     }
@@ -279,7 +279,7 @@ Lexicon rules:
 
     return {
       mainName: mainName || '',
-      metadata: metadata.length > 0 ? metadata : [],
+      keywords: metadata.length > 0 ? metadata : [],
       confidence: mainName || metadata.length > 0 ? 0.7 : 0,
     };
   }
@@ -307,7 +307,7 @@ Lexicon rules:
       console.error('AI analysis failed:', error);
       return {
         mainName: '',
-        metadata: [],
+        keywords: [],
         confidence: 0,
       };
     }
@@ -483,7 +483,7 @@ Lexicon rules:
       console.error('[AIService] Video analysis failed:', error);
       return {
         mainName: '',
-        metadata: [],
+        keywords: [],
         confidence: 0,
       };
     }
@@ -503,7 +503,7 @@ Lexicon rules:
     if (analyses.length === 0) {
       return {
         mainName: '',
-        metadata: [],
+        keywords: [],
         confidence: 0,
       };
     }
