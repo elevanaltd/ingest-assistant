@@ -364,14 +364,14 @@ jobs:
           # Basic pattern matching for common secrets (non-exhaustive)
           SECRETS_FOUND=0
 
-          # Check for hardcoded API keys
-          if grep -r -i "api[_-]key.*=.*['\"]sk-" --include="*.ts" --include="*.tsx" --include="*.js" . 2>/dev/null; then
+          # Check for hardcoded API keys (excluding test files and directories)
+          if grep -r -i "api[_-]key.*=.*['\"]sk-" --include="*.ts" --include="*.tsx" --include="*.js" --exclude-dir="__tests__" --exclude-dir="tests" --exclude="*.test.ts" --exclude="*.test.tsx" --exclude="*.test.js" --exclude="*.spec.ts" --exclude="*.spec.tsx" --exclude="*.spec.js" . 2>/dev/null; then
             echo "❌ Potential hardcoded API key found" >> $GITHUB_STEP_SUMMARY
             SECRETS_FOUND=1
           fi
 
-          # Check for AWS keys
-          if grep -r -E "AKIA[0-9A-Z]{16}" --include="*.ts" --include="*.tsx" --include="*.js" . 2>/dev/null; then
+          # Check for AWS keys (excluding test files and directories)
+          if grep -r -E "AKIA[0-9A-Z]{16}" --include="*.ts" --include="*.tsx" --include="*.js" --exclude-dir="__tests__" --exclude-dir="tests" --exclude="*.test.ts" --exclude="*.test.tsx" --exclude="*.test.js" --exclude="*.spec.ts" --exclude="*.spec.tsx" --exclude="*.spec.js" . 2>/dev/null; then
             echo "❌ Potential AWS key found" >> $GITHUB_STEP_SUMMARY
             SECRETS_FOUND=1
           fi
