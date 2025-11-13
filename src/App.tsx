@@ -25,7 +25,7 @@ function App() {
   // @ts-expect-error - mainName is set but not directly read (used for legacy data migration)
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [mainName, setMainName] = useState<string>('');
-  const [metadata, setMetadata] = useState<string>('');
+  const [keywords, setKeywords] = useState<string>('');
   const [isAIConfigured, setIsAIConfigured] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [renameFileEnabled, setRenameFileEnabled] = useState<boolean>(false);
@@ -134,7 +134,7 @@ function App() {
         setMainName('');
       }
 
-      setMetadata(currentFile.metadata.join(', '));
+      setKeywords(currentFile.keywords.join(', '));
 
       // Load file as data URL
       window.electronAPI.readFileAsDataUrl(currentFile.filePath)
@@ -215,7 +215,7 @@ function App() {
       }
 
       // Build metadata tags array
-      const metadataTags = metadata
+      const metadataTags = keywords
         .split(',')
         .map((tag) => tag.trim())
         .filter((tag) => tag.length > 0);
@@ -272,11 +272,11 @@ function App() {
             return {
               ...f,
               mainName: generatedTitle,
-              metadata: metadataTags,
+              keywords: metadataTags,
               location,
               subject,
-              action: action || undefined,
-              shotType: shotType as ShotType,
+              action: action || '',
+              shotType: shotType as ShotType || '',
             };
           }
           return f;
@@ -332,7 +332,7 @@ function App() {
         setMainName(result.mainName);
       }
 
-      setMetadata(result.metadata.join(', '));
+      setKeywords(result.keywords.join(', '));
       setStatusMessage(`✓ AI Analysis complete! Confidence: ${(result.confidence * 100).toFixed(0)}%`);
     } catch (error) {
       console.error('AI analysis failed:', error);
@@ -608,8 +608,8 @@ function App() {
                 <label style={{ fontSize: '13px' }}>Metadata</label>
                 <input
                   type="text"
-                  value={metadata}
-                  onChange={(e) => setMetadata(e.target.value)}
+                  value={keywords}
+                  onChange={(e) => setKeywords(e.target.value)}
                   placeholder="built-in, wine cooler, bar-area"
                   className="input"
                   style={{ fontSize: '13px', padding: '4px 8px' }}

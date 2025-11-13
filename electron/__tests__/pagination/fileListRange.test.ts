@@ -241,7 +241,7 @@ describe('file:list-range - Pagination', () => {
       filePath: `/path/${id}.jpg`,
       extension: '.jpg',
       mainName: 'test-name',
-      metadata: ['tag1', 'tag2'],
+      keywords: ['tag1', 'tag2'],
       processedByAI: true,
       lastModified: new Date('2024-01-01'),
       fileType: 'image',

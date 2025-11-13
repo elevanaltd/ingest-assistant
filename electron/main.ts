@@ -466,7 +466,7 @@ ipcMain.handle('file:load-files', async () => {
     } else {
       // Use existing metadata (which may have been AI-processed)
       file.mainName = existingMetadata.mainName;
-      file.metadata = existingMetadata.metadata;
+      file.keywords = existingMetadata.keywords;
       file.processedByAI = existingMetadata.processedByAI;
       // Preserve structured naming components
       file.location = existingMetadata.location;
@@ -502,7 +502,7 @@ ipcMain.handle('file:list-range', async (_event, startIndex: number, pageSize: n
     const existingMetadata = await store.getFileMetadata(file.id);
     if (existingMetadata) {
       file.mainName = existingMetadata.mainName;
-      file.metadata = existingMetadata.metadata;
+      file.keywords = existingMetadata.keywords;
       file.processedByAI = existingMetadata.processedByAI;
       file.location = existingMetadata.location;
       file.subject = existingMetadata.subject;
@@ -578,7 +578,7 @@ ipcMain.handle('file:rename', async (_event, fileId: string, mainName: string, c
     await metadataWriter.writeMetadataToFile(
       newPath,
       fileMetadata.mainName,
-      fileMetadata.metadata,
+      fileMetadata.keywords,
       {
         location: fileMetadata.location,
         subject: fileMetadata.subject,
@@ -625,7 +625,8 @@ ipcMain.handle('file:update-metadata', async (_event, fileId: string, metadata: 
     console.log('[main.ts] Original filename:', fileMetadata.originalFilename);
     console.log('[main.ts] Current filename:', fileMetadata.currentFilename);
 
-    fileMetadata.metadata = validated.metadata;
+    fileMetadata.keywords = validated.keywords;
+    MetadataStore.updateAuditTrail(fileMetadata);
     await store.updateFileMetadata(validated.fileId, fileMetadata);
 
     // BUG FIX: Use path based on what file actually exists on disk
@@ -636,11 +637,11 @@ ipcMain.handle('file:update-metadata', async (_event, fileId: string, metadata: 
 
     // Write metadata INTO the actual file using exiftool
     // Use the current mainName from fileMetadata (which may have been updated by updateStructuredMetadata)
-    console.log('[main.ts] Writing to XMP - title:', fileMetadata.mainName, 'tags:', validated.metadata);
+    console.log('[main.ts] Writing to XMP - title:', fileMetadata.mainName, 'keywords:', validated.keywords);
     await metadataWriter.writeMetadataToFile(
       actualFilePath,
       fileMetadata.mainName,
-      validated.metadata,
+      validated.keywords,
       {
         location: fileMetadata.location,
         subject: fileMetadata.subject,
@@ -649,7 +650,7 @@ ipcMain.handle('file:update-metadata', async (_event, fileId: string, metadata: 
       }
     );
 
-    console.log('[main.ts] file:update-metadata - Successfully wrote XMP with title:', fileMetadata.mainName, 'and tags:', validated.metadata);
+    console.log('[main.ts] file:update-metadata - Successfully wrote XMP with title:', fileMetadata.mainName, 'and keywords:', validated.keywords);
 
     return true;
   } catch (error) {
@@ -833,8 +834,13 @@ ipcMain.handle('ai:batch-process', async (_event, fileIds: string[]) => {
       // Auto-update if confidence is high
       if (result.confidence > 0.7) {
         fileMetadata.mainName = result.mainName;
-        fileMetadata.metadata = result.metadata;
+        fileMetadata.keywords = result.keywords;
+        fileMetadata.location = result.location;
+        fileMetadata.subject = result.subject;
+        fileMetadata.action = result.action;
+        fileMetadata.shotType = result.shotType;
         fileMetadata.processedByAI = true;
+        MetadataStore.updateAuditTrail(fileMetadata);
         await store.updateFileMetadata(fileId, fileMetadata);
       }
     } catch (error) {
@@ -923,12 +929,13 @@ ipcMain.handle('batch:start', async (_event, fileIds: string[]) => {
         // Auto-update if confidence is high
         if (result.confidence > 0.7) {
           fileMetadata.mainName = result.mainName;
-          fileMetadata.metadata = result.metadata;
+          fileMetadata.keywords = result.keywords;
           fileMetadata.location = result.location;
           fileMetadata.subject = result.subject;
           fileMetadata.action = result.action;
           fileMetadata.shotType = result.shotType;
           fileMetadata.processedByAI = true;
+          MetadataStore.updateAuditTrail(fileMetadata);
           await store.updateFileMetadata(fileId, fileMetadata);
 
           // Issue #2: Write metadata to actual file (not just JSON store)
@@ -936,7 +943,7 @@ ipcMain.handle('batch:start', async (_event, fileIds: string[]) => {
           await metadataWriter.writeMetadataToFile(
             fileMetadata.filePath,
             fileMetadata.mainName,
-            fileMetadata.metadata,
+            fileMetadata.keywords,
             {
               location: fileMetadata.location,
               subject: fileMetadata.subject,

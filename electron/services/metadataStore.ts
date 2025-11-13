@@ -5,14 +5,8 @@ import type { FileMetadata } from '../../src/types';
 const SCHEMA_VERSION = '2.0';
 const APP_NAME = 'ingest-assistant';
 
-// Get app version from package.json
-let APP_VERSION = '1.1.0'; // Default fallback
-try {
-  const packageJson = require('../../package.json');
-  APP_VERSION = packageJson.version;
-} catch (error) {
-  console.warn('Could not read app version from package.json');
-}
+// App version for audit trail (updated via build process)
+const APP_VERSION = '1.1.0';
 
 interface MetadataStoreFile {
   _schema: string;

@@ -62,6 +62,17 @@ brew install exiftool  # macOS
 
 **Why needed:** Embedded metadata is readable by Premiere Pro, Lightroom, and other professional tools.
 
+**Metadata Strategy:** This project uses a **shared XMP metadata strategy** with `eav-cep-assist` (Premiere Pro panel). Both tools write identical XMP fields to video files, ensuring consistency across the video production workflow.
+
+See: [Shared Metadata Strategy](.coord/docs/000001-DOC-METADATA-STRATEGY-SHARED.md) for complete field specifications, namespace rationale, and implementation details.
+
+**Key XMP Fields Written:**
+- `xmpDM:shotName` - Combined entity mapping to PP Shot field (survives proxy workflows)
+- `xmpDM:LogComment` - Structured key=value pairs for CEP panel parsing
+- `dc:description` - Human description or keywords (universal compatibility)
+
+**Technology:** exiftool CLI (Perl-based XMP library) via `electron/services/metadataWriter.ts`
+
 ### 3. Configure API Keys
 
 Create a `.env` file from the example:

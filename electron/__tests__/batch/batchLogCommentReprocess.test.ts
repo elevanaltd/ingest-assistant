@@ -46,7 +46,7 @@ describe('Batch Processing - LogComment & Reprocess Integration', () => {
           extension: '.mov',
           processedByAI: false,
           mainName: '',
-          metadata: [] as string[],
+          keywords: [] as string[],
           lastModified: new Date(),
           fileType: 'video',
           location: undefined,
@@ -60,7 +60,7 @@ describe('Batch Processing - LogComment & Reprocess Integration', () => {
       // AI result with structured fields
       const aiResult: AIAnalysisResult = {
         mainName: 'kitchen-hob-controls-cu',
-        metadata: ['cooking', 'panel', 'induction'],
+        keywords: ['cooking', 'panel', 'induction'],
         confidence: 0.85,
         location: 'kitchen',
         subject: 'hob-controls',
@@ -74,7 +74,7 @@ describe('Batch Processing - LogComment & Reprocess Integration', () => {
       if (fileMetadata) {
         // Copy AI result to fileMetadata (including structured fields)
         fileMetadata.mainName = aiResult.mainName;
-        fileMetadata.metadata = aiResult.metadata;
+        fileMetadata.keywords = aiResult.keywords;
         fileMetadata.location = aiResult.location;
         fileMetadata.subject = aiResult.subject;
         fileMetadata.action = aiResult.action;
@@ -87,7 +87,7 @@ describe('Batch Processing - LogComment & Reprocess Integration', () => {
         await mockMetadataWriter.writeMetadataToFile(
           fileMetadata.filePath,
           fileMetadata.mainName,
-          fileMetadata.metadata,
+          fileMetadata.keywords,
           {
             location: fileMetadata.location,
             subject: fileMetadata.subject,
@@ -135,7 +135,7 @@ describe('Batch Processing - LogComment & Reprocess Integration', () => {
 
       const aiResult: AIAnalysisResult = {
         mainName: 'kitchen-oven-cleaning-WS',
-        metadata: ['appliance', 'demo'],
+        keywords: ['appliance', 'demo'],
         confidence: 0.90,
         location: 'kitchen',
         subject: 'oven',
@@ -147,7 +147,7 @@ describe('Batch Processing - LogComment & Reprocess Integration', () => {
       await mockMetadataWriter.writeMetadataToFile(
         '/path/to/video.mov',
         aiResult.mainName,
-        aiResult.metadata,
+        aiResult.keywords,
         {
           location: aiResult.location,
           subject: aiResult.subject,
@@ -197,7 +197,7 @@ describe('Batch Processing - LogComment & Reprocess Integration', () => {
           extension: '.jpg',
           processedByAI: true, // Already processed
           mainName: 'old-kitchen-oven-WS',
-          metadata: ['old', 'metadata'],
+          keywords: ['old', 'metadata'],
           lastModified: new Date(),
           fileType: 'image',
           location: 'old-location',
@@ -211,7 +211,7 @@ describe('Batch Processing - LogComment & Reprocess Integration', () => {
       const mockAIService = {
         analyzeImage: vi.fn(async (_imagePath: string, _lexicon: Lexicon): Promise<AIAnalysisResult> => ({
           mainName: 'new-kitchen-oven-CU',
-          metadata: ['new', 'metadata', 'fresh'],
+          keywords: ['new', 'metadata', 'fresh'],
           confidence: 0.95,
           location: 'new-location',
           subject: 'new-subject',
@@ -231,7 +231,7 @@ describe('Batch Processing - LogComment & Reprocess Integration', () => {
 
         if (result.confidence > 0.7) {
           fileMetadata.mainName = result.mainName;
-          fileMetadata.metadata = result.metadata;
+          fileMetadata.keywords = result.keywords;
           fileMetadata.location = result.location;
           fileMetadata.subject = result.subject;
           fileMetadata.action = result.action;
@@ -243,7 +243,7 @@ describe('Batch Processing - LogComment & Reprocess Integration', () => {
           await mockMetadataWriter.writeMetadataToFile(
             fileMetadata.filePath,
             fileMetadata.mainName,
-            fileMetadata.metadata,
+            fileMetadata.keywords,
             {
               location: fileMetadata.location,
               subject: fileMetadata.subject,
@@ -259,7 +259,7 @@ describe('Batch Processing - LogComment & Reprocess Integration', () => {
           'already-processed-001',
           expect.objectContaining({
             mainName: 'new-kitchen-oven-CU', // Updated
-            metadata: ['new', 'metadata', 'fresh'], // Updated
+            keywords: ['new', 'metadata', 'fresh'], // Updated
           })
         );
         expect(mockMetadataWriter.writeMetadataToFile).toHaveBeenCalled();
@@ -270,7 +270,7 @@ describe('Batch Processing - LogComment & Reprocess Integration', () => {
       const mockAIService = {
         analyzeImage: vi.fn(async (_imagePath: string, _lexicon: Lexicon): Promise<AIAnalysisResult> => ({
           mainName: 'kitchen-sink-MID',
-          metadata: ['stainless', 'modern'],
+          keywords: ['stainless', 'modern'],
           confidence: 0.88,
           location: 'kitchen',
           subject: 'sink',
@@ -288,7 +288,7 @@ describe('Batch Processing - LogComment & Reprocess Integration', () => {
           extension: '.jpg',
           processedByAI: false, // Never processed
           mainName: '',
-          metadata: [] as string[],
+          keywords: [] as string[],
           lastModified: new Date(),
           fileType: 'image',
         })),

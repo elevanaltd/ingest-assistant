@@ -33,7 +33,7 @@ export const FileRenameSchema = z.object({
 
 export const FileUpdateMetadataSchema = z.object({
   fileId: z.string().min(1).max(50),
-  metadata: z.array(z.string()).max(100), // Max 100 metadata items
+  keywords: z.array(z.string()).max(100), // Max 100 keyword items (renamed from metadata for v2.0 schema)
 });
 
 // Structured metadata update schema (for update-structured-metadata handler)

@@ -22,8 +22,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   renameFile: (fileId: string, mainName: string, currentPath: string, structured?: { location?: string; subject?: string; action?: string; shotType?: string }): Promise<boolean> =>
     ipcRenderer.invoke('file:rename', fileId, mainName, currentPath, structured),
 
-  updateMetadata: (fileId: string, metadata: string[]): Promise<boolean> =>
-    ipcRenderer.invoke('file:update-metadata', fileId, metadata),
+  updateMetadata: (fileId: string, keywords: string[]): Promise<boolean> =>
+    ipcRenderer.invoke('file:update-metadata', fileId, keywords),
 
   updateStructuredMetadata: (fileId: string, structured: { location: string; subject: string; action?: string; shotType: string }, filePath?: string, fileType?: 'image' | 'video'): Promise<boolean> =>
     ipcRenderer.invoke('file:update-structured-metadata', fileId, structured, filePath, fileType),

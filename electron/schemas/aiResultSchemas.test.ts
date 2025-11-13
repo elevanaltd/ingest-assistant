@@ -52,7 +52,7 @@ describe('aiResultSchemas', () => {
       const v1 = {
         version: '1',
         mainName: 'kitchen-oven',
-        metadata: ['kitchen', 'oven'],
+        keywords: ['kitchen', 'oven'],
         confidence: 0.8,
       };
 
@@ -63,7 +63,7 @@ describe('aiResultSchemas', () => {
     it('defaults version to "1" when missing', () => {
       const v1NoVersion = {
         mainName: 'kitchen-oven',
-        metadata: ['kitchen'],
+        keywords: ['kitchen'],
         confidence: 0.7,
       };
 
@@ -77,7 +77,7 @@ describe('aiResultSchemas', () => {
     it('requires mainName field', () => {
       const missing = {
         version: '1',
-        metadata: [],
+        keywords: [],
         confidence: 0.8,
         // Missing mainName
       };
@@ -100,7 +100,7 @@ describe('aiResultSchemas', () => {
       const missing = {
         version: '1',
         mainName: 'test',
-        metadata: [],
+        keywords: [],
         // Missing confidence
       };
 
@@ -112,12 +112,12 @@ describe('aiResultSchemas', () => {
       const invalidConfidences = [-0.1, 1.1, 2];
 
       for (const conf of validConfidences) {
-        const data = { mainName: 'test', metadata: [], confidence: conf };
+        const data = { mainName: 'test', keywords: [], confidence: conf };
         expect(AIAnalysisResultV1Schema.safeParse(data).success).toBe(true);
       }
 
       for (const conf of invalidConfidences) {
-        const data = { mainName: 'test', metadata: [], confidence: conf };
+        const data = { mainName: 'test', keywords: [], confidence: conf };
         expect(AIAnalysisResultV1Schema.safeParse(data).success).toBe(false);
       }
     });
@@ -126,7 +126,7 @@ describe('aiResultSchemas', () => {
       const v1 = {
         version: '1',
         mainName: 'test',
-        metadata: [],
+        keywords: [],
         confidence: 0.5,
       };
 
@@ -139,7 +139,7 @@ describe('aiResultSchemas', () => {
       const v2 = {
         version: '2',
         mainName: 'kitchen-oven-CU',
-        metadata: ['kitchen', 'oven'],
+        keywords: ['kitchen', 'oven'],
         confidence: 0.9,
         location: 'kitchen',
         subject: 'oven',
@@ -154,7 +154,7 @@ describe('aiResultSchemas', () => {
       const v2Video = {
         version: '2',
         mainName: 'kitchen-oven-installing-CU',
-        metadata: ['kitchen', 'installation'],
+        keywords: ['kitchen', 'installation'],
         confidence: 0.85,
         location: 'kitchen',
         subject: 'oven',
@@ -170,7 +170,7 @@ describe('aiResultSchemas', () => {
       const minimal = {
         version: '2',
         mainName: 'test',
-        metadata: [],
+        keywords: [],
         confidence: 0.5,
       };
 
@@ -182,7 +182,7 @@ describe('aiResultSchemas', () => {
       const wrongVersion = {
         version: '1', // Wrong version
         mainName: 'test',
-        metadata: [],
+        keywords: [],
         confidence: 0.8,
         location: 'kitchen',
       };
@@ -193,7 +193,7 @@ describe('aiResultSchemas', () => {
     it('requires version field (no default)', () => {
       const noVersion = {
         mainName: 'test',
-        metadata: [],
+        keywords: [],
         confidence: 0.8,
         // Missing version
       };
@@ -208,7 +208,7 @@ describe('aiResultSchemas', () => {
         const data = {
           version: '2',
           mainName: 'test',
-          metadata: [],
+          keywords: [],
           confidence: 0.8,
           shotType: shot,
         };
@@ -220,7 +220,7 @@ describe('aiResultSchemas', () => {
       const invalid = {
         version: '2',
         mainName: 'test',
-        metadata: [],
+        keywords: [],
         confidence: 0.8,
         shotType: 'INVALID',
       };
@@ -232,7 +232,7 @@ describe('aiResultSchemas', () => {
       const v2 = {
         version: '2',
         mainName: 'test',
-        metadata: [],
+        keywords: [],
         confidence: 0.7,
         location: undefined,
         subject: undefined,
@@ -248,7 +248,7 @@ describe('aiResultSchemas', () => {
       const v2 = {
         version: '2',
         mainName: 'test',
-        metadata: [],
+        keywords: [],
         confidence: 0.7,
         // No optional fields
       };
@@ -263,7 +263,7 @@ describe('aiResultSchemas', () => {
       const v1 = {
         version: '1',
         mainName: 'test',
-        metadata: [],
+        keywords: [],
         confidence: 0.8,
       };
 
@@ -275,7 +275,7 @@ describe('aiResultSchemas', () => {
       const v2 = {
         version: '2',
         mainName: 'test',
-        metadata: [],
+        keywords: [],
         confidence: 0.8,
       };
 
@@ -286,7 +286,7 @@ describe('aiResultSchemas', () => {
     it('validates v1 without version field (defaults to v1)', () => {
       const legacyV1 = {
         mainName: 'test',
-        metadata: [],
+        keywords: [],
         confidence: 0.7,
       };
 
@@ -298,7 +298,7 @@ describe('aiResultSchemas', () => {
       const unknownVersion = {
         version: '99',
         mainName: 'test',
-        metadata: [],
+        keywords: [],
         confidence: 0.8,
       };
 
@@ -317,14 +317,14 @@ describe('aiResultSchemas', () => {
       const v1Data = {
         version: '1',
         mainName: 'test',
-        metadata: [],
+        keywords: [],
         confidence: 0.8,
       };
 
       const v2Data = {
         version: '2',
         mainName: 'test',
-        metadata: [],
+        keywords: [],
         confidence: 0.8,
         location: 'kitchen',
       };
@@ -351,7 +351,7 @@ describe('aiResultSchemas', () => {
         const v1 = {
           version: '1' as const,
           mainName: 'test',
-          metadata: [],
+          keywords: [],
           confidence: 0.8,
         };
 
@@ -361,7 +361,7 @@ describe('aiResultSchemas', () => {
       it('returns true for result without version field (legacy)', () => {
         const legacy = {
           mainName: 'test',
-          metadata: [],
+          keywords: [],
           confidence: 0.8,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } as any;
@@ -373,7 +373,7 @@ describe('aiResultSchemas', () => {
         const v2 = {
           version: '2' as const,
           mainName: 'test',
-          metadata: [],
+          keywords: [],
           confidence: 0.8,
         };
 
@@ -386,7 +386,7 @@ describe('aiResultSchemas', () => {
         const v2 = {
           version: '2' as const,
           mainName: 'test',
-          metadata: [],
+          keywords: [],
           confidence: 0.8,
         };
 
@@ -397,7 +397,7 @@ describe('aiResultSchemas', () => {
         const v1 = {
           version: '1' as const,
           mainName: 'test',
-          metadata: [],
+          keywords: [],
           confidence: 0.8,
         };
 
@@ -407,7 +407,7 @@ describe('aiResultSchemas', () => {
       it('returns false for legacy result without version', () => {
         const legacy = {
           mainName: 'test',
-          metadata: [],
+          keywords: [],
           confidence: 0.8,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } as any;
@@ -421,7 +421,7 @@ describe('aiResultSchemas', () => {
     it('provides clear error for missing field', () => {
       const missing = {
         version: '2',
-        metadata: [],
+        keywords: [],
         confidence: 0.8,
         // Missing mainName
       };
@@ -439,7 +439,7 @@ describe('aiResultSchemas', () => {
       const wrongType = {
         version: '2',
         mainName: 123, // Should be string
-        metadata: [],
+        keywords: [],
         confidence: 0.8,
       };
 
@@ -456,7 +456,7 @@ describe('aiResultSchemas', () => {
       const outOfRange = {
         version: '2',
         mainName: 'test',
-        metadata: [],
+        keywords: [],
         confidence: 1.5, // > 1
       };
 

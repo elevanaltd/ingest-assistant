@@ -85,10 +85,18 @@ describe('Action Field Feature', () => {
     filePath: '/test/path/IMG_12345678.mp4',
     extension: '.mp4',
     mainName: '',
-    metadata: [],
+    keywords: [],
     processedByAI: false,
-    lastModified: new Date(),
     fileType: 'video',
+    location: '',
+    subject: '',
+    action: '',
+    shotType: '',
+    createdAt: new Date(),
+    createdBy: 'ingest-assistant',
+    modifiedAt: new Date(),
+    modifiedBy: 'ingest-assistant',
+    version: '1.1.0',
     ...overrides,
   });
 
@@ -273,7 +281,7 @@ describe('Action Field Feature', () => {
 
       const aiResult: AIAnalysisResult = {
         mainName: 'kitchen-oven-cleaning-WS',
-        metadata: ['appliance', 'cooking'],
+        keywords: ['appliance', 'cooking'],
         confidence: 0.95,
         location: 'kitchen',
         subject: 'oven',
@@ -318,10 +326,11 @@ describe('Action Field Feature', () => {
 
       const aiResult: AIAnalysisResult = {
         mainName: 'kitchen-oven-WS',
-        metadata: ['appliance', 'cooking'],
+        keywords: ['appliance', 'cooking'],
         confidence: 0.95,
         location: 'kitchen',
         subject: 'oven',
+        action: '',
         shotType: 'WS',
       };
       mockElectronAPI.analyzeFile.mockResolvedValue(aiResult);
@@ -354,10 +363,11 @@ describe('Action Field Feature', () => {
       // AI result without action field
       const aiResult: AIAnalysisResult = {
         mainName: 'kitchen-oven-WS',
-        metadata: ['appliance', 'cooking'],
+        keywords: ['appliance', 'cooking'],
         confidence: 0.95,
         location: 'kitchen',
         subject: 'oven',
+        action: '',
         shotType: 'WS',
       };
       mockElectronAPI.analyzeFile.mockResolvedValue(aiResult);
