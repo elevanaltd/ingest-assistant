@@ -132,6 +132,7 @@ export class MetadataWriter {
       subject?: string;
       action?: string;
       shotType?: string;
+      date?: string;
     },
     description?: string
   ): Promise<void> {
@@ -157,6 +158,9 @@ export class MetadataWriter {
       }
       if (structured.shotType) {
         this.validateInput(structured.shotType, 'structured.shotType');
+      }
+      if (structured.date) {
+        this.validateInput(structured.date, 'structured.date');
       }
     }
 
@@ -194,6 +198,9 @@ export class MetadataWriter {
       }
       if (structured.shotType) {
         logCommentParts.push(`shotType=${structured.shotType}`);
+      }
+      if (structured.date) {
+        logCommentParts.push(`date=${structured.date}`);
       }
 
       if (logCommentParts.length > 0) {
