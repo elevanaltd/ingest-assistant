@@ -92,6 +92,11 @@ export function Sidebar({
                 AI
               </span>
             )}
+            {file.isOutdated && (
+              <span className="sidebar-file-outdated-badge" title="Outdated metadata (legacy v1.0 schema)">
+                OUTDATED
+              </span>
+            )}
           </div>
         </div>
       </button>

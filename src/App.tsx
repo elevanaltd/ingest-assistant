@@ -134,7 +134,7 @@ function App() {
         setMainName('');
       }
 
-      setKeywords(currentFile.keywords.join(', '));
+      setKeywords(currentFile.keywords?.join(', ') || '');
 
       // Load file as data URL
       window.electronAPI.readFileAsDataUrl(currentFile.filePath)
@@ -332,7 +332,7 @@ function App() {
         setMainName(result.mainName);
       }
 
-      setKeywords(result.keywords.join(', '));
+      setKeywords(result.keywords?.join(', ') || '');
       setStatusMessage(`✓ AI Analysis complete! Confidence: ${(result.confidence * 100).toFixed(0)}%`);
     } catch (error) {
       console.error('AI analysis failed:', error);
