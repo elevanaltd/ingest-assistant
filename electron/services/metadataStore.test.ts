@@ -71,6 +71,76 @@ describe('MetadataStore', () => {
 
       await expect(metadataStore.loadMetadata()).rejects.toThrow();
     });
+
+    it('should handle v1.0 JSON files without keywords field (Issue: undefined crash)', async () => {
+      // Simulate legacy v1.0 JSON file WITHOUT keywords field
+      const legacyV1Data = {
+        _schema: '1.0',
+        'EB001537': {
+          id: 'EB001537',
+          originalFilename: 'EB001537.jpg',
+          currentFilename: 'EB001537.jpg',
+          filePath: '/path/EB001537.jpg',
+          extension: '.jpg',
+          mainName: 'kitchen-oven',
+          // NOTE: No keywords field - this causes the bug
+          processedByAI: false,
+          fileType: 'image' as const,
+          createdAt: '2024-01-01T00:00:00Z',
+          createdBy: 'ingest-assistant',
+          modifiedAt: '2024-01-01T00:00:00Z',
+          modifiedBy: 'ingest-assistant',
+          version: '1.0',
+          location: '',
+          subject: '',
+          action: '',
+          shotType: '',
+        }
+      };
+
+      mockFs.readFile.mockResolvedValue(JSON.stringify(legacyV1Data));
+
+      const metadata = await metadataStore.loadMetadata();
+
+      // Should not crash, and keywords should be initialized to empty array
+      expect(metadata['EB001537']).toBeDefined();
+      expect(metadata['EB001537'].keywords).toBeDefined();
+      expect(Array.isArray(metadata['EB001537'].keywords)).toBe(true);
+      expect(metadata['EB001537'].keywords).toEqual([]);
+    });
+
+    it('should mark v1.0 JSON files as outdated', async () => {
+      const legacyV1Data = {
+        _schema: '1.0',
+        'EB001537': {
+          id: 'EB001537',
+          originalFilename: 'EB001537.jpg',
+          currentFilename: 'EB001537.jpg',
+          filePath: '/path/EB001537.jpg',
+          extension: '.jpg',
+          mainName: 'kitchen-oven',
+          keywords: [],
+          processedByAI: false,
+          fileType: 'image' as const,
+          createdAt: '2024-01-01T00:00:00Z',
+          createdBy: 'ingest-assistant',
+          modifiedAt: '2024-01-01T00:00:00Z',
+          modifiedBy: 'ingest-assistant',
+          version: '1.0',
+          location: '',
+          subject: '',
+          action: '',
+          shotType: '',
+        }
+      };
+
+      mockFs.readFile.mockResolvedValue(JSON.stringify(legacyV1Data));
+
+      const metadata = await metadataStore.loadMetadata();
+
+      // Should mark file as outdated
+      expect(metadata['EB001537'].isOutdated).toBe(true);
+    });
   });
 
   describe('saveMetadata', () => {
