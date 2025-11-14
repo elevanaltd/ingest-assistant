@@ -7,8 +7,28 @@
  * skill content into the conversation context.
  */
 
+// Load environment variables from .env file in hooks directory
+// MUST be imported before other code runs
+import dotenv from 'dotenv';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
+
+// Configure dotenv to load .env from the hooks directory
+const hooksDir = dirname(fileURLToPath(import.meta.url));
+const envPath = join(hooksDir, '.env');
+const result = dotenv.config({ path: envPath });
+
+// Debug: Log if .env was loaded
+if (process.env.DEBUG_SKILL_HOOK || !process.env.ANTHROPIC_API_KEY) {
+  console.error('[skill-activation] Dotenv load result:', {
+    envPath,
+    success: result.error ? false : true,
+    parsed: result.parsed ? Object.keys(result.parsed) : [],
+    hasApiKey: !!process.env.ANTHROPIC_API_KEY,
+  });
+}
+
 import { readFileSync } from 'fs';
-import { join } from 'path';
 import { analyzeIntent } from './lib/intent-analyzer.js';
 import { resolveSkillDependencies } from './lib/skill-resolution.js';
 import { filterAndPromoteSkills, findAffinityInjections } from './lib/skill-filtration.js';

@@ -42,6 +42,17 @@ export class MetadataStore {
 
         const metadata = fileData[key] as FileMetadata;
 
+        // Ensure keywords exists (defensive - handles v1.0 files without keywords field)
+        if (!metadata.keywords) {
+          metadata.keywords = [];
+        }
+
+        // Mark v1.0 files as outdated (schema migration tracking)
+        if (this.schemaVersion === '1.0') {
+          metadata.isOutdated = true;
+          console.log(`[MetadataStore] Marked v1.0 file as outdated: ${key}`);
+        }
+
         // Convert date strings back to Date objects
         if (metadata.createdAt) {
           metadata.createdAt = new Date(metadata.createdAt);

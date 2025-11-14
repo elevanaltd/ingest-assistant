@@ -48,3 +48,4 @@ test-output.log
 # Claude Code hooks state (session-specific)
 .claude/hooks/state/
 .claude/hooks/hook-execution.log
+/.cache
