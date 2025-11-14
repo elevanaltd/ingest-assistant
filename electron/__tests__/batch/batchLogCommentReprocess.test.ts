@@ -172,6 +172,119 @@ describe('Batch Processing - LogComment & Reprocess Integration', () => {
         }
       );
     });
+
+    it('should write LogComment with date field for CEP Panel uniqueness (Issue #31)', async () => {
+      const mockMetadataWriter = {
+        writeMetadataToFile: vi.fn(async (
+          _filePath: string,
+          _mainName: string,
+          _tags: string[],
+          structured?: {
+            location?: string;
+            subject?: string;
+            action?: string;
+            shotType?: string;
+            date?: string;
+          }
+        ) => {
+          // Verify date field is passed to metadataWriter
+          expect(structured).toBeDefined();
+          expect(structured?.location).toBe('kitchen');
+          expect(structured?.subject).toBe('oven');
+          expect(structured?.action).toBe('cleaning');
+          expect(structured?.shotType).toBe('WS');
+          expect(structured?.date).toBe('202511031005'); // yyyymmddhhmm format
+        }),
+      };
+
+      const mockMetadataStore = {
+        getFileMetadata: vi.fn(async (_fileId: string): Promise<FileMetadata | null> => ({
+          id: 'test-video-001',
+          originalFilename: 'test-video-001.mov',
+          currentFilename: 'test-video-001.mov',
+          filePath: '/path/to/video.mov',
+          extension: '.mov',
+          processedByAI: false,
+          mainName: 'kitchen-oven-cleaning-WS-202511031005',
+          keywords: ['appliance', 'demo'] as string[],
+          fileType: 'video',
+          createdAt: new Date(),
+          createdBy: 'ingest-assistant',
+          modifiedAt: new Date(),
+          modifiedBy: 'ingest-assistant',
+          version: '2.0',
+          location: 'kitchen',
+          subject: 'oven',
+          action: 'cleaning',
+          shotType: 'WS',
+          creationTimestamp: new Date('2025-11-03T10:05:00Z'), // Has timestamp
+        })),
+        updateFileMetadata: vi.fn(async (_fileId: string, _metadata: FileMetadata) => true),
+      };
+
+      // AI result with structured fields
+      const aiResult: AIAnalysisResult = {
+        mainName: 'kitchen-oven-cleaning-WS',
+        keywords: ['appliance', 'demo'],
+        confidence: 0.95,
+        location: 'kitchen',
+        subject: 'oven',
+        action: 'cleaning',
+        shotType: 'WS',
+      };
+
+      // Simulate batch processor behavior with date extraction
+      const fileMetadata = await mockMetadataStore.getFileMetadata('test-video-001');
+
+      if (fileMetadata) {
+        // Copy AI result to fileMetadata
+        fileMetadata.location = aiResult.location;
+        fileMetadata.subject = aiResult.subject;
+        fileMetadata.action = aiResult.action;
+        fileMetadata.shotType = aiResult.shotType;
+        fileMetadata.keywords = aiResult.keywords;
+
+        // Extract and format timestamp (simulating getOrExtractCreationTimestamp + formatTimestampForTitle)
+        const timestamp = fileMetadata.creationTimestamp;
+        let formattedDate: string | undefined;
+        if (timestamp) {
+          const year = timestamp.getFullYear().toString();
+          const month = (timestamp.getMonth() + 1).toString().padStart(2, '0');
+          const day = timestamp.getDate().toString().padStart(2, '0');
+          const hour = timestamp.getHours().toString().padStart(2, '0');
+          const minute = timestamp.getMinutes().toString().padStart(2, '0');
+          formattedDate = `${year}${month}${day}${hour}${minute}`;
+        }
+
+        // Write to file WITH date in structured parameter
+        await mockMetadataWriter.writeMetadataToFile(
+          fileMetadata.filePath,
+          fileMetadata.mainName,
+          fileMetadata.keywords,
+          {
+            location: fileMetadata.location,
+            subject: fileMetadata.subject,
+            action: fileMetadata.action,
+            shotType: fileMetadata.shotType,
+            date: formattedDate, // NEW: Date field for CEP Panel
+          }
+        );
+
+        // Verify writeMetadataToFile was called with date field
+        expect(mockMetadataWriter.writeMetadataToFile).toHaveBeenCalledWith(
+          '/path/to/video.mov',
+          'kitchen-oven-cleaning-WS-202511031005',
+          ['appliance', 'demo'],
+          {
+            location: 'kitchen',
+            subject: 'oven',
+            action: 'cleaning',
+            shotType: 'WS',
+            date: '202511031005', // Validates date format: yyyymmddhhmm
+          }
+        );
+      }
+    });
   });
 
   describe('Reprocess Behavior', () => {

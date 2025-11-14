@@ -394,6 +394,33 @@ describe('MetadataWriter (Integration)', () => {
       expect(xmpData['LogComment']).toBe('location=kitchen, subject=oven, action=cleaning, shotType=WS');
     });
 
+    it('should write LogComment with date field for CEP Panel uniqueness (Issue #31)', async () => {
+      if (!exiftoolAvailable) {
+        console.log('⏭️  Skipping - exiftool not available');
+        return;
+      }
+
+      const mainName = 'kitchen-oven-cleaning-WS-202511031005';
+      const tags = ['appliance', 'demo'];
+      const structured = {
+        location: 'kitchen',
+        subject: 'oven',
+        action: 'cleaning',
+        shotType: 'WS',
+        date: '202511031005' // yyyymmddhhmm format
+      };
+
+      await metadataWriter.writeMetadataToFile(testFilePath, mainName, tags, structured);
+
+      // Read XMP-xmpDm:LogComment specifically
+      const { stdout } = await execAsync(`exiftool -XMP-xmpDm:LogComment -json "${testFilePath}"`);
+      const data = JSON.parse(stdout);
+      const xmpData = data[0];
+
+      // LogComment should include date field for CEP Panel to parse and preserve
+      expect(xmpData['LogComment']).toBe('location=kitchen, subject=oven, action=cleaning, shotType=WS, date=202511031005');
+    });
+
     it('should write LogComment with partial structured components', async () => {
       if (!exiftoolAvailable) {
         console.log('⏭️  Skipping - exiftool not available');
