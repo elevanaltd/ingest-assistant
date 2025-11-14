@@ -639,6 +639,10 @@ ipcMain.handle('file:rename', async (_event, fileId: string, mainName: string, c
 
     await store.updateFileMetadata(fileId, fileMetadata!);
 
+    // Extract and format timestamp for CEP Panel uniqueness (Issue #31)
+    const timestamp = await getOrExtractCreationTimestamp(fileMetadata!);
+    const formattedDate = timestamp ? formatTimestampForTitle(timestamp) : undefined;
+
     // Write metadata to the file
     await metadataWriter.writeMetadataToFile(
       newPath,
@@ -648,7 +652,8 @@ ipcMain.handle('file:rename', async (_event, fileId: string, mainName: string, c
         location: fileMetadata!.location,
         subject: fileMetadata!.subject,
         action: fileMetadata!.action,
-        shotType: fileMetadata!.shotType
+        shotType: fileMetadata!.shotType,
+        date: formattedDate
       }
     );
 
@@ -700,6 +705,10 @@ ipcMain.handle('file:update-metadata', async (_event, fileId: string, metadata: 
     const actualFilePath = path.join(currentFolderPath, fileMetadata.originalFilename);
     console.log('[main.ts] Actual file path to write:', actualFilePath);
 
+    // Extract and format timestamp for CEP Panel uniqueness (Issue #31)
+    const timestamp = await getOrExtractCreationTimestamp(fileMetadata);
+    const formattedDate = timestamp ? formatTimestampForTitle(timestamp) : undefined;
+
     // Write metadata INTO the actual file using exiftool
     // Use the current mainName from fileMetadata (which may have been updated by updateStructuredMetadata)
     console.log('[main.ts] Writing to XMP - title:', fileMetadata.mainName, 'keywords:', validated.keywords);
@@ -711,7 +720,8 @@ ipcMain.handle('file:update-metadata', async (_event, fileId: string, metadata: 
         location: fileMetadata.location,
         subject: fileMetadata.subject,
         action: fileMetadata.action,
-        shotType: fileMetadata.shotType
+        shotType: fileMetadata.shotType,
+        date: formattedDate
       }
     );
 
@@ -1018,6 +1028,10 @@ ipcMain.handle('batch:start', async (_event, fileIds: string[]) => {
           MetadataStore.updateAuditTrail(fileMetadata);
           await store.updateFileMetadata(fileId, fileMetadata);
 
+          // Extract and format timestamp for CEP Panel uniqueness (Issue #31)
+          const timestamp = await getOrExtractCreationTimestamp(fileMetadata);
+          const formattedDate = timestamp ? formatTimestampForTitle(timestamp) : undefined;
+
           // Issue #2: Write metadata to actual file (not just JSON store)
           // This ensures batch processing updates both the JSON store AND the file's EXIF/XMP metadata
           await metadataWriter.writeMetadataToFile(
@@ -1028,7 +1042,8 @@ ipcMain.handle('batch:start', async (_event, fileIds: string[]) => {
               location: fileMetadata.location,
               subject: fileMetadata.subject,
               action: fileMetadata.action,
-              shotType: fileMetadata.shotType
+              shotType: fileMetadata.shotType,
+              date: formattedDate
             }
           );
         }
