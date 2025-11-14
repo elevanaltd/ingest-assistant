@@ -118,9 +118,17 @@ function formatTimestampForTitle(date: Date): string {
 async function getOrExtractCreationTimestamp(
   fileMetadata: import('../src/types').FileMetadata
 ): Promise<Date | undefined> {
-  // Return cached timestamp if available
+  // Return cached timestamp if available (convert from ISO string if needed)
   if (fileMetadata.creationTimestamp) {
-    return fileMetadata.creationTimestamp;
+    // JSON deserialization converts Date objects to ISO strings
+    // Convert back to Date if necessary
+    const timestamp = typeof fileMetadata.creationTimestamp === 'string'
+      ? new Date(fileMetadata.creationTimestamp)
+      : fileMetadata.creationTimestamp;
+
+    // Update cache with Date object for future use
+    fileMetadata.creationTimestamp = timestamp;
+    return timestamp;
   }
 
   // Extract from file using exiftool
