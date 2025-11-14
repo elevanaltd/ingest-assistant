@@ -1,13 +1,29 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeAll, beforeEach, afterEach } from 'vitest';
 import { MetadataWriter } from '../../services/metadataWriter';
+import { exec } from 'child_process';
+import { promisify } from 'util';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import * as os from 'os';
+
+const execAsync = promisify(exec);
 
 describe('Command Injection Prevention', () => {
   let writer: MetadataWriter;
   let testDir: string;
   let testFile: string;
+  let exiftoolAvailable = false;
+
+  beforeAll(async () => {
+    // Check if exiftool is installed
+    try {
+      await execAsync('exiftool -ver');
+      exiftoolAvailable = true;
+    } catch (error) {
+      console.warn('⚠️  exiftool not installed - skipping command injection integration tests that require exiftool');
+      console.warn('   Install with: brew install exiftool (macOS) or apt-get install libimage-exiftool-perl (Linux)');
+    }
+  });
 
   beforeEach(async () => {
     writer = new MetadataWriter();
@@ -84,6 +100,11 @@ describe('Command Injection Prevention', () => {
   });
 
   it('should accept safe metadata with special but safe characters', async () => {
+    if (!exiftoolAvailable) {
+      console.log('⏭️  Skipping - exiftool not available');
+      return;
+    }
+
     const safeName = "Oven's Control-Panel (2024) [Kitchen]";
     const safeTags = ['oven', 'control-panel', 'kitchen'];
 
@@ -94,6 +115,11 @@ describe('Command Injection Prevention', () => {
   });
 
   it('should sanitize Unicode characters safely', async () => {
+    if (!exiftoolAvailable) {
+      console.log('⏭️  Skipping - exiftool not available');
+      return;
+    }
+
     const unicodeName = 'Image 测试 مرحبا привет';
 
     // Should handle Unicode without shell injection
