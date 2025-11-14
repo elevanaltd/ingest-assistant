@@ -50,6 +50,8 @@ export interface FileMetadata {
   // === Processing State ===
   /** Whether this file has been processed by AI */
   processedByAI: boolean;
+  /** Whether metadata is from legacy v1.0 JSON (outdated schema) */
+  isOutdated?: boolean;
 
   // === Audit Trail (CEP Panel alignment) ===
   /** When metadata was first created */
