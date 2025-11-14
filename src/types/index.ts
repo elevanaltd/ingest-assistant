@@ -28,6 +28,8 @@ export interface FileMetadata {
   extension: string;
   /** File type: image or video */
   fileType: 'image' | 'video';
+  /** Original creation timestamp from camera/device (used for unique naming) */
+  creationTimestamp?: Date;
 
   // === Core Metadata (matches XMP) ===
   /** Main descriptive name (kebab-case) - XMP-xmpDM:shotName */
