@@ -38,30 +38,36 @@
 ## Current State
 
 ### Active Branch
-`fix/ce-issues-2` (JSON v2.0 schema migration + cache invalidation + multi-select)
+`main` (CEP Panel date field integration complete)
 
 ### Recent Work (Last 10 Commits - November 2025)
-1. `28e6827` - fix: resolve all TypeScript build errors for v2.0 schema (Nov 13)
-2. `d68685b` - fix: complete metadata→keywords migration in serializer and aiService (Nov 13)
-3. `6c0d596` - fix: update Zod schemas and aiService for v2.0 keywords field (Nov 13)
-4. `192b71d` - feat: migrate to JSON schema v2.0 (Issue #54 alignment) (Nov 13)
-5. `0259309` - feat: fix rename reversion with cache invalidation (GREEN)
-6. `2b8f2bc` - test: add cache invalidation tests for rename operations (RED)
-7. `5027c8a` - feat: implement 'Process Selected (N files)' button (GREEN)
-8. `8a09652` - test: add failing tests for 'Process Selected' button (RED)
-9. `655c473` - feat: wire up multi-select state management in App.tsx
-10. `842c8b2` - feat: implement Sidebar multi-select (GREEN phase)
+1. `3fdd5f9` - fix: creationTimestamp deserialization (GREEN) - Nov 14
+2. `7c406d2` - test: timestamp deserialization bug tests (RED) - Nov 14
+3. `5db22c6` - feat: date field extraction wired to 3 IPC handlers (GREEN) - Nov 14
+4. `43a2344` - test: batch processing date field spec (RED) - Nov 14
+5. `12f46e0` - feat: date field to LogComment (GREEN) - Nov 14
+6. `f1a8943` - test: LogComment date field test (RED) - Nov 14
+7. `28e6827` - fix: TypeScript build errors v2.0 schema - Nov 13
+8. `d68685b` - fix: metadata→keywords migration - Nov 13
+9. `192b71d` - feat: JSON schema v2.0 migration - Nov 13
+10. `0259309` - feat: cache invalidation fix (GREEN)
 
-### Current Implementation State (2025-11-13)
-- **Working Tree:** Clean (all changes committed on fix/ce-issues-2)
+### Current Implementation State (2025-11-14)
+- **Working Tree:** Clean (2 commits on main ready to push)
 - **Development Status:** ACTIVE - Electron app is production path
 - **Major Features Completed:**
+  - ✅ **CEP Panel Date Field Integration (eav-cep-assist Issue #31, Nov 14)** - Complete end-to-end
+    - LogComment date field: `location=X, subject=Y, action=Z, shotType=W, date=202511031005`
+    - Date extraction from EXIF (DateTimeOriginal fallback chain)
+    - Timestamp formatting (yyyymmddhhmm)
+    - 3 IPC handlers wired: rename, update, batch AI
+    - Deserialization bug fix (ISO string → Date conversion)
+    - +6 tests (+1 metadataWriter integration, +1 batch spec, +5 deserialization)
   - ✅ **JSON Schema v2.0 Migration (Issue #54, Nov 13)** - Complete metadata schema overhaul
     - metadata → keywords field rename (XMP-dc:Description alignment)
     - Audit trail (createdAt, createdBy, modifiedAt, modifiedBy, version)
     - Schema versioning (_schema: "2.0") for future migrations
     - Structured fields required (location, subject, action, shotType)
-    - CEP Panel integration ready
   - ✅ Keyboard shortcuts & command palette (Issue #22, PR #40)
   - ✅ Virtual scrolling for file lists (Issue #23, PR #42)
   - ✅ Paginated file loading (Issue #19)
@@ -75,7 +81,7 @@
   - ✅ TypeScript strict mode - all `any` types eliminated (Issue #41)
   - ✅ ESLint v9 migration with flat config (Issue #45)
   - ✅ Test script fixed to exit cleanly (Nov 11)
-- **Architecture Status:** Phase 0 prerequisites COMPLETE, Tier 2-3 features IMPLEMENTED
+- **Architecture Status:** Phase 0 prerequisites COMPLETE, Tier 2-3 features IMPLEMENTED, CEP Panel integration COMPLETE
 
 ## Quality Gates Status
 
@@ -88,11 +94,12 @@
 - **Command:** `npm run typecheck`
 
 ### ✅ Tests
-- **Status:** PASS - ALL TESTS PASSING (518 tests, 33 test files)
+- **Status:** PASS - ALL TESTS PASSING (527 tests, 34 test files)
 - **Command:** `npm test` (now uses `vitest run` for single execution)
-- **Validated:** 2025-11-13 (JSON v2.0 migration complete)
+- **Validated:** 2025-11-14 (CEP Panel date field integration complete)
 - **Performance:** ~18s test suite execution (includes rate limiter timing tests)
 - **Recent Additions:**
+  - CEP Panel date field: +6 tests (LogComment integration, batch spec, deserialization)
   - JSON v2.0 migration: All test mocks updated with new schema
   - +3 cache invalidation tests (FileManager LRU cache behavior)
   - +22 tests from batch processing validation (Issue #24)
@@ -168,4 +175,4 @@
 **Security Test Coverage:** +23 security tests (command injection + media server auth)
 
 ## Last Updated
-2025-11-13 (JSON v2.0 schema migration complete - implementation-lead + error-architect)
+2025-11-14 (CEP Panel date field integration + deserialization bug fix - implementation-lead)
