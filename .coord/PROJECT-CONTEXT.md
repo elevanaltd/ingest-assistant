@@ -52,8 +52,8 @@
 9. `192b71d` - feat: JSON schema v2.0 migration - Nov 13
 10. `0259309` - feat: cache invalidation fix (GREEN)
 
-### Current Implementation State (2025-11-14)
-- **Working Tree:** Clean (2 commits on main ready to push)
+### Current Implementation State (2025-11-15)
+- **Working Tree:** Modified (UI improvements in progress)
 - **Development Status:** ACTIVE - Electron app is production path
 - **Major Features Completed:**
   - ✅ **CEP Panel Date Field Integration (eav-cep-assist Issue #31, Nov 14)** - Complete end-to-end
@@ -174,5 +174,20 @@
 
 **Security Test Coverage:** +23 security tests (command injection + media server auth)
 
+## Current Focus
+UI::timestamp_display→real_value_when_available→metadata_field_responsive
+
+## Key Decisions
+- [2025-11-15] UI→remove_rename_feature→architectural_review_pending⊗path_sync_complexity
+
+## Active Work
+- [x] Generated Title field→360px→timestamp_visibility_improved
+- [x] Timestamp display→show_real_when_available→placeholder_when_missing
+- [x] Rename File checkbox→hidden→architectural_review_pending
+- [ ] File rename architecture→investigate_path_sync→future_session
+
+## Next Milestone
+Git commit UI improvements→production deployment
+
 ## Last Updated
-2025-11-14 (CEP Panel date field integration + deserialization bug fix - implementation-lead)
+2025-11-15 (UI improvements: timestamp display + remove rename feature - holistic-orchestrator)

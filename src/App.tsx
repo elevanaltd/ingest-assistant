@@ -28,7 +28,6 @@ function App() {
   const [keywords, setKeywords] = useState<string>('');
   const [isAIConfigured, setIsAIConfigured] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [renameFileEnabled, setRenameFileEnabled] = useState<boolean>(false);
   const [mediaDataUrl, setMediaDataUrl] = useState<string>('');
   const [codecWarning, setCodecWarning] = useState<string>('');
   const [statusMessage, setStatusMessage] = useState<string>('');
@@ -223,23 +222,8 @@ function App() {
       // Save title and metadata with structured components
       const structuredData = location && subject && shotType ? { location, subject, action, shotType } : undefined;
 
-      // Only rename file if toggle is enabled
-      if (renameFileEnabled && generatedTitle && generatedTitle !== currentFile.mainName) {
-        console.log('[App] Renaming file with:', {
-          fileId: currentFile.id,
-          generatedTitle,
-          structuredData
-        });
-        await window.electronAPI.renameFile(
-          currentFile.id,
-          generatedTitle,
-          currentFile.filePath,
-          structuredData
-        );
-        // Update metadata tags after renaming
-        await window.electronAPI.updateMetadata(currentFile.id, metadataTags);
-      } else if (structuredData) {
-        // File rename disabled - save everything via updateStructuredMetadata
+      // Save everything via updateStructuredMetadata (file renaming disabled)
+      if (structuredData) {
         console.log('[App] Saving title and metadata as XMP only (file not renamed)');
         await window.electronAPI.updateStructuredMetadata(
           currentFile.id,
@@ -249,29 +233,21 @@ function App() {
         );
         // Update metadata tags
         await window.electronAPI.updateMetadata(currentFile.id, metadataTags);
+      } else {
+        // Legacy path: Just update metadata if no structured data
+        await window.electronAPI.updateMetadata(currentFile.id, metadataTags);
       }
 
-      // Performance optimization: Only reload files if renamed (to get new filePath)
-      // Otherwise update in-place to avoid re-transcoding video
-      if (renameFileEnabled && generatedTitle && generatedTitle !== currentFile.mainName) {
-        // File was renamed - need to reload to get updated filePath
-        const updatedFiles = await window.electronAPI.loadFiles();
-        setFiles(updatedFiles);
-
-        // Find the file we just saved by ID and update the index
-        const newIndex = updatedFiles.findIndex(f => f.id === currentFileId);
-        if (newIndex !== -1) {
-          setCurrentFileIndex(newIndex);
-        }
-      } else {
-        // File not renamed - update in place without reloading
+      // File not renamed - update in place without reloading to avoid re-transcoding video
+      {
         skipNextVideoLoadRef.current = true;
 
         const updatedFiles = files.map(f => {
           if (f.id === currentFileId) {
             return {
               ...f,
-              mainName: generatedTitle,
+              // Preserve mainName with timestamp (backend is authoritative source)
+              // Backend adds timestamp during save, don't overwrite with client-side generatedTitle
               keywords: metadataTags,
               location,
               subject,
@@ -580,9 +556,9 @@ function App() {
               </div>
             </div>
 
-            {/* Row 2: Generated Title, Metadata, Rename Toggle, Save, AI Assist */}
+            {/* Row 2: Generated Title, Metadata, Save, AI Assist */}
             <div className="form-row" style={{ display: 'flex', gap: '8px', marginTop: '10px', flexWrap: 'nowrap' }}>
-              <div className="form-group" style={{ flex: '0 0 240px', minWidth: 0 }}>
+              <div className="form-group" style={{ flex: '0 0 360px', minWidth: 0 }}>
                 <label style={{ fontSize: '13px' }}>Generated Title</label>
                 <div style={{
                   padding: '5px 8px',
@@ -598,13 +574,22 @@ function App() {
                   whiteSpace: 'nowrap'
                 }}>
                   {location && subject && shotType
-                    ? `${location}-${subject}-${currentFile.fileType === 'video' && action ? `${action}-` : ''}${shotType}`
+                    ? (
+                      currentFile.mainName && currentFile.mainName.match(/-\d{12}$/)
+                        ? <span>{currentFile.mainName}</span>
+                        : (
+                          <>
+                            <span>{`${location}-${subject}-${currentFile.fileType === 'video' && action ? `${action}-` : ''}${shotType}`}</span>
+                            <span style={{ color: '#999', fontWeight: 'normal' }}>-[timestamp]</span>
+                          </>
+                        )
+                    )
                     : <span style={{ color: '#999', fontFamily: 'sans-serif' }}>Fill fields above...</span>
                   }
                 </div>
               </div>
 
-              <div className="form-group" style={{ flex: '1 1 0', minWidth: 0 }}>
+              <div className="form-group" style={{ flex: '1 1 0', minWidth: '200px' }}>
                 <label style={{ fontSize: '13px' }}>Metadata</label>
                 <input
                   type="text"
@@ -614,26 +599,6 @@ function App() {
                   className="input"
                   style={{ fontSize: '13px', padding: '4px 8px' }}
                 />
-              </div>
-
-              <div className="form-group" style={{ flex: '0 0 110px', minWidth: 0 }}>
-                <label style={{ fontSize: '13px' }}>Rename File</label>
-                <label style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  height: '28px',
-                  cursor: 'pointer',
-                  userSelect: 'none'
-                }}>
-                  <input
-                    type="checkbox"
-                    checked={renameFileEnabled}
-                    onChange={(e) => setRenameFileEnabled(e.target.checked)}
-                    style={{ cursor: 'pointer' }}
-                  />
-                  <span style={{ fontSize: '12px' }}>Add ID Prefix</span>
-                </label>
               </div>
 
               <div className="form-group" style={{ flex: '0 0 80px', minWidth: 0 }}>
