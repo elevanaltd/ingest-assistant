@@ -11,7 +11,7 @@ AI-powered media file ingestion and metadata assistant for MacOS.
   - Queue persistence survives app restarts
   - Graceful cancellation (finishes current file)
   - Same metadata storage as manual processing
-  - See: [Batch Processing Documentation](.coord/docs/007-DOC-BATCH-PROCESSING-IMPLEMENTATION.md)
+  - See: [Batch Processing Documentation](.coord/docs/guides/implementation/007-DOC-BATCH-PROCESSING-IMPLEMENTATION.md)
 - **Auto-Rename**: Files automatically renamed to `{ID}-{kebab-case-name}.{ext}`
   - **Photos**: 3-part naming `{location}-{subject}-{shotType}`
   - **Videos**: 4-part naming `{location}-{subject}-{action}-{shotType}`
@@ -220,7 +220,7 @@ Process multiple files automatically with AI analysis:
 - Finishes current file, then stops
 - Cancelled files can be reprocessed later
 
-**Detailed Documentation:** See [Batch Processing Implementation](.coord/docs/007-DOC-BATCH-PROCESSING-IMPLEMENTATION.md)
+**Detailed Documentation:** See [Batch Processing Implementation](.coord/docs/guides/implementation/007-DOC-BATCH-PROCESSING-IMPLEMENTATION.md)
 
 ## File Naming Convention
 
