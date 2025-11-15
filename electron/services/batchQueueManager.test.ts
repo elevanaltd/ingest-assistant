@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import * as fs from 'fs/promises';
-import { BatchQueueManager } from '../../services/batchQueueManager';
+import { BatchQueueManager } from './batchQueueManager';
 
 /**
  * Batch Queue Manager Tests (Issue #24)
