@@ -8,6 +8,111 @@
 **Platform:** macOS (darwin)
 **Phase:** B4 (Production Ready + Security Hardened)
 
+## EAV Ecosystem Integration
+
+**Position:** Step 6 of 10 in complete production pipeline
+**Ecosystem:** Part of EAV Operations Suite (10-app video production system)
+**Related Project:** `/Volumes/HestAI-Projects/eav-monorepo/` (9 production apps)
+
+### Production Workflow Position
+
+```
+COMPLETE PIPELINE (10 Steps):
+
+1-5: Pre-Production (EAV Monorepo)
+  ├─ scripts-web: Script planning
+  ├─ scenes-web: Shot breakdown
+  ├─ cam-op-pwa: Field capture
+  └─ data-entry-web: Client specs
+
+→ 6: INGEST ASSISTANT (THIS APP) ← YOU ARE HERE
+     Role: AI pre-tagging gateway
+     Input: Raw media files (photos/videos)
+     Output: XMP-embedded metadata
+     Metadata: location, subject, action, shotType
+     Enhancement: Reference lookup (#63 - planned)
+
+7: CEP Panel (Adobe Premiere Pro extension)
+  └─ Reads XMP → Imports to Premiere Pro
+
+8-10: Post-Production (EAV Monorepo)
+  ├─ copy-editor: TEXT library management
+  ├─ library-manager: Catalog approved content
+  ├─ edit-web: Edit guidance
+  ├─ vo-web: Voice-over generation
+  └─ translations-web: Subtitle translation
+```
+
+### Coherence Loop (Reference Catalog Integration)
+
+```
+1. IA Catalogs (Initial):
+   - AI analyzes: kitchen-hob-cover-CU
+   - XMP writes: location=kitchen, subject=hob-cover, shotType=CU
+
+2. CEP Panel Imports:
+   - Reads XMP from files
+   - Imports to Premiere Pro with metadata
+
+3. EAV Production (Shoots Table):
+   - Scripts app plans: kitchen-oven-steam-tray-CU
+   - Shoots table stores planned shots
+   - Cam-op app references during field capture
+
+4. QC & Correction (Human Review):
+   - Original: kitchen-hob-cover-CU (IA initial)
+   - Corrected: kitchen-oven-steam-tray-CU (human review)
+   - Thumbnail generated and stored
+
+5. Reference Catalog (Proposed #63):
+   - Stores corrected: EA001668.JPG → kitchen-oven-steam-tray-CU
+   - Vector embedding: OpenAI CLIP embedding(512)
+   - Links to public.shots: Authoritative metadata source
+
+6. Future IA (Enhanced):
+   - AI analyzes new photo
+   - Vector search → finds EA001668.JPG reference
+   - Agent context: "Looks like oven + sees kitchen-oven-steam-tray-CU"
+   - Dropdown shows: All shots from shoots table
+   - Result: Better initial cataloging from learned references
+```
+
+### Shared Supabase Architecture
+
+**Project:** EAV Monorepo Supabase (zbxvjyrbkycbfhwmmnmy)
+**Schema Separation:** Domain isolation through PostgreSQL schemas
+
+```
+public schema (EAV Production):
+├─ shots (shoot planning: location_start_point, subject, action, shot_type)
+├─ shoots (production management)
+├─ scripts (content creation)
+├─ projects (client work)
+└─ RLS: Project-based access control (admin/employee/client roles)
+
+media_references schema (IA Reference Catalog):
+├─ reference_images (corrected metadata catalog)
+├─ image_embeddings (vector similarity search via pgvector)
+├─ shot_references (FK links to public.shots)
+└─ RLS: Open read access, authenticated write (admin/employee only)
+
+Cross-Schema Integration (PostgreSQL Native):
+SELECT r.*, s.*
+FROM media_references.reference_images r
+JOIN public.shots s ON r.shot_id = s.id
+WHERE r.corrected_subject = 'oven-steam-tray';
+```
+
+**Why Separate Schemas:**
+- Domain isolation: AI/ML training ≠ Production tracking
+- Evolution independence: Reference catalog changes don't impact production
+- Access pattern coherence: Vector search ≠ CRUD operations
+- Blast radius minimization: Migrations isolated to domain boundaries
+
+**Related Documentation:**
+- EAV Context: `/Volumes/HestAI-Projects/eav-monorepo/.coord/PROJECT-CONTEXT.md`
+- Production Pipeline: `/Volumes/HestAI-Projects/eav-monorepo/.coord/workflow-docs/002-EAV-PRODUCTION-PIPELINE.md`
+
 ## Tech Stack
 
 - **Runtime:** Electron (main + renderer processes)
@@ -17,6 +122,10 @@
 - **Process:** Node.js
 - **AI Integration:** OpenRouter, Anthropic Claude, OpenAI APIs
 - **Metadata:** exiftool for XMP/EXIF writing
+- **Database:** Supabase (shared with EAV Monorepo - zbxvjyrbkycbfhwmmnmy)
+  - Schema: `media_references` (reference image catalog, isolated from production)
+  - Local: http://127.0.0.1:54323/ (Docker)
+  - Remote: https://zbxvjyrbkycbfhwmmnmy.supabase.co
 
 ## ⚠️ MANDATORY SKILLS - NO EXCEPTIONS ⚠️
 
@@ -100,7 +209,8 @@ Main Process (electron/main.ts)
 │  ├─ metadataWriter.ts     # XMP/EXIF writing via exiftool
 │  ├─ securityValidator.ts  # Path traversal prevention
 │  ├─ batchQueueManager.ts  # Batch processing with rate limiting
-│  └─ videoTranscoder.ts    # H.264 hardware-accelerated transcoding
+│  ├─ videoTranscoder.ts    # H.264 hardware-accelerated transcoding
+│  └─ referenceLookup.ts    # Supabase reference catalog (planned #63)
 └─ Security: execFile() NOT exec(), Zod validation, path normalization
 
 Renderer Process (src/App.tsx)
@@ -288,11 +398,18 @@ src/
 
 ## Documentation References
 
+### Ingest Assistant (This Project)
 - **Coordination:** `.coord/PROJECT-CONTEXT.md` (current state)
 - **Checklist:** `.coord/SHARED-CHECKLIST.md` (immediate tasks)
 - **Roadmap:** `.coord/PROJECT-ROADMAP.md` (phase progression)
 - **Architecture:** `.coord/docs/001-DOC-ARCHITECTURE.md`
 - **Batch Processing:** `.coord/docs/007-DOC-BATCH-PROCESSING-IMPLEMENTATION.md`
+- **Dependency Roadmap:** `.coord/docs/DEPENDENCY-ROADMAP.md` (enhancement planning)
+
+### EAV Ecosystem (Related Project)
+- **EAV Context:** `/Volumes/HestAI-Projects/eav-monorepo/.coord/PROJECT-CONTEXT.md`
+- **Production Pipeline:** `/Volumes/HestAI-Projects/eav-monorepo/.coord/workflow-docs/002-EAV-PRODUCTION-PIPELINE.md`
+- **Supabase Config:** `/Volumes/HestAI-Projects/eav-monorepo/.env` (shared database credentials)
 
 ## Quick Reference Commands
 
@@ -325,6 +442,6 @@ npm run dev
 
 ---
 
-**Last Updated:** 2025-11-12
+**Last Updated:** 2025-11-15 (EAV ecosystem integration documented)
 **Maintainer:** Shaun Buswell
 **Claude Code Version:** Sonnet 4.5
