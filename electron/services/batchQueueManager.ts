@@ -20,7 +20,7 @@ import type { BatchQueueState, BatchQueueItem, BatchProgress, BatchCompleteSumma
 
 export type ProcessorFunction = (fileId: string) => Promise<{ success: boolean; result?: AIAnalysisResult }>;
 export type ProgressCallback = (progress: BatchProgress) => void;
-export type CompleteCallback = (summary: BatchCompleteSummary) => void;
+export type CompleteCallback = (summary: BatchCompleteSummary) => void | Promise<void>;
 
 interface RateLimiter {
   consume: (tokens: number) => Promise<void>;
@@ -169,13 +169,13 @@ export class BatchQueueManager {
 
       this.state.currentFile = null;
 
-      // Emit completion callback
-      completeCallback({
+      // Emit completion callback (await in case it's async)
+      await Promise.resolve(completeCallback({
         status: this.state.status,
         completed,
         failed,
         cancelled,
-      });
+      }));
 
       // Final persistence
       await this.saveState();

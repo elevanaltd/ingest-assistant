@@ -197,6 +197,16 @@ export class MetadataStore {
   }
 
   /**
+   * Clear in-memory cache
+   * Used before batch processing to ensure fresh reads from disk
+   * Prevents stale cached data when processing files currently displayed in UI
+   */
+  clearCache(): void {
+    this.cache = null;
+    console.log('[MetadataStore] Cache cleared');
+  }
+
+  /**
    * Update FileMetadata audit trail
    * Call this when modifying existing metadata
    */
