@@ -1,6 +1,6 @@
 import { execFile } from 'child_process';
 import { promisify } from 'util';
-import { existsSync } from 'fs';
+import { existsSync, unlinkSync } from 'fs';
 
 const execFileAsync = promisify(execFile);
 
@@ -184,7 +184,10 @@ export class MetadataWriter {
     }
 
     // XMP-xmpDM:LogComment = Structured key=value pairs for CEP panel parsing
+    // FIX: MOV/QuickTime files don't overwrite LogComment by default
+    // Solution: Clear field first (empty value), then write new value in same command
     if (structured) {
+      console.log('[MetadataWriter] Structured input received:', structured);
       const logCommentParts: string[] = [];
 
       if (structured.location) {
@@ -203,9 +206,21 @@ export class MetadataWriter {
         logCommentParts.push(`date=${structured.date}`);
       }
 
+      console.log('[MetadataWriter] LogComment parts built:', logCommentParts);
+
       if (logCommentParts.length > 0) {
-        args.push(`-XMP-xmpDM:LogComment=${logCommentParts.join(', ')}`);
+        const logCommentValue = logCommentParts.join(', ');
+        console.log('[MetadataWriter] Writing LogComment:', logCommentValue);
+
+        // CRITICAL FIX: Clear LogComment first to ensure overwrite in MOV files
+        // exiftool processes args sequentially: delete → write in single invocation
+        args.push('-XMP-xmpDM:LogComment=');  // Clear existing value
+        args.push(`-XMP-xmpDM:LogComment=${logCommentValue}`);  // Write new value
+      } else {
+        console.warn('[MetadataWriter] ⚠️  No LogComment parts to write (all fields empty or missing)');
       }
+    } else {
+      console.warn('[MetadataWriter] ⚠️  No structured data provided - LogComment will not be written');
     }
 
     // XMP-dc:Description = Keywords OR custom description (searchable)
@@ -221,10 +236,31 @@ export class MetadataWriter {
     // Add file path
     args.push(filePath);
 
+    // RESILIENCE: Clean up orphaned exiftool temp files from previous crashes
+    // exiftool creates temporary files with _exiftool_tmp suffix during writes
+    // If app crashes during write, these files are left behind and block future writes
+    const tempFilePath = `${filePath}_exiftool_tmp`;
+    if (existsSync(tempFilePath)) {
+      console.warn('[MetadataWriter] ⚠️  Orphaned exiftool temp file detected, cleaning up:', tempFilePath);
+      try {
+        unlinkSync(tempFilePath);
+        console.log('[MetadataWriter] ✓ Orphaned temp file removed');
+      } catch (cleanupError) {
+        console.error('[MetadataWriter] Failed to remove orphaned temp file:', cleanupError);
+        // Continue anyway - exiftool might still succeed or provide better error
+      }
+    }
+
     try {
       // SECURITY: execFile() prevents shell injection
       // Arguments passed as array (no shell expansion)
       const exiftoolPath = findExiftool();
+
+      // Log the complete exiftool command for debugging
+      console.log('[MetadataWriter] Executing exiftool command:');
+      console.log('[MetadataWriter]   Path:', exiftoolPath);
+      console.log('[MetadataWriter]   Args:', args);
+
       const { stderr } = await execFileAsync(exiftoolPath, args, {
         timeout: 30000,        // 30 second timeout
         maxBuffer: 10 * 1024 * 1024  // 10MB output limit

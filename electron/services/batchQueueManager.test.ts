@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import * as fs from 'fs/promises';
-import { BatchQueueManager } from '../../services/batchQueueManager';
+import { BatchQueueManager } from './batchQueueManager';
 
 /**
  * Batch Queue Manager Tests (Issue #24)
@@ -73,7 +73,7 @@ describe('BatchQueueManager', () => {
       });
 
       await queueManager.addToQueue(fileIds);
-      await queueManager.startProcessing(mockProcessor, mockProgressCallback, mockCompleteCallback);
+      await queueManager.startProcessing(mockProcessor, mockProgressCallback, mockCompleteCallback as any);
 
       expect(processedOrder).toEqual(['file1', 'file2', 'file3']);
       expect(mockProcessor).toHaveBeenCalledTimes(3);
@@ -90,7 +90,7 @@ describe('BatchQueueManager', () => {
       });
 
       await queueManager.addToQueue(fileIds1);
-      const processingPromise = queueManager.startProcessing(mockProcessor, mockProgressCallback, mockCompleteCallback);
+      const processingPromise = queueManager.startProcessing(mockProcessor, mockProgressCallback, mockCompleteCallback as any);
 
       // Try to add second batch while first is running
       await expect(queueManager.addToQueue(fileIds2)).rejects.toThrow('Batch already in progress');
@@ -113,7 +113,7 @@ describe('BatchQueueManager', () => {
       });
 
       await queueManager.addToQueue(fileIds);
-      await queueManager.startProcessing(mockProcessor, progressCallback, mockCompleteCallback);
+      await queueManager.startProcessing(mockProcessor, progressCallback, mockCompleteCallback as any);
 
       expect(progressEvents).toHaveLength(3);
       expect(progressEvents[0]).toEqual({ current: 1, total: 3, fileId: 'file1', status: 'processing' });
@@ -138,7 +138,7 @@ describe('BatchQueueManager', () => {
       });
 
       await queueManager.addToQueue(fileIds);
-      await queueManager.startProcessing(mockProcessor, progressCallback, mockCompleteCallback);
+      await queueManager.startProcessing(mockProcessor, progressCallback, mockCompleteCallback as any);
 
       // Implementation emits progress event before processing, then error event on failure
       expect(progressEvents).toHaveLength(3);
@@ -165,7 +165,7 @@ describe('BatchQueueManager', () => {
       });
 
       await queueManager.addToQueue(fileIds);
-      await queueManager.startProcessing(mockProcessor, mockProgressCallback, mockCompleteCallback);
+      await queueManager.startProcessing(mockProcessor, mockProgressCallback, mockCompleteCallback as any);
 
       // Should process file1 and file2, but not file3
       expect(mockProcessor).toHaveBeenCalledTimes(2);
@@ -185,7 +185,7 @@ describe('BatchQueueManager', () => {
       });
 
       await queueManager.addToQueue(fileIds);
-      await queueManager.startProcessing(mockProcessor, mockProgressCallback, mockCompleteCallback);
+      await queueManager.startProcessing(mockProcessor, mockProgressCallback, mockCompleteCallback as any);
 
       const status = queueManager.getStatus();
       expect(status.items[0].status).toBe('completed');
@@ -204,9 +204,9 @@ describe('BatchQueueManager', () => {
       });
 
       await queueManager.addToQueue(fileIds);
-      await queueManager.startProcessing(mockProcessor, mockProgressCallback, mockCompleteCallback);
+      await queueManager.startProcessing(mockProcessor, mockProgressCallback, mockCompleteCallback as any);
 
-      expect(mockCompleteCallback).toHaveBeenCalledWith(
+      expect(mockCompleteCallback as any).toHaveBeenCalledWith(
         expect.objectContaining({ status: 'cancelled', completed: 1, cancelled: 1, failed: 0 })
       );
     });
@@ -221,7 +221,7 @@ describe('BatchQueueManager', () => {
       });
 
       await queueManager.addToQueue(fileIds);
-      await queueManager.startProcessing(mockProcessor, mockProgressCallback, mockCompleteCallback);
+      await queueManager.startProcessing(mockProcessor, mockProgressCallback, mockCompleteCallback as any);
 
       // Should write: after addToQueue, after file1, after file2, and on completion
       expect(fs.writeFile).toHaveBeenCalledTimes(4);
@@ -282,7 +282,7 @@ describe('BatchQueueManager', () => {
       });
 
       await queueManager.addToQueue(fileIds);
-      await queueManager.startProcessing(mockProcessor, mockProgressCallback, mockCompleteCallback);
+      await queueManager.startProcessing(mockProcessor, mockProgressCallback, mockCompleteCallback as any);
 
       expect(processedFiles).toEqual(['file1', 'file2', 'file3']);
       expect(mockProcessor).toHaveBeenCalledTimes(3);
@@ -301,7 +301,7 @@ describe('BatchQueueManager', () => {
       });
 
       await queueManager.addToQueue(fileIds);
-      await queueManager.startProcessing(mockProcessor, mockProgressCallback, mockCompleteCallback);
+      await queueManager.startProcessing(mockProcessor, mockProgressCallback, mockCompleteCallback as any);
 
       const status = queueManager.getStatus();
       expect(status.items[0].status).toBe('error');
@@ -326,7 +326,7 @@ describe('BatchQueueManager', () => {
       };
 
       await queueManager.addToQueue(fileIds);
-      await queueManager.startProcessing(mockProcessor, mockProgressCallback, mockCompleteCallback, mockRateLimiter);
+      await queueManager.startProcessing(mockProcessor, mockProgressCallback, mockCompleteCallback as any, mockRateLimiter);
 
       expect(mockRateLimiter.consume).toHaveBeenCalledTimes(2);
       // Second file should be processed at least 50ms after first

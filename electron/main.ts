@@ -992,6 +992,11 @@ ipcMain.handle('batch:start', async (_event, fileIds: string[]) => {
     const queueId = await batchQueueManager.addToQueue(validated.fileIds);
 
     const store = getMetadataStoreForFolder(currentFolderPath);
+
+    // Clear cache before batch processing to ensure fresh reads from disk
+    // This prevents stale cached data when processing files currently displayed in UI (Issue #26)
+    store.clearCache();
+
     const lexicon = await configManager.getLexicon();
 
     // Define processor function that will be called for each file
@@ -1071,7 +1076,16 @@ ipcMain.handle('batch:start', async (_event, fileIds: string[]) => {
     };
 
     // Define complete callback that emits completion event
-    const completeCallback = (summary: import('../src/types').BatchCompleteSummary) => {
+    const completeCallback = async (summary: import('../src/types').BatchCompleteSummary) => {
+      // Reload cache after batch completes to ensure UI has fresh data (Issue #26)
+      try {
+        console.log('[batch:complete] Reloading metadata cache after batch processing');
+        await store.loadMetadata();
+      } catch (error) {
+        console.error('[batch:complete] Failed to reload metadata cache:', error);
+        // Non-blocking - still emit completion event even if reload fails
+      }
+
       if (mainWindow) {
         mainWindow.webContents.send('batch:complete', summary);
       }

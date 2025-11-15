@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": ".claude/hooks/user_prompt_submit/skill-activation-hook.sh"
+            "command": "/Volumes/HestAI-Projects/ingest-assistant/.claude/hooks/user_prompt_submit/skill-activation-hook.sh"
           }
         ]
       }

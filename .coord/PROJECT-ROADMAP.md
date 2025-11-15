@@ -46,6 +46,28 @@
 - ✅ JSON v2.0 Schema Migration (Issue #54 - metadata→keywords, audit trail, schema versioning)
 - ✅ CEP Panel Date Field Integration (eav-cep-assist Issue #31 - LogComment date field)
 
+## Previous Phase: B4 - Handoff/Production Readiness (✅ COMPLETE)
+
+**Status:** Production deployment ready (v2.1.0 - CEP Panel date field integration)
+
+## Current Phase: D1/D2 - Reference Image Lookup System (Feature #63)
+
+### D1 - North Star (✅ COMPLETE)
+- ✅ 7 immutables defined (I1-I7: Visual similarity, human corrections, cross-project integration, offline operation, domain isolation)
+- ✅ 3 system flows documented (Reference population, enhanced analysis, cross-project coherence)
+- ✅ Architectural foundation (ADR-009: Shared Supabase + schema separation)
+- ✅ North Star approved → D2 ready
+
+### D2 - Design (✅ COMPLETE - Nov 15, 2025)
+**5 Critical Decisions Addressed:**
+- ✅ Vector embedding strategy → Hybrid OpenCLIP (local ONNX + optional server re-embed)
+- ✅ Schema design → media_references schema (3 tables: reference_images, reference_metadata, image_embeddings)
+- ✅ Client/server architecture → Client-side primary, server-side quality upgrades
+- ✅ Reference creation flow → Selective promotion (manual + bulk @ confidence ≥0.85)
+- ✅ Cache strategy → Local SQLite + pull-based delta sync
+**Deliverable:** 001-INGEST_ASSISTANT-D2-DESIGN.md (262 lines)
+**Consultations:** technical-architect (schema), security-specialist (RLS), holistic-orchestrator (coherence)
+
 ## Current Phase: B4 - Handoff/Production Readiness (✅ READY + CEP Panel Integration COMPLETE)
 
 ### Status: Production Ready + CEP Panel Date Field Complete
