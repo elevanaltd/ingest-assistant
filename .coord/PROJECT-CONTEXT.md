@@ -175,19 +175,22 @@
 **Security Test Coverage:** +23 security tests (command injection + media server auth)
 
 ## Current Focus
-UI::timestamp_display→real_value_when_available→metadata_field_responsive
+DESIGN::Reference_Lookup_System→D2_complete→D3_blueprint_ready
 
 ## Key Decisions
+- [2025-11-15] ARCH→Reference_Lookup[vs separate_DB,single_schema]→shared_Supabase+schema_isolation⊗I7_domain_independence
+- [2025-11-15] VECTOR→OpenCLIP_hybrid[vs API_only,no_cache]→local_ONNX+server_reembed⊗I6_offline_operation
+- [2025-11-15] SCHEMA→media_references_domain→pgvector+RLS+cross_FK⊗domain_isolated_evolution
+- [2025-11-15] CACHE→SQLite_local[vs no_cache,IndexedDB]→delta_sync⊗offline_resilience
 - [2025-11-15] UI→remove_rename_feature→architectural_review_pending⊗path_sync_complexity
 
 ## Active Work
-- [x] Generated Title field→360px→timestamp_visibility_improved
-- [x] Timestamp display→show_real_when_available→placeholder_when_missing
-- [x] Rename File checkbox→hidden→architectural_review_pending
-- [ ] File rename architecture→investigate_path_sync→future_session
+- [x] D1::North_Star_approved→7_immutables→technology_proof
+- [x] D2::design_document→262_lines→5_critical_decisions_addressed
+- [ ] D3::blueprint→API_contracts+UI_wireframes+integration_architecture
 
 ## Next Milestone
-Git commit UI improvements→production deployment
+D3 Blueprint→visual_architect+technical_architect→API_design+UI_mockups+migration_plan
 
 ## Last Updated
-2025-11-15 (UI improvements: timestamp display + remove rename feature - holistic-orchestrator)
+2025-11-15 (D2 Reference Lookup design complete - holistic-orchestrator)
