@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import type { FileMetadata, LexiconConfig, ShotType } from './types';
 import { SettingsModal } from './components/SettingsModal';
 import { Sidebar } from './components/Sidebar';
@@ -39,7 +39,9 @@ function App() {
   // Fixes issue where batch processing causes UI to stop responding to window resize
   const [, forceUpdate] = useState(0);
 
-  const currentFile = files[currentFileIndex];
+  // Memoize currentFile to stabilize dependencies for useEffect hooks
+  // Prevents infinite loops while ensuring effects re-run when file data actually changes
+  const currentFile = useMemo(() => files[currentFileIndex], [files, currentFileIndex]);
   const canSave = Boolean(location && subject && shotType);
 
   // Auto-dismiss status message after 3 seconds
@@ -82,9 +84,67 @@ function App() {
     };
   }, []);
 
-  // Update form and load media when current file changes
+  // Effect 1: Update form fields when current file data changes
+  // Memoized currentFile ensures this re-runs on cache reload (new file objects, same index)
   useEffect(() => {
-    if (!window.electronAPI) return;
+    if (!currentFile) {
+      setLocation('');
+      setSubject('');
+      setAction('');
+      setShotType('');
+      setMainName('');
+      setKeywords('');
+      return;
+    }
+
+    // Parse structured naming if available
+    if (currentFile.location && currentFile.subject && currentFile.shotType) {
+      setLocation(currentFile.location);
+      setSubject(currentFile.subject);
+      setAction(currentFile.action || '');
+      setShotType(currentFile.shotType as ShotType);
+      setMainName(currentFile.mainName);
+    } else if (currentFile.mainName) {
+      // Try parsing mainName pattern: {location}-{subject}-{shotType} or {location}-{subject}-{action}-{shotType}
+      const parts = currentFile.mainName.split('-');
+      if (parts.length === 4 && shotTypes.includes(parts[3].toUpperCase())) {
+        // 4-part video format
+        setLocation(parts[0]);
+        setSubject(parts[1]);
+        setAction(parts[2]);
+        setShotType(parts[3].toUpperCase() as ShotType);
+        setMainName(currentFile.mainName);
+      } else if (parts.length === 3 && shotTypes.includes(parts[2].toUpperCase())) {
+        // 3-part photo format
+        setLocation(parts[0]);
+        setSubject(parts[1]);
+        setAction('');
+        setShotType(parts[2].toUpperCase() as ShotType);
+        setMainName(currentFile.mainName);
+      } else {
+        // Legacy format - populate mainName directly
+        setLocation('');
+        setSubject('');
+        setAction('');
+        setShotType('');
+        setMainName(currentFile.mainName);
+      }
+    } else {
+      setLocation('');
+      setSubject('');
+      setAction('');
+      setShotType('');
+      setMainName('');
+    }
+
+    setKeywords(currentFile.keywords?.join(', ') || '');
+  }, [currentFile, shotTypes]);
+
+  // Effect 2: Load media preview when file changes
+  // Depends on currentFile to handle cache reload scenario (new file objects, same index)
+  // Separated from form sync to prevent unnecessary media reloads when only form data updates
+  useEffect(() => {
+    if (!window.electronAPI || !currentFile) return;
 
     // Skip video reload after save to prevent unnecessary re-transcoding
     if (skipNextVideoLoadRef.current) {
@@ -92,82 +152,36 @@ function App() {
       return;
     }
 
-    if (currentFile) {
-      // Parse structured naming if available
-      if (currentFile.location && currentFile.subject && currentFile.shotType) {
-        setLocation(currentFile.location);
-        setSubject(currentFile.subject);
-        setAction(currentFile.action || '');
-        setShotType(currentFile.shotType as ShotType);
-        setMainName(currentFile.mainName);
-      } else if (currentFile.mainName) {
-        // Try parsing mainName pattern: {location}-{subject}-{shotType} or {location}-{subject}-{action}-{shotType}
-        const parts = currentFile.mainName.split('-');
-        if (parts.length === 4 && shotTypes.includes(parts[3].toUpperCase())) {
-          // 4-part video format
-          setLocation(parts[0]);
-          setSubject(parts[1]);
-          setAction(parts[2]);
-          setShotType(parts[3].toUpperCase() as ShotType);
-          setMainName(currentFile.mainName);
-        } else if (parts.length === 3 && shotTypes.includes(parts[2].toUpperCase())) {
-          // 3-part photo format
-          setLocation(parts[0]);
-          setSubject(parts[1]);
-          setAction('');
-          setShotType(parts[2].toUpperCase() as ShotType);
-          setMainName(currentFile.mainName);
-        } else {
-          // Legacy format - populate mainName directly
-          setLocation('');
-          setSubject('');
-          setAction('');
-          setShotType('');
-          setMainName(currentFile.mainName);
-        }
-      } else {
-        setLocation('');
-        setSubject('');
-        setAction('');
-        setShotType('');
-        setMainName('');
-      }
+    // Load file as data URL
+    window.electronAPI.readFileAsDataUrl(currentFile.filePath)
+      .then(url => {
+        console.log('[App] Received URL from IPC:', url);
+        console.log('[App] File type:', currentFile.fileType);
 
-      setKeywords(currentFile.keywords?.join(', ') || '');
-
-      // Load file as data URL
-      window.electronAPI.readFileAsDataUrl(currentFile.filePath)
-        .then(url => {
-          console.log('[App] Received URL from IPC:', url);
-          console.log('[App] File type:', currentFile.fileType);
-
-          // Check for codec warning (format: "data:text/plain;base64,XXX|||http://...")
-          if (url.includes('|||')) {
-            const [warningPart, actualUrl] = url.split('|||');
-            if (warningPart.startsWith('data:text/plain;base64,')) {
-              const base64 = warningPart.replace('data:text/plain;base64,', '');
-              const warning = atob(base64);
-              console.warn('[App] Codec warning:', warning);
-              setCodecWarning(warning);
-              setMediaDataUrl(actualUrl);
-            } else {
-              setCodecWarning('');
-              setMediaDataUrl(url);
-            }
+        // Check for codec warning (format: "data:text/plain;base64,XXX|||http://...")
+        if (url.includes('|||')) {
+          const [warningPart, actualUrl] = url.split('|||');
+          if (warningPart.startsWith('data:text/plain;base64,')) {
+            const base64 = warningPart.replace('data:text/plain;base64,', '');
+            const warning = atob(base64);
+            console.warn('[App] Codec warning:', warning);
+            setCodecWarning(warning);
+            setMediaDataUrl(actualUrl);
           } else {
             setCodecWarning('');
             setMediaDataUrl(url);
           }
-        })
-        .catch(error => {
-          console.error('Failed to load media:', error);
-          setMediaDataUrl('');
+        } else {
           setCodecWarning('');
-        });
-    } else {
-      setMediaDataUrl('');
-    }
-  }, [currentFileIndex, shotTypes]);
+          setMediaDataUrl(url);
+        }
+      })
+      .catch(error => {
+        console.error('Failed to load media:', error);
+        setMediaDataUrl('');
+        setCodecWarning('');
+      });
+  }, [currentFile]);
 
   const handleSelectFolder = async () => {
     if (!window.electronAPI) return;
