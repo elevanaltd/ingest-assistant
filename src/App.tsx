@@ -167,7 +167,7 @@ function App() {
     } else {
       setMediaDataUrl('');
     }
-  }, [currentFile, shotTypes]);
+  }, [currentFileIndex, shotTypes]);
 
   const handleSelectFolder = async () => {
     if (!window.electronAPI) return;
