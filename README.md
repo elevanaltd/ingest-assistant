@@ -44,6 +44,22 @@ AI-powered media file ingestion and metadata assistant for MacOS.
   - Batch IPC security validation
 - **Simple Storage**: Metadata stored in JSON, easy to backup and version control
 
+## Ecosystem Integration
+
+**Part of EAV Operations Suite:** Ingest Assistant is Step 6 of 10 in a complete video production pipeline.
+
+**Workflow Position:**
+1. Pre-Production apps (script planning, shot breakdown, field capture)
+2. **→ Ingest Assistant** (this app): AI pre-tagging with XMP metadata
+3. CEP Panel: Premiere Pro metadata import
+4. Post-Production apps (editing, voice-over, translation)
+
+**Metadata Strategy:**
+- Writes structured XMP to files (location, subject, action, shotType, date)
+- CEP Panel reads XMP and imports to Premiere Pro with field mapping
+- Shared metadata ensures consistency across production pipeline
+- See: [Shared Metadata Strategy](.coord/docs/000001-DOC-METADATA-STRATEGY-SHARED.md)
+
 ## Setup
 
 ### 1. Install Dependencies
@@ -281,7 +297,7 @@ Example:
 
 ## Testing
 
-Comprehensive TDD implementation with **446 tests** covering:
+Comprehensive TDD implementation with **527 tests** (34 test files) covering:
 - Settings Modal and lexicon management
 - Multi-format AI response parsing with versioned schemas (V1/V2)
 - Metadata storage, EXIF embedding, and pagination
@@ -294,6 +310,7 @@ Comprehensive TDD implementation with **446 tests** covering:
   - Queue persistence and restoration
 - Type definitions and integration
 - Component tests (ErrorBoundary, SettingsModal, keyboard shortcuts)
+- XMP metadata writing with CEP Panel date field integration
 
 Run tests: `npm test`
 
@@ -304,6 +321,7 @@ Run tests: `npm test`
 - **AI Integration**: Multi-provider parsing, result schema validation
 - **Performance**: Pagination, caching, virtual scrolling integration
 - **UI Components**: React component behavior, accessibility
+- **Metadata**: XMP writing, JSON schema v2.0, timestamp handling, CEP Panel integration
 
 ## Version History
 
@@ -320,12 +338,22 @@ Run tests: `npm test`
   - Three critical bugs fixed (stale queue, missing metadata, rate limiter)
 - ✅ Security hardening: batch IPC validation, rate limiting, content validation
 - ✅ Result type schemas with versioning (ADR-008, Zod validation)
+- ✅ **JSON Schema v2.0 Migration** (Issue #54) - Complete metadata overhaul
+  - metadata → keywords field rename (XMP-dc:Description alignment)
+  - Audit trail fields (createdAt, createdBy, modifiedAt, modifiedBy, version)
+  - Schema versioning for future migrations
+- ✅ **CEP Panel Date Field Integration** (eav-cep-assist Issue #31)
+  - LogComment date field: yyyymmddhhmm format
+  - Timestamp extraction from EXIF (5-field fallback chain)
+  - All 3 IPC handlers wired (rename, update, batch AI)
 
 **Quality Improvements:**
 - ✅ TypeScript strict mode - all `any` types eliminated (Issue #41)
 - ✅ ESLint v9 migration with flat config (Issue #45)
-- ✅ Comprehensive test coverage (446 tests, all passing)
+- ✅ Comprehensive test coverage (527 tests, 34 files, all passing)
 - ✅ Batch processing fixes validated with TDD (RED→GREEN→REFACTOR)
+- ✅ JSON schema v2.0 migration complete with backward compatibility
+- ✅ CEP Panel integration validated end-to-end
 
 **Bug Fixes (Issue #24):**
 - ✅ Fixed: Stale queue persistence across folder changes (99/100 failures)
@@ -337,6 +365,15 @@ Run tests: `npm test`
 - Phase 0 prerequisites complete (security, pagination, schemas)
 - Tier 2-3 features implemented (virtual scrolling, keyboard shortcuts)
 - Batch processing production-ready with comprehensive testing
+- EAV ecosystem integration documented (Step 6 of 10 in production pipeline)
+- Shared Supabase architecture designed for Reference Image Lookup (Issue #63)
+
+**Upcoming Enhancements (Roadmap):**
+- **Reference Image Lookup (Issue #63)**: AI learning from human corrections
+  - Vector similarity search for visually similar reference images
+  - Integration with EAV production database for shot lookup
+  - Incremental learning: 70% → 85%+ cataloging accuracy over time
+  - Status: D1 North Star approved, ready for D2 Design phase
 
 ### v1.0.0 (January 2025) - Initial Release
 - Core manual workflow (view, rename, tag, save)
