@@ -145,7 +145,7 @@
 - [x] **SHARED-CHECKLIST.md** ✅ (this file - updated 2025-11-13)
 - [x] **PROJECT-ROADMAP.md** ✅ (needs update for v2.0)
 - [x] **ECOSYSTEM-POSITION.md** ✅
-- [x] **000001-DOC-METADATA-STRATEGY-SHARED.md** ✅ (new - v2.0 migration report)
+- [x] **011-DOC-METADATA-STRATEGY-SHARED.md** ✅ (new - v2.0 migration report)
 
 ---
 
@@ -181,7 +181,7 @@
 - [x] Ecosystem positioning documented
 - [x] ADRs for major decisions
 - [x] JSON v2.0 migration guide (CONTINUE-JSON-V2-MIGRATION.md)
-- [x] Shared metadata strategy (000001-DOC-METADATA-STRATEGY-SHARED.md)
+- [x] Shared metadata strategy (011-DOC-METADATA-STRATEGY-SHARED.md)
 
 ### Deployment
 - [x] Electron app builds successfully

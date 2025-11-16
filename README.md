@@ -58,7 +58,7 @@ AI-powered media file ingestion and metadata assistant for MacOS.
 - Writes structured XMP to files (location, subject, action, shotType, date)
 - CEP Panel reads XMP and imports to Premiere Pro with field mapping
 - Shared metadata ensures consistency across production pipeline
-- See: [Shared Metadata Strategy](.coord/docs/000001-DOC-METADATA-STRATEGY-SHARED.md)
+- See: [Shared Metadata Strategy](.coord/docs/011-DOC-METADATA-STRATEGY-SHARED.md)
 
 ## Setup
 
@@ -80,7 +80,7 @@ brew install exiftool  # macOS
 
 **Metadata Strategy:** This project uses a **shared XMP metadata strategy** with `eav-cep-assist` (Premiere Pro panel). Both tools write identical XMP fields to video files, ensuring consistency across the video production workflow.
 
-See: [Shared Metadata Strategy](.coord/docs/000001-DOC-METADATA-STRATEGY-SHARED.md) for complete field specifications, namespace rationale, and implementation details.
+See: [Shared Metadata Strategy](.coord/docs/011-DOC-METADATA-STRATEGY-SHARED.md) for complete field specifications, namespace rationale, and implementation details.
 
 **Key XMP Fields Written:**
 - `xmpDM:shotName` - Combined entity mapping to PP Shot field (survives proxy workflows)
