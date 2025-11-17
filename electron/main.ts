@@ -1175,6 +1175,34 @@ ipcMain.handle('lexicon:save', async (_event, uiConfig: LexiconConfig) => {
   }
 });
 
+// Folder completion operations (Phase C)
+ipcMain.handle('folder:set-completed', async (_event, completed: boolean) => {
+  try {
+    if (!currentFolderPath || !metadataStore) {
+      throw new Error('No folder selected');
+    }
+
+    const result = await metadataStore.setCompleted(completed);
+    return result;
+  } catch (error) {
+    console.error('[main.ts] folder:set-completed error:', error);
+    throw sanitizeError(error);
+  }
+});
+
+ipcMain.handle('folder:get-completed', async () => {
+  try {
+    if (!currentFolderPath || !metadataStore) {
+      throw new Error('No folder selected');
+    }
+
+    return metadataStore.getCompleted();
+  } catch (error) {
+    console.error('[main.ts] folder:get-completed error:', error);
+    throw sanitizeError(error);
+  }
+});
+
 // Check if AI is configured
 ipcMain.handle('ai:is-configured', async () => {
   return aiService !== null;

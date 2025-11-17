@@ -29,6 +29,10 @@ export interface ElectronAPI {
   // Transcode progress (for loading overlay)
   onTranscodeProgress: (callback: (progress: { time: string; percentage: number }) => void) => () => void;
 
+  // Folder operations
+  setFolderCompleted: (completed: boolean) => Promise<boolean>;
+  getFolderCompleted: () => Promise<boolean>;
+
   // Config operations
   loadConfig: () => Promise<AppConfig>;
   saveConfig: (config: AppConfig) => Promise<boolean>;

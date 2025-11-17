@@ -77,6 +77,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
     return () => ipcRenderer.removeListener('file:transcode-progress', listener);
   },
 
+  // Folder operations
+  setFolderCompleted: (completed: boolean): Promise<boolean> =>
+    ipcRenderer.invoke('folder:set-completed', completed),
+
+  getFolderCompleted: (): Promise<boolean> =>
+    ipcRenderer.invoke('folder:get-completed'),
+
   // Config operations
   loadConfig: (): Promise<AppConfig> =>
     ipcRenderer.invoke('config:load'),

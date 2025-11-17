@@ -37,6 +37,7 @@ function App() {
   const [showSettings, setShowSettings] = useState(false);
   const [showCommandPalette, setShowCommandPalette] = useState(false);
   const [lexiconConfig, setLexiconConfig] = useState<LexiconConfig | undefined>();
+  const [isFolderCompleted, setIsFolderCompleted] = useState(false);
 
   // Force re-render on window resize to ensure UI layout recalculates
   // Fixes issue where batch processing causes UI to stop responding to window resize
@@ -217,6 +218,16 @@ function App() {
       setCurrentFileIndex(0);
       // Clear selection when switching folders
       setSelectedFileIds(new Set());
+
+      // Load folder completion status
+      try {
+        const completed = await window.electronAPI.getFolderCompleted();
+        setIsFolderCompleted(completed);
+      } catch (error) {
+        console.error('Failed to load folder completion status:', error);
+        // Default to false (editable) if there's an error
+        setIsFolderCompleted(false);
+      }
     }
   };
 
@@ -316,6 +327,32 @@ function App() {
   const handlePrevious = () => {
     if (currentFileIndex > 0) {
       setCurrentFileIndex(currentFileIndex - 1);
+    }
+  };
+
+  const handleCompleteFolder = async () => {
+    if (!folderPath) return;
+
+    try {
+      await window.electronAPI.setFolderCompleted(true);
+      setIsFolderCompleted(true);
+      setStatusMessage('✓ Folder marked as COMPLETED (locked)');
+    } catch (error) {
+      console.error('Failed to complete folder:', error);
+      setStatusMessage('✗ Failed to lock folder: ' + (error instanceof Error ? error.message : error));
+    }
+  };
+
+  const handleReopenFolder = async () => {
+    if (!folderPath) return;
+
+    try {
+      await window.electronAPI.setFolderCompleted(false);
+      setIsFolderCompleted(false);
+      setStatusMessage('✓ Folder reopened for editing');
+    } catch (error) {
+      console.error('Failed to reopen folder:', error);
+      setStatusMessage('✗ Failed to unlock folder: ' + (error instanceof Error ? error.message : error));
     }
   };
 
@@ -574,7 +611,7 @@ function App() {
           </div>
 
           <div className="form">
-            {/* Row 1: ID, Location, Subject, Action, Shot Type */}
+            {/* Row 1: ID, Shot#, Location, Subject, Action, Shot Type */}
             <div className="form-row" style={{ display: 'flex', gap: '8px', flexWrap: 'nowrap' }}>
               <div className="form-group" style={{ flex: '0 0 77px', minWidth: 0 }}>
                 <label style={{ fontSize: '13px' }}>ID</label>
@@ -587,6 +624,18 @@ function App() {
                 />
               </div>
 
+              <div className="form-group" style={{ flex: '0 0 60px', minWidth: 0 }}>
+                <label style={{ fontSize: '13px' }}>Shot #</label>
+                <input
+                  type="text"
+                  value={currentFile.shotNumber !== undefined ? `#${currentFile.shotNumber}` : ''}
+                  readOnly
+                  className="input-readonly"
+                  style={{ fontSize: '12px', padding: '4px 6px', textAlign: 'center' }}
+                  title={currentFile.shotNumber !== undefined ? `Sequential shot number: ${currentFile.shotNumber}` : 'No shot number assigned'}
+                />
+              </div>
+
               <div className="form-group" style={{ flex: '1 1 0', minWidth: 0 }}>
                 <label style={{ fontSize: '13px' }}>Location</label>
                 <input
@@ -596,6 +645,8 @@ function App() {
                   placeholder="kitchen"
                   className="input"
                   style={{ fontSize: '13px', padding: '4px 8px' }}
+                  readOnly={isFolderCompleted}
+                  disabled={isFolderCompleted}
                 />
               </div>
 
@@ -608,6 +659,8 @@ function App() {
                   placeholder="wine-cooler"
                   className="input"
                   style={{ fontSize: '13px', padding: '4px 8px' }}
+                  readOnly={isFolderCompleted}
+                  disabled={isFolderCompleted}
                 />
               </div>
 
@@ -618,13 +671,13 @@ function App() {
                   value={action}
                   onChange={(e) => setAction(e.target.value)}
                   placeholder="cleaning"
-                  disabled={currentFile.fileType === 'image'}
+                  disabled={currentFile.fileType === 'image' || isFolderCompleted}
                   className="input"
                   style={{
                     fontSize: '13px',
                     padding: '4px 8px',
-                    opacity: currentFile.fileType === 'image' ? 0.5 : 1,
-                    cursor: currentFile.fileType === 'image' ? 'not-allowed' : 'text'
+                    opacity: (currentFile.fileType === 'image' || isFolderCompleted) ? 0.5 : 1,
+                    cursor: (currentFile.fileType === 'image' || isFolderCompleted) ? 'not-allowed' : 'text'
                   }}
                 />
               </div>
@@ -636,6 +689,7 @@ function App() {
                   onChange={(e) => setShotType(e.target.value as ShotType)}
                   className="input"
                   style={{ fontSize: '13px', padding: '4px 6px' }}
+                  disabled={isFolderCompleted}
                 >
                   <option value="">Select...</option>
                   <optgroup label="Static">
@@ -694,6 +748,8 @@ function App() {
                   placeholder="built-in, wine cooler, bar-area"
                   className="input"
                   style={{ fontSize: '13px', padding: '4px 8px' }}
+                  readOnly={isFolderCompleted}
+                  disabled={isFolderCompleted}
                 />
               </div>
 
@@ -701,9 +757,10 @@ function App() {
                 <label style={{ fontSize: '13px' }}>&nbsp;</label>
                 <button
                   onClick={handleSave}
-                  disabled={isLoading || (!location || !subject || !shotType)}
+                  disabled={isLoading || (!location || !subject || !shotType) || isFolderCompleted}
                   className="btn-primary"
                   style={{ width: '100%', fontSize: '13px', padding: '5px 8px' }}
+                  title={isFolderCompleted ? 'Folder is locked - click REOPEN to edit' : ''}
                 >
                   {isLoading ? 'Saving...' : 'Save'}
                 </button>
@@ -714,9 +771,10 @@ function App() {
                   <label style={{ fontSize: '13px' }}>&nbsp;</label>
                   <button
                     onClick={handleAIAssist}
-                    disabled={isLoading}
+                    disabled={isLoading || isFolderCompleted}
                     className="btn-secondary"
                     style={{ width: '100%', fontSize: '13px', padding: '5px 8px' }}
+                    title={isFolderCompleted ? 'Folder is locked - click REOPEN to edit' : ''}
                   >
                     {isLoading ? 'Analyzing...' : 'AI Assist'}
                   </button>
@@ -797,6 +855,69 @@ function App() {
                 Current file: {currentFile.currentFilename}
                 {currentFile.processedByAI && ' (AI Processed)'}
               </small>
+            </div>
+
+            {/* Folder completion controls */}
+            <div style={{
+              marginTop: '12px',
+              padding: '12px',
+              borderTop: '1px solid #ddd',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '12px'
+            }}>
+              <div style={{ flex: 1 }}>
+                {isFolderCompleted ? (
+                  <span style={{
+                    fontSize: '13px',
+                    color: '#666',
+                    fontWeight: 500
+                  }}>
+                    🔒 Folder is COMPLETED (locked for editing)
+                  </span>
+                ) : (
+                  <span style={{
+                    fontSize: '13px',
+                    color: '#666'
+                  }}>
+                    Folder is open for editing
+                  </span>
+                )}
+              </div>
+              <div>
+                {isFolderCompleted ? (
+                  <button
+                    onClick={handleReopenFolder}
+                    className="btn"
+                    style={{
+                      fontSize: '13px',
+                      padding: '6px 12px',
+                      backgroundColor: '#28a745',
+                      color: 'white',
+                      border: 'none'
+                    }}
+                    title="Unlock folder for editing"
+                  >
+                    REOPEN for Editing
+                  </button>
+                ) : (
+                  <button
+                    onClick={handleCompleteFolder}
+                    className="btn"
+                    style={{
+                      fontSize: '13px',
+                      padding: '6px 12px',
+                      backgroundColor: '#007bff',
+                      color: 'white',
+                      border: 'none'
+                    }}
+                    title="Mark folder as complete and lock for editing"
+                  >
+                    COMPLETE (Lock Folder)
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         </div>
