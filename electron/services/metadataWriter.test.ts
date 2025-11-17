@@ -266,6 +266,149 @@ describe('MetadataWriter (Integration)', () => {
     });
   });
 
+  describe('TapeName and shot number metadata (Phase 3)', () => {
+    it('should write TapeName when blank (RED)', async () => {
+      if (!exiftoolAvailable) {
+        console.log('⏭️  Skipping - exiftool not available');
+        return;
+      }
+
+      const mainName = 'kitchen-oven-cu';
+      const tags = ['appliance'];
+      const structured = {
+        location: 'kitchen',
+        subject: 'oven',
+        shotType: 'CU',
+        shotNumber: 5,
+        cameraId: 'EA001597'
+      };
+
+      await metadataWriter.writeMetadataToFile(testFilePath, mainName, tags, structured);
+
+      // Read XMP-xmpDm:TapeName
+      const { stdout } = await execAsync(`exiftool -XMP-xmpDm:TapeName -json "${testFilePath}"`);
+      const data = JSON.parse(stdout);
+      const xmpData = data[0];
+
+      // TapeName should be written when file has no existing TapeName
+      expect(xmpData['TapeName']).toBe('EA001597');
+    });
+
+    it('should NOT overwrite existing TapeName (RED)', async () => {
+      if (!exiftoolAvailable) {
+        console.log('⏭️  Skipping - exiftool not available');
+        return;
+      }
+
+      // First, write an existing TapeName manually
+      await execAsync(`exiftool -XMP-xmpDm:TapeName=EXISTING123 -overwrite_original "${testFilePath}"`);
+
+      // Verify it was written
+      const { stdout: beforeStdout } = await execAsync(`exiftool -XMP-xmpDm:TapeName -json "${testFilePath}"`);
+      const beforeData = JSON.parse(beforeStdout);
+      expect(beforeData[0]['TapeName']).toBe('EXISTING123');
+
+      // Now try to write metadata with a different camera ID
+      const mainName = 'kitchen-oven-cu';
+      const tags = ['appliance'];
+      const structured = {
+        location: 'kitchen',
+        subject: 'oven',
+        shotType: 'CU',
+        shotNumber: 5,
+        cameraId: 'EA999999' // Different camera ID
+      };
+
+      await metadataWriter.writeMetadataToFile(testFilePath, mainName, tags, structured);
+
+      // Read TapeName again
+      const { stdout: afterStdout } = await execAsync(`exiftool -XMP-xmpDm:TapeName -json "${testFilePath}"`);
+      const afterData = JSON.parse(afterStdout);
+
+      // TapeName should remain unchanged (safety check - don't overwrite)
+      expect(afterData[0]['TapeName']).toBe('EXISTING123');
+    });
+
+    it('should include shotNumber in LogComment (RED)', async () => {
+      if (!exiftoolAvailable) {
+        console.log('⏭️  Skipping - exiftool not available');
+        return;
+      }
+
+      const mainName = 'kitchen-oven-cleaning-WS';
+      const tags = ['appliance'];
+      const structured = {
+        location: 'kitchen',
+        subject: 'oven',
+        action: 'cleaning',
+        shotType: 'WS',
+        shotNumber: 5
+      };
+
+      await metadataWriter.writeMetadataToFile(testFilePath, mainName, tags, structured);
+
+      // Read XMP-xmpDm:LogComment
+      const { stdout } = await execAsync(`exiftool -XMP-xmpDm:LogComment -json "${testFilePath}"`);
+      const data = JSON.parse(stdout);
+      const xmpData = data[0];
+
+      // LogComment should include shotNumber field
+      expect(xmpData['LogComment']).toBe('location=kitchen, subject=oven, action=cleaning, shotType=WS, shotNumber=5');
+    });
+
+    it('should append #N suffix to shotName when shotNumber provided (RED)', async () => {
+      if (!exiftoolAvailable) {
+        console.log('⏭️  Skipping - exiftool not available');
+        return;
+      }
+
+      const mainName = 'kitchen-oven-cu';
+      const tags = ['appliance'];
+      const structured = {
+        location: 'kitchen',
+        subject: 'oven',
+        shotType: 'CU',
+        shotNumber: 5
+      };
+
+      await metadataWriter.writeMetadataToFile(testFilePath, mainName, tags, structured);
+
+      // Read XMP-xmpDm:shotName
+      const { stdout } = await execAsync(`exiftool -XMP-xmpDm:shotName -json "${testFilePath}"`);
+      const data = JSON.parse(stdout);
+      const xmpData = data[0];
+
+      // shotName should include #N suffix
+      expect(xmpData['ShotName']).toBe('kitchen-oven-cu-#5');
+    });
+
+    it('should work without shotNumber (backward compatibility) (RED)', async () => {
+      if (!exiftoolAvailable) {
+        console.log('⏭️  Skipping - exiftool not available');
+        return;
+      }
+
+      const mainName = 'kitchen-oven-cu';
+      const tags = ['appliance'];
+      const structured = {
+        location: 'kitchen',
+        subject: 'oven',
+        shotType: 'CU'
+        // No shotNumber provided
+      };
+
+      await metadataWriter.writeMetadataToFile(testFilePath, mainName, tags, structured);
+
+      // Read XMP-xmpDm:shotName
+      const { stdout } = await execAsync(`exiftool -XMP-xmpDm:shotName -json "${testFilePath}"`);
+      const data = JSON.parse(stdout);
+      const xmpData = data[0];
+
+      // shotName should NOT have #N suffix when shotNumber not provided
+      expect(xmpData['ShotName']).toBe('kitchen-oven-cu');
+    });
+  });
+
   describe('PP native XMP fields (Issue #54 - xmpDM:shotName)', () => {
     it('should write xmpDM:shotName and dc:Description (PP Shot field mapping)', async () => {
       if (!exiftoolAvailable) {
