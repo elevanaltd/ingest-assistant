@@ -517,7 +517,9 @@ function App() {
                 left: 0,
                 right: 0,
                 bottom: 0,
-                backgroundColor: 'rgba(0, 0, 0, 0.3)',
+                backgroundColor: 'rgba(0, 0, 0, 0.7)',
+                backdropFilter: 'blur(8px)',
+                WebkitBackdropFilter: 'blur(8px)', // Safari support
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
