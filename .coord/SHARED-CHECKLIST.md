@@ -1,21 +1,53 @@
 # Ingest Assistant - Shared Checklist
 
-## Current Status (2025-11-13)
+## Current Status (2025-11-16 Updated)
 
-### ✅ B4 Phase - Production Ready + JSON v2.0 Migration Complete
+### 🔄 Cross-Ecosystem Integration (Issue #63) - Dual-Key Governance Complete
 
 **All Quality Gates GREEN:**
-- ✅ **Lint:** 0 errors, 2 pre-existing warnings
+- ✅ **Lint:** 0 errors, 35 pre-existing warnings (React hooks warnings RESOLVED)
 - ✅ **Typecheck:** 0 errors
 - ✅ **Build:** Clean compilation, no errors
-- ✅ **Tests:** 518/518 passing (33 test files, ~18s execution)
+- ✅ **Tests:** 543/543 passing (35 test files, ~19s execution)
 - ✅ **Security:** Both BLOCKING vulnerabilities resolved (Security Report 007)
+- ✅ **PR #68:** TDD remediation complete (useEffect separation + memoization)
 
 **Phase Progression:** B3 → B4 ✅ APPROVED → Security Hardening ✅ COMPLETE → JSON v2.0 Migration ✅ COMPLETE
 
 ---
 
 ## Recent Accomplishments (November 2025)
+
+### 🔄 Cross-Ecosystem Schema Integration (IN PROGRESS - Nov 16, Issue #63)
+- [x] **Dual-Key Governance:** technical-architect ✅ GO + principal-engineer ✅ CONDITIONAL GO (7/10 viability)
+- [x] **GitHub Issue #122:** Created at elevanaltd/eav-monorepo with full template
+- [x] **EAV Migration:** 20250116090000_shots_contract_v1.sql (contract + trigger)
+- [x] **IA Migration:** 20250116100000_media_references_schema.sql (schema + FK + pgvector + RLS)
+- [x] **Validation Script:** scripts/check_cross_schema.sh (executable, CI-ready)
+- [x] **Documentation:** Both PROJECT-CONTEXT.md files updated with cross-ecosystem sections
+- [ ] **Guardrails (4-6 weeks MANDATORY):**
+  - [ ] Formalize EAV_CONTRACT:v1 spec (YAML + machine-readable)
+  - [ ] Contract compatibility tests (CI in both repos)
+  - [ ] SLO observability (p95 <150ms alerts, CPU <70%)
+  - [ ] Deletion workflow tool (admin panel feature)
+- [ ] **Local Validation:** supabase start → EAV migration → IA migration → check_cross_schema.sh
+- [ ] **Principal-Engineer Re-Validation:** After guardrails implemented (target: viability 7→9/10)
+
+### ✅ PR #68 TDD Remediation (COMPLETE - Nov 15)
+- [x] **Problem Identified:** 7 failing tests from non-TDD code change (useEffect regression)
+- [x] **Root Cause Analysis:** Single conflated useEffect handling form + media loading
+- [x] **Solution Approved:** Option 3 (test-methodology-guardian) - Separate concerns + memoization
+- [x] **Implementation:**
+  - Separated Form State Sync (dependencies: `[currentFile, shotTypes]`)
+  - Separated Media Loading (dependencies: `[currentFile]`)
+  - Added memoization: `useMemo(() => files[currentFileIndex], [files, currentFileIndex])`
+- [x] **Code Review:** Applied critical-issue fixes (code-review-specialist validation)
+  - Replaced property-level dependencies with memoized currentFile
+  - Resolved React hooks eslint warnings (was 2, now 0)
+- [x] **Test Results:** All 543 tests passing (7 previously failing now GREEN)
+- [x] **Commit:** TDD evidence pattern created with full explanation
+- [x] **Documentation:** Full session document at `.coord/sessions/2025-11-15-PR68-TDD-REMEDIATION.md`
+- [ ] **Remaining:** 3 additional tests for coverage (cache reload, skipNextVideoLoadRef, form independence)
 
 ### ✅ Phase 0 Prerequisites (COMPLETE)
 - [x] **Security Hardening (Issue #18)** - Batch IPC validation with Zod schemas

@@ -36,6 +36,7 @@ describe('App - Window Resize Responsiveness', () => {
       }),
       onBatchProgress: vi.fn().mockReturnValue(() => {}),
       onBatchComplete: vi.fn().mockReturnValue(() => {}),
+      onTranscodeProgress: vi.fn().mockReturnValue(() => {}),
     };
 
     // Capture resize event listener

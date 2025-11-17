@@ -19,11 +19,12 @@ This roadmap maps **9 open issues** against **codebase reality** to determine:
 ## Issue Landscape
 
 ### Current State
-- **527 tests passing** (34 test files)
+- **543 tests passing** (35 test files) - Updated 2025-11-15 post-PR68
 - **Clean architecture** (service layer, IPC bridge, Zod validation)
 - **5 React components** (flat structure works fine at this scale)
 - **789-line App.tsx** (manageable, not urgent to split)
 - **TDD discipline enforced** (via CLAUDE.md)
+- **Phase:** B4 (Production Ready) - enhancements are maintenance work unless requiring new North Star
 
 ### Enhancement Categories
 
@@ -40,7 +41,7 @@ This roadmap maps **9 open issues** against **codebase reality** to determine:
 - #26: Feature-based Component Structure
 
 **New Features** (Low conflict, safe to parallel):
-- #63: Reference Image Lookup System
+- #63: Reference Image Lookup System ⚠️ **CROSS-ECOSYSTEM DEPENDENCY**
 - #54: XMP Field Alignment (**DONE** - close issue)
 
 **Documentation** (Zero conflict):
@@ -93,13 +94,24 @@ UI/UX LAYER (Independent)
     ├─ Proposed: src/features/{file-browser, media-viewer, etc}
     └─ Value: LOW - premature at current scale (5 components)
 
-NEW FEATURES (Parallel-safe)
+NEW FEATURES (Parallel-safe with coordination)
 │
 └─ #63 Reference Image Lookup System
-    ├─ Dependencies: None (new service)
+    ├─ Dependencies: ⚠️ **CROSS-ECOSYSTEM COORDINATION REQUIRED**
+    │   ├─ EAV Monorepo coordination (shared Supabase: zbxvjyrbkycbfhwmmnmy)
+    │   ├─ Schema integration: media_references.reference_images → FK → public.shots
+    │   ├─ RLS policy impact validation
+    │   └─ Migration sequencing approval
     ├─ Adds: Supabase schema, embedding service, vector search
     ├─ Modifies: AIService.analyzeImage() (minor)
     └─ Value: HIGH - new capability for AI analysis
+
+    **BEFORE STARTING #63:**
+    1. Consult technical-architect for cross-schema design validation
+    2. Document coordination protocol in EAV PROJECT-CONTEXT.md
+    3. Create GitHub issue at elevanaltd/eav-monorepo for schema approval
+    4. Validate RLS policy impact with EAV team
+    5. Establish migration sequencing (IA local → EAV remote)
 
 DOCUMENTATION (Zero conflict)
 │
@@ -123,9 +135,51 @@ How many files does each change touch?
 | #29 Functional Pipeline | 🟡 **MEDIUM** | Video processing (5-7 files) | Low-medium conflict |
 | #30 Pagination | 🟡 **MEDIUM** | App.tsx, file list rendering | Medium conflict |
 | #27 Branded Types | 🟢 **LOW** | Type definitions, validation (additive) | Low conflict |
-| #63 Reference Lookup | 🟢 **LOW** | New files + 1 AIService method | Very low conflict |
+| #63 Reference Lookup | 🟡 **MEDIUM** ⚠️ | New files + AIService + **EAV coordination** | Cross-ecosystem risk |
 | #21 Documentation | ⚪ **NONE** | `.coord/docs/` only | Zero conflict |
 | #54 XMP Alignment | ✅ **DONE** | Already implemented | Close issue |
+
+---
+
+## Constitutional Requirements for All Enhancements
+
+### MANDATORY TDD Protocol
+**ALL code changes must follow RED→GREEN→REFACTOR discipline:**
+
+1. **RED:** Write failing test first (verify failure reason is correct)
+2. **GREEN:** Minimal implementation (verify test passes)
+3. **REFACTOR:** Improve while green (optional)
+4. **COMMIT:** Evidence trail: `test: X (RED)` → `feat: X (GREEN)` → `refactor: X (optional)`
+
+**Recent Evidence:** PR #68 TDD remediation (7 failing tests) demonstrates this isn't theoretical.
+
+### Quality Gates (ALL Must Pass Before Commit)
+```bash
+npm run lint && npm run typecheck && npm test
+```
+- **Lint:** 0 errors, 0 warnings (35 pre-existing warnings acceptable)
+- **Typecheck:** 0 errors
+- **Tests:** All 543 tests passing
+
+**NO COMMIT WITHOUT ALL THREE GREEN**
+
+### RACI Consultation Protocol
+**Major enhancements require specialist validation BEFORE starting:**
+
+| Enhancement | Consult Agent | Validation Type |
+|-------------|---------------|-----------------|
+| #63 Reference Lookup | technical-architect | Cross-schema architecture design |
+| #63 Reference Lookup | requirements-steward | North Star alignment check |
+| #29 Functional Pipeline | critical-engineer | Tactical validation ("ready now?") |
+| #28 State Machine | requirements-steward | Undo/redo North Star alignment |
+| #25 Result Types | code-review-specialist | Error handling pattern assessment |
+| Foundation changes | principal-engineer | Strategic validation ("viable 6mo?") |
+
+### Test Coverage Requirements
+- **New services (#63):** Unit tests (90%+), integration tests (happy + error paths), E2E tests
+- **Refactors (#29):** Retroactive tests acceptable IF behavior-focused
+- **Foundation changes (#28, #25):** Test impact analysis required before starting
+- **Current baseline:** 543 tests across 35 files
 
 ---
 
@@ -139,8 +193,6 @@ What can be worked on simultaneously without conflicts?
 Branch A                  Branch B
 ────────────────────────  ────────────────────────
 #21 Documentation    +    Any code work
-#63 Reference Lookup +    #27 Validation (different areas)
-#63 Reference Lookup +    #30 Pagination (different areas)
 #27 Validation       +    #30 Pagination (no overlap)
 ```
 
@@ -149,6 +201,7 @@ Branch A                  Branch B
 ```
 Step 1 (Foundation)       Step 2 (Depends on Step 1)
 ────────────────────────  ────────────────────────
+#63 EAV Coordination →    #63 Implementation
 #28 State Machine    →    #29 Functional Pipeline
 #25 Result Types     →    #29 Functional Pipeline
 Foundation stable    →    #26 Feature Structure (refactor on stable base)
@@ -159,6 +212,7 @@ Foundation stable    →    #26 Feature Structure (refactor on stable base)
 ```
 Issue A               Issue B                 Reason
 ────────────────────  ─────────────────────── ──────────────────────
+#63 Reference Lookup  #27 Validation          Both could touch AIService
 #28 State Machine     #30 Pagination          Both touch App.tsx state
 #26 Feature Structure ANY other code work     Reorganizes everything
 #25 Result Types      #28 State Machine       Both change error flow
@@ -175,7 +229,7 @@ Where to focus for maximum ROI?
                     │
     #29 Pipeline    │   #63 Reference Lookup
     (composition)   │   (new capability)
-                    │
+                    │   ⚠️ Requires EAV coordination
     ────────────────┼────────────────────
                     │
     #28 State       │   #30 Pagination
@@ -189,7 +243,7 @@ Where to focus for maximum ROI?
 
 ### Quick Wins (Do These)
 - ✅ **#21 Documentation** (1 day, strategic clarity)
-- ✅ **#63 Reference Lookup** (new feature, parallel-safe, high value)
+- ⚠️ **#63 Reference Lookup** (new feature, high value, **BUT requires EAV coordination first**)
 - ✅ **#27 Branded Types** (additive, low risk, immediate type safety)
 
 ### Foundation Work (Consider ROI)
@@ -202,7 +256,7 @@ Where to focus for maximum ROI?
 - 🔻 **#26 Feature Structure** - Premature at 5-component scale
 
 ### Already Done
-- ✅ **#54 XMP Alignment** - Implemented, 493 tests passing → CLOSE ISSUE
+- ✅ **#54 XMP Alignment** - Implemented, 543 tests passing → CLOSE ISSUE
 
 ---
 
@@ -212,14 +266,17 @@ Where to focus for maximum ROI?
 START
   │
   ├─ Working on other enhancements? ─ YES → Pick from SAFE COMBINATIONS
-  │                                    (#63, #21, #27)
+  │                                    (#27 only - #63 needs coordination)
   │
   └─ NO (fresh start)
       │
       ├─ Need quick win? ─ YES → #21 Documentation (1 day)
       │
       ├─ Want new feature? ─ YES → #63 Reference Lookup
-      │                            (isolated service, high value)
+      │                            ⚠️ STEP 1: EAV coordination FIRST
+      │                            └─ Document in both PROJECT-CONTEXT.md files
+      │                            └─ Create GitHub issue for schema approval
+      │                            └─ Consult technical-architect
       │
       ├─ Improving existing? ─ YES → #29 Functional Pipeline
       │                              (BUT requires #28 + #25 first)
@@ -233,26 +290,36 @@ START
 ## Recommendations
 
 ### IMMEDIATE (This Week)
-1. **Close #54** - XMP alignment already implemented
-2. **#63 Reference Lookup** - New feature, parallel-safe, high value
+1. **Close #54** - XMP alignment already implemented (543 tests passing)
+2. **#63 Reference Lookup - Coordination Phase**
+   - **BEFORE coding:** Complete cross-ecosystem coordination protocol
+   - Consult technical-architect for schema design validation
+   - Document in `/Volumes/HestAI-Projects/eav-monorepo/.coord/PROJECT-CONTEXT.md`
+   - Create GitHub issue at `elevanaltd/eav-monorepo` for schema approval
+   - Validate RLS policy impact
+   - Establish migration sequencing
+
+### SHORT-TERM (After #63 Coordination)
+3. **#63 Reference Lookup - Implementation Phase**
    - Create separate service module
    - Minimal AIService touch
-   - Can work alongside other enhancements
+   - TDD discipline (failing tests first)
+   - Can work alongside #27 (if different areas)
 
-### SHORT-TERM (This Month)
-3. **#29 Functional Pipeline** - HIGH value for video processing
+4. **#29 Functional Pipeline** - HIGH value for video processing
    - **BUT REQUIRES:** #25 (Result types) or accept imperative approach
    - Focus on `pipe(checkCodec, transcode, extractFrames, serve)`
    - Test each stage independently
+   - Consult critical-engineer for tactical validation
 
 ### MEDIUM-TERM (Next Quarter)
-4. **#27 Branded Types** - IF validation errors become frequent
-5. **#30 Pagination** - IF virtual scrolling shows performance issues (unlikely)
+5. **#27 Branded Types** - IF validation errors become frequent
+6. **#30 Pagination** - IF virtual scrolling shows performance issues (unlikely)
 
 ### LONG-TERM (Future)
-6. **#28 State Machine** - Only if undo/redo becomes requirement
-7. **#26 Feature Structure** - Wait until 20+ components (not 5)
-8. **#25 Result Types** - Only if building reusable library
+7. **#28 State Machine** - Only if undo/redo becomes requirement
+8. **#26 Feature Structure** - Wait until 20+ components (not 5)
+9. **#25 Result Types** - Only if building reusable library
 
 ### NEVER (Low ROI)
 - Don't rewrite working error handling (#25) without clear benefit
@@ -267,12 +334,12 @@ START
 ✅ Service layer abstraction
 ✅ Zod validation (runtime + TypeScript inference)
 ✅ IPC bridge with security boundaries
-✅ TDD discipline (527 tests, all passing)
+✅ TDD discipline (543 tests, all passing)
 ✅ Pragmatic error handling (try/catch + sanitization)
 
 ### What Would Add Value (Consider)
 🤔 Functional pipelines for video processing (#29)
-🤔 Reference image lookup for AI analysis (#63)
+🤔 Reference image lookup for AI analysis (#63) - **requires EAV coordination**
 🤔 Component extraction IF App.tsx exceeds 1000 lines
 
 ### What's Premature (Avoid)
@@ -288,16 +355,18 @@ START
 **The codebase is production-ready with solid architecture.** Most Tier 1-4 proposals are **functional programming paradigm shifts** that would rewrite working imperative code.
 
 **Focus on:**
-1. **New capabilities** (#63 Reference Lookup)
-2. **High-value improvements** (#29 Functional Pipeline for video)
-3. **Strategic clarity** (this roadmap replaces #21)
+1. **Cross-ecosystem coordination** (#63 coordination phase - document first)
+2. **New capabilities** (#63 Reference Lookup - after coordination)
+3. **High-value improvements** (#29 Functional Pipeline for video)
+4. **Strategic clarity** (this roadmap replaces #21)
 
 **Avoid:**
 - Rewriting error handling that works (#25)
 - Adding state machines without clear need (#28)
 - Premature component reorganization (#26)
+- **Starting #63 implementation without EAV coordination**
 
-**Solo dev strategy:** Work on **parallel-safe features** (#63) while keeping codebase stable. Defer foundation rewrites until clear ROI emerges.
+**Solo dev strategy:** Work on **parallel-safe features** after completing cross-ecosystem coordination. Defer foundation rewrites until clear ROI emerges.
 
 ---
 
@@ -307,7 +376,7 @@ START
 |-------|--------|----------|------------|--------|
 | #54 | ✅ DONE | - | N/A | - |
 | #21 | ✅ DONE (this doc) | - | N/A | - |
-| #63 | 🟢 READY | HIGH | ✅ Yes | None |
+| #63 | 🟡 COORDINATION | HIGH | ⚠️ EAV coordination first | None (after coordination) |
 | #29 | 🟡 WAITING | HIGH | ⚠️ Needs #25 or accept imperative | #28, #25 |
 | #27 | 🟢 READY | MEDIUM | ✅ Yes | None |
 | #30 | 🟢 READY | LOW | ✅ Yes | None |
@@ -315,4 +384,11 @@ START
 | #25 | 🟡 PENDING | LOW | ⚠️ Evaluate ROI first | None |
 | #26 | 🔴 BLOCKED | LOW | ❌ Wait for stable codebase | Everything |
 
-**Next Action:** Start #63 (Reference Lookup) on feature branch, or close #54 + update issue labels.
+**Next Action:**
+1. **Close #54** (XMP alignment complete)
+2. **#63 Coordination Phase:**
+   - Invoke technical-architect for schema design
+   - Document cross-ecosystem protocol in both PROJECT-CONTEXT.md files
+   - Create GitHub issue for schema approval
+   - Validate RLS policy impact
+3. **After coordination:** Start #63 implementation on feature branch

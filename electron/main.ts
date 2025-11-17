@@ -455,7 +455,15 @@ ipcMain.handle('file:read-as-data-url', async (_event, filePath: string) => {
       if (shouldTranscode) {
         try {
           console.log('[IPC] Starting transcode for preview...');
-          const transcodedPath = await videoTranscoder.transcodeForPreview(validPath);
+
+          // Forward transcode progress to renderer
+          const onProgress = (time: string) => {
+            if (mainWindow) {
+              mainWindow.webContents.send('file:transcode-progress', { time });
+            }
+          };
+
+          const transcodedPath = await videoTranscoder.transcodeForPreview(validPath, onProgress);
           const encodedPath = encodeURIComponent(transcodedPath);
           const httpUrl = `http://localhost:${MEDIA_SERVER_PORT}/?path=${encodedPath}&token=${MEDIA_SERVER_TOKEN}`;
           console.log('[IPC] Transcode complete, serving:', httpUrl);

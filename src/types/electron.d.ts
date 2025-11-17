@@ -26,6 +26,9 @@ export interface ElectronAPI {
   batchGetStatus: () => Promise<import('./index').BatchQueueState>;
   onBatchProgress: (callback: (progress: import('./index').BatchProgress) => void) => () => void;
 
+  // Transcode progress (for loading overlay)
+  onTranscodeProgress: (callback: (progress: { time: string }) => void) => () => void;
+
   // Config operations
   loadConfig: () => Promise<AppConfig>;
   saveConfig: (config: AppConfig) => Promise<boolean>;

@@ -28,6 +28,8 @@ function App() {
   const [keywords, setKeywords] = useState<string>('');
   const [isAIConfigured, setIsAIConfigured] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingMedia, setIsLoadingMedia] = useState(false);
+  const [transcodeProgress, setTranscodeProgress] = useState<string>('');
   const [mediaDataUrl, setMediaDataUrl] = useState<string>('');
   const [codecWarning, setCodecWarning] = useState<string>('');
   const [statusMessage, setStatusMessage] = useState<string>('');
@@ -65,6 +67,13 @@ function App() {
           // Fallback to default shot types
           setShotTypes(['WS', 'MID', 'CU', 'UNDER', 'FP', 'TRACK', 'ESTAB']);
         });
+
+      // Listen for transcode progress events
+      const cleanup = window.electronAPI.onTranscodeProgress((progress) => {
+        setTranscodeProgress(progress.time);
+      });
+
+      return cleanup;
     }
   }, []);
 
@@ -152,6 +161,10 @@ function App() {
       return;
     }
 
+    // Start loading
+    setIsLoadingMedia(true);
+    setTranscodeProgress('');
+
     // Load file as data URL
     window.electronAPI.readFileAsDataUrl(currentFile.filePath)
       .then(url => {
@@ -175,11 +188,17 @@ function App() {
           setCodecWarning('');
           setMediaDataUrl(url);
         }
+
+        // Done loading
+        setIsLoadingMedia(false);
+        setTranscodeProgress('');
       })
       .catch(error => {
         console.error('Failed to load media:', error);
         setMediaDataUrl('');
         setCodecWarning('');
+        setIsLoadingMedia(false);
+        setTranscodeProgress('');
       });
   }, [currentFile]);
 
@@ -488,6 +507,62 @@ function App() {
               )
             ) : (
               <div style={{ color: '#999' }}>Loading media...</div>
+            )}
+
+            {/* Loading overlay with dim effect and progress */}
+            {isLoadingMedia && (
+              <div style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                backgroundColor: 'rgba(0, 0, 0, 0.3)',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '16px',
+                zIndex: 10
+              }}>
+                {/* Spinner */}
+                <div style={{
+                  border: '4px solid rgba(255, 255, 255, 0.3)',
+                  borderTop: '4px solid #fff',
+                  borderRadius: '50%',
+                  width: '48px',
+                  height: '48px',
+                  animation: 'spin 1s linear infinite'
+                }} />
+
+                {/* Progress text */}
+                <div style={{
+                  color: '#fff',
+                  fontSize: '14px',
+                  fontWeight: 500,
+                  textShadow: '0 1px 3px rgba(0,0,0,0.5)'
+                }}>
+                  {transcodeProgress ? `Transcoding: ${transcodeProgress}` : 'Loading...'}
+                </div>
+
+                {/* Progress bar */}
+                {transcodeProgress && (
+                  <div style={{
+                    width: '200px',
+                    height: '4px',
+                    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                    borderRadius: '2px',
+                    overflow: 'hidden'
+                  }}>
+                    <div style={{
+                      height: '100%',
+                      backgroundColor: '#fff',
+                      width: '100%',
+                      animation: 'progress-slide 1.5s ease-in-out infinite'
+                    }} />
+                  </div>
+                )}
+              </div>
             )}
           </div>
 
