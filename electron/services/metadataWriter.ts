@@ -99,6 +99,37 @@ export class MetadataWriter {
   }
 
   /**
+   * Read TapeName from file using exiftool.
+   *
+   * Used for safety check before writing camera ID to TapeName field.
+   * Only writes if TapeName is blank (never overwrite existing values).
+   *
+   * @param filePath Absolute path to media file
+   * @returns TapeName value or undefined if not found/error
+   */
+  async readTapeNameFromFile(filePath: string): Promise<string | undefined> {
+    try {
+      const args = ['-XMP-xmpDm:TapeName', '-json', filePath];
+      const exiftoolPath = findExiftool();
+
+      const { stdout } = await execFileAsync(exiftoolPath, args, {
+        timeout: 30000,
+        maxBuffer: 10 * 1024 * 1024
+      });
+
+      const data = JSON.parse(stdout);
+      if (data && data.length > 0) {
+        return data[0].TapeName;
+      }
+
+      return undefined;
+    } catch (error) {
+      console.error('Failed to read TapeName from file:', error);
+      return undefined;
+    }
+  }
+
+  /**
    * Write metadata directly into the file using exiftool.
    *
    * Security: Uses execFile() (NOT exec()) to prevent shell injection.
@@ -133,6 +164,8 @@ export class MetadataWriter {
       action?: string;
       shotType?: string;
       date?: string;
+      shotNumber?: number;
+      cameraId?: string;
     },
     description?: string
   ): Promise<void> {
@@ -162,6 +195,9 @@ export class MetadataWriter {
       if (structured.date) {
         this.validateInput(structured.date, 'structured.date');
       }
+      if (structured.cameraId) {
+        this.validateInput(structured.cameraId, 'structured.cameraId');
+      }
     }
 
     // Validate custom description if provided
@@ -178,9 +214,24 @@ export class MetadataWriter {
     // XMP-xmpDM:LogComment → Structured data for CEP panel parsing
     // Structured components (location, subject, action, shotType) stored in JSON sidecar
 
-    // XMP-xmpDM:shotName = Combined entity (maps directly to PP Shot field)
+    // XMP-xmpDm:shotName = Combined entity (maps directly to PP Shot field)
     if (mainName) {
-      args.push(`-XMP-xmpDM:shotName=${mainName}`);
+      const shotNameWithNumber = structured?.shotNumber
+        ? `${mainName}-#${structured.shotNumber}`
+        : mainName;
+      args.push(`-XMP-xmpDM:shotName=${shotNameWithNumber}`);
+    }
+
+    // XMP-xmpDm:TapeName = Camera ID (ONLY write if blank - never overwrite)
+    // Safety check: Read existing TapeName first
+    if (structured?.cameraId) {
+      const existingTapeName = await this.readTapeNameFromFile(filePath);
+      if (!existingTapeName) {
+        console.log('[MetadataWriter] Writing TapeName (blank):', structured.cameraId);
+        args.push(`-XMP-xmpDM:TapeName=${structured.cameraId}`);
+      } else {
+        console.log('[MetadataWriter] Skipping TapeName write (existing value):', existingTapeName);
+      }
     }
 
     // XMP-xmpDM:LogComment = Structured key=value pairs for CEP panel parsing
@@ -204,6 +255,9 @@ export class MetadataWriter {
       }
       if (structured.date) {
         logCommentParts.push(`date=${structured.date}`);
+      }
+      if (structured.shotNumber) {
+        logCommentParts.push(`shotNumber=${structured.shotNumber}`);
       }
 
       console.log('[MetadataWriter] LogComment parts built:', logCommentParts);

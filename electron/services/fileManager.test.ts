@@ -157,12 +157,13 @@ describe('FileManager', () => {
 
       const files = await fileManager.scanFolder(testFolderPath);
 
+      // Files are now sorted alphabetically by filename (all have same mtime)
       expect(files).toHaveLength(5);
-      expect(files[0].id).toBe('EA001234'); // Unique - unchanged
-      expect(files[1].id).toBe('Utility '); // First occurrence (preserves trailing space)
-      expect(files[2].id).toBe('EA001235'); // Unique - unchanged
-      expect(files[3].id).toBe('Utility-2'); // Duplicate detected (trimmed + counter)
-      expect(files[4].id).toBe('VD002341'); // Unique - unchanged
+      expect(files[0].id).toBe('EA001234'); // First alphabetically
+      expect(files[1].id).toBe('EA001235'); // Second alphabetically
+      expect(files[2].id).toBe('Utility '); // Third alphabetically (first "Utility ")
+      expect(files[3].id).toBe('Utility-2'); // Fourth alphabetically (duplicate "Utility ")
+      expect(files[4].id).toBe('VD002341'); // Fifth alphabetically
     });
 
     it('should handle many duplicates (stress test)', async () => {
@@ -181,10 +182,14 @@ describe('FileManager', () => {
 
       const files = await fileManager.scanFolder(testFolderPath);
 
+      // IDs assigned in discovery order, then sorted alphabetically by filename
+      // Discovery order: 1, 2, 3, ..., 9, 10
+      // IDs: "Test fil", "Test fil-2", "Test fil-3", ..., "Test fil-9", "Test fil-10"
+      // Sorted alphabetically: "1", "10", "2", "3", ..., "9"
       expect(files).toHaveLength(10);
-      expect(files[0].id).toBe('Test fil'); // First
-      expect(files[1].id).toBe('Test fil-2'); // Counter
-      expect(files[9].id).toBe('Test fil-10'); // 10th duplicate
+      expect(files[0].id).toBe('Test fil'); // "Test fil 1" (first in discovery)
+      expect(files[1].id).toBe('Test fil-10'); // "Test fil 10" (10th in discovery, 2nd alphabetically)
+      expect(files[9].id).toBe('Test fil-9'); // "Test fil 9" (9th in discovery, last alphabetically)
     });
 
     it('should trim whitespace before adding counter', async () => {
@@ -396,6 +401,93 @@ describe('FileManager', () => {
       // Next scan should trigger new readdir
       await fileManager.scanFolder(testFolderPath);
       expect(mockFs.readdir).toHaveBeenCalledTimes(2); // Now 2 (cache cleared by rename)
+    });
+  });
+
+  describe('scanFolder - chronological sorting', () => {
+    it('should sort files chronologically by creation timestamp (earliest first)', async () => {
+      const mockFiles = [
+        { name: 'EA001598.MOV', isFile: () => true, isDirectory: () => false }, // 2025-10-24 11:02:00
+        { name: 'EA001597.MOV', isFile: () => true, isDirectory: () => false }, // 2025-10-24 10:58:00 (EARLIEST)
+        { name: 'EA001599.MOV', isFile: () => true, isDirectory: () => false }, // 2025-10-24 11:05:00 (LATEST)
+      ];
+
+      mockFs.readdir.mockResolvedValue(mockFiles);
+      mockFs.stat.mockResolvedValue({
+        isFile: () => true,
+        mtime: new Date('2024-01-01'),
+      });
+
+      const files = await fileManager.scanFolder(testFolderPath);
+
+      // Files should be sorted chronologically (earliest → latest)
+      expect(files).toHaveLength(3);
+      expect(files[0].id).toBe('EA001597'); // First in time
+      expect(files[0].shotNumber).toBe(1);   // Shot #1
+      expect(files[1].id).toBe('EA001598'); // Second in time
+      expect(files[1].shotNumber).toBe(2);   // Shot #2
+      expect(files[2].id).toBe('EA001599'); // Third in time
+      expect(files[2].shotNumber).toBe(3);   // Shot #3
+    });
+
+    it('should assign sequential shot numbers starting from 1', async () => {
+      const mockFiles = [
+        { name: 'EA001597.MOV', isFile: () => true, isDirectory: () => false },
+        { name: 'EA001598.MOV', isFile: () => true, isDirectory: () => false },
+      ];
+
+      mockFs.readdir.mockResolvedValue(mockFiles);
+      mockFs.stat.mockResolvedValue({
+        isFile: () => true,
+        mtime: new Date('2024-01-01'),
+      });
+
+      const files = await fileManager.scanFolder(testFolderPath);
+
+      expect(files).toHaveLength(2);
+      expect(files[0].shotNumber).toBe(1); // First file = shot #1
+      expect(files[1].shotNumber).toBe(2); // Second file = shot #2
+    });
+
+    it('should extract cameraId from original filename', async () => {
+      const mockFiles = [
+        { name: 'EA001597.MOV', isFile: () => true, isDirectory: () => false },
+        { name: 'EB001472.MOV', isFile: () => true, isDirectory: () => false },
+      ];
+
+      mockFs.readdir.mockResolvedValue(mockFiles);
+      mockFs.stat.mockResolvedValue({
+        isFile: () => true,
+        mtime: new Date('2024-01-01'),
+      });
+
+      const files = await fileManager.scanFolder(testFolderPath);
+
+      expect(files).toHaveLength(2);
+      expect(files[0].cameraId).toBe('EA001597'); // Camera ID extracted
+      expect(files[1].cameraId).toBe('EB001472'); // Camera ID extracted
+    });
+
+    it('should use filename as tie-breaker when timestamps are identical', async () => {
+      const mockFiles = [
+        { name: 'EA001599.MOV', isFile: () => true, isDirectory: () => false },
+        { name: 'EA001597.MOV', isFile: () => true, isDirectory: () => false },
+        { name: 'EA001598.MOV', isFile: () => true, isDirectory: () => false },
+      ];
+
+      mockFs.readdir.mockResolvedValue(mockFiles);
+      mockFs.stat.mockResolvedValue({
+        isFile: () => true,
+        mtime: new Date('2024-01-01'), // Same timestamp for all
+      });
+
+      const files = await fileManager.scanFolder(testFolderPath);
+
+      // When timestamps identical, sort by filename alphabetically
+      expect(files).toHaveLength(3);
+      expect(files[0].originalFilename).toBe('EA001597.MOV');
+      expect(files[1].originalFilename).toBe('EA001598.MOV');
+      expect(files[2].originalFilename).toBe('EA001599.MOV');
     });
   });
 

@@ -95,11 +95,31 @@ export class FileManager {
         mainName,
         keywords: [],
         fileType: this.getFileType(filename),
-        processedByAI: false
+        processedByAI: false,
+        creationTimestamp: stats.mtime, // Use file modification time for sorting
+        cameraId: baseId // Extract camera ID from original filename
       });
 
       files.push(fileMetadata);
     }
+
+    // Sort files chronologically by creation timestamp (earliest → latest)
+    files.sort((a, b) => {
+      const timeA = a.creationTimestamp?.getTime() ?? Infinity;
+      const timeB = b.creationTimestamp?.getTime() ?? Infinity;
+
+      // Tie-breaker: Use original filename if timestamps identical
+      if (timeA === timeB) {
+        return a.originalFilename.localeCompare(b.originalFilename);
+      }
+
+      return timeA - timeB;
+    });
+
+    // Assign sequential shot numbers (1-based, immutable)
+    files.forEach((file, index) => {
+      file.shotNumber = index + 1;
+    });
 
     // Cache the result
     this.scanCache.set(folderPath, files);

@@ -97,8 +97,8 @@ const batchQueuePath = path.join(app.getPath('userData'), '.ingest-batch-queue.j
 const batchQueueManager: BatchQueueManager = new BatchQueueManager(batchQueuePath);
 
 /**
- * Format a Date object as yyyymmddhhmm for use in filenames
- * Example: 2025-11-03 10:05:30 -> 202511031005
+ * Format a Date object as yyyymmddhhmmss for use in filenames (14 digits with seconds)
+ * Example: 2025-11-03 10:05:30 -> 20251103100530
  */
 function formatTimestampForTitle(date: Date): string {
   const year = date.getFullYear().toString();
@@ -106,8 +106,9 @@ function formatTimestampForTitle(date: Date): string {
   const day = date.getDate().toString().padStart(2, '0');
   const hour = date.getHours().toString().padStart(2, '0');
   const minute = date.getMinutes().toString().padStart(2, '0');
+  const second = date.getSeconds().toString().padStart(2, '0');
 
-  return `${year}${month}${day}${hour}${minute}`;
+  return `${year}${month}${day}${hour}${minute}${second}`;
 }
 
 /**
@@ -610,7 +611,6 @@ ipcMain.handle('file:rename', async (_event, fileId: string, mainName: string, c
     let fileMetadata = await store.getFileMetadata(fileId);
     if (!fileMetadata) {
       // Create new metadata entry
-      const stats = await fs.stat(newPath);
       fileMetadata = {
         id: fileId,
         originalFilename: path.basename(currentPath),
@@ -669,7 +669,9 @@ ipcMain.handle('file:rename', async (_event, fileId: string, mainName: string, c
         subject: fileMetadata!.subject,
         action: fileMetadata!.action,
         shotType: fileMetadata!.shotType,
-        date: formattedDate
+        date: formattedDate,
+        shotNumber: fileMetadata!.shotNumber,
+        cameraId: fileMetadata!.cameraId
       }
     );
 
@@ -737,7 +739,9 @@ ipcMain.handle('file:update-metadata', async (_event, fileId: string, metadata: 
         subject: fileMetadata.subject,
         action: fileMetadata.action,
         shotType: fileMetadata.shotType,
-        date: formattedDate
+        date: formattedDate,
+        shotNumber: fileMetadata.shotNumber,
+        cameraId: fileMetadata.cameraId
       }
     );
 
@@ -1064,7 +1068,9 @@ ipcMain.handle('batch:start', async (_event, fileIds: string[]) => {
               subject: fileMetadata.subject,
               action: fileMetadata.action,
               shotType: fileMetadata.shotType,
-              date: formattedDate
+              date: formattedDate,
+              shotNumber: fileMetadata.shotNumber,
+              cameraId: fileMetadata.cameraId
             }
           );
         }
