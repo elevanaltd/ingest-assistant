@@ -34,9 +34,10 @@ const MEDIA_SERVER_PORT = 8765;
 // Generated once per session using cryptographically secure random bytes
 let MEDIA_SERVER_TOKEN: string = '';
 
-// Initialize SecurityValidator and FileManager with dependency injection
+// Initialize SecurityValidator, MetadataWriter, and FileManager with dependency injection
 const securityValidator = new SecurityValidator();
-const fileManager: FileManager = new FileManager(securityValidator);
+const metadataWriter: MetadataWriter = new MetadataWriter();
+const fileManager: FileManager = new FileManager(securityValidator, metadataWriter);
 
 // Rate limiter for batch operations (token bucket algorithm)
 class RateLimiter {
@@ -88,7 +89,6 @@ const configManager: ConfigManager = (() => {
   const configPath = path.join(userDataPath, 'config.yaml');
   return new ConfigManager(configPath);
 })();
-const metadataWriter: MetadataWriter = new MetadataWriter();
 const videoTranscoder: VideoTranscoder = new VideoTranscoder();
 let aiService: AIService | null = null;
 
