@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import type { LexiconConfig } from '../types';
 
 interface SettingsModalProps {
@@ -38,6 +38,10 @@ export function SettingsModal({ onClose, onSave, initialConfig }: SettingsModalP
   const [lexiconSaveSuccess, setLexiconSaveSuccess] = useState(false);
   const [aiSaveSuccess, setAiSaveSuccess] = useState(false);
 
+  // Refs for cleanup
+  const lexiconCloseTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const aiCloseTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
   // Handle Escape key to close modal
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -53,6 +57,18 @@ export function SettingsModal({ onClose, onSave, initialConfig }: SettingsModalP
       document.removeEventListener('keydown', handleKeyDown);
     };
   }, [onClose]);
+
+  // Cleanup timeouts on unmount
+  useEffect(() => {
+    return () => {
+      if (lexiconCloseTimeoutRef.current) {
+        clearTimeout(lexiconCloseTimeoutRef.current);
+      }
+      if (aiCloseTimeoutRef.current) {
+        clearTimeout(aiCloseTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // Load initial lexicon config
   useEffect(() => {
@@ -133,7 +149,16 @@ export function SettingsModal({ onClose, onSave, initialConfig }: SettingsModalP
 
       await onSave(config);
       setLexiconSaveSuccess(true);
-      setTimeout(() => setLexiconSaveSuccess(false), 3000);
+
+      // Clear any existing timeout
+      if (lexiconCloseTimeoutRef.current) {
+        clearTimeout(lexiconCloseTimeoutRef.current);
+      }
+
+      // Auto-close modal after brief delay to show success message
+      lexiconCloseTimeoutRef.current = setTimeout(() => {
+        onClose();
+      }, 1500);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save settings');
     } finally {
@@ -216,7 +241,16 @@ export function SettingsModal({ onClose, onSave, initialConfig }: SettingsModalP
         setAiSaveSuccess(true);
         setHasSavedKey(true);
         setAiApiKey('');
-        setTimeout(() => setAiSaveSuccess(false), 3000);
+
+        // Clear any existing timeout
+        if (aiCloseTimeoutRef.current) {
+          clearTimeout(aiCloseTimeoutRef.current);
+        }
+
+        // Auto-close modal after brief delay to show success message
+        aiCloseTimeoutRef.current = setTimeout(() => {
+          onClose();
+        }, 1500);
       } else {
         setAiErrorMessage(result.error || 'Failed to save AI configuration');
       }
