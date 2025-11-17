@@ -52,8 +52,14 @@ export class VideoTranscoder {
   /**
    * Transcode video to H.264 with hardware acceleration
    * Returns path to transcoded file
+   *
+   * @param sourceFile Path to source video file
+   * @param onProgress Optional callback for progress updates (receives time string like "00:00:05.12")
    */
-  async transcodeForPreview(sourceFile: string): Promise<string> {
+  async transcodeForPreview(
+    sourceFile: string,
+    onProgress?: (progress: string) => void
+  ): Promise<string> {
     // Get file stats for cache key
     const stats = fs.statSync(sourceFile);
     const cacheKey = this.getCacheKey(sourceFile, stats);
@@ -72,7 +78,7 @@ export class VideoTranscoder {
 
     // Start transcoding
     console.log('[VideoTranscoder] Starting transcode:', sourceFile);
-    const transcodePromise = this.doTranscode(sourceFile, outPath);
+    const transcodePromise = this.doTranscode(sourceFile, outPath, onProgress);
     this.activeTranscodes.set(outPath, transcodePromise);
 
     try {
@@ -86,7 +92,11 @@ export class VideoTranscoder {
   /**
    * Execute FFmpeg transcoding with optimized settings
    */
-  private doTranscode(sourceFile: string, outPath: string): Promise<string> {
+  private doTranscode(
+    sourceFile: string,
+    outPath: string,
+    onProgress?: (progress: string) => void
+  ): Promise<string> {
     return new Promise((resolve, reject) => {
       const args = [
         '-hide_banner',
@@ -132,12 +142,17 @@ export class VideoTranscoder {
       let stderr = '';
 
       ffmpegProcess.stderr.on('data', (data) => {
-        stderr += data.toString();
-        // Log progress occasionally
-        if (stderr.includes('time=')) {
-          const match = stderr.match(/time=(\d+:\d+:\d+\.\d+)/);
+        const chunk = data.toString();
+        stderr += chunk;
+        // Log progress occasionally (process new chunk only, not accumulated stderr)
+        if (chunk.includes('time=')) {
+          const match = chunk.match(/time=(\d+:\d+:\d+\.\d+)/);
           if (match) {
             console.log('[VideoTranscoder] Progress:', match[1]);
+            // Call progress callback if provided
+            if (onProgress) {
+              onProgress(match[1]);
+            }
           }
         }
       });
