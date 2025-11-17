@@ -352,8 +352,8 @@ describe('MetadataWriter (Integration)', () => {
       const data = JSON.parse(stdout);
       const xmpData = data[0];
 
-      // LogComment should include shotNumber field
-      expect(xmpData['LogComment']).toBe('location=kitchen, subject=oven, action=cleaning, shotType=WS, shotNumber=5');
+      // LogComment should include shotNumber field with # prefix
+      expect(xmpData['LogComment']).toBe('location=kitchen, subject=oven, action=cleaning, shotType=WS, shotNumber=#5');
     });
 
     it('should append #N suffix to shotName when shotNumber provided (RED)', async () => {
@@ -537,20 +537,19 @@ describe('MetadataWriter (Integration)', () => {
       expect(xmpData['LogComment']).toBe('location=kitchen, subject=oven, action=cleaning, shotType=WS');
     });
 
-    it('should write LogComment with date field for CEP Panel uniqueness (Issue #31)', async () => {
+    it('should write LogComment with action field always included (CEP Panel alignment)', async () => {
       if (!exiftoolAvailable) {
         console.log('⏭️  Skipping - exiftool not available');
         return;
       }
 
-      const mainName = 'kitchen-oven-cleaning-WS-202511031005';
+      const mainName = 'kitchen-oven-cleaning-WS';
       const tags = ['appliance', 'demo'];
       const structured = {
         location: 'kitchen',
         subject: 'oven',
         action: 'cleaning',
-        shotType: 'WS',
-        date: '202511031005' // yyyymmddhhmm format
+        shotType: 'WS'
       };
 
       await metadataWriter.writeMetadataToFile(testFilePath, mainName, tags, structured);
@@ -560,8 +559,34 @@ describe('MetadataWriter (Integration)', () => {
       const data = JSON.parse(stdout);
       const xmpData = data[0];
 
-      // LogComment should include date field for CEP Panel to parse and preserve
-      expect(xmpData['LogComment']).toBe('location=kitchen, subject=oven, action=cleaning, shotType=WS, date=202511031005');
+      // LogComment should include action field (required for CEP Panel 5-field parsing)
+      expect(xmpData['LogComment']).toBe('location=kitchen, subject=oven, action=cleaning, shotType=WS');
+    });
+
+    it('should write LogComment with empty action for images (no action)', async () => {
+      if (!exiftoolAvailable) {
+        console.log('⏭️  Skipping - exiftool not available');
+        return;
+      }
+
+      const mainName = 'kitchen-oven-CU';
+      const tags = ['appliance'];
+      const structured = {
+        location: 'kitchen',
+        subject: 'oven',
+        action: '', // Empty string for images
+        shotType: 'CU'
+      };
+
+      await metadataWriter.writeMetadataToFile(testFilePath, mainName, tags, structured);
+
+      // Read XMP-xmpDm:LogComment specifically
+      const { stdout } = await execAsync(`exiftool -XMP-xmpDm:LogComment -json "${testFilePath}"`);
+      const data = JSON.parse(stdout);
+      const xmpData = data[0];
+
+      // LogComment should include action=, (empty) for images
+      expect(xmpData['LogComment']).toBe('location=kitchen, subject=oven, action=, shotType=CU');
     });
 
     it('should write LogComment with partial structured components', async () => {
@@ -576,7 +601,7 @@ describe('MetadataWriter (Integration)', () => {
         location: 'kitchen',
         subject: 'oven',
         shotType: 'WS'
-        // action is omitted
+        // action is omitted (will be empty string)
       };
 
       await metadataWriter.writeMetadataToFile(testFilePath, mainName, tags, structured);
@@ -585,8 +610,8 @@ describe('MetadataWriter (Integration)', () => {
       const data = JSON.parse(stdout);
       const xmpData = data[0];
 
-      // LogComment should only include provided components
-      expect(xmpData['LogComment']).toBe('location=kitchen, subject=oven, shotType=WS');
+      // LogComment should include action=, even when not provided (CEP Panel requires all 5 fields)
+      expect(xmpData['LogComment']).toBe('location=kitchen, subject=oven, action=, shotType=WS');
     });
 
     it('should not write LogComment when structured components not provided', async () => {
