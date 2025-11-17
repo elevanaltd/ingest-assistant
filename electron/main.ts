@@ -668,7 +668,9 @@ ipcMain.handle('file:rename', async (_event, fileId: string, mainName: string, c
         subject: fileMetadata!.subject,
         action: fileMetadata!.action,
         shotType: fileMetadata!.shotType,
-        date: formattedDate
+        date: formattedDate,
+        shotNumber: fileMetadata!.shotNumber,
+        cameraId: fileMetadata!.cameraId
       }
     );
 
@@ -736,7 +738,9 @@ ipcMain.handle('file:update-metadata', async (_event, fileId: string, metadata: 
         subject: fileMetadata.subject,
         action: fileMetadata.action,
         shotType: fileMetadata.shotType,
-        date: formattedDate
+        date: formattedDate,
+        shotNumber: fileMetadata.shotNumber,
+        cameraId: fileMetadata.cameraId
       }
     );
 
@@ -1063,7 +1067,9 @@ ipcMain.handle('batch:start', async (_event, fileIds: string[]) => {
               subject: fileMetadata.subject,
               action: fileMetadata.action,
               shotType: fileMetadata.shotType,
-              date: formattedDate
+              date: formattedDate,
+              shotNumber: fileMetadata.shotNumber,
+              cameraId: fileMetadata.cameraId
             }
           );
         }
