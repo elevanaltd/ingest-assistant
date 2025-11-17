@@ -411,6 +411,24 @@ src/
 - **Production Pipeline:** `/Volumes/HestAI-Projects/eav-monorepo/.coord/workflow-docs/002-EAV-PRODUCTION-PIPELINE.md`
 - **Supabase Config:** `/Volumes/HestAI-Projects/eav-monorepo/.env` (shared database credentials)
 
+### Cross-Ecosystem Workflow (IA ↔ EAV Coordination)
+- **Status Board:** `/Volumes/HestAI-Projects/eav-monorepo/.coord/ACTIVE-WORK.md` (tracks all IA-related work in EAV)
+- **Workflow Guide:** `/Volumes/HestAI-Projects/eav-monorepo/.coord/workflow-docs/CROSS-ECOSYSTEM-WORKFLOW.md` (complete process)
+- **Contract Spec:** `/Volumes/HestAI-Projects/eav-monorepo/supabase/contracts/shots-v1.yaml` (EAV_CONTRACT:v1)
+- **SLO Observability:** `/Volumes/HestAI-Projects/eav-monorepo/docs/103-DOC-SLO-OBSERVABILITY.md` (performance monitoring)
+- **Deletion Workflow:** `/Volumes/HestAI-Projects/eav-monorepo/docs/104-DOC-DELETION-WORKFLOW.md` (admin deletion assistant)
+
+**When IA Changes Affect EAV Schema:**
+1. Check ACTIVE-WORK.md for ongoing EAV work (avoid conflicts)
+2. Create branch in EAV monorepo: `ia/{task-name}` (branch naming convention)
+3. Update ACTIVE-WORK.md with new task (status tracking)
+4. Follow deployment sequence: **EAV first, IA second** (prevents orphaned IA migrations)
+5. Run validation: `./scripts/check_cross_schema.sh` (verify FK constraints)
+
+**GitHub Labels:**
+- EAV PRs: `cross-ecosystem:ia` (tags IA-related work)
+- IA PRs: `cross-ecosystem:eav` (tags EAV-related work)
+
 ## Quick Reference Commands
 
 ```bash
@@ -442,6 +460,6 @@ npm run dev
 
 ---
 
-**Last Updated:** 2025-11-15 (EAV ecosystem integration documented)
+**Last Updated:** 2025-11-16 (Cross-ecosystem workflow established)
 **Maintainer:** Shaun Buswell
 **Claude Code Version:** Sonnet 4.5

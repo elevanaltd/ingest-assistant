@@ -52,8 +52,14 @@ export class VideoTranscoder {
   /**
    * Transcode video to H.264 with hardware acceleration
    * Returns path to transcoded file
+   *
+   * @param sourceFile Path to source video file
+   * @param onProgress Optional callback for progress updates (receives time string and percentage)
    */
-  async transcodeForPreview(sourceFile: string): Promise<string> {
+  async transcodeForPreview(
+    sourceFile: string,
+    onProgress?: (time: string, percentage: number) => void
+  ): Promise<string> {
     // Get file stats for cache key
     const stats = fs.statSync(sourceFile);
     const cacheKey = this.getCacheKey(sourceFile, stats);
@@ -72,7 +78,7 @@ export class VideoTranscoder {
 
     // Start transcoding
     console.log('[VideoTranscoder] Starting transcode:', sourceFile);
-    const transcodePromise = this.doTranscode(sourceFile, outPath);
+    const transcodePromise = this.doTranscode(sourceFile, outPath, onProgress);
     this.activeTranscodes.set(outPath, transcodePromise);
 
     try {
@@ -86,7 +92,11 @@ export class VideoTranscoder {
   /**
    * Execute FFmpeg transcoding with optimized settings
    */
-  private doTranscode(sourceFile: string, outPath: string): Promise<string> {
+  private doTranscode(
+    sourceFile: string,
+    outPath: string,
+    onProgress?: (time: string, percentage: number) => void
+  ): Promise<string> {
     return new Promise((resolve, reject) => {
       const args = [
         '-hide_banner',
@@ -130,14 +140,42 @@ export class VideoTranscoder {
 
       const ffmpegProcess = spawn(ffmpeg.path, args);
       let stderr = '';
+      let duration = 0;
+
+      // Helper: Convert HH:MM:SS.MS to seconds
+      const timeToSeconds = (timeStr: string): number => {
+        const parts = timeStr.split(':');
+        const hours = parseInt(parts[0], 10);
+        const minutes = parseInt(parts[1], 10);
+        const seconds = parseFloat(parts[2]);
+        return hours * 3600 + minutes * 60 + seconds;
+      };
 
       ffmpegProcess.stderr.on('data', (data) => {
-        stderr += data.toString();
-        // Log progress occasionally
-        if (stderr.includes('time=')) {
-          const match = stderr.match(/time=(\d+:\d+:\d+\.\d+)/);
+        const chunk = data.toString();
+        stderr += chunk;
+
+        // Parse duration from FFmpeg output (appears early)
+        if (duration === 0 && chunk.includes('Duration:')) {
+          const durationMatch = chunk.match(/Duration: (\d+:\d+:\d+\.\d+)/);
+          if (durationMatch) {
+            duration = timeToSeconds(durationMatch[1]);
+            console.log('[VideoTranscoder] Video duration:', duration, 'seconds');
+          }
+        }
+
+        // Log progress occasionally (process new chunk only, not accumulated stderr)
+        if (chunk.includes('time=')) {
+          const match = chunk.match(/time=(\d+:\d+:\d+\.\d+)/);
           if (match) {
-            console.log('[VideoTranscoder] Progress:', match[1]);
+            const currentTime = timeToSeconds(match[1]);
+            const percentage = duration > 0 ? Math.round((currentTime / duration) * 100) : 0;
+            console.log('[VideoTranscoder] Progress:', match[1], `(${percentage}%)`);
+
+            // Call progress callback if provided
+            if (onProgress) {
+              onProgress(match[1], percentage);
+            }
           }
         }
       });

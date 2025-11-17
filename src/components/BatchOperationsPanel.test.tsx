@@ -17,6 +17,7 @@ describe('BatchOperationsPanel', () => {
         items: [],
       }),
       onBatchProgress: vi.fn().mockReturnValue(() => {}),
+      onTranscodeProgress: vi.fn().mockReturnValue(() => {}),
     };
   });
 

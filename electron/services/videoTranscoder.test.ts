@@ -337,6 +337,100 @@ describe('VideoTranscoder', () => {
     });
   });
 
+  describe('Progress Callback', () => {
+    beforeEach(() => {
+      transcoder = new VideoTranscoder(mockCacheDir);
+
+      const mockStats = {
+        mtime: new Date('2025-01-15T10:00:00Z'),
+        size: 1024000
+      } as fs.Stats;
+      vi.mocked(fs.statSync).mockReturnValue(mockStats);
+
+      const mockHash = {
+        update: vi.fn().mockReturnThis(),
+        digest: vi.fn().mockReturnValue('abcd1234abcd1234567890abcdef0123')
+      };
+      vi.mocked(crypto.createHash).mockReturnValue(mockHash as any);
+
+      vi.mocked(fs.existsSync).mockReturnValue(false); // Force transcode
+    });
+
+    it('should call progress callback with time and percentage when FFmpeg emits progress', async () => {
+      const mockProcess = new EventEmitter() as any;
+      mockProcess.stderr = new EventEmitter();
+      vi.mocked(spawn).mockReturnValue(mockProcess);
+
+      const onProgress = vi.fn();
+      const transcodePromise = transcoder.transcodeForPreview(mockSourceFile, onProgress);
+
+      // Simulate FFmpeg output with duration (20 seconds) then progress
+      setTimeout(() => {
+        // FFmpeg emits duration first
+        mockProcess.stderr.emit('data', Buffer.from('Duration: 00:00:20.00, start: 0.000000, bitrate: 2500 kb/s'));
+        // Then progress updates
+        mockProcess.stderr.emit('data', Buffer.from('frame=  123 fps=24 time=00:00:05.00 bitrate=2500kbits/s'));
+        mockProcess.stderr.emit('data', Buffer.from('frame=  246 fps=24 time=00:00:10.00 bitrate=2500kbits/s'));
+        mockProcess.emit('close', 0);
+      }, 10);
+
+      await transcodePromise;
+
+      // Progress callback should be called for each progress update with percentage
+      expect(onProgress).toHaveBeenCalledTimes(2);
+      expect(onProgress).toHaveBeenCalledWith('00:00:05.00', 25);  // 5/20 = 25%
+      expect(onProgress).toHaveBeenCalledWith('00:00:10.00', 50);  // 10/20 = 50%
+    });
+
+    it('should not fail when progress callback is not provided (backward compatibility)', async () => {
+      const mockProcess = new EventEmitter() as any;
+      mockProcess.stderr = new EventEmitter();
+      vi.mocked(spawn).mockReturnValue(mockProcess);
+
+      // Call without progress callback (original signature)
+      const transcodePromise = transcoder.transcodeForPreview(mockSourceFile);
+
+      setTimeout(() => {
+        mockProcess.stderr.emit('data', Buffer.from('frame=  123 fps=24 time=00:00:05.12 bitrate=2500kbits/s'));
+        mockProcess.emit('close', 0);
+      }, 10);
+
+      // Should complete successfully without error
+      const result = await transcodePromise;
+      expect(result).toBe(`${mockCacheDir}/abcd1234abcd1234-720p.mp4`);
+    });
+
+    it('should not call progress callback when stderr has no time progress', async () => {
+      const mockProcess = new EventEmitter() as any;
+      mockProcess.stderr = new EventEmitter();
+      vi.mocked(spawn).mockReturnValue(mockProcess);
+
+      const onProgress = vi.fn();
+      const transcodePromise = transcoder.transcodeForPreview(mockSourceFile, onProgress);
+
+      setTimeout(() => {
+        mockProcess.stderr.emit('data', Buffer.from('Some other FFmpeg output without time'));
+        mockProcess.emit('close', 0);
+      }, 10);
+
+      await transcodePromise;
+
+      // Progress callback should not be called for non-progress output
+      expect(onProgress).not.toHaveBeenCalled();
+    });
+
+    it('should not call progress callback when cache hit (no transcode)', async () => {
+      vi.mocked(fs.existsSync).mockReturnValue(true); // Cache hit
+
+      const onProgress = vi.fn();
+      const result = await transcoder.transcodeForPreview(mockSourceFile, onProgress);
+
+      expect(result).toBe(`${mockCacheDir}/abcd1234abcd1234-720p.mp4`);
+      expect(onProgress).not.toHaveBeenCalled(); // No transcode = no progress
+      expect(spawn).not.toHaveBeenCalled(); // FFmpeg not spawned
+    });
+  });
+
   describe('cleanCache - Age-Based Pruning', () => {
     beforeEach(() => {
       transcoder = new VideoTranscoder(mockCacheDir);

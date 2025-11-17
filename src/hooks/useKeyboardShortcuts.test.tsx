@@ -32,6 +32,7 @@ const mockElectronAPI = {
     currentFile: null
   })),
   onBatchProgress: vi.fn(() => () => {}), // Returns cleanup function
+  onTranscodeProgress: vi.fn(() => () => {}), // Returns cleanup function
 };
 
 const createMockFile = (overrides: Partial<FileMetadata> = {}): FileMetadata => ({

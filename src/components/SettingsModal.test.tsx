@@ -243,6 +243,7 @@ describe('SettingsModal', () => {
           currentFile: null
         })),
         onBatchProgress: vi.fn(() => () => {}), // Returns cleanup function
+        onTranscodeProgress: vi.fn(() => () => {}), // Returns cleanup function
       } as Partial<typeof window.electronAPI> as typeof window.electronAPI;
     });
 
