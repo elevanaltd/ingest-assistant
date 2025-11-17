@@ -63,6 +63,27 @@ describe('Timestamp Deserialization Bug', () => {
     expect(formatted).toBe('202511031005');
   });
 
+  it('should format timestamp with seconds (14 digits: YYYYMMDDHHMMSS) (RED)', () => {
+    // Phase 5: Add seconds to timestamp format
+    const isoString = '2025-11-03T10:05:42.000Z'; // Note: 42 seconds
+
+    // Convert to Date
+    const timestamp = new Date(isoString);
+
+    // Format as yyyymmddhhmmss (14 digits with seconds)
+    const year = timestamp.getFullYear().toString();
+    const month = (timestamp.getMonth() + 1).toString().padStart(2, '0');
+    const day = timestamp.getDate().toString().padStart(2, '0');
+    const hour = timestamp.getHours().toString().padStart(2, '0');
+    const minute = timestamp.getMinutes().toString().padStart(2, '0');
+    const second = timestamp.getSeconds().toString().padStart(2, '0');
+    const formatted = `${year}${month}${day}${hour}${minute}${second}`;
+
+    // Should be 14 digits including seconds
+    expect(formatted).toBe('20251103100542');
+    expect(formatted.length).toBe(14);
+  });
+
   it('should handle Date object passthrough without conversion', () => {
     // When creationTimestamp is already a Date (in-memory)
     const dateObject = new Date('2025-11-03T10:05:00.000Z');
