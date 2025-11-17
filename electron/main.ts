@@ -457,9 +457,9 @@ ipcMain.handle('file:read-as-data-url', async (_event, filePath: string) => {
           console.log('[IPC] Starting transcode for preview...');
 
           // Forward transcode progress to renderer
-          const onProgress = (time: string) => {
+          const onProgress = (time: string, percentage: number) => {
             if (mainWindow) {
-              mainWindow.webContents.send('file:transcode-progress', { time });
+              mainWindow.webContents.send('file:transcode-progress', { time, percentage });
             }
           };
 

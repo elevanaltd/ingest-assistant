@@ -70,8 +70,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
     return () => ipcRenderer.removeListener('batch:progress', listener);
   },
 
-  onTranscodeProgress: (callback: (progress: { time: string }) => void): (() => void) => {
-    const listener = (_event: Electron.IpcRendererEvent, progress: { time: string }) => callback(progress);
+  onTranscodeProgress: (callback: (progress: { time: string; percentage: number }) => void): (() => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, progress: { time: string; percentage: number }) => callback(progress);
     ipcRenderer.on('file:transcode-progress', listener);
     // Return cleanup function
     return () => ipcRenderer.removeListener('file:transcode-progress', listener);

@@ -27,7 +27,7 @@ export interface ElectronAPI {
   onBatchProgress: (callback: (progress: import('./index').BatchProgress) => void) => () => void;
 
   // Transcode progress (for loading overlay)
-  onTranscodeProgress: (callback: (progress: { time: string }) => void) => () => void;
+  onTranscodeProgress: (callback: (progress: { time: string; percentage: number }) => void) => () => void;
 
   // Config operations
   loadConfig: () => Promise<AppConfig>;

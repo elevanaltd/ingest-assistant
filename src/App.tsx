@@ -30,6 +30,7 @@ function App() {
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingMedia, setIsLoadingMedia] = useState(false);
   const [transcodeProgress, setTranscodeProgress] = useState<string>('');
+  const [transcodePercentage, setTranscodePercentage] = useState<number>(0);
   const [mediaDataUrl, setMediaDataUrl] = useState<string>('');
   const [codecWarning, setCodecWarning] = useState<string>('');
   const [statusMessage, setStatusMessage] = useState<string>('');
@@ -71,6 +72,7 @@ function App() {
       // Listen for transcode progress events
       const cleanup = window.electronAPI.onTranscodeProgress((progress) => {
         setTranscodeProgress(progress.time);
+        setTranscodePercentage(progress.percentage);
       });
 
       return cleanup;
@@ -164,6 +166,7 @@ function App() {
     // Start loading
     setIsLoadingMedia(true);
     setTranscodeProgress('');
+    setTranscodePercentage(0);
 
     // Load file as data URL
     window.electronAPI.readFileAsDataUrl(currentFile.filePath)
@@ -192,6 +195,7 @@ function App() {
         // Done loading
         setIsLoadingMedia(false);
         setTranscodeProgress('');
+        setTranscodePercentage(0);
       })
       .catch(error => {
         console.error('Failed to load media:', error);
@@ -199,6 +203,7 @@ function App() {
         setCodecWarning('');
         setIsLoadingMedia(false);
         setTranscodeProgress('');
+        setTranscodePercentage(0);
       });
   }, [currentFile]);
 
@@ -544,7 +549,7 @@ function App() {
                   fontWeight: 500,
                   textShadow: '0 1px 3px rgba(0,0,0,0.5)'
                 }}>
-                  {transcodeProgress ? `Transcoding: ${transcodeProgress}` : 'Loading...'}
+                  {transcodeProgress ? `Transcoding: ${transcodePercentage}%` : 'Loading...'}
                 </div>
 
                 {/* Progress bar */}

@@ -54,11 +54,11 @@ export class VideoTranscoder {
    * Returns path to transcoded file
    *
    * @param sourceFile Path to source video file
-   * @param onProgress Optional callback for progress updates (receives time string like "00:00:05.12")
+   * @param onProgress Optional callback for progress updates (receives time string and percentage)
    */
   async transcodeForPreview(
     sourceFile: string,
-    onProgress?: (progress: string) => void
+    onProgress?: (time: string, percentage: number) => void
   ): Promise<string> {
     // Get file stats for cache key
     const stats = fs.statSync(sourceFile);
@@ -95,7 +95,7 @@ export class VideoTranscoder {
   private doTranscode(
     sourceFile: string,
     outPath: string,
-    onProgress?: (progress: string) => void
+    onProgress?: (time: string, percentage: number) => void
   ): Promise<string> {
     return new Promise((resolve, reject) => {
       const args = [
@@ -140,18 +140,41 @@ export class VideoTranscoder {
 
       const ffmpegProcess = spawn(ffmpeg.path, args);
       let stderr = '';
+      let duration = 0;
+
+      // Helper: Convert HH:MM:SS.MS to seconds
+      const timeToSeconds = (timeStr: string): number => {
+        const parts = timeStr.split(':');
+        const hours = parseInt(parts[0], 10);
+        const minutes = parseInt(parts[1], 10);
+        const seconds = parseFloat(parts[2]);
+        return hours * 3600 + minutes * 60 + seconds;
+      };
 
       ffmpegProcess.stderr.on('data', (data) => {
         const chunk = data.toString();
         stderr += chunk;
+
+        // Parse duration from FFmpeg output (appears early)
+        if (duration === 0 && chunk.includes('Duration:')) {
+          const durationMatch = chunk.match(/Duration: (\d+:\d+:\d+\.\d+)/);
+          if (durationMatch) {
+            duration = timeToSeconds(durationMatch[1]);
+            console.log('[VideoTranscoder] Video duration:', duration, 'seconds');
+          }
+        }
+
         // Log progress occasionally (process new chunk only, not accumulated stderr)
         if (chunk.includes('time=')) {
           const match = chunk.match(/time=(\d+:\d+:\d+\.\d+)/);
           if (match) {
-            console.log('[VideoTranscoder] Progress:', match[1]);
+            const currentTime = timeToSeconds(match[1]);
+            const percentage = duration > 0 ? Math.round((currentTime / duration) * 100) : 0;
+            console.log('[VideoTranscoder] Progress:', match[1], `(${percentage}%)`);
+
             // Call progress callback if provided
             if (onProgress) {
-              onProgress(match[1]);
+              onProgress(match[1], percentage);
             }
           }
         }
