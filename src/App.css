@@ -98,6 +98,7 @@ body {
 }
 
 .viewer {
+  position: relative; /* Create positioning context for loading overlay */
   display: flex;
   align-items: center;
   justify-content: center;
