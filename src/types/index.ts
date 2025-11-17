@@ -30,6 +30,10 @@ export interface FileMetadata {
   fileType: 'image' | 'video';
   /** Original creation timestamp from camera/device (used for unique naming) */
   creationTimestamp?: Date;
+  /** Camera clip ID extracted from original filename (e.g., "EA001597") */
+  cameraId?: string;
+  /** Sequential shot number assigned chronologically within folder (1-based, immutable) */
+  shotNumber?: number;
 
   // === Core Metadata (matches XMP) ===
   /** Main descriptive name (kebab-case) - XMP-xmpDM:shotName */

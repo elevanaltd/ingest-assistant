@@ -163,6 +163,9 @@ export class MetadataStore {
     action?: string;
     shotType?: string;
     processedByAI?: boolean;
+    creationTimestamp?: Date;
+    cameraId?: string;
+    shotNumber?: number;
   }): FileMetadata {
     const now = new Date();
     return {
@@ -173,6 +176,9 @@ export class MetadataStore {
       filePath: params.filePath,
       extension: params.extension,
       fileType: params.fileType,
+      creationTimestamp: params.creationTimestamp,
+      cameraId: params.cameraId,
+      shotNumber: params.shotNumber,
 
       // Core metadata
       mainName: params.mainName,

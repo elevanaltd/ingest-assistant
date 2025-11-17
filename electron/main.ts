@@ -610,7 +610,6 @@ ipcMain.handle('file:rename', async (_event, fileId: string, mainName: string, c
     let fileMetadata = await store.getFileMetadata(fileId);
     if (!fileMetadata) {
       // Create new metadata entry
-      const stats = await fs.stat(newPath);
       fileMetadata = {
         id: fileId,
         originalFilename: path.basename(currentPath),
