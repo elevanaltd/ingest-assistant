@@ -817,8 +817,12 @@ ipcMain.handle('file:update-structured-metadata', async (_event, fileId: string,
       ? `${structured.location}-${structured.subject}-${structured.action}-${structured.shotType}`
       : `${structured.location}-${structured.subject}-${structured.shotType}`;
 
-    // Append timestamp to title for uniqueness
-    const generatedTitle = await generateTitleWithTimestamp(baseTitle, fileMetadata);
+    // Append timestamp to title for uniqueness ONLY if shotNumber is not present
+    // When shotNumber exists, it provides uniqueness (e.g., lounge-media-plate-MID-#1)
+    // When shotNumber absent, timestamp provides uniqueness (e.g., kitchen-oven-WS-20251103100530)
+    const generatedTitle = fileMetadata.shotNumber !== undefined
+      ? baseTitle // No timestamp when shot number present
+      : await generateTitleWithTimestamp(baseTitle, fileMetadata); // Timestamp for legacy folders
 
     // Update mainName to match generated title
     fileMetadata.mainName = generatedTitle;
