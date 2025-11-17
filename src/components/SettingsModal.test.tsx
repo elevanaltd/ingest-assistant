@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { SettingsModal } from './SettingsModal';
 import type { LexiconConfig } from '../types';
@@ -11,6 +11,10 @@ describe('SettingsModal', () => {
     mockOnClose.mockClear();
     mockOnSave.mockClear();
     mockOnSave.mockResolvedValue(undefined);
+  });
+
+  afterEach(() => {
+    vi.clearAllTimers();
   });
 
   it('renders modal with title', () => {
@@ -213,8 +217,13 @@ describe('SettingsModal', () => {
     // Should show success message
     expect(screen.getByText(/Lexicon settings saved successfully/i)).toBeInTheDocument();
 
-    // Modal should NOT auto-close
-    expect(mockOnClose).not.toHaveBeenCalled();
+    // Modal should auto-close after brief delay (1.5s)
+    expect(mockOnClose).not.toHaveBeenCalled(); // Not yet
+
+    // Wait for auto-close delay
+    await waitFor(() => {
+      expect(mockOnClose).toHaveBeenCalledTimes(1);
+    }, { timeout: 2000 });
   });
 
   describe('AI Configuration Tab', () => {
@@ -381,8 +390,13 @@ describe('SettingsModal', () => {
       // Should show success message
       expect(screen.getByText(/AI configuration saved successfully/i)).toBeInTheDocument();
 
-      // Modal should NOT auto-close
-      expect(mockOnClose).not.toHaveBeenCalled();
+      // Modal should auto-close after brief delay (1.5s)
+      expect(mockOnClose).not.toHaveBeenCalled(); // Not yet
+
+      // Wait for auto-close delay
+      await waitFor(() => {
+        expect(mockOnClose).toHaveBeenCalledTimes(1);
+      }, { timeout: 2000 });
     });
 
     it('should show error when save fails', async () => {

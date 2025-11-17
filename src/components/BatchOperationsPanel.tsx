@@ -14,6 +14,7 @@ export function BatchOperationsPanel({ availableFiles, selectedFileIds, onBatchC
   const [queueState, setQueueState] = useState<BatchQueueState | null>(null);
   const [currentProgress, setCurrentProgress] = useState<BatchProgress | null>(null);
   const [isExpanded, setIsExpanded] = useState(false);
+  const [previousStatus, setPreviousStatus] = useState<string | null>(null);
 
   // Subscribe to progress events
   useEffect(() => {
@@ -39,10 +40,16 @@ export function BatchOperationsPanel({ availableFiles, selectedFileIds, onBatchC
         // Auto-expand when processing
         if (status.status === 'processing') {
           setIsExpanded(true);
+          // Reset previousStatus when a new batch starts (allows next completion to be detected)
+          if (previousStatus === 'completed' || previousStatus === 'cancelled') {
+            setPreviousStatus('processing');
+          }
         }
 
-        // Call completion callback when batch finishes
-        if (status.status === 'completed' || status.status === 'cancelled') {
+        // Call completion callback when batch finishes (only on status CHANGE, not every poll)
+        if ((status.status === 'completed' || status.status === 'cancelled') &&
+            status.status !== previousStatus) {
+          setPreviousStatus(status.status);
           if (onBatchComplete) {
             onBatchComplete();
           }
@@ -53,7 +60,7 @@ export function BatchOperationsPanel({ availableFiles, selectedFileIds, onBatchC
     }, 2000);
 
     return () => clearInterval(interval);
-  }, [onBatchComplete]);
+  }, [onBatchComplete, previousStatus]);
 
   const handleStartBatch = async () => {
     if (!window.electronAPI) return;

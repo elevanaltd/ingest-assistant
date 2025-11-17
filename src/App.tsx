@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import type { FileMetadata, LexiconConfig, ShotType } from './types';
 import { SettingsModal } from './components/SettingsModal';
 import { Sidebar } from './components/Sidebar';
@@ -381,7 +381,7 @@ function App() {
     }
   };
 
-  const handleBatchComplete = async () => {
+  const handleBatchComplete = useCallback(async () => {
     // Reload files after batch completion
     if (folderPath && window.electronAPI) {
       try {
@@ -391,7 +391,7 @@ function App() {
         console.error('Failed to reload files after batch:', error);
       }
     }
-  };
+  }, [folderPath]); // Only recreate if folderPath changes
 
   // Define command palette commands (after all handlers are declared)
   const commands: Command[] = [
