@@ -10,7 +10,8 @@ const APP_VERSION = '1.1.0';
 
 interface MetadataStoreFile {
   _schema: string;
-  [fileId: string]: FileMetadata | string; // string type for _schema field
+  _completed?: boolean;
+  [fileId: string]: FileMetadata | string | boolean | undefined; // Extended types for special fields
 }
 
 type MetadataStoreData = Record<string, FileMetadata>;
@@ -19,6 +20,7 @@ export class MetadataStore {
   private storePath: string;
   private cache: MetadataStoreData | null = null;
   private schemaVersion: string = SCHEMA_VERSION;
+  private completed: boolean = false;
 
   constructor(storePath: string) {
     this.storePath = storePath;
@@ -32,13 +34,14 @@ export class MetadataStore {
       const content = await fs.readFile(this.storePath, 'utf-8');
       const fileData = JSON.parse(content) as MetadataStoreFile;
 
-      // Extract schema version
+      // Extract schema version and completed flag
       this.schemaVersion = fileData._schema || '1.0';
+      this.completed = fileData._completed || false;
 
-      // Extract metadata (all keys except _schema)
+      // Extract metadata (all keys except _schema and _completed)
       const data: MetadataStoreData = {};
       for (const key in fileData) {
-        if (key === '_schema') continue;
+        if (key === '_schema' || key === '_completed') continue;
 
         const metadata = fileData[key] as FileMetadata;
 
@@ -83,9 +86,10 @@ export class MetadataStore {
    */
   async saveMetadata(metadata: MetadataStoreData): Promise<boolean> {
     try {
-      // Build file structure with schema version
+      // Build file structure with schema version and completed flag
       const fileData: MetadataStoreFile = {
         _schema: SCHEMA_VERSION,
+        _completed: this.completed,
         ...metadata
       };
 
@@ -220,5 +224,27 @@ export class MetadataStore {
     metadata.modifiedAt = new Date();
     metadata.modifiedBy = APP_NAME;
     metadata.version = APP_VERSION;
+  }
+
+  /**
+   * Get folder completion status
+   * Returns true if folder has been marked as COMPLETED (locked for editing)
+   */
+  getCompleted(): boolean {
+    return this.completed;
+  }
+
+  /**
+   * Set folder completion status
+   * When set to true, FileManager will skip processing and folder becomes read-only
+   * @param completed - true to lock folder, false to allow editing
+   */
+  async setCompleted(completed: boolean): Promise<boolean> {
+    this.completed = completed;
+    // Persist the change immediately
+    if (this.cache) {
+      return await this.saveMetadata(this.cache);
+    }
+    return false;
   }
 }

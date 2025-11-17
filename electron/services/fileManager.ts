@@ -36,6 +36,23 @@ export class FileManager {
       return cached;
     }
 
+    // Check if folder is marked as COMPLETED (locked)
+    // If COMPLETED, skip reprocessing and return existing metadata
+    try {
+      const metadataStore = new MetadataStore(path.join(folderPath, 'metadata-store.json'));
+      const existingMetadata = await metadataStore.loadMetadata();
+
+      if (metadataStore.getCompleted()) {
+        console.log('[FileManager] Folder marked as COMPLETED - skipping processing');
+        const metadataArray = Object.values(existingMetadata);
+        this.scanCache.set(folderPath, metadataArray);
+        return metadataArray;
+      }
+    } catch (error) {
+      // No metadata store yet or other error - proceed with normal scan
+      // This is expected for new folders or test scenarios
+    }
+
     // Set allowed base path for security validation
     this.securityValidator.setAllowedBasePath(folderPath);
 
