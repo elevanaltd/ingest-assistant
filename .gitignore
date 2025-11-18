@@ -45,3 +45,5 @@ coverage
 .nyc_output
 constitution.txt
 constitution_numbered.txt
+/.cache
+/.claude/hooks/state
