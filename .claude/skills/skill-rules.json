@@ -1,0 +1,399 @@
+{
+  "version": "1.0",
+  "skills": {
+    "build-execution": {
+      "type": "guardrail",
+      "autoInject": true,
+      "enforcement": "suggest",
+      "priority": "critical",
+      "requiredSkills": [],
+      "affinity": ["test-infrastructure", "error-triage"],
+      "description": "Build execution philosophy including TDD discipline, Minimal Intervention Principle, system awareness, and verification protocols. Critical for implementation phase to enforce test-first practices and prevent accumulative complexity.",
+      "promptTriggers": {
+        "keywords": [
+          "implement",
+          "build",
+          "TDD",
+          "test first",
+          "red green refactor",
+          "implementation",
+          "code quality",
+          "build philosophy",
+          "minimal intervention"
+        ]
+      }
+    },
+    "ci-error-resolution": {
+      "type": "domain",
+      "autoInject": true,
+      "enforcement": "suggest",
+      "priority": "high",
+      "requiredSkills": ["error-triage"],
+      "affinity": ["test-ci-pipeline"],
+      "injectionOrder": 60,
+      "description": "CI/CD pipeline failure resolution with autonomous iteration loops. Local validation, branch/PR creation, CI monitoring, iteration until green. Proven patterns for GitHub Actions with role-specific adaptations.",
+      "promptTriggers": {
+        "keywords": [
+          "CI failure",
+          "CI pipeline",
+          "GitHub Actions",
+          "pipeline error",
+          "test failing in CI",
+          "build failing in CI",
+          "CI debugging",
+          "autonomous ci resolution",
+          "CI iteration"
+        ]
+      }
+    },
+    "error-triage": {
+      "type": "domain",
+      "autoInject": true,
+      "enforcement": "suggest",
+      "priority": "high",
+      "requiredSkills": [],
+      "affinity": ["build-execution"],
+      "injectionOrder": 50,
+      "description": "Systematic error resolution with priority-based triage preventing cascade failures. Build→Types→Unused→Async→Logic→Tests priority order, TYPE_SAFETY_THEATER detection. Essential for systematic error fixing and cascade prevention.",
+      "promptTriggers": {
+        "keywords": [
+          "error",
+          "fix error",
+          "errors",
+          "debugging",
+          "error resolution",
+          "cascade failure",
+          "type safety",
+          "build error",
+          "type error",
+          "systematic error fixing"
+        ]
+      }
+    },
+    "test-infrastructure": {
+      "type": "domain",
+      "autoInject": true,
+      "enforcement": "suggest",
+      "priority": "high",
+      "requiredSkills": [],
+      "affinity": ["build-execution"],
+      "description": "Core test infrastructure patterns for monorepo Vitest setup including global configuration, browser API polyfills, mocking patterns, test cleanup, directory structure, and coverage philosophy.",
+      "promptTriggers": {
+        "keywords": [
+          "vitest",
+          "test setup",
+          "test infrastructure",
+          "test configuration",
+          "test mocking",
+          "test cleanup",
+          "test standards",
+          "monorepo testing",
+          "test environment"
+        ]
+      }
+    },
+    "test-ci-pipeline": {
+      "type": "domain",
+      "autoInject": true,
+      "enforcement": "suggest",
+      "priority": "medium",
+      "requiredSkills": [],
+      "affinity": ["ci-error-resolution"],
+      "description": "CI/CD pipeline configuration for monorepo testing including GitHub Actions workflows, Turborepo integration, two-tier quality gates (typecheck→lint→test→build), preview branch integration, retry logic, and environment management.",
+      "promptTriggers": {
+        "keywords": [
+          "CI configuration",
+          "github actions testing",
+          "turborepo CI",
+          "quality gates",
+          "preview integration",
+          "CI troubleshooting",
+          "CI pipeline setup",
+          "github workflows"
+        ]
+      }
+    },
+    "agent-creation": {
+      "type": "domain",
+      "autoInject": true,
+      "enforcement": "suggest",
+      "priority": "medium",
+      "requiredSkills": [],
+      "description": "Comprehensive agent creation reference including YAML frontmatter requirements, tier classification, cognitive architecture, constitutional patterns, and archetype selection. Essential for creating or validating HestAI agents.",
+      "promptTriggers": {
+        "keywords": [
+          "create agent",
+          "new agent",
+          "agent structure",
+          "YAML frontmatter",
+          "agent validation",
+          "tier classification",
+          "archetype selection",
+          "OCTAVE agent",
+          "constitutional agent"
+        ]
+      }
+    },
+    "supabase-operations": {
+      "type": "domain",
+      "autoInject": true,
+      "enforcement": "suggest",
+      "priority": "medium",
+      "requiredSkills": [],
+      "affinity": ["supabase-test-harness"],
+      "description": "Supabase operational knowledge for migrations, RLS optimization, MCP tool benchmarks, and ADR-003 compliance. Use when validating database migrations, optimizing Row-Level Security policies, or ensuring Supabase operational standards.",
+      "promptTriggers": {
+        "keywords": [
+          "supabase",
+          "migration",
+          "RLS",
+          "row level security",
+          "supabase migration",
+          "ADR-003",
+          "database state",
+          "schema governance",
+          "supabase benchmark"
+        ]
+      }
+    },
+    "supabase-test-harness": {
+      "type": "domain",
+      "autoInject": true,
+      "enforcement": "suggest",
+      "priority": "medium",
+      "requiredSkills": [],
+      "affinity": ["supabase-operations"],
+      "description": "Supabase test harness patterns including local Supabase setup, test user creation via Auth Admin API, RLS testing, migration testing (db_reset), seed sequences, rate limiting, and environment detection.",
+      "promptTriggers": {
+        "keywords": [
+          "supabase test",
+          "test user creation",
+          "supabase local testing",
+          "RLS testing",
+          "migration testing",
+          "supabase test harness",
+          "auth test helpers",
+          "supabase test setup"
+        ]
+      }
+    },
+    "octave-compression": {
+      "type": "domain",
+      "autoInject": true,
+      "enforcement": "suggest",
+      "priority": "medium",
+      "requiredSkills": [],
+      "description": "Semantic compression of verbose documentation into OCTAVE format achieving 60-80% reduction with 100% decision-logic fidelity. OCTAVE is the native LLM-to-LLM communication format for internal coordination docs (.coord files). Safe to apply liberally for non-user-facing documents (skills, workflows, handoffs, dashboards, technical specs). DO NOT use for README, user guides, or human-facing documentation.",
+      "promptTriggers": {
+        "keywords": [
+          "octave",
+          "OCTAVE",
+          "compress to octave",
+          "semantic compression",
+          "documentation streamlining",
+          "OCTAVE optimization",
+          "compress documentation",
+          "semantic density",
+          "create skill",
+          "new skill",
+          "skill file",
+          "refine skill",
+          "update skill",
+          "agent constitution",
+          "create agent",
+          ".oct.md",
+          "workflow spec",
+          "technical spec",
+          "process documentation",
+          "internal documentation",
+          ".coord file",
+          "handoff document",
+          "coordination doc",
+          "verbose doc",
+          "streamline doc",
+          "reduce file size",
+          "make more dense",
+          "compress this",
+          "reformat for agents"
+        ]
+      }
+    },
+    "extraction-execution": {
+      "type": "domain",
+      "autoInject": true,
+      "enforcement": "suggest",
+      "priority": "low",
+      "requiredSkills": [],
+      "description": "Intelligent POC-to-production code extraction with architectural awareness. Analyzes dependencies, adapts patterns, makes extraction strategy decisions (copy/adapt/rewrite), maintains system coherence.",
+      "promptTriggers": {
+        "keywords": [
+          "extract code",
+          "code extraction",
+          "POC to production",
+          "understand and extract",
+          "analyze dependencies",
+          "adapt pattern",
+          "extraction strategy",
+          "architectural extraction",
+          "intelligent migration"
+        ]
+      }
+    },
+    "code-extraction": {
+      "type": "domain",
+      "autoInject": true,
+      "enforcement": "suggest",
+      "priority": "low",
+      "requiredSkills": [],
+      "description": "Analyzes agent prompts and codebase for operational knowledge extraction opportunities. Identifies large knowledge blocks (migration workflows, framework patterns, operational procedures) suitable for Skills extraction.",
+      "promptTriggers": {
+        "keywords": [
+          "agent prompt analysis",
+          "operational knowledge extraction",
+          "Skills creation opportunities",
+          "prompt optimization",
+          "knowledge consolidation",
+          "extract operational knowledge"
+        ]
+      }
+    },
+    "skill-invocation-test": {
+      "type": "domain",
+      "autoInject": false,
+      "enforcement": "warn",
+      "priority": "low",
+      "requiredSkills": [],
+      "description": "Test skill for validation - provides response when codeword FLAMINGO appears in instructions",
+      "promptTriggers": {
+        "keywords": [
+          "FLAMINGO",
+          "test skill invocation"
+        ]
+      }
+    },
+    "documentation-placement": {
+      "type": "domain",
+      "autoInject": true,
+      "enforcement": "suggest",
+      "priority": "high",
+      "requiredSkills": [],
+      "description": "Document placement rules, visibility protocols, and timeline test (before-code vs after-code). Defines where documentation belongs (dev/docs/ vs coordination/), documentation-first PR protocol, and phase artifact placement. Critical for documentation organization and visibility.",
+      "promptTriggers": {
+        "keywords": [
+          "document this",
+          "where docs go",
+          "create documentation",
+          "write docs",
+          "documentation placement",
+          "doc placement",
+          "timeline test",
+          "coordination docs",
+          "dev docs",
+          "where should documentation",
+          "documentation visibility"
+        ]
+      }
+    },
+    "workspace-setup": {
+      "type": "domain",
+      "autoInject": true,
+      "enforcement": "suggest",
+      "priority": "high",
+      "requiredSkills": [],
+      "affinity": ["build-execution"],
+      "description": "B1_02 phase workspace setup protocol including npm outdated, npm audit, TypeScript version validation, quality gates enforcement. Ensures dependencies current, security patches applied, and workspace ready for implementation.",
+      "promptTriggers": {
+        "keywords": [
+          "workspace setup",
+          "B1_02",
+          "npm outdated",
+          "npm audit",
+          "dependency audit",
+          "workspace validation",
+          "setup workspace",
+          "quality gates",
+          "validate workspace"
+        ]
+      }
+    },
+    "smartsuite-patterns": {
+      "type": "domain",
+      "autoInject": true,
+      "enforcement": "suggest",
+      "priority": "medium",
+      "requiredSkills": [],
+      "description": "SmartSuite API patterns and field format validation. Covers choices vs options distinction (UUID corruption prevention), dry_run safety patterns, field format validation, and MCP integration best practices. Critical for preventing UUID corruption bugs.",
+      "promptTriggers": {
+        "keywords": [
+          "SmartSuite",
+          "field format",
+          "UUID corruption",
+          "choices vs options",
+          "SmartSuite API",
+          "field creation",
+          "SmartSuite MCP",
+          "SmartSuite field",
+          "choices not options"
+        ]
+      }
+    },
+    "workflow-phases": {
+      "type": "domain",
+      "autoInject": true,
+      "enforcement": "suggest",
+      "priority": "medium",
+      "requiredSkills": [],
+      "description": "HestAI workflow phase execution including D0→D1→D2→D3→B0→B1→B2→B3→B4→B5 sequence, agent assignments per phase, phase transition validation, and deliverable requirements. Use when starting new phase, determining next steps, or validating phase completion.",
+      "promptTriggers": {
+        "keywords": [
+          "workflow",
+          "phase",
+          "D1",
+          "D2",
+          "D3",
+          "B0",
+          "B1",
+          "B2",
+          "B3",
+          "B4",
+          "B5",
+          "next phase",
+          "phase transition",
+          "workflow sequence",
+          "start phase"
+        ]
+      }
+    },
+    "subagent-rules": {
+      "type": "domain",
+      "autoInject": true,
+      "enforcement": "suggest",
+      "priority": "critical",
+      "requiredSkills": [],
+      "affinity": [],
+      "injectionOrder": 10,
+      "description": "Proper delegation patterns for Task() invocations with governance context injection. Teaches main agents how to construct enriched prompts with TRACED, DOD, authority matrix, phase context, and operational skills. Critical for multi-agent coordination.",
+      "promptTriggers": {
+        "keywords": [
+          "delegate",
+          "subagent",
+          "invoke subagent",
+          "Task(",
+          "implementation-lead",
+          "error-architect",
+          "code-review",
+          "critical-engineer",
+          "task-decomposer",
+          "workspace-architect",
+          "universal-test-engineer",
+          "assign to",
+          "call agent",
+          "need specialist",
+          "invoke agent",
+          "coordinate with",
+          "consult specialist"
+        ]
+      }
+    }
+  }
+}

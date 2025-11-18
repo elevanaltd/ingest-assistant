@@ -1,6 +1,6 @@
 import { execFile } from 'child_process';
 import { promisify } from 'util';
-import { existsSync } from 'fs';
+import { existsSync, unlinkSync } from 'fs';
 
 const execFileAsync = promisify(execFile);
 
@@ -99,22 +99,74 @@ export class MetadataWriter {
   }
 
   /**
+   * Read TapeName from file using exiftool.
+   *
+   * Used for safety check before writing camera ID to TapeName field.
+   * Only writes if TapeName is blank (never overwrite existing values).
+   *
+   * @param filePath Absolute path to media file
+   * @returns TapeName value or undefined if not found/error
+   */
+  async readTapeNameFromFile(filePath: string): Promise<string | undefined> {
+    try {
+      const args = ['-XMP-xmpDm:TapeName', '-json', filePath];
+      const exiftoolPath = findExiftool();
+
+      const { stdout } = await execFileAsync(exiftoolPath, args, {
+        timeout: 30000,
+        maxBuffer: 10 * 1024 * 1024
+      });
+
+      const data = JSON.parse(stdout);
+      if (data && data.length > 0) {
+        return data[0].TapeName;
+      }
+
+      return undefined;
+    } catch (error) {
+      console.error('Failed to read TapeName from file:', error);
+      return undefined;
+    }
+  }
+
+  /**
    * Write metadata directly into the file using exiftool.
    *
    * Security: Uses execFile() (NOT exec()) to prevent shell injection.
    * Validates all user input before processing.
    *
-   * This embeds EXIF/XMP metadata that Premiere Pro and other tools can read
+   * This embeds EXIF/XMP metadata that Premiere Pro and other tools can read.
+   *
+   * METADATA STRATEGY (Issue #54):
+   * Simplified approach that survives proxy conversion:
+   * - XMP-dc:Title = mainName (combined entity: location-subject-action-shotType)
+   *   → Survives proxy conversion, searchable in PP, editor-friendly
+   * - XMP-dc:Description = keywords (comma-separated) OR custom description
+   *   → Survives proxy conversion, searchable in PP
+   *
+   * Structured components (location, subject, action, shotType) are stored in JSON sidecar
+   * for cataloguer editing in both Ingest Assistant and CEP Panel.
    *
    * @param filePath Absolute path to media file
-   * @param mainName Main descriptive name
+   * @param mainName Structured title (location-subject-action-shotType)
    * @param tags Array of keyword tags
+   * @param structured Optional structured components (reserved for future JSON integration)
+   * @param description Optional custom description (if not provided, uses tags.join(', '))
    * @throws Error if metadata contains shell metacharacters or file operation fails
    */
   async writeMetadataToFile(
     filePath: string,
     mainName: string,
-    tags: string[]
+    tags: string[],
+    structured?: {
+      location?: string;
+      subject?: string;
+      action?: string;
+      shotType?: string;
+      shotNumber?: number;
+      cameraId?: string;
+    },
+    description?: string
   ): Promise<void> {
     // Validate inputs for shell metacharacters
     if (mainName) {
@@ -125,37 +177,103 @@ export class MetadataWriter {
       this.validateInput(tag, `tag[${index}]`);
     });
 
+    // Validate structured components if provided
+    if (structured) {
+      if (structured.location) {
+        this.validateInput(structured.location, 'structured.location');
+      }
+      if (structured.subject) {
+        this.validateInput(structured.subject, 'structured.subject');
+      }
+      if (structured.action) {
+        this.validateInput(structured.action, 'structured.action');
+      }
+      if (structured.shotType) {
+        this.validateInput(structured.shotType, 'structured.shotType');
+      }
+      if (structured.cameraId) {
+        this.validateInput(structured.cameraId, 'structured.cameraId');
+      }
+    }
+
+    // Validate custom description if provided
+    if (description) {
+      this.validateInput(description, 'description');
+    }
+
     // Build exiftool arguments (array, NOT string concatenation)
     const args: string[] = [];
 
-    // Title/DocumentTitle - Main descriptive name
+    // PREMIERE PRO NATIVE FIELDS (Issue #54):
+    // Use XMP Dynamic Media namespace - maps directly to PP Shot field
+    // XMP-xmpDM:shotName → PP Shot field (survives offline, even without proxies!)
+    // XMP-xmpDM:LogComment → Structured data for CEP panel parsing
+    // Structured components (location, subject, action, shotType) stored in JSON sidecar
+
+    // XMP-xmpDm:shotName = Combined entity (maps directly to PP Shot field)
     if (mainName) {
-      // Write to multiple metadata fields for compatibility
-      args.push(`-Title=${mainName}`);
-      args.push(`-XMP:Title=${mainName}`);
-      args.push(`-IPTC:ObjectName=${mainName}`);
+      const shotNameWithNumber = structured?.shotNumber
+        ? `${mainName}-#${structured.shotNumber}`
+        : mainName;
+      args.push(`-XMP-xmpDM:shotName=${shotNameWithNumber}`);
     }
 
-    // Keywords - Array of tags
-    // Write each tag individually so exiftool creates proper array structure
-    // This ensures Premiere Pro and other tools see them as separate searchable keywords
-    // Note: -Keywords writes to IPTC:Keywords, -XMP:Subject writes to XMP namespace
-    tags.forEach(tag => {
-      args.push(`-Keywords=${tag}`);
-      args.push(`-XMP:Subject=${tag}`);
-    });
+    // XMP-xmpDm:TapeName = Camera ID (ONLY write if blank - never overwrite)
+    // Safety check: Read existing TapeName first
+    if (structured?.cameraId) {
+      const existingTapeName = await this.readTapeNameFromFile(filePath);
+      if (!existingTapeName) {
+        console.log('[MetadataWriter] Writing TapeName (blank):', structured.cameraId);
+        args.push(`-XMP-xmpDM:TapeName=${structured.cameraId}`);
+      } else {
+        console.log('[MetadataWriter] Skipping TapeName write (existing value):', existingTapeName);
+      }
+    }
 
-    // Description - Combine for searchability
-    if (mainName || tags.length > 0) {
-      const description = mainName
-        ? tags.length > 0
-          ? `${mainName} - ${tags.join(', ')}`
-          : mainName
-        : tags.join(', ');
+    // XMP-xmpDM:LogComment = Structured key=value pairs for CEP panel parsing
+    // FIX: MOV/QuickTime files don't overwrite LogComment by default
+    // Solution: Clear field first (empty value), then write new value in same command
+    if (structured) {
+      console.log('[MetadataWriter] Structured input received:', structured);
+      const logCommentParts: string[] = [];
 
-      args.push(`-Description=${description}`);
-      args.push(`-XMP:Description=${description}`);
-      args.push(`-IPTC:Caption-Abstract=${description}`);
+      if (structured.location) {
+        logCommentParts.push(`location=${structured.location}`);
+      }
+      if (structured.subject) {
+        logCommentParts.push(`subject=${structured.subject}`);
+      }
+      // Always include action field (empty string for images with no action)
+      logCommentParts.push(`action=${structured.action || ''}`);
+      if (structured.shotType) {
+        logCommentParts.push(`shotType=${structured.shotType}`);
+      }
+      if (structured.shotNumber) {
+        logCommentParts.push(`shotNumber=#${structured.shotNumber}`);
+      }
+
+      console.log('[MetadataWriter] LogComment parts built:', logCommentParts);
+
+      if (logCommentParts.length > 0) {
+        const logCommentValue = logCommentParts.join(', ');
+        console.log('[MetadataWriter] Writing LogComment:', logCommentValue);
+
+        // CRITICAL FIX: Clear LogComment first to ensure overwrite in MOV files
+        // exiftool processes args sequentially: delete → write in single invocation
+        args.push('-XMP-xmpDM:LogComment=');  // Clear existing value
+        args.push(`-XMP-xmpDM:LogComment=${logCommentValue}`);  // Write new value
+      } else {
+        console.warn('[MetadataWriter] ⚠️  No LogComment parts to write (all fields empty or missing)');
+      }
+    } else {
+      console.warn('[MetadataWriter] ⚠️  No structured data provided - LogComment will not be written');
+    }
+
+    // XMP-dc:Description = Keywords OR custom description (searchable)
+    const descriptionValue = description || (tags.length > 0 ? tags.join(', ') : undefined);
+    if (descriptionValue) {
+      args.push(`-Description=${descriptionValue}`);
+      args.push(`-XMP-dc:Description=${descriptionValue}`);
     }
 
     // Don't create backup files
@@ -164,10 +282,31 @@ export class MetadataWriter {
     // Add file path
     args.push(filePath);
 
+    // RESILIENCE: Clean up orphaned exiftool temp files from previous crashes
+    // exiftool creates temporary files with _exiftool_tmp suffix during writes
+    // If app crashes during write, these files are left behind and block future writes
+    const tempFilePath = `${filePath}_exiftool_tmp`;
+    if (existsSync(tempFilePath)) {
+      console.warn('[MetadataWriter] ⚠️  Orphaned exiftool temp file detected, cleaning up:', tempFilePath);
+      try {
+        unlinkSync(tempFilePath);
+        console.log('[MetadataWriter] ✓ Orphaned temp file removed');
+      } catch (cleanupError) {
+        console.error('[MetadataWriter] Failed to remove orphaned temp file:', cleanupError);
+        // Continue anyway - exiftool might still succeed or provide better error
+      }
+    }
+
     try {
       // SECURITY: execFile() prevents shell injection
       // Arguments passed as array (no shell expansion)
       const exiftoolPath = findExiftool();
+
+      // Log the complete exiftool command for debugging
+      console.log('[MetadataWriter] Executing exiftool command:');
+      console.log('[MetadataWriter]   Path:', exiftoolPath);
+      console.log('[MetadataWriter]   Args:', args);
+
       const { stderr } = await execFileAsync(exiftoolPath, args, {
         timeout: 30000,        // 30 second timeout
         maxBuffer: 10 * 1024 * 1024  // 10MB output limit
@@ -198,8 +337,13 @@ export class MetadataWriter {
   /**
    * Read metadata from file using exiftool.
    *
+   * Matches the PP native field strategy (Issue #54):
+   * - Reads XMP-xmpDM:shotName (maps to PP Shot field)
+   * - Reads dc:Description (contains keywords comma-separated)
+   * - Parses Description back into keywords array for backward compatibility
+   *
    * @param filePath Absolute path to media file
-   * @returns Object with title and keywords
+   * @returns Object with title, keywords (parsed from description), and description
    */
   async readMetadataFromFile(filePath: string): Promise<{
     title?: string;
@@ -207,7 +351,7 @@ export class MetadataWriter {
     description?: string;
   }> {
     try {
-      const args = ['-Title', '-Keywords', '-Description', '-json', filePath];
+      const args = ['-XMP-xmpDM:shotName', '-Description', '-json', filePath];
       const exiftoolPath = findExiftool();
 
       const { stdout } = await execFileAsync(exiftoolPath, args, {
@@ -219,9 +363,16 @@ export class MetadataWriter {
 
       if (data && data.length > 0) {
         const metadata = data[0];
+
+        // Parse keywords from Description field (comma-separated)
+        // This maintains backward compatibility with code expecting keywords array
+        const keywords = metadata.Description
+          ? this.parseKeywords(metadata.Description)
+          : [];
+
         return {
-          title: metadata.Title,
-          keywords: this.parseKeywords(metadata.Keywords),
+          title: metadata.ShotName,
+          keywords,
           description: metadata.Description,
         };
       }
@@ -230,6 +381,104 @@ export class MetadataWriter {
     } catch (error) {
       console.error('Failed to read metadata from file:', error);
       return {};
+    }
+  }
+
+  /**
+   * Extract creation timestamp from media file using exiftool.
+   *
+   * Tries multiple timestamp fields in order of preference:
+   * 1. DateTimeOriginal (EXIF standard for original capture time)
+   * 2. CreateDate (common in many formats)
+   * 3. MediaCreateDate (video files)
+   * 4. CreationDate (some video formats)
+   * 5. TrackCreateDate (QuickTime/MP4)
+   *
+   * @param filePath Absolute path to media file
+   * @returns Creation timestamp as Date object, or undefined if not found
+   */
+  async readCreationTimestamp(filePath: string): Promise<Date | undefined> {
+    try {
+      const args = [
+        '-DateTimeOriginal',
+        '-CreateDate',
+        '-MediaCreateDate',
+        '-CreationDate',
+        '-TrackCreateDate',
+        '-d', '%Y:%m:%d %H:%M:%S', // Format output consistently
+        '-json',
+        filePath
+      ];
+      const exiftoolPath = findExiftool();
+
+      const { stdout } = await execFileAsync(exiftoolPath, args, {
+        timeout: 30000,
+        maxBuffer: 10 * 1024 * 1024
+      });
+
+      const data = JSON.parse(stdout);
+
+      if (data && data.length > 0) {
+        const metadata = data[0];
+
+        // Try fields in order of preference
+        const timestampString =
+          metadata.DateTimeOriginal ||
+          metadata.CreateDate ||
+          metadata.MediaCreateDate ||
+          metadata.CreationDate ||
+          metadata.TrackCreateDate;
+
+        if (timestampString) {
+          // Parse EXIF timestamp format (YYYY:MM:DD HH:MM:SS)
+          const parsed = this.parseExifTimestamp(timestampString);
+          if (parsed) {
+            return parsed;
+          }
+        }
+      }
+
+      return undefined;
+    } catch (error) {
+      console.error('Failed to read creation timestamp from file:', error);
+      return undefined;
+    }
+  }
+
+  /**
+   * Parse EXIF timestamp string to Date object.
+   * EXIF format: "YYYY:MM:DD HH:MM:SS"
+   *
+   * @param timestamp EXIF timestamp string
+   * @returns Date object or undefined if parsing fails
+   */
+  private parseExifTimestamp(timestamp: string): Date | undefined {
+    try {
+      // EXIF format: "YYYY:MM:DD HH:MM:SS"
+      const match = timestamp.match(/^(\d{4}):(\d{2}):(\d{2})\s+(\d{2}):(\d{2}):(\d{2})$/);
+      if (!match) {
+        return undefined;
+      }
+
+      const [, year, month, day, hour, minute, second] = match;
+      const date = new Date(
+        parseInt(year, 10),
+        parseInt(month, 10) - 1, // Month is 0-indexed in JS
+        parseInt(day, 10),
+        parseInt(hour, 10),
+        parseInt(minute, 10),
+        parseInt(second, 10)
+      );
+
+      // Validate date is reasonable
+      if (isNaN(date.getTime())) {
+        return undefined;
+      }
+
+      return date;
+    } catch (error) {
+      console.error('Failed to parse EXIF timestamp:', error);
+      return undefined;
     }
   }
 }

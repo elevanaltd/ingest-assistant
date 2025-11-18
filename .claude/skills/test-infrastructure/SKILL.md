@@ -61,17 +61,6 @@ PATTERN_3::CONDITIONAL_MOCK_SCOPE::[
   EVIDENCE::POC_src/test/setup.ts:94-111
 ]
 
-PATTERN_4::NODE_BUILTIN_INTEGRATION_TESTS::[
-  PROBLEM::"Vitest struggles to mock Node.js built-ins (child_process, fs) + util.promisify()",
-  REALITY::"Integration points (exiftool wrappers, file system) validate real behavior > mocked abstractions",
-  SOLUTION::integration_tests_with_dependency_check,
-  CODE::"beforeAll(async()=>{try{await execAsync('exiftool -ver'); exiftoolAvailable=true;}catch{console.warn('Skipping tests')}})",
-  MIP_RATIONALE::"Essential=validate behavior | Accumulative=complex mocking workarounds",
-  CI_REQUIREMENT::"Install real dependencies (brew install exiftool) in .github/workflows/ci.yml",
-  FUTURE_REFACTOR::"Use dependency injection when refactoring anyway: constructor(execAsync=promisify(exec))",
-  EVIDENCE::electron/services/metadataWriter.test.ts:28-41
-]
-
 ## DIRECTORY_STRUCTURE[THREE_TIER]
 
 TIER_3::VITEST_TEST_INFRASTRUCTURE::[

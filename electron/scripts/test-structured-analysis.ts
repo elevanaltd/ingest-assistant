@@ -75,7 +75,7 @@ function printResult(testResult: TestResult): void {
 
   console.log();
   console.log(`${colors.bright}Metadata Tags:${colors.reset}`);
-  result.metadata.forEach(tag => console.log(`  • ${tag}`));
+  result.keywords.forEach((tag: string) => console.log(`  • ${tag}`));
 
   console.log();
   console.log(`${colors.bright}Confidence:${colors.reset} ${result.confidence.toFixed(2)}`);

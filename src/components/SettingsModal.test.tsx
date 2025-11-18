@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { SettingsModal } from './SettingsModal';
 import type { LexiconConfig } from '../types';
 
@@ -11,6 +11,10 @@ describe('SettingsModal', () => {
     mockOnClose.mockClear();
     mockOnSave.mockClear();
     mockOnSave.mockResolvedValue(undefined);
+  });
+
+  afterEach(() => {
+    vi.clearAllTimers();
   });
 
   it('renders modal with title', () => {
@@ -102,7 +106,7 @@ describe('SettingsModal', () => {
   });
 
 
-  it('closes when backdrop clicked', () => {
+  it('does not close when backdrop clicked', () => {
     render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
 
     // Click on the backdrop (not the modal content)
@@ -110,7 +114,8 @@ describe('SettingsModal', () => {
     expect(backdrop).toBeTruthy();
 
     fireEvent.click(backdrop!);
-    expect(mockOnClose).toHaveBeenCalledTimes(1);
+    // Modal should NOT close when clicking outside
+    expect(mockOnClose).not.toHaveBeenCalled();
   });
 
   it('saves lexicon config when save button clicked', async () => {
@@ -212,8 +217,13 @@ describe('SettingsModal', () => {
     // Should show success message
     expect(screen.getByText(/Lexicon settings saved successfully/i)).toBeInTheDocument();
 
-    // Modal should NOT auto-close
-    expect(mockOnClose).not.toHaveBeenCalled();
+    // Modal should auto-close after brief delay (1.5s)
+    expect(mockOnClose).not.toHaveBeenCalled(); // Not yet
+
+    // Wait for auto-close delay
+    await waitFor(() => {
+      expect(mockOnClose).toHaveBeenCalledTimes(1);
+    }, { timeout: 2000 });
   });
 
   describe('AI Configuration Tab', () => {
@@ -233,7 +243,17 @@ describe('SettingsModal', () => {
           { id: 'anthropic/claude-3.5-sonnet', name: 'Claude 3.5 Sonnet', description: 'Latest model' },
           { id: 'openai/gpt-4', name: 'GPT-4', description: 'OpenAI GPT-4' },
         ]),
-      } as any;
+        // Batch operations methods
+        batchStart: vi.fn(async () => 'mock-queue-id'),
+        batchCancel: vi.fn(async () => ({ success: true })),
+        batchGetStatus: vi.fn(async () => ({
+          items: [],
+          status: 'idle',
+          currentFile: null
+        })),
+        onBatchProgress: vi.fn(() => () => {}), // Returns cleanup function
+        onTranscodeProgress: vi.fn(() => () => {}), // Returns cleanup function
+      } as Partial<typeof window.electronAPI> as typeof window.electronAPI;
     });
 
     it('should render tabs for Lexicon and AI Connection', () => {
@@ -370,8 +390,13 @@ describe('SettingsModal', () => {
       // Should show success message
       expect(screen.getByText(/AI configuration saved successfully/i)).toBeInTheDocument();
 
-      // Modal should NOT auto-close
-      expect(mockOnClose).not.toHaveBeenCalled();
+      // Modal should auto-close after brief delay (1.5s)
+      expect(mockOnClose).not.toHaveBeenCalled(); // Not yet
+
+      // Wait for auto-close delay
+      await waitFor(() => {
+        expect(mockOnClose).toHaveBeenCalledTimes(1);
+      }, { timeout: 2000 });
     });
 
     it('should show error when save fails', async () => {
@@ -505,8 +530,8 @@ describe('SettingsModal', () => {
         { id: 'gpt-3.5-turbo', name: 'GPT-3.5 Turbo' },
       ];
 
-      let openRouterResolve: any;
-      let openAIResolve: any;
+      let openRouterResolve: ((value: unknown) => void) | undefined;
+      let openAIResolve: ((value: unknown) => void) | undefined;
 
       window.electronAPI.getAIModels = vi.fn().mockImplementation((provider: string) => {
         if (provider === 'openrouter') {
@@ -539,16 +564,19 @@ describe('SettingsModal', () => {
       fireEvent.change(providerSelect, { target: { value: 'openai' } });
 
       // Resolve openrouter AFTER switching to openai (stale response)
-      openRouterResolve(openRouterModels);
+      openRouterResolve?.(openRouterModels);
 
       // Resolve openai (current provider)
-      openAIResolve(openAIModels);
+      openAIResolve?.(openAIModels);
 
       // Final state should show OpenAI models (not stale OpenRouter models)
       await waitFor(() => {
-        const modelSelect = screen.getAllByRole('combobox')[1];
-        const options = within(modelSelect as HTMLElement).getAllByRole('option');
-        const modelIds = options.map(opt => (opt as HTMLOptionElement).value).filter(v => v);
+        // Model selector is now an input with datalist, not a select
+        const datalist = document.getElementById('modelList');
+
+        expect(datalist).toBeTruthy();
+        const options = datalist?.querySelectorAll('option');
+        const modelIds = Array.from(options || []).map(opt => opt.value);
 
         // Should have OpenAI models, NOT OpenRouter models
         expect(modelIds).toContain('gpt-4');

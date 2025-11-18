@@ -5,6 +5,13 @@ import path from 'path';
 export default defineConfig({
   plugins: [react()],
   test: {
+    // Exclude development tooling from CI test pipeline
+    // .claude/ contains hooks and workflow assistance - not application code
+    exclude: [
+      '**/node_modules/**',
+      '**/dist/**',
+      '.claude/**',
+    ],
     globals: true,
     environment: 'jsdom',
     setupFiles: './src/test/setup.ts',
@@ -18,6 +25,7 @@ export default defineConfig({
         '**/*.test.tsx',
         'dist/',
         'electron/',
+        '.claude/',
       ],
     },
   },

@@ -12,17 +12,21 @@ contextBridge.exposeInMainWorld('electronAPI', {
   loadFiles: (): Promise<FileMetadata[]> =>
     ipcRenderer.invoke('file:load-files'),
 
+  // Paginated file listing (issue #19)
+  listFilesRange: (startIndex: number, pageSize: number): Promise<import('../src/types').FileListRangeResponse> =>
+    ipcRenderer.invoke('file:list-range', startIndex, pageSize),
+
   readFileAsDataUrl: (filePath: string): Promise<string> =>
     ipcRenderer.invoke('file:read-as-data-url', filePath),
 
-  renameFile: (fileId: string, mainName: string, currentPath: string, structured?: { location?: string; subject?: string; shotType?: string }): Promise<boolean> =>
+  renameFile: (fileId: string, mainName: string, currentPath: string, structured?: { location?: string; subject?: string; action?: string; shotType?: string }): Promise<boolean> =>
     ipcRenderer.invoke('file:rename', fileId, mainName, currentPath, structured),
 
-  updateMetadata: (fileId: string, metadata: string[]): Promise<boolean> =>
-    ipcRenderer.invoke('file:update-metadata', fileId, metadata),
+  updateMetadata: (fileId: string, keywords: string[]): Promise<boolean> =>
+    ipcRenderer.invoke('file:update-metadata', fileId, keywords),
 
-  updateStructuredMetadata: (fileId: string, structured: { location: string; subject: string; shotType: string }): Promise<boolean> =>
-    ipcRenderer.invoke('file:update-structured-metadata', fileId, structured),
+  updateStructuredMetadata: (fileId: string, structured: { location: string; subject: string; action?: string; shotType: string }, filePath?: string, fileType?: 'image' | 'video'): Promise<boolean> =>
+    ipcRenderer.invoke('file:update-structured-metadata', fileId, structured, filePath, fileType),
 
   // AI operations
   isAIConfigured: (): Promise<boolean> =>
@@ -48,6 +52,37 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   batchProcess: (fileIds: string[]): Promise<Record<string, AIAnalysisResult>> =>
     ipcRenderer.invoke('ai:batch-process', fileIds),
+
+  // Batch operations (Issue #24)
+  batchStart: (fileIds: string[]): Promise<string> =>
+    ipcRenderer.invoke('batch:start', fileIds),
+
+  batchCancel: (): Promise<{ success: boolean }> =>
+    ipcRenderer.invoke('batch:cancel'),
+
+  batchGetStatus: (): Promise<import('../src/types').BatchQueueState> =>
+    ipcRenderer.invoke('batch:get-status'),
+
+  onBatchProgress: (callback: (progress: import('../src/types').BatchProgress) => void): (() => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, progress: import('../src/types').BatchProgress) => callback(progress);
+    ipcRenderer.on('batch:progress', listener);
+    // Return cleanup function
+    return () => ipcRenderer.removeListener('batch:progress', listener);
+  },
+
+  onTranscodeProgress: (callback: (progress: { time: string; percentage: number }) => void): (() => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, progress: { time: string; percentage: number }) => callback(progress);
+    ipcRenderer.on('file:transcode-progress', listener);
+    // Return cleanup function
+    return () => ipcRenderer.removeListener('file:transcode-progress', listener);
+  },
+
+  // Folder operations
+  setFolderCompleted: (completed: boolean): Promise<boolean> =>
+    ipcRenderer.invoke('folder:set-completed', completed),
+
+  getFolderCompleted: (): Promise<boolean> =>
+    ipcRenderer.invoke('folder:get-completed'),
 
   // Config operations
   loadConfig: (): Promise<AppConfig> =>

@@ -24,17 +24,25 @@ describe('MetadataStore', () => {
     vi.restoreAllMocks();
   });
 
-  const createMockFileMetadata = (id: string, mainName = '', metadata: string[] = []): FileMetadata => ({
+  const createMockFileMetadata = (id: string, mainName = '', keywords: string[] = []): FileMetadata => ({
     id,
     originalFilename: `${id}.jpg`,
     currentFilename: mainName ? `${id}-${mainName}.jpg` : `${id}.jpg`,
     filePath: `/path/${id}.jpg`,
     extension: '.jpg',
     mainName,
-    metadata,
+    keywords,
     processedByAI: false,
-    lastModified: new Date('2024-01-01'),
     fileType: 'image',
+    createdAt: new Date('2024-01-01'),
+    createdBy: 'ingest-assistant',
+    modifiedAt: new Date('2024-01-01'),
+    modifiedBy: 'ingest-assistant',
+    version: '2.0',
+    location: '',
+    subject: '',
+    action: '',
+    shotType: '',
   });
 
   describe('loadMetadata', () => {
@@ -62,6 +70,76 @@ describe('MetadataStore', () => {
       mockFs.readFile.mockResolvedValue('{invalid json}');
 
       await expect(metadataStore.loadMetadata()).rejects.toThrow();
+    });
+
+    it('should handle v1.0 JSON files without keywords field (Issue: undefined crash)', async () => {
+      // Simulate legacy v1.0 JSON file WITHOUT keywords field
+      const legacyV1Data = {
+        _schema: '1.0',
+        'EB001537': {
+          id: 'EB001537',
+          originalFilename: 'EB001537.jpg',
+          currentFilename: 'EB001537.jpg',
+          filePath: '/path/EB001537.jpg',
+          extension: '.jpg',
+          mainName: 'kitchen-oven',
+          // NOTE: No keywords field - this causes the bug
+          processedByAI: false,
+          fileType: 'image' as const,
+          createdAt: '2024-01-01T00:00:00Z',
+          createdBy: 'ingest-assistant',
+          modifiedAt: '2024-01-01T00:00:00Z',
+          modifiedBy: 'ingest-assistant',
+          version: '1.0',
+          location: '',
+          subject: '',
+          action: '',
+          shotType: '',
+        }
+      };
+
+      mockFs.readFile.mockResolvedValue(JSON.stringify(legacyV1Data));
+
+      const metadata = await metadataStore.loadMetadata();
+
+      // Should not crash, and keywords should be initialized to empty array
+      expect(metadata['EB001537']).toBeDefined();
+      expect(metadata['EB001537'].keywords).toBeDefined();
+      expect(Array.isArray(metadata['EB001537'].keywords)).toBe(true);
+      expect(metadata['EB001537'].keywords).toEqual([]);
+    });
+
+    it('should mark v1.0 JSON files as outdated', async () => {
+      const legacyV1Data = {
+        _schema: '1.0',
+        'EB001537': {
+          id: 'EB001537',
+          originalFilename: 'EB001537.jpg',
+          currentFilename: 'EB001537.jpg',
+          filePath: '/path/EB001537.jpg',
+          extension: '.jpg',
+          mainName: 'kitchen-oven',
+          keywords: [],
+          processedByAI: false,
+          fileType: 'image' as const,
+          createdAt: '2024-01-01T00:00:00Z',
+          createdBy: 'ingest-assistant',
+          modifiedAt: '2024-01-01T00:00:00Z',
+          modifiedBy: 'ingest-assistant',
+          version: '1.0',
+          location: '',
+          subject: '',
+          action: '',
+          shotType: '',
+        }
+      };
+
+      mockFs.readFile.mockResolvedValue(JSON.stringify(legacyV1Data));
+
+      const metadata = await metadataStore.loadMetadata();
+
+      // Should mark file as outdated
+      expect(metadata['EB001537'].isOutdated).toBe(true);
     });
   });
 

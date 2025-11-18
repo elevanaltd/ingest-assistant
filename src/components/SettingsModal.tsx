@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import type { LexiconConfig } from '../types';
 
 interface SettingsModalProps {
@@ -37,6 +37,38 @@ export function SettingsModal({ onClose, onSave, initialConfig }: SettingsModalP
   // Success states
   const [lexiconSaveSuccess, setLexiconSaveSuccess] = useState(false);
   const [aiSaveSuccess, setAiSaveSuccess] = useState(false);
+
+  // Refs for cleanup
+  const lexiconCloseTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const aiCloseTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Handle Escape key to close modal
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        onClose();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [onClose]);
+
+  // Cleanup timeouts on unmount
+  useEffect(() => {
+    return () => {
+      if (lexiconCloseTimeoutRef.current) {
+        clearTimeout(lexiconCloseTimeoutRef.current);
+      }
+      if (aiCloseTimeoutRef.current) {
+        clearTimeout(aiCloseTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // Load initial lexicon config
   useEffect(() => {
@@ -117,7 +149,16 @@ export function SettingsModal({ onClose, onSave, initialConfig }: SettingsModalP
 
       await onSave(config);
       setLexiconSaveSuccess(true);
-      setTimeout(() => setLexiconSaveSuccess(false), 3000);
+
+      // Clear any existing timeout
+      if (lexiconCloseTimeoutRef.current) {
+        clearTimeout(lexiconCloseTimeoutRef.current);
+      }
+
+      // Auto-close modal after brief delay to show success message
+      lexiconCloseTimeoutRef.current = setTimeout(() => {
+        onClose();
+      }, 1500);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save settings');
     } finally {
@@ -200,7 +241,16 @@ export function SettingsModal({ onClose, onSave, initialConfig }: SettingsModalP
         setAiSaveSuccess(true);
         setHasSavedKey(true);
         setAiApiKey('');
-        setTimeout(() => setAiSaveSuccess(false), 3000);
+
+        // Clear any existing timeout
+        if (aiCloseTimeoutRef.current) {
+          clearTimeout(aiCloseTimeoutRef.current);
+        }
+
+        // Auto-close modal after brief delay to show success message
+        aiCloseTimeoutRef.current = setTimeout(() => {
+          onClose();
+        }, 1500);
       } else {
         setAiErrorMessage(result.error || 'Failed to save AI configuration');
       }
@@ -211,16 +261,9 @@ export function SettingsModal({ onClose, onSave, initialConfig }: SettingsModalP
     }
   };
 
-  const handleBackdropClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (e.target === e.currentTarget) {
-      onClose();
-    }
-  };
-
   return (
     <div
       className="modal-backdrop"
-      onClick={handleBackdropClick}
       style={{
         position: 'fixed',
         top: 0,
@@ -235,7 +278,7 @@ export function SettingsModal({ onClose, onSave, initialConfig }: SettingsModalP
       }}
     >
       <div
-        className="modal-content"
+        className="modal-content settings-modal"
         style={{
           backgroundColor: 'white',
           borderRadius: '8px',
@@ -245,8 +288,28 @@ export function SettingsModal({ onClose, onSave, initialConfig }: SettingsModalP
           overflow: 'auto',
           padding: '24px',
           boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+          position: 'relative',
         }}
       >
+        <button
+          onClick={onClose}
+          title="Close settings"
+          style={{
+            position: 'absolute',
+            top: '16px',
+            right: '16px',
+            background: 'none',
+            border: 'none',
+            fontSize: '24px',
+            cursor: 'pointer',
+            color: '#666',
+            padding: '4px 8px',
+            lineHeight: 1,
+          }}
+          aria-label="Close settings"
+        >
+          ×
+        </button>
         <h2 style={{ marginTop: 0 }}>Settings</h2>
 
         {/* Tabs */}
@@ -283,10 +346,11 @@ export function SettingsModal({ onClose, onSave, initialConfig }: SettingsModalP
         {activeTab === 'lexicon' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             <div>
-              <label style={{ display: 'block', marginBottom: '4px', fontWeight: 'bold' }}>
+              <label htmlFor="pattern" style={{ display: 'block', marginBottom: '4px', fontWeight: 'bold' }}>
                 Pattern
               </label>
               <input
+                id="pattern"
                 type="text"
                 value={pattern}
                 onChange={(e) => setPattern(e.target.value)}
@@ -299,10 +363,11 @@ export function SettingsModal({ onClose, onSave, initialConfig }: SettingsModalP
             </div>
 
             <div>
-              <label style={{ display: 'block', marginBottom: '4px', fontWeight: 'bold' }}>
+              <label htmlFor="commonLocations" style={{ display: 'block', marginBottom: '4px', fontWeight: 'bold' }}>
                 Common Locations (comma-separated)
               </label>
               <input
+                id="commonLocations"
                 type="text"
                 value={commonLocations}
                 onChange={(e) => setCommonLocations(e.target.value)}
@@ -312,10 +377,11 @@ export function SettingsModal({ onClose, onSave, initialConfig }: SettingsModalP
             </div>
 
             <div>
-              <label style={{ display: 'block', marginBottom: '4px', fontWeight: 'bold' }}>
+              <label htmlFor="commonSubjects" style={{ display: 'block', marginBottom: '4px', fontWeight: 'bold' }}>
                 Common Subjects (comma-separated)
               </label>
               <input
+                id="commonSubjects"
                 type="text"
                 value={commonSubjects}
                 onChange={(e) => setCommonSubjects(e.target.value)}
@@ -325,10 +391,11 @@ export function SettingsModal({ onClose, onSave, initialConfig }: SettingsModalP
             </div>
 
             <div>
-              <label style={{ display: 'block', marginBottom: '4px', fontWeight: 'bold' }}>
+              <label htmlFor="commonActions" style={{ display: 'block', marginBottom: '4px', fontWeight: 'bold' }}>
                 Common Actions (comma-separated, for videos)
               </label>
               <input
+                id="commonActions"
                 type="text"
                 value={commonActions}
                 onChange={(e) => setCommonActions(e.target.value)}
@@ -338,10 +405,11 @@ export function SettingsModal({ onClose, onSave, initialConfig }: SettingsModalP
             </div>
 
             <div>
-              <label style={{ display: 'block', marginBottom: '4px', fontWeight: 'bold' }}>
+              <label htmlFor="wordPreferences" style={{ display: 'block', marginBottom: '4px', fontWeight: 'bold' }}>
                 Word Preferences (one per line: "from → to")
               </label>
               <textarea
+                id="wordPreferences"
                 value={wordPreferences}
                 onChange={(e) => setWordPreferences(e.target.value)}
                 placeholder={"faucet → tap\nstove → hob\ntrash → bin"}
@@ -351,10 +419,11 @@ export function SettingsModal({ onClose, onSave, initialConfig }: SettingsModalP
             </div>
 
             <div>
-              <label style={{ display: 'block', marginBottom: '4px', fontWeight: 'bold' }}>
+              <label htmlFor="aiInstructions" style={{ display: 'block', marginBottom: '4px', fontWeight: 'bold' }}>
                 AI Instructions
               </label>
               <textarea
+                id="aiInstructions"
                 value={aiInstructions}
                 onChange={(e) => setAiInstructions(e.target.value)}
                 placeholder="Use lowercase. Hyphens for multi-word terms. Photos use 3-part pattern. Videos use 4-part pattern with action."
@@ -364,10 +433,11 @@ export function SettingsModal({ onClose, onSave, initialConfig }: SettingsModalP
             </div>
 
             <div>
-              <label style={{ display: 'block', marginBottom: '4px', fontWeight: 'bold' }}>
+              <label htmlFor="goodExamples" style={{ display: 'block', marginBottom: '4px', fontWeight: 'bold' }}>
                 ✅ Good Examples (one per line)
               </label>
               <textarea
+                id="goodExamples"
                 value={goodExamples}
                 onChange={(e) => setGoodExamples(e.target.value)}
                 placeholder={"kitchen-oven-CU\nbath-shower-MID\nkitchen-dishwasher-cleaning-MID"}
@@ -377,10 +447,11 @@ export function SettingsModal({ onClose, onSave, initialConfig }: SettingsModalP
             </div>
 
             <div>
-              <label style={{ display: 'block', marginBottom: '4px', fontWeight: 'bold' }}>
+              <label htmlFor="badExamples" style={{ display: 'block', marginBottom: '4px', fontWeight: 'bold' }}>
                 ❌ Bad Examples (one per line: "wrong-example (reason)")
               </label>
               <textarea
+                id="badExamples"
                 value={badExamples}
                 onChange={(e) => setBadExamples(e.target.value)}
                 placeholder={"Kitchen-Oven-CU (mixed case)\nkitchen_oven_CU (underscores)\nkitchen-fridge freezer-CU (missing hyphen)"}
@@ -418,10 +489,11 @@ export function SettingsModal({ onClose, onSave, initialConfig }: SettingsModalP
         {activeTab === 'ai' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             <div>
-              <label style={{ display: 'block', marginBottom: '4px', fontWeight: 'bold' }}>
+              <label htmlFor="aiProvider" style={{ display: 'block', marginBottom: '4px', fontWeight: 'bold' }}>
                 Provider
               </label>
               <select
+                id="aiProvider"
                 value={aiProvider}
                 onChange={(e) => setAiProvider(e.target.value as 'openrouter' | 'openai' | 'anthropic')}
                 style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
@@ -433,37 +505,39 @@ export function SettingsModal({ onClose, onSave, initialConfig }: SettingsModalP
             </div>
 
             <div>
-              <label style={{ display: 'block', marginBottom: '4px', fontWeight: 'bold' }}>
-                Model
+              <label htmlFor="aiModel" style={{ display: 'block', marginBottom: '4px', fontWeight: 'bold' }}>
+                Model {availableModels.length > 0 && <span style={{ color: '#666', fontSize: '12px', fontWeight: 'normal' }}>({availableModels.length} available)</span>}
               </label>
-              <select
+              <input
+                id="aiModel"
+                type="text"
+                list="modelList"
                 value={aiModel}
                 onChange={(e) => setAiModel(e.target.value)}
                 disabled={loadingModels}
+                placeholder={loadingModels ? "Loading models..." : availableModels.length > 0 ? "Type to search or select..." : "No models available"}
                 style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
-              >
-                {loadingModels ? (
-                  <option>Loading models...</option>
-                ) : availableModels.length > 0 ? (
-                  <>
-                    <option value="">Select a model...</option>
-                    {availableModels.map((model) => (
-                      <option key={model.id} value={model.id}>
-                        {model.name}
-                      </option>
-                    ))}
-                  </>
-                ) : (
-                  <option value="">No models available</option>
-                )}
-              </select>
+              />
+              <datalist id="modelList">
+                {availableModels.map((model) => (
+                  <option key={model.id} value={model.id}>
+                    {model.name}
+                  </option>
+                ))}
+              </datalist>
+              {aiModel && !availableModels.find(m => m.id === aiModel) && availableModels.length > 0 && (
+                <small style={{ color: '#f59e0b', display: 'block', marginTop: '4px' }}>
+                  ⚠️ Model not in list - will use as custom model ID
+                </small>
+              )}
             </div>
 
             <div>
-              <label style={{ display: 'block', marginBottom: '4px', fontWeight: 'bold' }}>
+              <label htmlFor="aiApiKey" style={{ display: 'block', marginBottom: '4px', fontWeight: 'bold' }}>
                 API Key {hasSavedKey && <span style={{ color: 'green', fontSize: '12px' }}>(saved in Keychain)</span>}
               </label>
               <input
+                id="aiApiKey"
                 type="password"
                 value={aiApiKey}
                 onChange={(e) => setAiApiKey(e.target.value)}

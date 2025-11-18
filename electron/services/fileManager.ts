@@ -2,13 +2,27 @@ import * as fs from 'fs/promises';
 import * as path from 'path';
 import type { FileMetadata } from '../../src/types';
 import { SecurityValidator } from './securityValidator';
+import { LRUCache } from '../utils/lruCache';
+import { MetadataStore } from './metadataStore';
+import { MetadataWriter } from './metadataWriter';
 
 const IMAGE_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp'];
 const VIDEO_EXTENSIONS = ['.mp4', '.mov', '.avi', '.mkv', '.webm'];
 const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB in bytes
 
 export class FileManager {
-  constructor(private readonly securityValidator: SecurityValidator) {}
+  private scanCache: LRUCache<string, FileMetadata[]>;
+  private metadataWriter: MetadataWriter;
+
+  constructor(
+    private readonly securityValidator: SecurityValidator,
+    metadataWriter?: MetadataWriter
+  ) {
+    // Cache up to 5 folder scans (meets <50ms cached requirement)
+    this.scanCache = new LRUCache(5);
+    // Create MetadataWriter if not provided (for backward compatibility)
+    this.metadataWriter = metadataWriter || new MetadataWriter();
+  }
 
   /**
    * Validate file size to prevent DoS attacks from large files
@@ -23,16 +37,47 @@ export class FileManager {
    * Scan a folder and return all media files as FileMetadata
    */
   async scanFolder(folderPath: string): Promise<FileMetadata[]> {
+    // Check cache first
+    const cached = this.scanCache.get(folderPath);
+    if (cached) {
+      return cached;
+    }
+
+    // Check if folder is marked as COMPLETED (locked)
+    // If COMPLETED, skip reprocessing and return existing metadata
+    try {
+      const metadataStore = new MetadataStore(path.join(folderPath, '.ingest-metadata.json'));
+      const existingMetadata = await metadataStore.loadMetadata();
+
+      if (metadataStore.getCompleted()) {
+        console.log('[FileManager] Folder marked as COMPLETED - skipping processing');
+        const metadataArray = Object.values(existingMetadata);
+        this.scanCache.set(folderPath, metadataArray);
+        return metadataArray;
+      }
+    } catch (error) {
+      // No metadata store yet or other error - proceed with normal scan
+      // This is expected for new folders or test scenarios
+    }
+
     // Set allowed base path for security validation
     this.securityValidator.setAllowedBasePath(folderPath);
 
     const entries = await fs.readdir(folderPath, { withFileTypes: true });
     const files: FileMetadata[] = [];
 
+    // Track seen IDs to detect duplicates
+    // Map<baseId, count> - first occurrence gets count=1, duplicates get 2, 3, etc.
+    const seenIds = new Map<string, number>();
+
     for (const entry of entries) {
       if (!entry.isFile()) continue;
 
       const filename = entry.name;
+
+      // Skip macOS resource fork files (._filename) - they're metadata, not actual media
+      if (filename.startsWith('._')) continue;
+
       if (!this.isMediaFile(filename)) continue;
 
       const filePath = path.join(folderPath, filename);
@@ -41,29 +86,82 @@ export class FileManager {
       await this.securityValidator.validateFilePath(filePath);
 
       const stats = await fs.stat(filePath);
-      const id = this.extractFileId(filename);
+      const baseId = this.extractFileId(filename);
+
+      // Handle duplicate IDs by adding counter suffix
+      let finalId = baseId;
+      if (seenIds.has(baseId)) {
+        const count = seenIds.get(baseId)! + 1;
+        seenIds.set(baseId, count);
+        // Trim whitespace before adding counter (e.g., "Utility " -> "Utility-2")
+        finalId = `${baseId.trim()}-${count}`;
+      } else {
+        seenIds.set(baseId, 1);
+      }
+
       const extension = path.extname(filename);
 
       // Check if filename already has a main name (format: ID-name.ext)
+      // Use baseId (not finalId) for extraction since filename has original ID
       const namePart = filename
         .slice(0, -extension.length) // Remove extension
-        .slice(id.length); // Remove ID
+        .slice(baseId.length); // Remove ID
 
       const mainName = namePart.startsWith('-') ? namePart.slice(1) : '';
 
-      files.push({
-        id,
+      // Read EXIF DateTimeOriginal for accurate chronological sorting
+      // Fall back to filesystem mtime if EXIF not available
+      let creationTimestamp: Date | undefined;
+      try {
+        creationTimestamp = await this.metadataWriter.readCreationTimestamp(filePath);
+      } catch (error) {
+        // EXIF read failed - use filesystem modification time as fallback
+        console.warn(`[FileManager] Could not read EXIF for ${filename}, using mtime:`, error);
+      }
+
+      // If EXIF timestamp is missing (undefined), fall back to filesystem mtime
+      if (!creationTimestamp) {
+        creationTimestamp = stats.mtime;
+      }
+
+      // Create FileMetadata with audit trail using helper
+      const fileMetadata = MetadataStore.createMetadata({
+        id: finalId,
         originalFilename: filename,
         currentFilename: filename,
         filePath,
         extension,
         mainName,
-        metadata: [],
-        processedByAI: false,
-        lastModified: stats.mtime,
+        keywords: [],
         fileType: this.getFileType(filename),
+        processedByAI: false,
+        creationTimestamp, // Use EXIF DateTimeOriginal (or mtime fallback)
+        cameraId: baseId // Extract camera ID from original filename
       });
+
+      files.push(fileMetadata);
     }
+
+    // Sort files chronologically by creation timestamp (earliest → latest)
+    files.sort((a, b) => {
+      const timeA = a.creationTimestamp?.getTime() ?? Infinity;
+      const timeB = b.creationTimestamp?.getTime() ?? Infinity;
+
+      // Tie-breaker: Use original filename if timestamps identical
+      if (timeA === timeB) {
+        return a.originalFilename.localeCompare(b.originalFilename);
+      }
+
+      return timeA - timeB;
+    });
+
+    // Assign sequential shot numbers (1-based, immutable)
+    files.forEach((file, index) => {
+      file.shotNumber = index + 1;
+    });
+
+    // Cache the result
+    this.scanCache.set(folderPath, files);
 
     return files;
   }
@@ -89,6 +187,14 @@ export class FileManager {
   }
 
   /**
+   * Invalidate scan cache for a specific folder path
+   * Call this after file system operations that modify folder contents (rename, delete, etc.)
+   */
+  invalidateCache(folderPath: string): void {
+    this.scanCache.delete(folderPath);
+  }
+
+  /**
    * Rename a file with the format: {ID}-{kebab-case-name}.{ext}
    */
   async renameFile(
@@ -106,6 +212,10 @@ export class FileManager {
     const newPath = path.join(dir, newFilename);
 
     await fs.rename(currentPath, newPath);
+
+    // Invalidate cache after successful rename - prevents stale filename in UI
+    this.invalidateCache(dir);
+
     return newPath;
   }
 
@@ -125,5 +235,37 @@ export class FileManager {
     if (IMAGE_EXTENSIONS.includes(ext)) return 'image';
     if (VIDEO_EXTENSIONS.includes(ext)) return 'video';
     return 'image'; // Default fallback
+  }
+
+  /**
+   * Scan a folder and return a paginated range of files
+   */
+  async scanFolderRange(
+    folderPath: string,
+    startIndex: number,
+    pageSize: number
+  ): Promise<{
+    files: import('../../src/types').FileMetadata[];
+    totalCount: number;
+    startIndex: number;
+    pageSize: number;
+    hasMore: boolean;
+  }> {
+    // Get all files first (reuse existing scanFolder logic)
+    const allFiles = await this.scanFolder(folderPath);
+
+    // Calculate pagination
+    const totalCount = allFiles.length;
+    const endIndex = Math.min(startIndex + pageSize, totalCount);
+    const files = allFiles.slice(startIndex, endIndex);
+    const hasMore = endIndex < totalCount;
+
+    return {
+      files,
+      totalCount,
+      startIndex,
+      pageSize,
+      hasMore,
+    };
   }
 }

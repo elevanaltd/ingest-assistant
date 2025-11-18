@@ -23,6 +23,16 @@ const mockElectronAPI = {
     load: vi.fn(),
     save: vi.fn(),
   },
+  // Batch operations methods
+  batchStart: vi.fn(async () => 'mock-queue-id'),
+  batchCancel: vi.fn(async () => ({ success: true })),
+  batchGetStatus: vi.fn(async () => ({
+    items: [],
+    status: 'idle',
+    currentFile: null
+  })),
+  onBatchProgress: vi.fn(() => () => {}), // Returns cleanup function
+  onTranscodeProgress: vi.fn(() => () => {}), // Returns cleanup function
 };
 
 beforeEach(() => {
@@ -43,21 +53,28 @@ afterEach(() => {
 });
 
 describe('App', () => {
-  it('should render the app header', () => {
+  it('should render the app header', async () => {
     render(<App />);
-    expect(screen.getByText('Ingest Assistant')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText('Ingest Assistant')).toBeInTheDocument();
+    });
   });
 
-  it('should render sidebar with folder selection button', () => {
+  it('should render sidebar with folder selection button', async () => {
     render(<App />);
-    // Folder selection button is now in the sidebar
-    expect(screen.getByRole('complementary')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /select folder/i })).toBeInTheDocument();
+    // Wait for async effects to complete
+    await waitFor(() => {
+      // Folder selection button is now in the sidebar
+      expect(screen.getByRole('complementary')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /select folder/i })).toBeInTheDocument();
+    });
   });
 
-  it('should show empty state when no folder selected', () => {
+  it('should show empty state when no folder selected', async () => {
     render(<App />);
-    expect(screen.getByText(/Select a folder to get started/i)).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText(/Select a folder to get started/i)).toBeInTheDocument();
+    });
   });
 });
 
@@ -69,10 +86,18 @@ describe('Action Field Feature', () => {
     filePath: '/test/path/IMG_12345678.mp4',
     extension: '.mp4',
     mainName: '',
-    metadata: [],
+    keywords: [],
     processedByAI: false,
-    lastModified: new Date(),
     fileType: 'video',
+    location: '',
+    subject: '',
+    action: '',
+    shotType: '',
+    createdAt: new Date(),
+    createdBy: 'ingest-assistant',
+    modifiedAt: new Date(),
+    modifiedBy: 'ingest-assistant',
+    version: '1.1.0',
     ...overrides,
   });
 
@@ -89,7 +114,7 @@ describe('Action Field Feature', () => {
       await userEvent.click(selectButton);
 
       await waitFor(() => {
-        expect(screen.getByPlaceholderText(/cleaning, installing/i)).toBeInTheDocument();
+        expect(screen.getByPlaceholderText(/cleaning/i)).toBeInTheDocument();
       });
     });
 
@@ -109,7 +134,7 @@ describe('Action Field Feature', () => {
       await userEvent.click(selectButton);
 
       await waitFor(() => {
-        const actionField = screen.getByPlaceholderText(/cleaning, installing/i) as HTMLInputElement;
+        const actionField = screen.getByPlaceholderText(/cleaning/i) as HTMLInputElement;
         expect(actionField).toBeDisabled();
         expect(actionField).toHaveStyle({ opacity: '0.5' });
       });
@@ -126,7 +151,7 @@ describe('Action Field Feature', () => {
       await userEvent.click(selectButton);
 
       await waitFor(() => {
-        const actionField = screen.getByPlaceholderText(/cleaning, installing/i) as HTMLInputElement;
+        const actionField = screen.getByPlaceholderText(/cleaning/i) as HTMLInputElement;
         expect(actionField).not.toBeDisabled();
         expect(actionField).toHaveStyle({ opacity: '1' });
       });
@@ -145,10 +170,10 @@ describe('Action Field Feature', () => {
       await userEvent.click(selectButton);
 
       await waitFor(() => {
-        expect(screen.getByPlaceholderText(/cleaning, installing/i)).toBeInTheDocument();
+        expect(screen.getByPlaceholderText(/cleaning/i)).toBeInTheDocument();
       });
 
-      const actionField = screen.getByPlaceholderText(/cleaning, installing/i) as HTMLInputElement;
+      const actionField = screen.getByPlaceholderText(/cleaning/i) as HTMLInputElement;
       await userEvent.type(actionField, 'cleaning');
 
       expect(actionField.value).toBe('cleaning');
@@ -185,7 +210,7 @@ describe('Action Field Feature', () => {
 
       // Wait for initial video file to load with action
       await waitFor(() => {
-        const actionField = screen.getByPlaceholderText(/cleaning, installing/i) as HTMLInputElement;
+        const actionField = screen.getByPlaceholderText(/cleaning/i) as HTMLInputElement;
         expect(actionField.value).toBe('cleaning');
       });
 
@@ -195,7 +220,7 @@ describe('Action Field Feature', () => {
 
       // Action field should be empty and disabled for photo
       await waitFor(() => {
-        const actionField = screen.getByPlaceholderText(/cleaning, installing/i) as HTMLInputElement;
+        const actionField = screen.getByPlaceholderText(/cleaning/i) as HTMLInputElement;
         expect(actionField.value).toBe('');
         expect(actionField).toBeDisabled();
       });
@@ -232,7 +257,7 @@ describe('Action Field Feature', () => {
 
       // Verify first video's action
       await waitFor(() => {
-        const actionField = screen.getByPlaceholderText(/cleaning, installing/i) as HTMLInputElement;
+        const actionField = screen.getByPlaceholderText(/cleaning/i) as HTMLInputElement;
         expect(actionField.value).toBe('cleaning');
       });
 
@@ -242,7 +267,7 @@ describe('Action Field Feature', () => {
 
       // Verify second video's action is maintained
       await waitFor(() => {
-        const actionField = screen.getByPlaceholderText(/cleaning, installing/i) as HTMLInputElement;
+        const actionField = screen.getByPlaceholderText(/cleaning/i) as HTMLInputElement;
         expect(actionField.value).toBe('installing');
       });
     });
@@ -257,7 +282,7 @@ describe('Action Field Feature', () => {
 
       const aiResult: AIAnalysisResult = {
         mainName: 'kitchen-oven-cleaning-WS',
-        metadata: ['appliance', 'cooking'],
+        keywords: ['appliance', 'cooking'],
         confidence: 0.95,
         location: 'kitchen',
         subject: 'oven',
@@ -280,13 +305,13 @@ describe('Action Field Feature', () => {
 
       // Verify action field is populated
       await waitFor(() => {
-        const actionField = screen.getByPlaceholderText(/cleaning, installing/i) as HTMLInputElement;
+        const actionField = screen.getByPlaceholderText(/cleaning/i) as HTMLInputElement;
         expect(actionField.value).toBe('cleaning');
       });
 
       // Verify other fields too
-      expect((screen.getByPlaceholderText(/kitchen, bathroom/i) as HTMLInputElement).value).toBe('kitchen');
-      expect((screen.getByPlaceholderText(/oven, sink, window/i) as HTMLInputElement).value).toBe('oven');
+      expect((screen.getByPlaceholderText(/kitchen/i) as HTMLInputElement).value).toBe('kitchen');
+      expect((screen.getByPlaceholderText(/wine-cooler/i) as HTMLInputElement).value).toBe('oven');
     });
 
     it('should leave action empty when AI returns result without action (photo)', async () => {
@@ -302,10 +327,11 @@ describe('Action Field Feature', () => {
 
       const aiResult: AIAnalysisResult = {
         mainName: 'kitchen-oven-WS',
-        metadata: ['appliance', 'cooking'],
+        keywords: ['appliance', 'cooking'],
         confidence: 0.95,
         location: 'kitchen',
         subject: 'oven',
+        action: '',
         shotType: 'WS',
       };
       mockElectronAPI.analyzeFile.mockResolvedValue(aiResult);
@@ -324,7 +350,7 @@ describe('Action Field Feature', () => {
 
       // Verify action field is empty
       await waitFor(() => {
-        const actionField = screen.getByPlaceholderText(/cleaning, installing/i) as HTMLInputElement;
+        const actionField = screen.getByPlaceholderText(/cleaning/i) as HTMLInputElement;
         expect(actionField.value).toBe('');
       });
     });
@@ -338,10 +364,11 @@ describe('Action Field Feature', () => {
       // AI result without action field
       const aiResult: AIAnalysisResult = {
         mainName: 'kitchen-oven-WS',
-        metadata: ['appliance', 'cooking'],
+        keywords: ['appliance', 'cooking'],
         confidence: 0.95,
         location: 'kitchen',
         subject: 'oven',
+        action: '',
         shotType: 'WS',
       };
       mockElectronAPI.analyzeFile.mockResolvedValue(aiResult);
@@ -360,140 +387,16 @@ describe('Action Field Feature', () => {
 
       // Should not throw error, action should be empty
       await waitFor(() => {
-        const actionField = screen.getByPlaceholderText(/cleaning, installing/i) as HTMLInputElement;
+        const actionField = screen.getByPlaceholderText(/cleaning/i) as HTMLInputElement;
         expect(actionField.value).toBe('');
       });
     });
   });
 
-  describe('Test 4: Filename generation with action', () => {
-    it('should generate 4-part name for video with action', async () => {
-      const videoFile = createMockFile({ fileType: 'video' });
-      mockElectronAPI.loadFiles.mockResolvedValue([videoFile]);
-      mockElectronAPI.selectFolder.mockResolvedValue('/test/folder');
-
-      render(<App />);
-
-      const selectButton = screen.getByRole('button', { name: /select folder/i });
-      await userEvent.click(selectButton);
-
-      await waitFor(() => {
-        expect(screen.getByPlaceholderText(/kitchen, bathroom/i)).toBeInTheDocument();
-      });
-
-      // Fill in all fields including action
-      await userEvent.type(screen.getByPlaceholderText(/kitchen, bathroom/i), 'kitchen');
-      await userEvent.type(screen.getByPlaceholderText(/oven, sink, window/i), 'oven');
-      await userEvent.type(screen.getByPlaceholderText(/cleaning, installing/i), 'cleaning');
-      await userEvent.selectOptions(screen.getByRole('combobox'), 'WS');
-
-      // Verify generated name preview shows 4-part format
-      await waitFor(() => {
-        expect(screen.getByText(/generated name:/i)).toBeInTheDocument();
-        expect(screen.getByText('12345678-kitchen-oven-cleaning-WS')).toBeInTheDocument();
-      });
-    });
-
-    it('should generate 3-part name for video without action', async () => {
-      const videoFile = createMockFile({ fileType: 'video' });
-      mockElectronAPI.loadFiles.mockResolvedValue([videoFile]);
-      mockElectronAPI.selectFolder.mockResolvedValue('/test/folder');
-
-      render(<App />);
-
-      const selectButton = screen.getByRole('button', { name: /select folder/i });
-      await userEvent.click(selectButton);
-
-      await waitFor(() => {
-        expect(screen.getByPlaceholderText(/kitchen, bathroom/i)).toBeInTheDocument();
-      });
-
-      // Fill in fields WITHOUT action
-      await userEvent.type(screen.getByPlaceholderText(/kitchen, bathroom/i), 'kitchen');
-      await userEvent.type(screen.getByPlaceholderText(/oven, sink, window/i), 'oven');
-      await userEvent.selectOptions(screen.getByRole('combobox'), 'WS');
-
-      // Verify generated name preview shows 3-part format
-      await waitFor(() => {
-        expect(screen.getByText(/generated name:/i)).toBeInTheDocument();
-        expect(screen.getByText('12345678-kitchen-oven-WS')).toBeInTheDocument();
-      });
-    });
-
-    it('should generate 3-part name for photo even with action in field', async () => {
-      const photoFile = createMockFile({
-        fileType: 'image',
-        extension: '.jpg',
-        originalFilename: 'IMG_12345678.jpg',
-        currentFilename: 'IMG_12345678.jpg',
-      });
-      mockElectronAPI.loadFiles.mockResolvedValue([photoFile]);
-      mockElectronAPI.selectFolder.mockResolvedValue('/test/folder');
-
-      render(<App />);
-
-      const selectButton = screen.getByRole('button', { name: /select folder/i });
-      await userEvent.click(selectButton);
-
-      await waitFor(() => {
-        expect(screen.getByPlaceholderText(/kitchen, bathroom/i)).toBeInTheDocument();
-      });
-
-      // Fill in fields
-      await userEvent.type(screen.getByPlaceholderText(/kitchen, bathroom/i), 'bathroom');
-      await userEvent.type(screen.getByPlaceholderText(/oven, sink, window/i), 'sink');
-      // Action field should be disabled, but verify it doesn't affect photo naming
-      await userEvent.selectOptions(screen.getByRole('combobox'), 'CU');
-
-      // Verify generated name preview shows 3-part format (no action)
-      await waitFor(() => {
-        expect(screen.getByText(/generated name:/i)).toBeInTheDocument();
-        expect(screen.getByText('12345678-bathroom-sink-CU')).toBeInTheDocument();
-      });
-    });
-
-    it('should call renameFile with 4-part format when saving video with action', async () => {
-      const videoFile = createMockFile({ fileType: 'video' });
-      mockElectronAPI.loadFiles.mockResolvedValue([videoFile]);
-      mockElectronAPI.selectFolder.mockResolvedValue('/test/folder');
-      mockElectronAPI.renameFile.mockResolvedValue(true);
-      mockElectronAPI.updateMetadata.mockResolvedValue(true);
-
-      render(<App />);
-
-      const selectButton = screen.getByRole('button', { name: /select folder/i });
-      await userEvent.click(selectButton);
-
-      await waitFor(() => {
-        expect(screen.getByPlaceholderText(/kitchen, bathroom/i)).toBeInTheDocument();
-      });
-
-      // Fill in all fields including action
-      await userEvent.type(screen.getByPlaceholderText(/kitchen, bathroom/i), 'kitchen');
-      await userEvent.type(screen.getByPlaceholderText(/oven, sink, window/i), 'oven');
-      await userEvent.type(screen.getByPlaceholderText(/cleaning, installing/i), 'cleaning');
-      await userEvent.selectOptions(screen.getByRole('combobox'), 'WS');
-
-      // Click save
-      const saveButton = screen.getByRole('button', { name: /^save$/i });
-      await userEvent.click(saveButton);
-
-      // Verify renameFile was called with 4-part format
-      await waitFor(() => {
-        expect(mockElectronAPI.renameFile).toHaveBeenCalledWith(
-          '12345678',
-          'kitchen-oven-cleaning-WS',
-          '/test/path/IMG_12345678.mp4',
-          {
-            location: 'kitchen',
-            subject: 'oven',
-            action: 'cleaning',
-            shotType: 'WS',
-          }
-        );
-      });
-    });
-  });
+  // Test 4: Filename generation tests REMOVED
+  // These tests validated a "generated name preview" UI feature that no longer exists in the implementation.
+  // The implementation now only renames files when the "Rename File" toggle is explicitly enabled by the user.
+  // Obsolete tests removed during GAP_4 resolution (Category B: obsolete expectations).
 
   describe('Test 5: File parsing with action', () => {
     it('should parse 4-part video filename and populate action field', async () => {
@@ -515,9 +418,9 @@ describe('Action Field Feature', () => {
 
       // Verify all fields are populated from 4-part filename
       await waitFor(() => {
-        expect((screen.getByPlaceholderText(/kitchen, bathroom/i) as HTMLInputElement).value).toBe('kitchen');
-        expect((screen.getByPlaceholderText(/oven, sink, window/i) as HTMLInputElement).value).toBe('oven');
-        expect((screen.getByPlaceholderText(/cleaning, installing/i) as HTMLInputElement).value).toBe('cleaning');
+        expect((screen.getByPlaceholderText(/kitchen/i) as HTMLInputElement).value).toBe('kitchen');
+        expect((screen.getByPlaceholderText(/wine-cooler/i) as HTMLInputElement).value).toBe('oven');
+        expect((screen.getByPlaceholderText(/cleaning/i) as HTMLInputElement).value).toBe('cleaning');
         expect((screen.getByRole('combobox') as HTMLSelectElement).value).toBe('WS');
       });
     });
@@ -540,9 +443,9 @@ describe('Action Field Feature', () => {
 
       // Verify fields are populated but action is empty
       await waitFor(() => {
-        expect((screen.getByPlaceholderText(/kitchen, bathroom/i) as HTMLInputElement).value).toBe('kitchen');
-        expect((screen.getByPlaceholderText(/oven, sink, window/i) as HTMLInputElement).value).toBe('oven');
-        expect((screen.getByPlaceholderText(/cleaning, installing/i) as HTMLInputElement).value).toBe('');
+        expect((screen.getByPlaceholderText(/kitchen/i) as HTMLInputElement).value).toBe('kitchen');
+        expect((screen.getByPlaceholderText(/wine-cooler/i) as HTMLInputElement).value).toBe('oven');
+        expect((screen.getByPlaceholderText(/cleaning/i) as HTMLInputElement).value).toBe('');
         expect((screen.getByRole('combobox') as HTMLSelectElement).value).toBe('WS');
       });
     });
@@ -568,9 +471,9 @@ describe('Action Field Feature', () => {
 
       // Verify fields are populated but action is empty and disabled
       await waitFor(() => {
-        const actionField = screen.getByPlaceholderText(/cleaning, installing/i) as HTMLInputElement;
-        expect((screen.getByPlaceholderText(/kitchen, bathroom/i) as HTMLInputElement).value).toBe('bathroom');
-        expect((screen.getByPlaceholderText(/oven, sink, window/i) as HTMLInputElement).value).toBe('sink');
+        const actionField = screen.getByPlaceholderText(/cleaning/i) as HTMLInputElement;
+        expect((screen.getByPlaceholderText(/kitchen/i) as HTMLInputElement).value).toBe('bathroom');
+        expect((screen.getByPlaceholderText(/wine-cooler/i) as HTMLInputElement).value).toBe('sink');
         expect(actionField.value).toBe('');
         expect(actionField).toBeDisabled();
         expect((screen.getByRole('combobox') as HTMLSelectElement).value).toBe('CU');
@@ -595,11 +498,12 @@ describe('Action Field Feature', () => {
 
       // Wait for shot types to be loaded and parsing to complete
       await waitFor(() => {
-        expect((screen.getByPlaceholderText(/kitchen, bathroom/i) as HTMLInputElement).value).toBe('bedroom');
-        expect((screen.getByPlaceholderText(/oven, sink, window/i) as HTMLInputElement).value).toBe('window');
-        expect((screen.getByPlaceholderText(/cleaning, installing/i) as HTMLInputElement).value).toBe('opening');
+        expect((screen.getByPlaceholderText(/kitchen/i) as HTMLInputElement).value).toBe('bedroom');
+        expect((screen.getByPlaceholderText(/wine-cooler/i) as HTMLInputElement).value).toBe('window');
+        expect((screen.getByPlaceholderText(/cleaning/i) as HTMLInputElement).value).toBe('opening');
         expect((screen.getByRole('combobox') as HTMLSelectElement).value).toBe('MID');
       });
     });
   });
+
 });

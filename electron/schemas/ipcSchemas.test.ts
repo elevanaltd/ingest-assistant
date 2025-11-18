@@ -38,7 +38,7 @@ describe('IPC Schema Validation', () => {
     it('should accept valid metadata array', () => {
       const valid = {
         fileId: 'ABC123',
-        metadata: ['tag1', 'tag2', 'tag3'],
+        keywords: ['tag1', 'tag2', 'tag3'],
       };
 
       expect(() => FileUpdateMetadataSchema.parse(valid)).not.toThrow();

@@ -1,0 +1,51 @@
+# Conventional Commits Template
+#
+# Commit Format: type(scope): description
+#
+# TYPES:
+#   feat:     New feature (user-facing functionality)
+#   fix:      Bug fix (resolves issue)
+#   test:     Adding or updating tests (RED phase for TDD)
+#   docs:     Documentation changes
+#   refactor: Code refactoring (GREEN→REFACTOR phase, no behavior change)
+#   chore:    Build process, dependencies, tooling
+#   ci:       CI/CD changes (GitHub Actions, build config)
+#   style:    Formatting, whitespace (no logic change)
+#   perf:     Performance improvements
+#
+# SCOPES (examples):
+#   scripts-web, scenes-web, vo-web, cam-op-pwa, edit-web, translations-web, data-entry-web
+#   shared (for @workspace/shared changes)
+#   ci, db, deps, types, config
+#
+# TDD PATTERN (Encouraged for Features):
+#   1. test(scope): Add failing test for X [RED phase]
+#   2. feat(scope): Implement X [GREEN phase]
+#   3. refactor(scope): Improve X [REFACTOR phase]
+#
+# DESCRIPTION GUIDELINES:
+#   - Use imperative mood ("add" not "added")
+#   - Do not capitalize first letter
+#   - Do not end with period
+#   - Limit to 50 characters
+#   - Reference issue numbers: "fixes #123"
+#
+# EXAMPLES - Conventional (✅):
+#   test(scripts-web): Add failing test for comment sidebar (RED)
+#   feat(scripts-web): Implement comment sidebar component (GREEN)
+#   refactor(scripts-web): Extract comment logic to hook (REFACTOR)
+#   fix(shared): Correct RLS policy for admin users
+#   docs(coord): Update RULES.md with conventional commits standard
+#   ci(github): Add commit message linter to quality gates
+#   chore(deps): Upgrade Vitest to 1.0.0
+#
+# EXAMPLES - Non-Conventional (❌ - Avoid):
+#   Updated comment sidebar
+#   WIP: working on feature X
+#   fix stuff
+#   TEST: Add test for X  (use lowercase "test:")
+#   FEAT: Implement X     (use lowercase "feat:")
+#
+# GIT USAGE:
+#   git config commit.template /Volumes/HestAI-Projects/eav-monorepo/.gitmessage
+#   (Configure once, then git commit will use this template automatically)

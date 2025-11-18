@@ -6,9 +6,9 @@ export interface ElectronAPI {
   // CRITICAL-1 FIX: Removed folderPath parameter (security boundary enforced in main process)
   loadFiles: () => Promise<FileMetadata[]>;
   readFileAsDataUrl: (filePath: string) => Promise<string>;
-  renameFile: (fileId: string, mainName: string, currentPath: string, structured?: { location?: string; subject?: string; shotType?: string }) => Promise<boolean>;
+  renameFile: (fileId: string, mainName: string, currentPath: string, structured?: { location?: string; subject?: string; action?: string; shotType?: string }) => Promise<boolean>;
   updateMetadata: (fileId: string, metadata: string[]) => Promise<boolean>;
-  updateStructuredMetadata: (fileId: string, structured: { location: string; subject: string; shotType: string }) => Promise<boolean>;
+  updateStructuredMetadata: (fileId: string, structured: { location: string; subject: string; action?: string; shotType: string }, filePath?: string, fileType?: 'image' | 'video') => Promise<boolean>;
 
   // AI operations
   isAIConfigured: () => Promise<boolean>;
@@ -19,6 +19,19 @@ export interface ElectronAPI {
   getAIModels: (provider: string) => Promise<Array<{id: string; name: string; description?: string}>>;
   analyzeFile: (filePath: string) => Promise<AIAnalysisResult>;
   batchProcess: (fileIds: string[]) => Promise<Record<string, AIAnalysisResult>>;
+
+  // Batch operations (Issue #24)
+  batchStart: (fileIds: string[]) => Promise<string>;
+  batchCancel: () => Promise<{ success: boolean }>;
+  batchGetStatus: () => Promise<import('./index').BatchQueueState>;
+  onBatchProgress: (callback: (progress: import('./index').BatchProgress) => void) => () => void;
+
+  // Transcode progress (for loading overlay)
+  onTranscodeProgress: (callback: (progress: { time: string; percentage: number }) => void) => () => void;
+
+  // Folder operations
+  setFolderCompleted: (completed: boolean) => Promise<boolean>;
+  getFolderCompleted: () => Promise<boolean>;
 
   // Config operations
   loadConfig: () => Promise<AppConfig>;

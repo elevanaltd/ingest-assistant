@@ -1,0 +1,15 @@
+# Project Hook Configuration for Supabase Safety System
+#
+# This project uses the GLOBAL hook at:
+# ~/.claude/hooks/pre_tool_use/supabase_migration_guard.sh
+#
+# Project-specific configuration is in:
+# .claude/supabase.yaml
+#
+# This YAML file is kept for reference/documentation purposes.
+# The global hook automatically applies to all Supabase MCP tool calls.
+
+matchers:
+  - mcp__supabase__apply_migration
+  - mcp__supabase__execute_sql
+description: "Enforce ADR-003 safety checks before Supabase write operations. Uses global hook with project config from .claude/supabase.yaml. On block, consult supabase-operations skill."
