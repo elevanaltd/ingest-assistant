@@ -4,6 +4,7 @@ import type { FileMetadata } from '../../src/types';
 import { SecurityValidator } from './securityValidator';
 import { LRUCache } from '../utils/lruCache';
 import { MetadataStore } from './metadataStore';
+import { MetadataWriter } from './metadataWriter';
 
 const IMAGE_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp'];
 const VIDEO_EXTENSIONS = ['.mp4', '.mov', '.avi', '.mkv', '.webm'];
@@ -11,10 +12,16 @@ const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB in bytes
 
 export class FileManager {
   private scanCache: LRUCache<string, FileMetadata[]>;
+  private metadataWriter: MetadataWriter;
 
-  constructor(private readonly securityValidator: SecurityValidator) {
+  constructor(
+    private readonly securityValidator: SecurityValidator,
+    metadataWriter?: MetadataWriter
+  ) {
     // Cache up to 5 folder scans (meets <50ms cached requirement)
     this.scanCache = new LRUCache(5);
+    // Create MetadataWriter if not provided (for backward compatibility)
+    this.metadataWriter = metadataWriter || new MetadataWriter();
   }
 
   /**
@@ -34,6 +41,23 @@ export class FileManager {
     const cached = this.scanCache.get(folderPath);
     if (cached) {
       return cached;
+    }
+
+    // Check if folder is marked as COMPLETED (locked)
+    // If COMPLETED, skip reprocessing and return existing metadata
+    try {
+      const metadataStore = new MetadataStore(path.join(folderPath, '.ingest-metadata.json'));
+      const existingMetadata = await metadataStore.loadMetadata();
+
+      if (metadataStore.getCompleted()) {
+        console.log('[FileManager] Folder marked as COMPLETED - skipping processing');
+        const metadataArray = Object.values(existingMetadata);
+        this.scanCache.set(folderPath, metadataArray);
+        return metadataArray;
+      }
+    } catch (error) {
+      // No metadata store yet or other error - proceed with normal scan
+      // This is expected for new folders or test scenarios
     }
 
     // Set allowed base path for security validation
@@ -85,6 +109,21 @@ export class FileManager {
 
       const mainName = namePart.startsWith('-') ? namePart.slice(1) : '';
 
+      // Read EXIF DateTimeOriginal for accurate chronological sorting
+      // Fall back to filesystem mtime if EXIF not available
+      let creationTimestamp: Date | undefined;
+      try {
+        creationTimestamp = await this.metadataWriter.readCreationTimestamp(filePath);
+      } catch (error) {
+        // EXIF read failed - use filesystem modification time as fallback
+        console.warn(`[FileManager] Could not read EXIF for ${filename}, using mtime:`, error);
+      }
+
+      // If EXIF timestamp is missing (undefined), fall back to filesystem mtime
+      if (!creationTimestamp) {
+        creationTimestamp = stats.mtime;
+      }
+
       // Create FileMetadata with audit trail using helper
       const fileMetadata = MetadataStore.createMetadata({
         id: finalId,
@@ -96,7 +135,7 @@ export class FileManager {
         keywords: [],
         fileType: this.getFileType(filename),
         processedByAI: false,
-        creationTimestamp: stats.mtime, // Use file modification time for sorting
+        creationTimestamp, // Use EXIF DateTimeOriginal (or mtime fallback)
         cameraId: baseId // Extract camera ID from original filename
       });
 

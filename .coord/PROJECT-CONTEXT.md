@@ -21,7 +21,7 @@
 - **Runtime:** Electron (main + renderer processes)
 - **Frontend:** React 18, TypeScript
 - **Build:** Vite
-- **Testing:** Vitest (543 tests across 35 test files)
+- **Testing:** Vitest (575 tests across 38 test files)
 - **Process:** Node.js
 - **AI Integration:** OpenRouter, Anthropic Claude, OpenAI APIs
 - **Database:** Supabase (shared with EAV Monorepo - zbxvjyrbkycbfhwmmnmy)

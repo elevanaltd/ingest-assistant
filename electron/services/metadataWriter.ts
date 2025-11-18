@@ -163,7 +163,6 @@ export class MetadataWriter {
       subject?: string;
       action?: string;
       shotType?: string;
-      date?: string;
       shotNumber?: number;
       cameraId?: string;
     },
@@ -191,9 +190,6 @@ export class MetadataWriter {
       }
       if (structured.shotType) {
         this.validateInput(structured.shotType, 'structured.shotType');
-      }
-      if (structured.date) {
-        this.validateInput(structured.date, 'structured.date');
       }
       if (structured.cameraId) {
         this.validateInput(structured.cameraId, 'structured.cameraId');
@@ -247,17 +243,13 @@ export class MetadataWriter {
       if (structured.subject) {
         logCommentParts.push(`subject=${structured.subject}`);
       }
-      if (structured.action) {
-        logCommentParts.push(`action=${structured.action}`);
-      }
+      // Always include action field (empty string for images with no action)
+      logCommentParts.push(`action=${structured.action || ''}`);
       if (structured.shotType) {
         logCommentParts.push(`shotType=${structured.shotType}`);
       }
-      if (structured.date) {
-        logCommentParts.push(`date=${structured.date}`);
-      }
       if (structured.shotNumber) {
-        logCommentParts.push(`shotNumber=${structured.shotNumber}`);
+        logCommentParts.push(`shotNumber=#${structured.shotNumber}`);
       }
 
       console.log('[MetadataWriter] LogComment parts built:', logCommentParts);

@@ -18,6 +18,44 @@
 
 ## Recent Accomplishments (November 2025)
 
+### ✅ Sequential Shot Number Feature - COMPLETE (Nov 17-18)
+- [x] **Phase C: UI Implementation** - COMPLETE/REOPEN folder workflow
+  - IPC handlers: `folder:set-completed`, `folder:get-completed` (error handling + sanitization)
+  - UI state management: `isFolderCompleted` boolean + conditional rendering
+  - Shot number display: Read-only field showing `#N` in blue bold
+  - Field locking: All metadata fields + Save/AI Assist disabled when completed
+  - Button placement: COMPLETE/REOPEN in Batch Operations panel (right side)
+  - Current file display: Integrated between Previous/Next buttons (space savings)
+  - Folder loading spinner: Full-screen overlay with progress message (20s EXIF operations)
+  - +9 tests (folder completion IPC handlers, all passing)
+  - Commits: 05c04cc (Phase C base), eac2a09 (UI improvements), 0b1896e (loading spinner)
+
+- [x] **Critical Bugs Fixed** - EXIF sorting + metadata filename
+  - Bug #1: Metadata filename mismatch (.ingest-metadata.json vs metadata-store.json)
+  - Bug #2: Wrong timestamp source (stats.mtime → EXIF DateTimeOriginal)
+  - Bug #3: Missing EXIF fallback (undefined timestamp crashes)
+  - Result: Files now sort chronologically by camera capture time (CORRECT!)
+  - Result: Phase B completed check now works (CORRECT filename)
+  - +2 tests (chronological sorting + completed check validation)
+  - Commit: 12f7593 (fix: critical bugs blocking sequential shot number feature)
+
+- [x] **shotName Timestamp Removal** - Clean XMP format
+  - Before: `lounge-media-plate-MID-20251024094631-#1` (timestamp + shot number redundant)
+  - After: `lounge-media-plate-MID-#1` (shot number provides uniqueness)
+  - Logic: When shotNumber exists → skip timestamp, else timestamp for legacy
+  - +4 tests (shotNumber mainName formatting)
+  - Commit: ff3a8a2 (fix: remove timestamp from shotName when shotNumber present)
+
+- [x] **All Phases 1-5, A, B, C** - Sequential shot number feature DELIVERED
+  - Phase 1-2: Chronological sorting + shot number assignment (working!)
+  - Phase 3: XMP metadata with shot numbers (working!)
+  - Phase A: LogComment format aligned with CEP Panel (working!)
+  - Phase B: COMPLETED marker system (working!)
+  - Phase C: UI with COMPLETE/REOPEN buttons (working!)
+  - Quality: 575/575 tests passing, 0 errors (lint + typecheck)
+
+## Recent Accomplishments (November 2025)
+
 ### 🔄 Cross-Ecosystem Schema Integration (IN PROGRESS - Nov 16, Issue #63)
 - [x] **Dual-Key Governance:** technical-architect ✅ GO + principal-engineer ✅ CONDITIONAL GO (7/10 viability)
 - [x] **GitHub Issue #122:** Created at elevanaltd/eav-monorepo with full template
@@ -184,7 +222,7 @@
 ## Production Readiness Checklist
 
 ### Code Quality
-- [x] All tests passing (527/527)
+- [x] All tests passing (575/575)
 - [x] Zero TypeScript errors
 - [x] Zero ESLint errors in production code
 - [x] Build compiles cleanly
@@ -226,26 +264,27 @@
 
 ## Notes
 
-- **Branch:** `main` (2 commits ready to push: CEP Panel date field + bug fix)
-- **Version:** v2.1.0 (Feature: CEP Panel date field integration)
-- **Last Major Work:** CEP Panel date field integration (eav-cep-assist Issue #31)
+- **Branch:** `feat/dependency-roadmap` (7 commits ahead: Sequential shot number feature COMPLETE)
+- **Version:** v2.2.0 (Feature: Sequential shot numbers with COMPLETE/REOPEN workflow)
+- **Last Major Work:** Phase C UI implementation + critical bug fixes
 - **Working Tree:** Clean (ready to push)
-- **Test Suite:** 527 tests across 34 test files (all passing)
-- **Performance:** ~18s test suite execution, 60fps UI with 1000+ files
+- **Test Suite:** 575 tests across 38 test files (all passing, +32 tests from baseline)
+- **Performance:** ~18s test suite execution, 60fps UI with 1000+ files, 20s folder loading with EXIF sorting
 - **Security Status:** Production-ready with command injection + media server auth protection
 
-**Recent Work (Nov 14, 2025):**
-- CEP Panel Date Field Integration (eav-cep-assist Issue #31):
-  - LogComment format: `location=X, subject=Y, action=Z, shotType=W, date=202511031005`
-  - Timestamp extraction from EXIF metadata (5-field fallback chain)
-  - 3 IPC handlers wired (rename, update, batch AI)
-  - Deserialization bug fix (ISO string → Date conversion)
-  - TDD discipline: 3 RED→GREEN cycles (metadataWriter, integration, bug fix)
-  - +6 tests (LogComment, batch spec, deserialization)
-- Quality Gates: All GREEN (lint ✅, typecheck ✅, tests 527/527 ✅)
-- Implementation-lead: Systematic TDD implementation with build-execution protocols
+**Recent Work (Nov 17-18, 2025):**
+- Sequential Shot Number Feature - ALL PHASES COMPLETE:
+  - Phase C: COMPLETE/REOPEN workflow (+9 tests)
+  - Critical bugs: EXIF sorting + metadata filename (+2 tests)
+  - shotName cleanup: Timestamp removal (+4 tests)
+  - UI improvements: 4 amendments (display, button placement, file info, loading spinner)
+  - XMP Format: `shotName=lounge-media-plate-MID-#1` (clean, unique)
+  - LogComment: `location=X, subject=Y, action=Z, shotType=W, shotNumber=#5`
+  - TDD discipline: RED→GREEN pattern for all phases
+  - Quality: 575/575 tests ✅, 0 typecheck errors ✅, 0 lint errors ✅
+- Implementation-lead: Systematic TDD + build-execution + code-review-specialist validation
 
-**Ready for:** Git push → Production deployment
+**Ready for:** Branch merge → Production deployment
 
 ---
 

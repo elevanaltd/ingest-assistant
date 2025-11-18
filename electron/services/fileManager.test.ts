@@ -553,4 +553,108 @@ describe('FileManager', () => {
       ).rejects.toThrow('File too large');
     });
   });
+
+  describe('scanFolder - EXIF chronological sorting (Bug Fix)', () => {
+    it('should sort files by EXIF DateTimeOriginal, not filesystem mtime', async () => {
+      // GREEN: This test verifies scanFolder uses EXIF dates for chronological sorting
+      // Files with different EXIF dates but same mtime should sort by EXIF
+
+      const mockFiles = [
+        { name: 'EA001621.JPG', isFile: () => true, isDirectory: () => false },
+        { name: 'EA001622.JPG', isFile: () => true, isDirectory: () => false },
+        { name: 'EA001623.JPG', isFile: () => true, isDirectory: () => false },
+      ];
+
+      mockFs.readdir.mockResolvedValue(mockFiles);
+
+      // Mock filesystem mtime to be SAME for all files (doesn't reflect capture order)
+      mockFs.stat.mockResolvedValue({
+        isFile: () => true,
+        mtime: new Date('2025-11-17T10:00:00Z'), // Same filesystem time
+      });
+
+      // Mock readCreationTimestamp to return DIFFERENT EXIF dates (actual capture order)
+      // Create a mock MetadataWriter with the method
+      const mockMetadataWriter = {
+        readCreationTimestamp: vi.fn()
+          .mockResolvedValueOnce(new Date('2025-10-24T13:52:21Z')) // EA001621 - 13:52:21
+          .mockResolvedValueOnce(new Date('2025-10-24T13:52:35Z')) // EA001622 - 13:52:35
+          .mockResolvedValueOnce(new Date('2025-10-24T13:52:46Z')), // EA001623 - 13:52:46
+      };
+
+      // Create fileManager with mocked MetadataWriter
+      const fileManagerWithMock = new FileManager(mockSecurityValidator, mockMetadataWriter as any);
+
+      const files = await fileManagerWithMock.scanFolder(testFolderPath);
+
+      // Should be sorted by EXIF DateTimeOriginal (not mtime)
+      expect(files).toHaveLength(3);
+      expect(files[0].id).toBe('EA001621'); // First chronologically (13:52:21)
+      expect(files[0].shotNumber).toBe(1);
+      expect(files[1].id).toBe('EA001622'); // Second chronologically (13:52:35)
+      expect(files[1].shotNumber).toBe(2);
+      expect(files[2].id).toBe('EA001623'); // Third chronologically (13:52:46)
+      expect(files[2].shotNumber).toBe(3);
+
+      // Verify creationTimestamp was set from EXIF, not mtime
+      expect(files[0].creationTimestamp).toEqual(new Date('2025-10-24T13:52:21Z'));
+      expect(files[1].creationTimestamp).toEqual(new Date('2025-10-24T13:52:35Z'));
+      expect(files[2].creationTimestamp).toEqual(new Date('2025-10-24T13:52:46Z'));
+    });
+
+    it('should read from .ingest-metadata.json for COMPLETED check, not metadata-store.json', async () => {
+      // GREEN: Verify the correct filename is used when checking completed status
+      // This test documents expected behavior but is complex to fully implement in unit tests
+      // Integration tests will validate the complete workflow
+
+      const mockFiles = [
+        { name: 'EA001621.JPG', isFile: () => true, isDirectory: () => false },
+      ];
+
+      mockFs.readdir.mockResolvedValue(mockFiles);
+      mockFs.stat.mockResolvedValue({
+        isFile: () => true,
+        mtime: new Date('2025-11-17T10:00:00Z'),
+      });
+
+      // Mock .ingest-metadata.json exists with _completed=true
+      mockFs.readFile.mockImplementation(async (filePath: string) => {
+        if (filePath.includes('.ingest-metadata.json')) {
+          return JSON.stringify({
+            _schema: '2.0',
+            _completed: true,
+            EA001621: {
+              id: 'EA001621',
+              originalFilename: 'EA001621.JPG',
+              currentFilename: 'EA001621.JPG',
+              filePath: '/test/folder/EA001621.JPG',
+              extension: '.JPG',
+              fileType: 'image',
+              mainName: 'test',
+              keywords: [],
+              location: '',
+              subject: '',
+              action: '',
+              shotType: '',
+              processedByAI: false,
+              createdAt: new Date().toISOString(),
+              createdBy: 'test',
+              modifiedAt: new Date().toISOString(),
+              modifiedBy: 'test',
+              version: '1.1.0',
+              shotNumber: 44,
+            }
+          });
+        }
+        throw new Error('File not found');
+      });
+
+      // When folder is COMPLETED, scanFolder should return existing metadata
+      // without reprocessing or reassigning shot numbers
+      const files = await fileManager.scanFolder(testFolderPath);
+
+      expect(files).toHaveLength(1);
+      expect(files[0].shotNumber).toBe(44); // Preserved from metadata, not reassigned to 1
+    });
+  });
 });

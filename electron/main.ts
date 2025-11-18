@@ -34,9 +34,10 @@ const MEDIA_SERVER_PORT = 8765;
 // Generated once per session using cryptographically secure random bytes
 let MEDIA_SERVER_TOKEN: string = '';
 
-// Initialize SecurityValidator and FileManager with dependency injection
+// Initialize SecurityValidator, MetadataWriter, and FileManager with dependency injection
 const securityValidator = new SecurityValidator();
-const fileManager: FileManager = new FileManager(securityValidator);
+const metadataWriter: MetadataWriter = new MetadataWriter();
+const fileManager: FileManager = new FileManager(securityValidator, metadataWriter);
 
 // Rate limiter for batch operations (token bucket algorithm)
 class RateLimiter {
@@ -88,7 +89,6 @@ const configManager: ConfigManager = (() => {
   const configPath = path.join(userDataPath, 'config.yaml');
   return new ConfigManager(configPath);
 })();
-const metadataWriter: MetadataWriter = new MetadataWriter();
 const videoTranscoder: VideoTranscoder = new VideoTranscoder();
 let aiService: AIService | null = null;
 
@@ -669,7 +669,6 @@ ipcMain.handle('file:rename', async (_event, fileId: string, mainName: string, c
         subject: fileMetadata!.subject,
         action: fileMetadata!.action,
         shotType: fileMetadata!.shotType,
-        date: formattedDate,
         shotNumber: fileMetadata!.shotNumber,
         cameraId: fileMetadata!.cameraId
       }
@@ -739,7 +738,6 @@ ipcMain.handle('file:update-metadata', async (_event, fileId: string, metadata: 
         subject: fileMetadata.subject,
         action: fileMetadata.action,
         shotType: fileMetadata.shotType,
-        date: formattedDate,
         shotNumber: fileMetadata.shotNumber,
         cameraId: fileMetadata.cameraId
       }
@@ -819,8 +817,12 @@ ipcMain.handle('file:update-structured-metadata', async (_event, fileId: string,
       ? `${structured.location}-${structured.subject}-${structured.action}-${structured.shotType}`
       : `${structured.location}-${structured.subject}-${structured.shotType}`;
 
-    // Append timestamp to title for uniqueness
-    const generatedTitle = await generateTitleWithTimestamp(baseTitle, fileMetadata);
+    // Append timestamp to title for uniqueness ONLY if shotNumber is not present
+    // When shotNumber exists, it provides uniqueness (e.g., lounge-media-plate-MID-#1)
+    // When shotNumber absent, timestamp provides uniqueness (e.g., kitchen-oven-WS-20251103100530)
+    const generatedTitle = fileMetadata.shotNumber !== undefined
+      ? baseTitle // No timestamp when shot number present
+      : await generateTitleWithTimestamp(baseTitle, fileMetadata); // Timestamp for legacy folders
 
     // Update mainName to match generated title
     fileMetadata.mainName = generatedTitle;
@@ -1068,7 +1070,6 @@ ipcMain.handle('batch:start', async (_event, fileIds: string[]) => {
               subject: fileMetadata.subject,
               action: fileMetadata.action,
               shotType: fileMetadata.shotType,
-              date: formattedDate,
               shotNumber: fileMetadata.shotNumber,
               cameraId: fileMetadata.cameraId
             }
@@ -1175,6 +1176,34 @@ ipcMain.handle('lexicon:save', async (_event, uiConfig: LexiconConfig) => {
   } catch (error) {
     console.error('Failed to save lexicon:', error); // Log full error internally
     throw sanitizeError(error); // Send sanitized error to renderer
+  }
+});
+
+// Folder completion operations (Phase C)
+ipcMain.handle('folder:set-completed', async (_event, completed: boolean) => {
+  try {
+    if (!currentFolderPath || !metadataStore) {
+      throw new Error('No folder selected');
+    }
+
+    const result = await metadataStore.setCompleted(completed);
+    return result;
+  } catch (error) {
+    console.error('[main.ts] folder:set-completed error:', error);
+    throw sanitizeError(error);
+  }
+});
+
+ipcMain.handle('folder:get-completed', async () => {
+  try {
+    if (!currentFolderPath || !metadataStore) {
+      throw new Error('No folder selected');
+    }
+
+    return metadataStore.getCompleted();
+  } catch (error) {
+    console.error('[main.ts] folder:get-completed error:', error);
+    throw sanitizeError(error);
   }
 });
 
