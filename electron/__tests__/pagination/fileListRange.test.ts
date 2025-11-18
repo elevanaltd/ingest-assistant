@@ -84,6 +84,7 @@ describe('file:list-range - Pagination', () => {
   describe('FileManager.scanFolderRange', () => {
     let fileManager: FileManager;
     let mockSecurityValidator: SecurityValidator;
+    let mockMetadataWriter: any;
     const testFolderPath = '/test/folder';
 
     const mockFs = fs as unknown as {
@@ -96,7 +97,13 @@ describe('file:list-range - Pagination', () => {
       mockSecurityValidator = new SecurityValidator();
       vi.spyOn(mockSecurityValidator, 'validateFilePath').mockResolvedValue('/test/folder');
       vi.spyOn(mockSecurityValidator, 'setAllowedBasePath').mockImplementation(() => {});
-      fileManager = new FileManager(mockSecurityValidator);
+
+      // Mock MetadataWriter to prevent real execFile calls (CI performance issue)
+      mockMetadataWriter = {
+        readCreationTimestamp: vi.fn().mockResolvedValue(undefined),
+      };
+
+      fileManager = new FileManager(mockSecurityValidator, mockMetadataWriter);
     });
 
     afterEach(() => {
