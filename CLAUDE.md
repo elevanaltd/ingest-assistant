@@ -6,7 +6,7 @@
 **Purpose:** AI-powered media file ingestion and metadata assistant
 **Type:** Electron desktop application
 **Platform:** Cross-platform (macOS darwin + Ubuntu linux)
-**Phase:** B4 (Production Ready + Security Hardened)
+**Phase:** B4 (Production Ready - v2.2.0 baseline) + D1 (CFEx Integration)
 
 ## EAV Ecosystem Integration
 
@@ -239,12 +239,26 @@ Premiere Pro Tape Name field is **immutable** after import. This becomes the per
 
 **Status:** Deferred 3-6 months (see GitHub Issue for Supabase guardrails)
 
+## Current Status & Version
+
+**Latest Release:** v2.2.0 (November 18, 2025)
+- **Status:** Production Ready - Sequential shot numbers baseline
+- **GitHub Release:** https://github.com/elevanaltd/ingest-assistant/releases/tag/v2.2.0
+- **Artifacts:** DMG (127M) + ZIP (123M) for macOS ARM64
+- **Rollback:** git checkout v2.2.0 OR download release artifacts
+
+**Active Development:** CFEx File Transfer Integration (Phase 1)
+- **Phase:** D1 (North Star) - 7 immutables extracted, commitment ceremony pending
+- **Scope:** Zero-click AI pre-analysis + EXIF validation + path intelligence
+- **Timeline:** D1 approval → D2 design → B2 implementation
+- **Deferred:** Reference Catalog (Issue #63) - after CFEx Phase 1 + guardrails (4-6 weeks)
+
 ## Tech Stack
 
 - **Runtime:** Electron (main + renderer processes)
 - **Frontend:** React 18, TypeScript
 - **Build:** Vite
-- **Testing:** Vitest (499 tests across 29 test files)
+- **Testing:** Vitest (543 tests across 35 test files)
 - **Process:** Node.js
 - **AI Integration:** OpenRouter, Anthropic Claude, OpenAI APIs
 - **Metadata:** exiftool for XMP/EXIF writing
@@ -302,9 +316,9 @@ RECOMMENDED: Skill(command:"test-ci-pipeline")
 ## Quality Gates (MANDATORY - All Must Pass)
 
 ```bash
-✓ Lint:      npm run lint      # 0 errors, 0 warnings
+✓ Lint:      npm run lint      # 0 errors, 45 warnings (acceptable)
 ✓ Typecheck: npm run typecheck # 0 errors
-✓ Tests:     npm test          # All passing (currently 504/504)
+✓ Tests:     npm test          # All passing (currently 543/543)
 ```
 
 **⚠️ CRITICAL: RUN LOCALLY BEFORE EVERY COMMIT ⚠️**

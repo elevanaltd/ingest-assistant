@@ -1,11 +1,36 @@
 # Ingest Assistant - Shared Checklist
 
-## Current Status (2025-11-16 Updated)
+## Current Status (2025-11-18 Updated)
 
-### 🔄 Cross-Ecosystem Integration (Issue #63) - Dual-Key Governance Complete
+### ✅ v2.2.0 Release Complete (Nov 18, 2025)
+
+**Version Checkpoint Established:**
+- ✅ **Git Tag:** v2.2.0 (commit d7f7f9d - package.json version bump)
+- ✅ **GitHub Release:** https://github.com/elevanaltd/ingest-assistant/releases/tag/v2.2.0
+- ✅ **DMG Artifacts:** Ingest Assistant-2.2.0-arm64.dmg (127M)
+- ✅ **Version Coherence:** package.json, git tag, DMG filename all aligned at 2.2.0
+- ✅ **Rollback Capability:** Validated (git checkout v2.2.0 OR download DMG)
+- ✅ **PR #76:** Version bump merged to main after CI GREEN
+
+### 🔄 CFEx File Transfer Integration (Phase 1 - IN PROGRESS)
+
+**D1 North Star - COMPLETE:**
+- ✅ **Scope Decision:** Project-level consolidation (single North Star for all features)
+- ✅ **Immutables Extracted:** 7 project-wide immutables (applies to CFEx + Reference Catalog + Core IA)
+- ✅ **edge-optimizer Analysis:** Value validated (parallel execution, EXIF validation, path intelligence)
+- ✅ **Document Created:** `.coord/workflow-docs/000-INGEST_ASSISTANT-D1-NORTH-STAR.md`
+- [ ] **Commitment Ceremony:** User approval pending
+
+**Next Steps:**
+- [ ] D1 Approval: User commits to 7 immutables
+- [ ] D2 Design: CFEx architecture (design-architect)
+- [ ] D3 Blueprint: Technical specifications
+- [ ] B0 Validation: technical-architect + security-specialist consultation
+
+### 🔄 Cross-Ecosystem Integration (Issue #63) - Dual-Key Governance Complete (DEFERRED)
 
 **All Quality Gates GREEN:**
-- ✅ **Lint:** 0 errors, 35 pre-existing warnings (React hooks warnings RESOLVED)
+- ✅ **Lint:** 0 errors, 45 warnings (acceptable threshold)
 - ✅ **Typecheck:** 0 errors
 - ✅ **Build:** Clean compilation, no errors
 - ✅ **Tests:** 543/543 passing (35 test files, ~19s execution)
@@ -264,11 +289,11 @@
 
 ## Notes
 
-- **Branch:** `feat/dependency-roadmap` (7 commits ahead: Sequential shot number feature COMPLETE)
-- **Version:** v2.2.0 (Feature: Sequential shot numbers with COMPLETE/REOPEN workflow)
+- **Branch:** `main` (up to date with origin)
+- **Version:** v2.2.0 (Released Nov 18, 2025)
 - **Last Major Work:** Phase C UI implementation + critical bug fixes
 - **Working Tree:** Clean (ready to push)
-- **Test Suite:** 575 tests across 38 test files (all passing, +32 tests from baseline)
+- **Test Suite:** 543 tests across 35 test files (all passing)
 - **Performance:** ~18s test suite execution, 60fps UI with 1000+ files, 20s folder loading with EXIF sorting
 - **Security Status:** Production-ready with command injection + media server auth protection
 
@@ -284,9 +309,9 @@
   - Quality: 575/575 tests ✅, 0 typecheck errors ✅, 0 lint errors ✅
 - Implementation-lead: Systematic TDD + build-execution + code-review-specialist validation
 
-**Ready for:** Branch merge → Production deployment
+**Ready for:** CFEx Phase 1 implementation (after D1 approval + D2 design)
 
 ---
 
 ## Last Updated
-2025-11-14 (CEP Panel date field integration complete - implementation-lead)
+2025-11-18 (v2.2.0 released + CFEx Phase 1 D1 North Star created - holistic-orchestrator)

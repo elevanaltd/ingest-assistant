@@ -21,7 +21,7 @@
 - **Runtime:** Electron (main + renderer processes)
 - **Frontend:** React 18, TypeScript
 - **Build:** Vite
-- **Testing:** Vitest (575 tests across 38 test files)
+- **Testing:** Vitest (543 tests across 35 test files)
 - **Process:** Node.js
 - **AI Integration:** OpenRouter, Anthropic Claude, OpenAI APIs
 - **Database:** Supabase (shared with EAV Monorepo - zbxvjyrbkycbfhwmmnmy)
@@ -142,6 +142,11 @@
   - ✅ ESLint v9 migration with flat config (Issue #45)
   - ✅ Test script fixed to exit cleanly (Nov 11)
 - **Architecture Status:** Phase 0 prerequisites COMPLETE, Tier 2-3 features IMPLEMENTED, CEP Panel integration COMPLETE
+- **Latest Release:** v2.2.0 (Nov 18, 2025) - Sequential shot numbers baseline
+  - Version checkpoint established with DMG artifacts
+  - Production deployment ready
+  - Rollback capability validated
+  - GitHub release: https://github.com/elevanaltd/ingest-assistant/releases/tag/v2.2.0
 
 ## Quality Gates Status
 
@@ -156,7 +161,7 @@
 ### ✅ Tests
 - **Status:** PASS - ALL TESTS PASSING (543 tests, 35 test files)
 - **Command:** `npm test` (now uses `vitest run` for single execution)
-- **Validated:** 2025-11-15 (PR #68 useEffect separation + all regressions resolved)
+- **Validated:** 2025-11-18 (v2.2.0 release - all quality gates GREEN)
 - **Performance:** ~19s test suite execution (includes rate limiter timing tests)
 - **Recent Additions:**
   - PR #68 useEffect separation: All 7 previously failing tests now GREEN
@@ -237,9 +242,13 @@
 **Security Test Coverage:** +23 security tests (command injection + media server auth)
 
 ## Current Focus
-CROSS_ECOSYSTEM::Issue_#63_schema_coordination→dual_key_governance_complete→guardrails_required_4-6_weeks
+CFEX_INTEGRATION::Phase_1_minimal→D1_North_Star_in_progress→7_immutables_extracted→commitment_ceremony_pending
+CROSS_ECOSYSTEM::Issue_#63_deferred→guardrails_required_4-6_weeks→after_CFEx_Phase_1_complete
 
 ## Key Decisions
+- [2025-11-18] VERSION→v2.2.0_checkpoint[vs no_baseline]→git_tag+DMG_release+version_coherence⊗rollback_capability_before_CFEx
+- [2025-11-18] NORTH_STAR→project_level_consolidation[vs feature_specific]→single_canonical_North_Star⊗all_features_align_7_immutables
+- [2025-11-18] CFEX→Phase_1_minimal[vs external_app]→zero_click_AI+EXIF_validation+path_intelligence⊗TapeName_removed(CEP_uses_proxy)
 - [2025-11-16] SCHEMA→cross_ecosystem_integration[vs isolated_DB,event_sync]→shared_Supabase+FK⊗technical-architect_GO+principal-engineer_CONDITIONAL_GO(7/10)
 - [2025-11-16] CONTRACT→EAV_CONTRACT:v1→public.shots_guarantees+notify_shot_change⊗quarterly_FK_audit
 - [2025-11-16] RLS→SECURITY_DEFINER_view[vs direct_access,app_layer]→honors_EAV_RLS+IA_anon_read⊗governance_maintained
@@ -247,6 +256,18 @@ CROSS_ECOSYSTEM::Issue_#63_schema_coordination→dual_key_governance_complete→
 - [2025-11-15] ARCH→Reference_Lookup[vs separate_DB,single_schema]→shared_Supabase+schema_isolation⊗I7_domain_independence
 
 ## Active Work
+
+### CFEx File Transfer Integration (Phase 1 - ACTIVE)
+- [x] v2.2.0 baseline established (rollback capability)
+- [x] edge-optimizer analysis: Value validated (parallel execution, EXIF validation, path intelligence)
+- [x] D1 North Star: Project-level consolidation (7 immutables extracted)
+- [ ] D1 Commitment Ceremony: User approval pending
+- [ ] D2 Design: CFEx architecture (design-architect)
+- [ ] D3 Blueprint: Technical specifications
+- [ ] B0 Validation: technical-architect + security-specialist consultation
+- [ ] B2 Implementation: TDD (implementation-lead)
+
+### Cross-Ecosystem Integration (Issue #63 - DEFERRED)
 - [x] Cross-ecosystem coordination protocol documented (both PROJECT-CONTEXT.md files)
 - [x] Dual-key governance: technical-architect GO + principal-engineer CONDITIONAL GO (7/10)
 - [x] GitHub Issue #122 created: https://github.com/elevanaltd/eav-monorepo/issues/122
@@ -255,7 +276,7 @@ CROSS_ECOSYSTEM::Issue_#63_schema_coordination→dual_key_governance_complete→
 - [x] Validation script: scripts/check_cross_schema.sh (executable)
 - [ ] **MANDATORY Guardrails (4-6 weeks):** Contract spec, compatibility tests, SLO observability, deletion workflow
 - [ ] Local Supabase validation (EAV → IA migration sequencing)
-- [ ] Issue #63 implementation (after guardrails + validation)
+- [ ] Issue #63 implementation (after CFEx Phase 1 + guardrails complete)
 
 ## Failed Approaches
 ❌ Isolated_schema_without_coordination→assumed_independence→prophetic_assumption_cascade_pattern_detected(85%)→cross-ecosystem_protocol_required
@@ -273,5 +294,7 @@ CROSS_ECOSYSTEM::Issue_#63_schema_coordination→dual_key_governance_complete→
 Guardrails→formalize_contract_spec+compatibility_tests+SLO_alerts+deletion_workflow→principal-engineer_re-validation
 
 ## Last Updated
-2025-11-15 (PR #68 TDD fix complete: useEffect separation + memoization - all 543 tests GREEN)
-**Session Documentation:** `.coord/sessions/2025-11-15-PR68-TDD-REMEDIATION.md`
+2025-11-18 (v2.2.0 released + CFEx Phase 1 D1 North Star created)
+**Latest Release:** v2.2.0 - Sequential shot numbers baseline (production ready)
+**Active Work:** CFEx Integration Phase 1 (D1 in progress, 7 immutables extracted)
+**Session Documentation:** `.coord/sessions/2025-11-18-V2.2.0-RELEASE-CFEX-D1.md` (pending)
