@@ -188,10 +188,16 @@ Premiere Pro Tape Name field is **immutable** after import. This becomes the per
    - **Reopen:** Click "REOPEN" if corrections needed (unlocks folder)
 
 **Output Files:**
-- `.ingest-metadata.json` (in same folder as media files)
-- XMP metadata embedded in each file (legacy, will be deprecated in favor of JSON)
+- `.ingest-metadata.json` (in same folder as media files) - **Single source of truth**
+  - Contains all metadata: location, subject, action, shotType, shotNumber, keywords
+  - Schema 2.0 format
+  - `_completed: true/false` flag controls folder lock status
+  - **Files are NOT modified** - JSON is the authoritative metadata store
 
-**⚠️ Important:** Do NOT re-catalog a folder after marking COMPLETE - shot numbers will change if files re-sorted chronologically!
+**⚠️ Important:**
+- Do NOT re-catalog a folder after marking COMPLETE - shot numbers will change if files re-sorted chronologically
+- Metadata corrections are made in JSON, not in file metadata
+- Files retain only TapeName metadata (immutable anchor for CEP Panel matching)
 
 ---
 
@@ -376,12 +382,27 @@ Renderer Process (src/App.tsx)
 - Hardware-accelerated H.264 transcoding
 - Sequential frame analysis (prevents API rate limit failures)
 
-### XMP Metadata Strategy (Issue #54)
-- **XMP-xmpDma:shotName** = mainName (maps to PP Shot field)
-- **XMP-xmpDma:LogComment** = Structured key=value pairs for CEP panel
-  - Format: `location=X, subject=Y, action=Z, shotType=W`
-  - Enables CEP Panel parsing of structured components
-- **XMP-dc:Description** = Keywords (comma-separated)
+### Metadata Storage Strategy (Issue #54)
+
+**IA Metadata Architecture:**
+- **Single Source of Truth:** `.ingest-metadata.json` file (Schema 2.0)
+  - Stores all metadata: location, subject, action, shotType, shotNumber, keywords, processedByAI, audit trail
+  - Can be edited/corrected without touching media files
+  - Portable and version-controllable
+  - CEP Panel reads JSON, not file metadata
+
+**File Metadata (Minimal):**
+- **XMP-xmpDM:TapeName** = Original filename (immutable anchor)
+  - Written during Step 1 (CFex transfer)
+  - Used by CEP Panel to match JSON entries to PP clips
+  - Never modified after initial transfer
+
+**Why This Approach:**
+- JSON is easily correctable (no file I/O required)
+- TapeName is immutable (safe anchor for cross-references)
+- Avoids duplicating metadata in both files and JSON
+- Simplifies QC workflow (edit JSON only)
+- Prevents metadata divergence (file vs JSON conflicts)
 
 ## Recent Critical Fixes
 
@@ -390,10 +411,11 @@ Renderer Process (src/App.tsx)
 - **Fix:** Sequential frame processing respects rate limits
 - **Impact:** 100% reliable batch video processing (+5s per video acceptable)
 
-### LogComment Writing (857ae1a)
-- **Problem:** XMP-xmpDma:LogComment not written (missing structured parameter)
-- **Fix:** All 3 IPC handlers now pass structured fields to metadataWriter
-- **Impact:** CEP Panel can parse structured metadata from embedded XMP
+### JSON-Only Metadata Storage
+- **Architecture Decision:** All metadata except TapeName stored in `.ingest-metadata.json` only
+- **Rationale:** Metadata corrections should not require file I/O; JSON is single source of truth
+- **Impact:** Simplified QC workflow, prevents file/JSON metadata divergence, easier to fix incorrect AI results
+- **Implication:** CEP Panel reads JSON, not embedded XMP LogComment
 
 ### Reprocess Button (1b6a3c1)
 - **Problem:** "Reprocess First 100 Files" skipped already-processed files
