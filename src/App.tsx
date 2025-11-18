@@ -725,14 +725,14 @@ function App() {
                 }}>
                   {location && subject && shotType
                     ? (
-                      currentFile.mainName && currentFile.mainName.match(/-\d{12}$/)
-                        ? <span>{currentFile.mainName}</span>
-                        : (
-                          <>
-                            <span>{`${location}-${subject}-${currentFile.fileType === 'video' && action ? `${action}-` : ''}${shotType}`}</span>
-                            <span style={{ color: '#999', fontWeight: 'normal' }}>-[timestamp]</span>
-                          </>
-                        )
+                      <>
+                        <span>{`${location}-${subject}-${currentFile.fileType === 'video' && action ? `${action}-` : ''}${shotType}`}</span>
+                        {currentFile.shotNumber !== undefined ? (
+                          <span style={{ color: '#0066cc', fontWeight: 'bold' }}>-#{currentFile.shotNumber}</span>
+                        ) : (
+                          <span style={{ color: '#999', fontWeight: 'normal' }}>-[timestamp]</span>
+                        )}
+                      </>
                     )
                     : <span style={{ color: '#999', fontFamily: 'sans-serif' }}>Fill fields above...</span>
                   }
@@ -805,7 +805,7 @@ function App() {
                 Previous
               </button>
 
-              {/* Center: Status messages */}
+              {/* Center: Filename and status messages */}
               <div style={{
                 flex: '1 1 auto',
                 display: 'flex',
@@ -814,6 +814,19 @@ function App() {
                 justifyContent: 'center',
                 minWidth: 0
               }}>
+                {/* Current filename */}
+                <div style={{
+                  fontSize: '13px',
+                  color: '#333',
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis'
+                }}>
+                  {currentFile.currentFilename}
+                  {currentFile.processedByAI && <span style={{ color: '#666', marginLeft: '4px' }}>(AI)</span>}
+                </div>
+
+                {/* Status messages */}
                 {statusMessage && (
                   <div className={`status-message ${statusMessage.startsWith('✗') ? 'error' : 'success'}`} style={{ margin: 0 }}>
                     {statusMessage}
@@ -849,76 +862,6 @@ function App() {
                 Next
               </button>
             </div>
-
-            <div className="file-info">
-              <small>
-                Current file: {currentFile.currentFilename}
-                {currentFile.processedByAI && ' (AI Processed)'}
-              </small>
-            </div>
-
-            {/* Folder completion controls */}
-            <div style={{
-              marginTop: '12px',
-              padding: '12px',
-              borderTop: '1px solid #ddd',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              gap: '12px'
-            }}>
-              <div style={{ flex: 1 }}>
-                {isFolderCompleted ? (
-                  <span style={{
-                    fontSize: '13px',
-                    color: '#666',
-                    fontWeight: 500
-                  }}>
-                    🔒 Folder is COMPLETED (locked for editing)
-                  </span>
-                ) : (
-                  <span style={{
-                    fontSize: '13px',
-                    color: '#666'
-                  }}>
-                    Folder is open for editing
-                  </span>
-                )}
-              </div>
-              <div>
-                {isFolderCompleted ? (
-                  <button
-                    onClick={handleReopenFolder}
-                    className="btn"
-                    style={{
-                      fontSize: '13px',
-                      padding: '6px 12px',
-                      backgroundColor: '#28a745',
-                      color: 'white',
-                      border: 'none'
-                    }}
-                    title="Unlock folder for editing"
-                  >
-                    REOPEN for Editing
-                  </button>
-                ) : (
-                  <button
-                    onClick={handleCompleteFolder}
-                    className="btn"
-                    style={{
-                      fontSize: '13px',
-                      padding: '6px 12px',
-                      backgroundColor: '#007bff',
-                      color: 'white',
-                      border: 'none'
-                    }}
-                    title="Mark folder as complete and lock for editing"
-                  >
-                    COMPLETE (Lock Folder)
-                  </button>
-                )}
-              </div>
-            </div>
           </div>
         </div>
         )}
@@ -947,6 +890,61 @@ function App() {
               selectedFileIds={selectedFileIds}
               onBatchComplete={handleBatchComplete}
             />
+
+            {/* Folder completion controls */}
+            <div style={{
+              marginTop: '16px',
+              padding: '12px',
+              borderTop: '1px solid #ddd',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '8px'
+            }}>
+              <div style={{ fontSize: '13px', color: '#666', textAlign: 'center' }}>
+                {isFolderCompleted ? (
+                  <span style={{ fontWeight: 500 }}>
+                    🔒 Folder COMPLETED (locked)
+                  </span>
+                ) : (
+                  <span>Folder open for editing</span>
+                )}
+              </div>
+              <div>
+                {isFolderCompleted ? (
+                  <button
+                    onClick={handleReopenFolder}
+                    className="btn"
+                    style={{
+                      width: '100%',
+                      fontSize: '13px',
+                      padding: '8px 12px',
+                      backgroundColor: '#28a745',
+                      color: 'white',
+                      border: 'none'
+                    }}
+                    title="Unlock folder for editing"
+                  >
+                    REOPEN for Editing
+                  </button>
+                ) : (
+                  <button
+                    onClick={handleCompleteFolder}
+                    className="btn"
+                    style={{
+                      width: '100%',
+                      fontSize: '13px',
+                      padding: '8px 12px',
+                      backgroundColor: '#007bff',
+                      color: 'white',
+                      border: 'none'
+                    }}
+                    title="Mark folder as complete and lock for editing"
+                  >
+                    COMPLETE (Lock Folder)
+                  </button>
+                )}
+              </div>
+            </div>
           </div>
         )}
       </div>
