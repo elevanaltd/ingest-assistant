@@ -38,6 +38,7 @@ function App() {
   const [showCommandPalette, setShowCommandPalette] = useState(false);
   const [lexiconConfig, setLexiconConfig] = useState<LexiconConfig | undefined>();
   const [isFolderCompleted, setIsFolderCompleted] = useState(false);
+  const [isFolderLoading, setIsFolderLoading] = useState(false);
 
   // Force re-render on window resize to ensure UI layout recalculates
   // Fixes issue where batch processing causes UI to stop responding to window resize
@@ -212,21 +213,26 @@ function App() {
     if (!window.electronAPI) return;
     const path = await window.electronAPI.selectFolder();
     if (path) {
-      setFolderPath(path);
-      const loadedFiles = await window.electronAPI.loadFiles();
-      setFiles(loadedFiles);
-      setCurrentFileIndex(0);
-      // Clear selection when switching folders
-      setSelectedFileIds(new Set());
-
-      // Load folder completion status
+      setIsFolderLoading(true);
       try {
-        const completed = await window.electronAPI.getFolderCompleted();
-        setIsFolderCompleted(completed);
-      } catch (error) {
-        console.error('Failed to load folder completion status:', error);
-        // Default to false (editable) if there's an error
-        setIsFolderCompleted(false);
+        setFolderPath(path);
+        const loadedFiles = await window.electronAPI.loadFiles();
+        setFiles(loadedFiles);
+        setCurrentFileIndex(0);
+        // Clear selection when switching folders
+        setSelectedFileIds(new Set());
+
+        // Load folder completion status
+        try {
+          const completed = await window.electronAPI.getFolderCompleted();
+          setIsFolderCompleted(completed);
+        } catch (error) {
+          console.error('Failed to load folder completion status:', error);
+          // Default to false (editable) if there's an error
+          setIsFolderCompleted(false);
+        }
+      } finally {
+        setIsFolderLoading(false);
       }
     }
   };
@@ -488,6 +494,55 @@ function App() {
 
   return (
     <div className="app">
+      {/* Folder loading overlay */}
+      {isFolderLoading && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.8)',
+          backdropFilter: 'blur(8px)',
+          WebkitBackdropFilter: 'blur(8px)',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '20px',
+          zIndex: 9999
+        }}>
+          {/* Spinner */}
+          <div style={{
+            border: '6px solid rgba(255, 255, 255, 0.3)',
+            borderTop: '6px solid #fff',
+            borderRadius: '50%',
+            width: '60px',
+            height: '60px',
+            animation: 'spin 1s linear infinite'
+          }} />
+
+          {/* Loading message */}
+          <div style={{
+            color: '#fff',
+            fontSize: '18px',
+            fontWeight: 600,
+            textShadow: '0 2px 4px rgba(0,0,0,0.5)'
+          }}>
+            Loading folder and sorting files...
+          </div>
+
+          <div style={{
+            color: '#ccc',
+            fontSize: '14px',
+            textAlign: 'center',
+            maxWidth: '400px'
+          }}>
+            Reading EXIF timestamps and assigning sequential shot numbers
+          </div>
+        </div>
+      )}
+
       <header className="header">
         <h1>Ingest Assistant</h1>
         <div className="header-buttons">
