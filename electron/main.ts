@@ -943,8 +943,12 @@ ipcMain.handle('ai:batch-process', async (_event, fileIds: string[]) => {
 
       // Auto-update if confidence is high
       if (result.confidence > 0.7) {
-        // Append timestamp to AI-generated name for uniqueness
-        fileMetadata.mainName = await generateTitleWithTimestamp(result.mainName, fileMetadata);
+        // Append timestamp ONLY if shotNumber is not present (same logic as file:update-structured-metadata)
+        // When shotNumber exists, it provides uniqueness (e.g., kitchen-fridge-MID-#1)
+        // When shotNumber absent, timestamp provides uniqueness (e.g., kitchen-oven-WS-20251103100530)
+        fileMetadata.mainName = fileMetadata.shotNumber !== undefined
+          ? result.mainName // No timestamp when shot number present
+          : await generateTitleWithTimestamp(result.mainName, fileMetadata); // Timestamp for legacy folders
         fileMetadata.keywords = result.keywords;
         fileMetadata.location = result.location;
         fileMetadata.subject = result.subject;
@@ -1044,8 +1048,12 @@ ipcMain.handle('batch:start', async (_event, fileIds: string[]) => {
 
         // Auto-update if confidence is high
         if (result.confidence > 0.7) {
-          // Append timestamp to AI-generated name for uniqueness
-          fileMetadata.mainName = await generateTitleWithTimestamp(result.mainName, fileMetadata);
+          // Append timestamp ONLY if shotNumber is not present (same logic as file:update-structured-metadata)
+          // When shotNumber exists, it provides uniqueness (e.g., kitchen-fridge-MID-#1)
+          // When shotNumber absent, timestamp provides uniqueness (e.g., kitchen-oven-WS-20251103100530)
+          fileMetadata.mainName = fileMetadata.shotNumber !== undefined
+            ? result.mainName // No timestamp when shot number present
+            : await generateTitleWithTimestamp(result.mainName, fileMetadata); // Timestamp for legacy folders
           fileMetadata.keywords = result.keywords;
           fileMetadata.location = result.location;
           fileMetadata.subject = result.subject;
