@@ -3,9 +3,9 @@
 ## Project Identity
 
 **Name:** Ingest Assistant
-**Purpose:** AI-powered media file ingestion and metadata assistant for macOS
+**Purpose:** AI-powered media file ingestion and metadata assistant
 **Type:** Electron desktop application
-**Platform:** macOS (darwin)
+**Platform:** Cross-platform (macOS darwin + Ubuntu linux)
 **Phase:** B4 (Production Ready + Security Hardened)
 
 ## EAV Ecosystem Integration
@@ -112,6 +112,126 @@ WHERE r.corrected_subject = 'oven-steam-tray';
 **Related Documentation:**
 - EAV Context: `/Volumes/HestAI-Projects/eav-monorepo/.coord/PROJECT-CONTEXT.md`
 - Production Pipeline: `/Volumes/HestAI-Projects/eav-monorepo/.coord/workflow-docs/002-EAV-PRODUCTION-PIPELINE.md`
+
+## Production Workflow
+
+**Overview:** Ingest Assistant handles Steps 1-2 (CFex file transfer + AI cataloging). Steps 3-5 (Premiere Pro import, batch processing, QC) handled by CEP Panel.
+
+### Step 1: CFex File Transfer ⚠️ NEW FEATURE (Future Implementation)
+
+**Purpose:** Extract media files from CFex card and embed Tape Name metadata
+
+**Current State:** Uses external app (`/Applications/%-SystemApps/CFEx File Transfer.app`)
+**Future State:** Built into Ingest Assistant for integrated workflow
+
+**Process:**
+1. **Select Destination Folders:**
+   - Images: Navigate to project image folder (e.g., `/LucidLink/EAV014/images/shoot1-20251124/`)
+   - Raw Video: Navigate to raw video folder (e.g., `/Ubuntu/EAV014/videos-raw/shoot1-20251124/`)
+
+2. **Press "Process" Button:**
+   - Copies all files from CFex card to selected folders
+   - Runs integrity checks (verify file count, sizes match, no corruption)
+   - Writes Tape Name metadata to each file: `-XMP-xmpDM:TapeName={original-filename}`
+     - Example: `EA001621.MOV` → TapeName=EA001621
+     - Example: `EA001622.JPG` → TapeName=EA001622
+
+3. **Validation:**
+   - Confirms all files transferred successfully
+   - Reports any errors (missing files, checksum failures)
+   - Green checkmark on completion
+
+**Why Tape Name Matters:**
+Premiere Pro Tape Name field is **immutable** after import. This becomes the permanent ID for metadata lookup in CEP Panel, even if PP Clip Name changes.
+
+**Status:** Not implemented yet - uses external transfer app currently
+
+---
+
+### Step 2: AI Cataloging (Current Production Feature)
+
+**Purpose:** Analyze media files with AI and generate JSON sidecar metadata
+
+**When:** After files transferred to folders (can be immediate or delayed)
+
+**Process:**
+1. **Open Folder:** Navigate to folder containing transferred files (raw OR proxy)
+   - **Images (macOS):** `/LucidLink/EAV014/images/shoot1-20251124/`
+   - **Raw Video (Ubuntu):** `/Ubuntu/EAV014/videos-raw/shoot1-20251124/`
+   - **Proxies (macOS):** `/LucidLink/EAV014/videos-proxy/shoot1-20251124/` (after proxy generation)
+   - **Note:** App runs on both macOS and Ubuntu - folder paths adapt to platform
+
+2. **Batch AI Processing:**
+   - Select all files (or use "Reprocess First 100 Files" button)
+   - Click "AI Assist" → Batch processing begins
+   - AI analyzes each file and suggests: location, subject, action, shotType
+   - Metadata auto-populated if confidence > 0.7
+
+3. **Sequential Shot Numbers:**
+   - Files sorted **chronologically by EXIF DateTimeOriginal** (camera capture time)
+   - Shot numbers assigned sequentially: #1, #2, #3... #N
+   - Shot numbers **immutable** after folder marked COMPLETE
+
+4. **JSON Sidecar Creation:**
+   - IA writes `.ingest-metadata.json` to same folder as media files
+   - Format: Schema 2.0 (see CEP Panel North Star for full spec)
+   - Contains all metadata: location, subject, action, shotType, shotNumber, keywords
+   - Lock mechanism: `lockedFields: []` (unlocked for QC edits)
+
+5. **Mark Folder COMPLETE:**
+   - Click "COMPLETE" button in Batch Operations panel
+   - **Effect:**
+     - All metadata fields become read-only
+     - Save and AI Assist buttons disabled
+     - Prevents chronological re-sorting (shot numbers frozen)
+     - JSON `_completed: true` flag set
+   - **Reopen:** Click "REOPEN" if corrections needed (unlocks folder)
+
+**Output Files:**
+- `.ingest-metadata.json` (in same folder as media files)
+- XMP metadata embedded in each file (legacy, will be deprecated in favor of JSON)
+
+**⚠️ Important:** Do NOT re-catalog a folder after marking COMPLETE - shot numbers will change if files re-sorted chronologically!
+
+---
+
+### Steps 3-5: Premiere Pro & QC Workflow (CEP Panel)
+
+**Brief Overview (IA perspective):**
+
+**Step 3: Import to Premiere Pro**
+- Import raw footage + proxies to Premiere Pro
+- PP Tape Name = original filename (EA001621)
+- Proxy attachment (raw linked to proxy)
+
+**Step 4: Batch Clip Name Update (CEP Panel)**
+- CEP Panel reads `.ingest-metadata.json`
+- Updates PP Clip Name to shotName format: `{location}-{subject}-{action}-{shotType}-#{shotNumber}`
+- Example: `kitchen-oven-cleaning-ESTAB-#25`
+
+**Step 5: QC Review (CEP Panel)**
+- QC person reviews AI-generated metadata
+- Corrects any errors (wrong location, subject, etc.)
+- CEP Panel updates `.ingest-metadata.json` with corrections
+- Writes back to JSON (not XMP - JSON is source of truth)
+
+**For detailed CEP Panel workflow, see:** `/Volumes/HestAI-Projects/eav-cep-assist/CLAUDE.md`
+
+---
+
+### Future Enhancement: Supabase Shot List Reference (3-6 months)
+
+**Current State:** AI analyzes images in isolation (no context from shoot planning)
+
+**Future State:** AI references Supabase `public.shots` table during analysis
+- Shoot planning creates expected shot list (kitchen-oven-cleaning-ESTAB)
+- IA pulls shot list via Supabase during batch processing
+- AI matches image content to expected shots
+- Improves accuracy (AI knows "this should be oven cleaning ESTAB" vs. guessing)
+
+**Implementation:** Issue #63 Reference Catalog + Supabase shot list integration
+
+**Status:** Deferred 3-6 months (see GitHub Issue for Supabase guardrails)
 
 ## Tech Stack
 
@@ -233,7 +353,7 @@ Renderer Process (src/App.tsx)
    - Cross-origin localhost probing prevented
 
 3. **Path Traversal Protection**
-   - macOS symlink resolution
+   - Platform-agnostic symlink resolution (macOS + Ubuntu)
    - Allowed path enforcement
    - Batch IPC validation with Zod schemas
 
@@ -385,7 +505,7 @@ src/
 - **Batch Processing:** Limited to 100 files per batch
 - **Rate Limiting:** Configured per AI provider
 - **Video Frame Analysis:** 5 frames per video (sequential)
-- **Platform:** macOS only (uses macOS-specific symlink resolution)
+- **Platform:** Cross-platform (macOS darwin + Ubuntu linux)
 
 ## Security Considerations
 
