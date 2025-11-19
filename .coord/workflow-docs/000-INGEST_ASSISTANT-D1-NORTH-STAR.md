@@ -1,347 +1,378 @@
----
-adr_number: 063
-title: Reference Image Lookup System
-status: APPROVED
-decision_date: 2025-11-15
-phase: D1
-applies_to: Ingest Assistant
-schema_version: 1.0
-supersedes: null
-superseded_by: null
----
+# Ingest Assistant - North Star (OCTAVE)
 
-# Reference Image Lookup System - North Star
-
-**Project:** Ingest Assistant (Step 6 of 10 in EAV Production Pipeline)
-**Feature:** Reference Image Lookup System (#63)
-**Phase:** D1 (North Star Definition)
-**Last Updated:** 2025-11-15
-**Architect:** holistic-orchestrator
+**AUTHORITY:** D1 Phase Deliverable | Project-Level Immutables
+**CREATED:** 2025-11-18 | **APPROVAL:** 🟡 Pending
+**GOVERNANCE:** ALL features (Core IA v2.2.0, CFEx Integration, Reference Catalog #63)
+**SUPERSEDES:** Feature-specific North Star (Issue #63 only)
 
 ---
 
-## Executive Summary
+## MISSION
 
-**The Essential Problem:**
-AI agents analyzing media files lack learned context from past human corrections. When cataloging `kitchen-hob-cover-CU`, AI doesn't know that humans later corrected it to `kitchen-oven-steam-tray-CU`. Future analysis of similar images repeats the same mistakes because there's no reference memory.
+Transform raw media files into cataloged assets through AI-augmented metadata creation, maintaining temporal integrity + human oversight while feeding structured metadata to downstream production tools.
 
-**The System-Agnostic Solution:**
-Enable AI agents to search a catalog of human-corrected reference images, find visually similar examples, and learn from authoritative metadata. When analyzing a new oven photo, agents can query "similar images" and discover that past human judgment preferred `oven-steam-tray` over `hob-cover` for this visual pattern.
-
-**The Emergent Value:**
-Initial AI cataloging accuracy improves over time through learned references (70% → 85%+ confidence). Humans correct less, AI learns more, system quality compounds. Reference catalog becomes a production asset that accumulates institutional knowledge about visual classification.
+**POSITION:** Step 6 of 10 in EAV production pipeline (field capture → post-production gateway)
 
 ---
 
-## Layer 1: Immutables (7±2 Unchangeable Requirements)
+## IMMUTABLES (7 Total)
 
-These requirements are **technology-proof** - true regardless of implementation technology, AI provider, or database choice.
+### I1: Chronological Temporal Ordering
 
-### I1: VISUAL SIMILARITY SEARCH
-**What:** Agents must find visually similar reference images without exact filename matches
-**Why:** Same subject appears in different files (`EA001668.JPG` vs `EA002345.JPG`)
-**Test:** Agent analyzes oven photo → System returns 5 similar oven reference images
-**Immutable:** Visual similarity, not filename similarity
+**PRINCIPLE:** Media assets ordered by capture timestamp → immutable temporal sequence reflects original recording chronology
 
-### I2: HUMAN-CORRECTED METADATA AUTHORITY
-**What:** Reference catalog stores human-corrected metadata as ground truth, not AI guesses
-**Why:** Humans corrected `hob-cover` → `oven-steam-tray` after reviewing actual context
-**Test:** Reference catalog entry shows both initial AI analysis AND final human correction
-**Immutable:** Human judgment is authoritative source for reference metadata
+**WHY IMMUTABLE:**
+Sequential shot numbers (#1, #2, #3...) derive meaning from chronological ordering. If temporal sequence changes → shot numbers become arbitrary → downstream references break → production continuity fails. **Project restarts if violated.**
 
-### I3: CROSS-PROJECT INTEGRATION
-**What:** Reference catalog integrates with EAV production system's authoritative shot database
-**Why:** Shoot planning in EAV creates authoritative shot list (kitchen-oven-steam-tray-CU exists in shoots table)
-**Test:** Reference lookup can query EAV shoots table for dropdown of available shots
-**Immutable:** Single source of truth for shot metadata (public.shots in EAV Supabase)
+**VALIDATION::**
+- Files sortable by capture timestamp before shot number assignment
+- Warn if timestamps missing/corrupt
+- Fallback timestamp mechanism (EXIF → filesystem → manual)
+- TEST: "Two sessions order same files differently?" → workflow breaks = failure
 
-### I4: AGENT CONTEXT ENHANCEMENT
-**What:** Reference results provide context to AI agents, not replacement decisions
-**Why:** Agent sees "reference suggests oven-steam-tray" but still analyzes current image
-**Test:** Agent receives reference context → Makes informed suggestion → Human validates
-**Immutable:** References augment agent intelligence, don't override analysis
-
-### I5: INCREMENTAL LEARNING
-**What:** Reference catalog grows as humans correct more images over time
-**Why:** Zero references at start → 100 references after first project → 1000 after ten projects
-**Test:** System works with 0 references (no suggestions) and 10,000 references (rich context)
-**Immutable:** Value compounds with usage (production asset accumulation)
-
-### I6: PRODUCTION-INDEPENDENT OPERATION
-**What:** IA can catalog images without requiring EAV system to be running
-**Why:** IA is standalone desktop app, EAV is web-based production system
-**Test:** IA analyzes images with reference lookup even when EAV servers are offline
-**Immutable:** Loose coupling between systems (IA ⇄ Supabase ⇄ EAV)
-
-### I7: DOMAIN-ISOLATED STORAGE
-**What:** Reference catalog data stored separately from EAV production tables
-**Why:** AI/ML training domain ≠ Production tracking domain (evolution independence)
-**Test:** Reference catalog schema migrations don't affect EAV production migrations
-**Immutable:** Schema separation preserves system boundaries
+**STATUS:** 🟢 Proven (EXIF DateTimeOriginal validation operational)
 
 ---
 
-## Layer 2: System Flows (How Immutables Combine)
+### I2: Human Oversight Authority
 
-### Flow 1: Reference Catalog Population (Human Correction Loop)
+**PRINCIPLE:** Human judgment has final authority over all metadata decisions → AI systems serve as augmentation tools (not autonomous decision-makers)
 
-```
-1. IA Initial Cataloging:
-   - AI analyzes: kitchen-hob-cover-CU (70% confidence)
-   - Writes XMP: location=kitchen, subject=hob-cover, shotType=CU
-   - No reference match (catalog empty)
+**WHY IMMUTABLE:**
+Production media has legal/contractual implications → client deliverables require human accountability → AI errors propagating to final deliverables create liability. If humans cannot override AI → project fails core mission of "assisted" cataloging. **Project restarts if violated.**
 
-2. CEP Panel Import:
-   - Reads XMP from file
-   - Imports to Premiere Pro with metadata
+**VALIDATION::**
+- AI suggestions marked provisional until human approval
+- Humans can edit any metadata field after AI processing
+- Audit trail captures human corrections vs. AI suggestions
+- TEST: "System commits metadata without human interaction?" → YES = violation
 
-3. EAV Production:
-   - Human reviews: "That's the oven steam tray, not hob cover"
-   - Scripts app: Corrects to kitchen-oven-steam-tray-CU
-   - Shoots table: Stores authoritative metadata
-
-4. Reference Catalog Entry Created:
-   ↓ Trigger: Human correction detected (hob-cover → oven-steam-tray)
-   ├─ File: EA001668.JPG
-   ├─ Original AI: location=kitchen, subject=hob-cover, shotType=CU
-   ├─ Corrected: location=kitchen, subject=oven-steam-tray, shotType=CU
-   ├─ Shot FK: Links to public.shots.id (authoritative source)
-   ├─ Embedding: Generate vector(512) from image using OpenAI CLIP
-   └─ Thumbnail: Store low-res preview for visual confirmation
-
-5. Reference Available:
-   - Next time AI sees similar oven image
-   - Vector search finds EA001668.JPG reference
-   - Agent context: "Reference suggests oven-steam-tray (human-corrected)"
-```
-
-### Flow 2: Enhanced AI Analysis (Reference-Augmented Cataloging)
-
-```
-1. Agent Analyzes New Image:
-   - Input: kitchen-appliance-unknown.jpg
-   - AI initial: "Looks like some kitchen equipment, 60% confidence"
-
-2. Vector Similarity Search:
-   - Generate embedding for current image
-   - Query: media_references.image_embeddings (cosine similarity)
-   - Results: [EA001668.JPG (0.92 similarity), EA002134.JPG (0.88), ...]
-
-3. Reference Context Provided:
-   Agent receives:
-   {
-     "analysis": "kitchen equipment, 60% confidence",
-     "references": [
-       {
-         "file": "EA001668.JPG",
-         "similarity": 0.92,
-         "corrected_subject": "oven-steam-tray",
-         "corrected_location": "kitchen",
-         "shot_type": "CU",
-         "thumbnail_url": "https://...",
-         "correction_reason": "Human QC: oven steam tray, not hob cover"
-       }
-     ],
-     "shoot_shots": [
-       { "shot": "kitchen-oven-steam-tray-CU", "status": "planned" },
-       { "shot": "kitchen-hob-touch-controls-CU", "status": "planned" }
-     ]
-   }
-
-4. Agent Enhanced Analysis:
-   - Original: "kitchen equipment, 60%"
-   - Reference context: "EA001668 looks very similar (92%), human called it oven-steam-tray"
-   - Shoot context: "kitchen-oven-steam-tray-CU is in planned shots"
-   - Enhanced suggestion: "kitchen-oven-steam-tray-CU, 85% confidence"
-
-5. Human Review:
-   - Sees: Agent suggestion + Reference thumbnail + Confidence
-   - Validates: "Correct, that's the oven steam tray"
-   - OR Corrects: "Actually that's the hob touch controls" (creates new reference)
-```
-
-### Flow 3: Cross-Project Coherence (IA ⇄ EAV Integration)
-
-```
-Ingest Assistant (Standalone Desktop App):
-├─ Analyzes media files locally
-├─ Queries Supabase: media_references schema (vector search)
-├─ Queries Supabase: public.shots (dropdown of planned shots)
-├─ Writes XMP: Metadata embedded in files
-└─ Independent: Works offline with cached references
-
-CEP Panel (Premiere Pro Extension):
-├─ Reads XMP: Ingests metadata from files
-└─ Imports: Sequences to Premiere Pro
-
-EAV Production System (Web Apps):
-├─ Scripts: Plans shots (writes to public.shots)
-├─ Cam-op: Field capture references planned shots
-├─ Human QC: Corrects metadata (triggers reference catalog update)
-└─ Library: Stores approved content with corrected metadata
-
-Supabase (Shared Database):
-├─ public schema: EAV production tables (shots, shoots, projects)
-├─ media_references schema: IA reference catalog (isolated domain)
-└─ Cross-schema FK: reference_images.shot_id → public.shots.id
-```
+**STATUS:** 🟢 Proven (manual edit always available, AI suggestions never locked)
 
 ---
 
-## Layer 3: Boundaries & Constraints
+### I3: Single Source of Truth
 
-### What We Will NOT Do
+**PRINCIPLE:** Each metadata attribute has exactly one authoritative source → prevents divergence, conflicts, synchronization failures
 
-**NOT Building:**
-1. **NOT a replacement for AI analysis** - References augment, don't override agent thinking
-2. **NOT synchronous coupling with EAV** - IA must work standalone, EAV integration is enhancement
-3. **NOT a general-purpose image search** - Specific to production media cataloging use case
-4. **NOT automatic catalog population** - Human correction is intentional trigger, not batch import
-5. **NOT replacing EAV shoots table** - public.shots remains single source of truth for shot metadata
+**WHY IMMUTABLE:**
+If metadata exists in multiple places (file XMP + JSON + database) → conflicts inevitable → "file says kitchen, JSON says bathroom" breaks downstream workflows → CEP Panel needs ONE source. **Project restarts if metadata duplication allowed.**
 
-### Technical Constraints (Technology-Specific, But Important)
+**VALIDATION::**
+- Document authoritative source for each metadata attribute
+- Derived copies marked as cache (not source of truth)
+- Update flows unidirectional (source → derived, never reverse)
+- TEST: "File XMP and JSON conflict, which wins?" → must have clear answer
 
-**Shared Supabase Project:**
-- Project: zbxvjyrbkycbfhwmmnmy (EAV Monorepo)
-- Schema: media_references (NEW - isolated from public)
-- Local: http://127.0.0.1:54323/ (Docker - dev/test)
-- Remote: https://zbxvjyrbkycbfhwmmnmy.supabase.co (production)
+**CURRENT:** `.ingest-metadata.json` = single source (all cataloging metadata)
 
-**Vector Embedding:**
-- Model: OpenAI CLIP (or similar) - 512-dimensional vectors
-- Storage: pgvector extension in PostgreSQL
-- Search: Cosine similarity (< 100ms for 10k references)
+**LOCATION:** JSON co-located with analyzed files
+- Videos: Proxy folder (e.g., `/LucidLink/EAV014/videos-proxy/shoot1/.ingest-metadata.json`)
+- Photos: Image folder (e.g., `/LucidLink/EAV014/images/shoot1/.ingest-metadata.json`)
+- Rationale: Editors work with proxies (not raw), JSON must be where editors access files
 
-**RLS (Row-Level Security):**
-- Reference read: Public (anyone can search references)
-- Reference write: Authenticated (admin/employee only can add references)
-- Production access: Existing EAV RLS policies (project-based)
+**FILE METADATA (Optional):**
+- TapeName written ONLY when file modification enabled (metadata write toggle OR filename rename toggle)
+- Purpose: Preserves original filename when files are modified
+- Not written in JSON-only workflow (current default)
 
-**Environment Detection:**
-```javascript
-// Proven pattern from eav-monorepo
-const supabaseUrl =
-  process.env.SUPABASE_PREVIEW_URL ||  // CI preview
-  'http://127.0.0.1:54323' ||          // Local dev
-  process.env.VITE_SUPABASE_URL;       // Production
-```
+**CEP PANEL CONTRACT:**
+- Reads JSON from proxy folder (videos) or image folder (photos)
+- Uses filename as immutable reference (camera_id/unique_ref deterministic)
+- Proxy matching: `{filename}_proxy.MOV` → `{filename}.MOV` (removes "_proxy" suffix)
+
+**STATUS:** 🟢 Proven (JSON Schema v2.0 established as source of truth)
 
 ---
 
-## Layer 4: Success Criteria
+### I4: Zero Data Loss Guarantee
 
-### Milestone 1: Basic Reference Lookup (MVP)
+**PRINCIPLE:** No media file content or metadata may be lost, corrupted, or degraded during any system operation involving authoritative assets
 
-**Definition of Done:**
-- [ ] Supabase schema created: media_references (3 tables: reference_images, image_embeddings, shot_references)
-- [ ] IA Settings Modal: Supabase configuration (local/remote toggle, credentials)
-- [ ] Manual reference creation: Admin can add reference with corrected metadata
-- [ ] Vector search working: Query image → Returns top 5 similar references
-- [ ] Agent context: AI receives reference results in analysis context
-- [ ] Tests: Unit + integration tests for reference lookup service (TDD discipline)
+**WHY IMMUTABLE:**
+Media files represent field capture investment (crew time, location access, talent cost) → losing even one file or corrupting metadata renders project incomplete. If system cannot guarantee data integrity → professional production teams cannot trust it. **Project restarts if data loss acceptable.**
 
-**Evidence:**
-- Migration file: `media_references` schema deployed to local + remote
-- Settings UI: Screenshot showing Supabase configuration
-- Test coverage: 90%+ for referenceLookup service
-- Demo: Analyze oven photo → Shows EA001668.JPG reference (0.92 similarity)
+**VALIDATION::**
+- Integrity checks before declaring transfer complete (file count, sizes, checksums)
+- Atomic metadata updates (all-or-nothing, no partial writes)
+- Error reporting halts workflow (not silent continuation)
+- TEST: "Transfer reports success but files missing?" → NO = correct behavior
 
-### Milestone 2: EAV Integration (Cross-Project Coherence)
-
-**Definition of Done:**
-- [ ] Cross-schema FK: reference_images.shot_id → public.shots.id
-- [ ] Dropdown integration: Fetch planned shots from public.shots
-- [ ] Agent context enhanced: References + Planned shots combined
-- [ ] Offline resilience: Cached references when Supabase unavailable
-- [ ] Documentation: EAV integration documented in CLAUDE.md
-
-**Evidence:**
-- SQL query: SELECT across schemas works (reference + shot metadata)
-- Dropdown populated: Shows all shots from public.shots table
-- Offline test: IA works with cached references when network down
-- Architecture diagram: Shows IA ⇄ Supabase ⇄ EAV integration
-
-### Milestone 3: Production Learning Loop (Compounding Value)
-
-**Definition of Done:**
-- [ ] Correction trigger: Human QC in EAV creates reference catalog entry
-- [ ] Incremental growth: Catalog grows from 0 → 100 → 1000 references over time
-- [ ] Accuracy improvement: AI confidence increases from 70% → 85%+ with references
-- [ ] Performance maintained: <100ms vector search at 10k references
-- [ ] Metrics tracked: Reference usage, accuracy improvement, correction rate
-
-**Evidence:**
-- Metric dashboard: Shows accuracy improvement over time
-- Performance test: 10k reference catalog search < 100ms
-- Correction workflow: EAV QC → Reference entry → IA enhanced analysis
-- Value proof: Side-by-side comparison (no references vs with references)
+**STATUS:** 🟡 Partial (lacks comprehensive integrity validation for CFex workflow)
 
 ---
 
-## Constitutional Compliance
+### I5: Ecosystem Contract Coherence
 
-### Workflow Phase Requirements
+**PRINCIPLE:** Metadata format and content contracts with downstream systems remain stable and backwards-compatible → prevents pipeline fragmentation
 
-**D1 (This Document):** ✅ North Star defined
-**D2 (Next):** Design approach (vector embedding strategy, schema design)
-**D3 (Next):** Blueprint (API design, integration architecture)
-**B0 (Next):** Validation (critical-design-validator GO/NO-GO)
-**B1-B4:** Implementation with TDD discipline
+**WHY IMMUTABLE:**
+Ingest Assistant = Step 6 of 10 → CEP Panel (Step 7) expects specific JSON schema → breaking contract renders CEP Panel unable to import → halts entire production workflow. If contract coherence negotiable → ecosystem fragments. **Project restarts if unilateral breaking changes allowed.**
 
-### Quality Gates (Will Apply During Implementation)
+**VALIDATION::**
+- Document contract specifications (JSON Schema v2.0)
+- JSON location contract: Proxy folder for videos, image folder for photos
+- Filename immutability: Camera ID/unique ref preserved (CEP Panel matching)
+- Version changes with migration paths
+- Integration tests against downstream consumers
+- TEST: "IA changes JSON schema without CEP Panel update?" → import breaks = violation
 
-```bash
-✅ TDD: Test BEFORE code (RED → GREEN → REFACTOR)
-✅ MIP: Essential complexity only (no accumulative bloat)
-✅ Quality Gates: lint + typecheck + test (all must pass)
-✅ TRACED: test-methodology-guardian + code-review-specialist + critical-engineer
-✅ Evidence: Artifacts for all claims (no validation theater)
-```
-
-### Mandatory Skills (Will Load During Build)
-
-```bash
-BEFORE_IMPLEMENTATION: Skill(command:"build-execution")
-WHEN_TESTING: Skill(command:"supabase-test-harness")
-WHEN_MIGRATING: Skill(command:"supabase-operations")
-```
+**STATUS:** 🟢 Proven (Schema v2.0 established, CEP Panel compatibility tested)
 
 ---
 
-## Architectural Decisions Deferred to D2/D3
+### I6: Committed Identifier Immutability
 
-**Questions to Answer in Design Phase:**
-1. Which vector embedding model? (OpenAI CLIP vs alternatives)
-2. Embedding generation: Client-side (Electron) or server-side (Supabase Edge Function)?
-3. Reference creation trigger: Manual admin action vs automated EAV webhook?
-4. Cache strategy: How long to cache references locally?
-5. Thumbnail generation: Where and when?
-6. Migration strategy: How to deploy media_references schema alongside EAV migrations?
+**PRINCIPLE:** Once identifiers are externally referenced (committed state) → never change → preserves referential integrity across systems and time
 
-**These are implementation details, NOT immutables** - Technology choices that serve the immutable requirements above.
+**WHY IMMUTABLE:**
+Shot #25 referenced in CEP Panel, Premiere Pro timeline, EAV production tracking. If IA renumbers shots after commitment → all downstream references break → "Find shot #25" returns wrong content. If identifier mutability acceptable → referential integrity impossible. **Project restarts if post-commitment changes allowed.**
 
----
+**VALIDATION::**
+- Define commitment boundary (COMPLETE folder state)
+- Prevent identifier mutation after commitment (UI disabled, API rejects)
+- Warn before commitment ("shot numbers become immutable")
+- TEST: "After marking COMPLETE, can shot numbers change?" → YES = violation
 
-## Appendix: Related Documentation
-
-### Ingest Assistant (This Project)
-- **Roadmap:** `.coord/docs/DEPENDENCY-ROADMAP.md` (Issue #63 analysis)
-- **Context:** `.coord/PROJECT-CONTEXT.md` (current state)
-- **Tech Stack:** `CLAUDE.md` (EAV ecosystem positioning)
-
-### EAV Ecosystem (Related Project)
-- **Production Pipeline:** `/Volumes/HestAI-Projects/eav-monorepo/.coord/workflow-docs/002-EAV-PRODUCTION-PIPELINE.md`
-- **Project Context:** `/Volumes/HestAI-Projects/eav-monorepo/.coord/PROJECT-CONTEXT.md`
-- **Supabase Config:** `/Volumes/HestAI-Projects/eav-monorepo/.env`
-
-### Constitutional Foundation
-- **North Star Principles:** Immutables are technology-proof, flows demonstrate integration, boundaries prevent scope creep
-- **Validation:** critical-design-validator will validate at B0 gate
-- **Phase Sequence:** D1 → D2 (Design) → D3 (Blueprint) → B0 (Validation) → B1 (Build Plan)
+**STATUS:** 🟢 Proven (COMPLETE folder locking prevents re-sorting)
 
 ---
 
-**Status:** ✅ APPROVED (D1 Complete)
-**Next Phase:** D2 (Design - Vector embedding strategy, schema design, integration architecture)
-**Agent:** holistic-orchestrator
-**Date:** 2025-11-15
+### I7: Human Primacy Over Automation
+
+**PRINCIPLE:** Automation optimizes human workflows (not replaces human judgment) → preserves user agency and decision-making authority
+
+**WHY IMMUTABLE:**
+"Ingest Assistant" name reflects philosophy: AI assists humans, not replaces → removing human agency creates "black box" where errors propagate invisibly → professional workflows require human checkpoint authority. If automation becomes mandatory/non-overridable → project fails assistive mission. **Restart required if human primacy removed.**
+
+**VALIDATION::**
+- All automation provides manual override/intervention points
+- Users can disable automation features without breaking workflow
+- Automated decisions visible and reviewable
+- TEST: "Users complete workflow without any AI/automation?" → NO = violation
+
+**STATUS:** 🟢 Proven (manual workflow fully supported, AI optional)
+
+---
+
+## CONSTRAINED VARIABLES
+
+### Metadata Storage Format
+- **IMMUTABLE:** Single source of truth (I3) + Downstream contract coherence (I5)
+- **FLEXIBLE:** JSON → Protocol Buffers | database records | embedded metadata
+- **NEGOTIABLE:** Field names | nesting structure | serialization format
+
+### AI Provider Integration
+- **IMMUTABLE:** Human oversight authority (I2) + Human primacy (I7)
+- **FLEXIBLE:** Multi-provider (OpenRouter, Anthropic, OpenAI) | confidence thresholds | sequential vs. parallel
+- **NEGOTIABLE:** Specific models (Claude, GPT, Gemini) | prompt engineering | frame sampling
+
+### Chronological Ordering Mechanism
+- **IMMUTABLE:** Temporal ordering principle (I1) + Committed identifier immutability (I6)
+- **FLEXIBLE:** EXIF DateTimeOriginal → filesystem timestamps → manual timestamps | fallback hierarchy | timezone handling
+- **NEGOTIABLE:** Timestamp format parsing | missing timestamp UX | manual override mechanisms
+
+### Platform Support
+- **IMMUTABLE:** Zero data loss (I4) cross-platform | Ecosystem contracts (I5) platform-independent
+- **FLEXIBLE:** macOS + Ubuntu (current) | Windows + Linux variants (future) | platform-specific optimizations
+- **NEGOTIABLE:** Hardware acceleration | filesystem conventions | UI framework choices
+
+### Transfer Integrity Validation
+- **IMMUTABLE:** Zero data loss guarantee (I4)
+- **FLEXIBLE:** Checksum algorithms (MD5, SHA256, xxHash) | validation depth | error recovery strategies
+- **NEGOTIABLE:** Progress reporting UX | retry logic | background vs. foreground validation
+
+### File Metadata Writing Strategy
+- **IMMUTABLE:** Single source of truth (I3) - JSON always authoritative
+- **FLEXIBLE:** Optional file metadata writing (toggles: write metadata ON/OFF, rename file ON/OFF)
+- **NEGOTIABLE:** Which fields to write | TapeName inclusion logic | XMP tag selection
+- **RULE:** TapeName written when file modification enabled (metadata write toggle OR filename rename toggle)
+- **DEFAULT:** JSON-only workflow (no file modification, TapeName not written)
+
+### Proxy Generation Strategy
+- **IMMUTABLE:** Proxies must preserve DateTimeOriginal for chronological ordering (I1) | Proxies must be analyzable by AI (visual quality sufficient)
+- **FLEXIBLE:** 4K H.264 @ CRF 23 (recommended) | 1080p H.264 @ CRF 23 (extreme compression) | ProRes Proxy (editing-first workflow)
+- **NEGOTIABLE:** CRF quality setting (18-28) | Resolution (4K vs 1080p) | Codec (H.264 vs ProRes) | Storage location (LucidLink vs Ubuntu)
+- **VALIDATED:** 4K H.264 @ CRF 23 achieves 10-bit 4:2:2 automatically (H.264 High 4:2:2 Profile) | 131:1 compression | Smaller than 1080p HQ despite 4x resolution | Timeline performance validated on M-series + modern PCs
+- **MANDATORY:** Post-transcode EXIF copy: `exiftool -overwrite_original "-QuickTime:DateTimeOriginal=$ORIG_DATE" proxy.MOV`
+
+---
+
+## ASSUMPTION REGISTER
+
+**A1::EXIF_TIMESTAMPS_RELIABLE**
+- ASSUMPTION: Camera-embedded EXIF DateTimeOriginal accurately reflects capture chronology (95%+ of media files)
+- RISK_IF_FALSE: Shot number assignment non-chronological → downstream workflows break → manual timestamp correction needed
+- CONFIDENCE: 85% (proven in production, edge cases: wrong camera clock, timezone issues, manual date changes)
+- IMPACT: HIGH (I1 Chronological Ordering depends on timestamp reliability)
+- VALIDATE: [owner:implementation-lead, method:EXIF_validation_during_CFEx_transfer, timing:before_B1, contingency:fallback_filesystem_timestamps+user_warning]
+
+**A2::CEP_PANEL_CONTRACT_STABILITY**
+- ASSUMPTION: CEP Panel maintains JSON Schema v2.0 compatibility for 12+ months (gradual evolution, not breaking changes)
+- RISK_IF_FALSE: IA outputs incompatible with CEP Panel → production pipeline breaks Steps 6-7 → emergency migration required
+- CONFIDENCE: 90% (CEP Panel under same development control, versioning protocol established)
+- IMPACT: CRITICAL (I5 Ecosystem Contract Coherence breaks if false)
+- VALIDATE: [owner:requirements-steward, method:integration_tests+contract_spec_docs, timing:before_each_IA_release, contingency:schema_versioning+migration_tooling]
+
+**A3::AI_PRE_ANALYSIS_ACCURACY_SUFFICIENT**
+- ASSUMPTION: AI metadata suggestions accurate enough (>60% correct) that zero-click pre-analysis provides net time savings despite correction overhead
+- RISK_IF_FALSE: Users spend more time correcting AI errors than manual entry → zero-click workflow rejected → feature adoption fails
+- CONFIDENCE: 70% (limited production testing, varies by media type/complexity)
+- IMPACT: MEDIUM (affects CFEx Integration value proposition, doesn't break core workflow)
+- VALIDATE: [owner:user_research, method:pilot_testing_5+_shoots+measure_correction_time_vs_manual, timing:before_B2, contingency:make_AI_opt-in+tune_confidence_thresholds]
+
+**A4::PARALLEL_IO_AI_SAVES_TIME**
+- ASSUMPTION: Running AI analysis during file copy (parallel I/O + compute) provides measurable time savings (4-5 min per shoot) without data integrity risks
+- RISK_IF_FALSE: Resource contention slows both operations (net negative) → AI errors from incomplete file writes → users perceive slowness
+- CONFIDENCE: 75% (theoretical sound, needs production validation)
+- IMPACT: MEDIUM (performance optimization, not functional requirement)
+- VALIDATE: [owner:implementation-lead, method:benchmark_sequential_vs_parallel+monitor_file_integrity, timing:during_B1, contingency:sequential_workflow_fallback+make_parallel_opt-in]
+
+**A5::REFERENCE_CATALOG_IMPROVES_ACCURACY**
+- ASSUMPTION: Vector similarity search against human-corrected reference images improves AI cataloging accuracy by 15-25% vs. zero-shot analysis
+- RISK_IF_FALSE: Reference Catalog (Issue #63) provides minimal accuracy benefit → Supabase integration complexity not justified by ROI
+- CONFIDENCE: 60% (hypothesis untested, depends on embedding quality + reference corpus size)
+- IMPACT: LOW_IMMEDIATE (deferred feature, doesn't affect v2.2.0 baseline or CFEx Phase 1)
+- VALIDATE: [owner:principal-engineer, method:A/B_testing_zero-shot_vs_reference-augmented, timing:before_B0_Reference_Catalog_phase, contingency:defer_indefinitely_if_accuracy_improvement<10%]
+
+**A6::CROSS_SCHEMA_FK_INTEGRITY_MAINTAINABLE**
+- ASSUMPTION: PostgreSQL cross-schema foreign keys (`media_references.shot_references` → `public.shots`) remain maintainable with proper guardrails (contracts, compatibility tests, migration sequencing)
+- RISK_IF_FALSE: Migration sequencing errors create orphaned FK violations → schema evolution in EAV breaks IA reference catalog → deployment coordination brittle
+- CONFIDENCE: 80% (PostgreSQL supports cross-schema FK natively, operational discipline required)
+- IMPACT: MEDIUM_FUTURE (affects Reference Catalog Issue #63, not immediate CFEx work)
+- VALIDATE: [owner:technical-architect, method:contract_specs_EAV_CONTRACT_v1+compatibility_test_suite+migration_validation_scripts, timing:before_B0_Reference_Catalog_phase, contingency:denormalize_reference_data+accept_eventual_consistency]
+
+**A7::WARM_AI_MODEL_REUSE_VIABLE**
+- ASSUMPTION: AI provider configurations loaded during file copy can be reused for zero-click pre-analysis without re-initialization overhead
+- RISK_IF_FALSE: Each AI call requires full model reload (negates time savings) → API rate limits triggered → session state complexity increases
+- CONFIDENCE: 70% (depends on AI provider implementation, untested in production)
+- IMPACT: LOW (performance optimization, fallback is sequential analysis after copy completes)
+- VALIDATE: [owner:implementation-lead, method:API_response_time_testing_cold_vs_warm+monitor_rate_limits, timing:during_B1, contingency:disable_AI_pre-analysis_if_warm_reuse_unavailable]
+
+**A8::PROXY_GENERATION_EXIF_PRESERVATION** ✅ VALIDATED
+- ASSUMPTION: ~~ffmpeg preserves DateTimeOriginal during transcode~~ **PROVEN FALSE**
+- VALIDATION: ✅ COMPLETE - Empirically tested 6 proxy variants (ProRes Proxy, H.264 full/half, CRF 18/23)
+- FINDING: ALL transcodes lose EXIF:DateTimeOriginal (stored in embedded still image, not MOV metadata)
+- SOLUTION: Manual extraction + write as QuickTime:DateTimeOriginal tag
+- WORKFLOW:
+  ```bash
+  # Step 1: Transcode (4K H.264 @ CRF 23 recommended)
+  ffmpeg -i raw.MOV -c:v libx264 -preset medium -crf 23 -c:a aac proxy.MOV
+
+  # Step 2: Extract DateTimeOriginal from source
+  ORIG_DATE=$(exiftool -s3 -DateTimeOriginal raw.MOV)
+
+  # Step 3: Write to proxy as QuickTime tag
+  exiftool -overwrite_original "-QuickTime:DateTimeOriginal=$ORIG_DATE" proxy.MOV
+
+  # Step 4: Validate timestamps match (MANDATORY)
+  PROXY_DATE=$(exiftool -s3 -DateTimeOriginal proxy.MOV)
+  [[ "$ORIG_DATE" == "$PROXY_DATE" ]] || exit 1
+  ```
+- DISCOVERY: 4K H.264 @ CRF 23 automatically upgrades to H.264 High 4:2:2 Profile (10-bit 4:2:2 color preserved)
+- EMPIRICAL_RESULTS: 4K proxy achieves 131:1 compression (7.8M for 24s video) while preserving professional color
+- COMPARATIVE_ANALYSIS: 4K @ CRF 23 smaller than 1080p @ CRF 18 (7.8M vs 9.4M) despite 4x resolution
+- TIMELINE_PERFORMANCE: Validated smooth on M-series MacBooks + modern PCs (2017+)
+- CONFIDENCE: 100% (empirically validated, production-tested)
+- IMPACT: CRITICAL (I1 violation if skipped, automated workflow must enforce)
+
+---
+
+## SCOPE BOUNDARIES
+
+### WHAT THIS APP IS
+**IDENTITY::**
+- AI-Augmented Cataloging Tool (humans drive, AI suggests)
+- Production Pipeline Gateway (Step 6 of 10: field capture → post-production)
+- Temporal Integrity Guardian (chronological ordering camera → downstream)
+- Cross-Platform Media Assistant (macOS editors + Ubuntu video servers)
+
+**FUNCTIONAL_SCOPE::**
+- Media file transfer (CFEx cards → raw storage + proxy generation)
+- Proxy generation (4K H.264 @ CRF 23 with DateTimeOriginal preservation)
+- AI metadata generation (multi-provider: location, subject, action, shotType)
+- Sequential shot numbering (chronological assignment + immutability after COMPLETE)
+- Metadata storage (`.ingest-metadata.json` single source → CEP Panel, located in proxy folder)
+- Human QC workflow (review, correct, approve AI suggestions before commitment)
+- Ecosystem integration (coordinated contracts: CEP Panel downstream + EAV authoritative)
+
+**FEATURE_INVENTORY::**
+1. ✅ Core IA (v2.2.0 baseline): Manual/AI metadata + COMPLETE workflow + JSON Schema v2.0
+2. 🚧 CFEx Integration (Microphases - immediate):
+   - Phase 1a: Transfer + Integrity (2 weeks) - Photos→LucidLink | Raw→Ubuntu | Validation
+   - Phase 1b: Proxy Generation (2 weeks) - 4K H.264 @ CRF 23 | DateTimeOriginal preservation
+   - Phase 1c: Power Features (2-3 weeks) - AI auto-analyze toggle | Metadata write toggle | Filename rewrite
+3. 📋 Reference Catalog (Issue #63 deferred 3-6 months): Vector search learning from EAV-corrected metadata
+
+### WHAT THIS APP IS NOT
+**OUT_OF_SCOPE::**
+- ❌ Video Editor (playback for preview only, no editing/trimming/effects)
+- ❌ DAM System (cataloging feeds production pipeline, not long-term archival)
+- ❌ Premiere Pro Replacement (integration via CEP Panel, not standalone NLE)
+- ❌ Client Deliverable Tool (production workflow, not client-facing)
+- ❌ Batch Rename Utility (metadata in JSON, not filename-based)
+- ❌ Cloud Storage Manager (local/network filesystems LucidLink+Ubuntu mounts, not cloud sync)
+
+**BOUNDARIES::**
+- Transcoding: 4K H.264 proxy generation @ CRF 23 (not full transcoding suite with multiple format outputs)
+- Metadata Formats: JSON Schema v2.0 contract (not XMP-everything or proprietary)
+- AI Providers: Multi-provider support for resilience (not building custom AI models)
+- Platform Support: macOS + Ubuntu production environments (not iOS, Android, Windows unless justified)
+- Upstream Integration: Receives files from CFEx cards (not camera remote control, live capture)
+- Downstream Integration: Feeds CEP Panel via JSON contract (not direct Premiere Pro API)
+
+**FUTURE_CONSIDERATIONS_DEFERRED::**
+- Windows support (if client workflows require)
+- Custom AI model training (if multi-provider insufficient)
+- Real-time field capture integration (if cam-op PWA workflow changes)
+- Advanced search/filtering (if cataloging volume justifies)
+- Collaborative QC workflows (if multi-user editing needed)
+
+---
+
+## PROTECTION CLAUSE
+
+**MISALIGNMENT_PROTOCOL::**
+IF agent detects work contradicting this North Star (D2-B5):
+1. **STOP** current work immediately
+2. **CITE** specific North Star requirement violated (I1-I7)
+3. **ESCALATE** to requirements-steward for resolution
+
+**RESOLUTION_OPTIONS::**
+- **CONFORM** (typical): Modify work to align with North Star
+- **AMEND** (rare): User formally amends North Star via requirements-steward (requires re-approval)
+- **ABANDON** (blocked): Incompatible path abandoned, alternative approach required
+
+**AUTHORITY_CHAIN::**
+North Star (this document) > Feature designs (D2/D3) > Implementation code (B0-B5)
+Immutables override all downstream decisions
+Changes to immutables require re-execution of approval process
+
+**ESCALATION_FORMAT::**
+`NORTH_STAR_VIOLATION: Current work [description] violates [I#] because [evidence] → requirements-steward`
+
+---
+
+## APPROVAL STATUS
+
+**IMMUTABILITY_OATH_PASSED::**
+- Q1: "Commit as IMMUTABLE for entire project?" → YES (all 7)
+- Q2: "Deliver faster/cheaper by changing this?" → NO (all 7)
+- Q3: "Still true in 3 years?" → YES (all 7)
+
+**APPROVAL:** 🟡 Pending User Approval
+
+**NEXT_STEPS_AFTER_APPROVAL::**
+1. North Star gains binding authority (all agents reference this document)
+2. Requirements Steward validates completeness at D1_04 gate
+3. Critical Engineer validates against production codebase reality
+4. CFEx Phase 1 design (D2) inherits these immutables
+5. Reference Catalog design (D2 - deferred) inherits these immutables
+
+---
+
+**DOCUMENT_VERSION:** 2.0-OCTAVE (Project-Level Consolidation)
+**COMPRESSION_RATIO:** 689→248 lines (64% reduction, 2.8:1 ratio)
+**FIDELITY:** 100% decision logic + 7 immutables + 7 assumptions + validation plans preserved
+**PREVIOUS_VERSION:** 1.0 (Reference Catalog Feature-Specific, superseded 2025-11-18)
+**NEXT_REVIEW:** D1_04 validation gate (requirements-steward)
