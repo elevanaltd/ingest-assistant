@@ -10,7 +10,7 @@ describe('Type Definitions', () => {
         currentFilename: 'EB001537-oven-control-panel.jpg',
         filePath: '/path/to/file.jpg',
         extension: '.jpg',
-        mainName: 'oven-control-panel',
+        lockedFields: [], shotName: 'oven-control-panel',
         keywords: ['oven', 'control panel'],
         location: 'kitchen',
         subject: 'oven',
@@ -26,7 +26,7 @@ describe('Type Definitions', () => {
       };
 
       expect(metadata.id).toBe('EB001537');
-      expect(metadata.mainName).toBe('oven-control-panel');
+      expect(metadata.shotName).toBe('oven-control-panel');
       expect(metadata.keywords).toHaveLength(2);
       expect(metadata.fileType).toBe('image');
     });
@@ -38,7 +38,7 @@ describe('Type Definitions', () => {
         currentFilename: 'VD001234.mp4',
         filePath: '/path/to/video.mp4',
         extension: '.mp4',
-        mainName: '',
+        lockedFields: [], shotName: '',
         keywords: [],
         location: '',
         subject: '',
@@ -139,7 +139,7 @@ describe('Type Definitions', () => {
   describe('AIAnalysisResult', () => {
     it('should allow creation of valid AIAnalysisResult', () => {
       const result: AIAnalysisResult = {
-        mainName: 'oven-control-panel',
+        shotName: 'oven-control-panel',
         keywords: ['oven', 'control panel', 'kitchen'],
         location: 'kitchen',
         subject: 'oven',
@@ -148,7 +148,7 @@ describe('Type Definitions', () => {
         confidence: 0.95,
       };
 
-      expect(result.mainName).toBe('oven-control-panel');
+      expect(result.shotName).toBe('oven-control-panel');
       expect(result.keywords).toHaveLength(3);
       expect(result.confidence).toBe(0.95);
     });

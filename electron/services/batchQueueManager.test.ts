@@ -69,7 +69,7 @@ describe('BatchQueueManager', () => {
 
       const mockProcessor = vi.fn(async (fileId: string) => {
         processedOrder.push(fileId);
-        return { success: true, result: { mainName: fileId, keywords: [], confidence: 0.9, location: '', subject: '', action: '', shotType: '' as const } };
+        return { success: true, result: { shotName: fileId, keywords: [], confidence: 0.9, location: '', subject: '', action: '', shotType: '' as const } };
       });
 
       await queueManager.addToQueue(fileIds);
@@ -86,7 +86,7 @@ describe('BatchQueueManager', () => {
       // Start first batch (long running)
       const mockProcessor = vi.fn(async () => {
         await new Promise(resolve => setTimeout(resolve, 100));
-        return { success: true, result: { mainName: 'test', keywords: [], confidence: 0.9, location: '', subject: '', action: '', shotType: '' as const } };
+        return { success: true, result: { shotName: 'test', keywords: [], confidence: 0.9, location: '', subject: '', action: '', shotType: '' as const } };
       });
 
       await queueManager.addToQueue(fileIds1);
@@ -109,7 +109,7 @@ describe('BatchQueueManager', () => {
       });
 
       const mockProcessor = vi.fn(async (fileId: string) => {
-        return { success: true, result: { mainName: fileId, keywords: [], confidence: 0.9, location: '', subject: '', action: '', shotType: '' as const } };
+        return { success: true, result: { shotName: fileId, keywords: [], confidence: 0.9, location: '', subject: '', action: '', shotType: '' as const } };
       });
 
       await queueManager.addToQueue(fileIds);
@@ -134,7 +134,7 @@ describe('BatchQueueManager', () => {
         if (fileId === 'file2') {
           throw new Error('Processing failed');
         }
-        return { success: true, result: { mainName: fileId, keywords: [], confidence: 0.9, location: '', subject: '', action: '', shotType: '' as const } };
+        return { success: true, result: { shotName: fileId, keywords: [], confidence: 0.9, location: '', subject: '', action: '', shotType: '' as const } };
       });
 
       await queueManager.addToQueue(fileIds);
@@ -161,7 +161,7 @@ describe('BatchQueueManager', () => {
           queueManager.cancel();
         }
         await new Promise(resolve => setTimeout(resolve, 10));
-        return { success: true, result: { mainName: fileId, keywords: [], confidence: 0.9, location: '', subject: '', action: '', shotType: '' as const } };
+        return { success: true, result: { shotName: fileId, keywords: [], confidence: 0.9, location: '', subject: '', action: '', shotType: '' as const } };
       });
 
       await queueManager.addToQueue(fileIds);
@@ -181,7 +181,7 @@ describe('BatchQueueManager', () => {
         if (fileId === 'file1') {
           queueManager.cancel();
         }
-        return { success: true, result: { mainName: fileId, keywords: [], confidence: 0.9, location: '', subject: '', action: '', shotType: '' as const } };
+        return { success: true, result: { shotName: fileId, keywords: [], confidence: 0.9, location: '', subject: '', action: '', shotType: '' as const } };
       });
 
       await queueManager.addToQueue(fileIds);
@@ -200,7 +200,7 @@ describe('BatchQueueManager', () => {
         if (fileId === 'file1') {
           queueManager.cancel();
         }
-        return { success: true, result: { mainName: fileId, keywords: [], confidence: 0.9, location: '', subject: '', action: '', shotType: '' as const } };
+        return { success: true, result: { shotName: fileId, keywords: [], confidence: 0.9, location: '', subject: '', action: '', shotType: '' as const } };
       });
 
       await queueManager.addToQueue(fileIds);
@@ -217,7 +217,7 @@ describe('BatchQueueManager', () => {
       const fileIds = ['file1', 'file2'];
 
       const mockProcessor = vi.fn(async (fileId: string) => {
-        return { success: true, result: { mainName: fileId, keywords: [], confidence: 0.9, location: '', subject: '', action: '', shotType: '' as const } };
+        return { success: true, result: { shotName: fileId, keywords: [], confidence: 0.9, location: '', subject: '', action: '', shotType: '' as const } };
       });
 
       await queueManager.addToQueue(fileIds);
@@ -235,7 +235,7 @@ describe('BatchQueueManager', () => {
     it('should restore queue state from disk on initialization', async () => {
       const persistedState = {
         items: [
-          { fileId: 'file1', status: 'completed', result: { mainName: 'test1', keywords: [], confidence: 0.9, location: '', subject: '', action: '', shotType: '' as const } },
+          { fileId: 'file1', status: 'completed', result: { shotName: 'test1', keywords: [], confidence: 0.9, location: '', subject: '', action: '', shotType: '' as const } },
           { fileId: 'file2', status: 'pending', result: null },
         ],
         status: 'idle',
@@ -278,7 +278,7 @@ describe('BatchQueueManager', () => {
         if (fileId === 'file2') {
           throw new Error('File2 processing failed');
         }
-        return { success: true, result: { mainName: fileId, keywords: [], confidence: 0.9, location: '', subject: '', action: '', shotType: '' as const } };
+        return { success: true, result: { shotName: fileId, keywords: [], confidence: 0.9, location: '', subject: '', action: '', shotType: '' as const } };
       });
 
       await queueManager.addToQueue(fileIds);
@@ -316,7 +316,7 @@ describe('BatchQueueManager', () => {
 
       const mockProcessor = vi.fn(async (fileId: string) => {
         processingTimestamps.push(Date.now());
-        return { success: true, result: { mainName: fileId, keywords: [], confidence: 0.9, location: '', subject: '', action: '', shotType: '' as const } };
+        return { success: true, result: { shotName: fileId, keywords: [], confidence: 0.9, location: '', subject: '', action: '', shotType: '' as const } };
       });
 
       const mockRateLimiter = {

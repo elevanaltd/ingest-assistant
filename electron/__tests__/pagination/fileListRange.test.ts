@@ -247,7 +247,7 @@ describe('file:list-range - Pagination', () => {
       currentFilename: `${id}-test.jpg`,
       filePath: `/path/${id}.jpg`,
       extension: '.jpg',
-      mainName: 'test-name',
+      shotName: 'test-name',
       keywords: ['tag1', 'tag2'],
       processedByAI: true,
       fileType: 'image',
@@ -260,6 +260,7 @@ describe('file:list-range - Pagination', () => {
       subject: 'oven',
       action: '',
       shotType: 'WS',
+      lockedFields: [],
     });
 
     it('should hydrate metadata for file IDs in range', async () => {
@@ -275,7 +276,7 @@ describe('file:list-range - Pagination', () => {
       const result = await metadataStore.getMetadataForRange(fileIds);
 
       expect(result).toHaveLength(3);
-      expect(result[0].mainName).toBe('test-name');
+      expect(result[0].shotName).toBe('test-name');
       expect(result[0].processedByAI).toBe(true);
     });
 

@@ -6,17 +6,17 @@ describe('IPC Schema Validation', () => {
     it('should accept valid rename input', () => {
       const valid = {
         fileId: 'ABC123',
-        mainName: 'Test Name',
+        shotName: 'Test Name',
         currentPath: '/test/path.jpg',
       };
 
       expect(() => FileRenameSchema.parse(valid)).not.toThrow();
     });
 
-    it('should reject oversized mainName', () => {
+    it('should reject oversized shotName', () => {
       const malicious = {
         fileId: 'ABC123',
-        mainName: 'A'.repeat(10000), // Way over 500 char limit
+        shotName: 'A'.repeat(10000), // Way over 500 char limit
         currentPath: '/test/path.jpg',
       };
 
@@ -26,7 +26,7 @@ describe('IPC Schema Validation', () => {
     it('should reject empty fileId', () => {
       const invalid = {
         fileId: '',
-        mainName: 'Valid Name',
+        shotName: 'Valid Name',
         currentPath: '/test/path.jpg',
       };
 

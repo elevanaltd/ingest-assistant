@@ -12,7 +12,7 @@ import type { ShotType } from '../src/types';
  * 2. Action field persists for both new and existing metadata
  * 3. Action field can be cleared (set to empty string)
  * 4. Video vs photo behavior is correct
- * 5. File renaming includes structured components in mainName
+ * 5. File renaming includes structured components in shotName
  */
 
 describe('IPC Handlers: Structured Metadata Persistence', () => {
@@ -115,7 +115,7 @@ describe('IPC Handlers: Structured Metadata Persistence', () => {
       it('should accept valid file rename with structured metadata', () => {
         const validPayload = {
           fileId: 'EA001597',
-          mainName: 'kitchen-wine-cooler-CU',
+          shotName: 'kitchen-wine-cooler-CU',
           currentPath: '/path/to/EA001597.MOV',
           structured: {
             location: 'kitchen',
@@ -134,7 +134,7 @@ describe('IPC Handlers: Structured Metadata Persistence', () => {
       it('should accept file rename without structured metadata', () => {
         const validPayload = {
           fileId: 'EA001597',
-          mainName: 'kitchen-wine-cooler-CU',
+          shotName: 'kitchen-wine-cooler-CU',
           currentPath: '/path/to/EA001597.MOV',
         };
 
@@ -142,10 +142,10 @@ describe('IPC Handlers: Structured Metadata Persistence', () => {
         expect(result.structured).toBeUndefined();
       });
 
-      it('should reject oversized mainName (>500 chars)', () => {
+      it('should reject oversized shotName (>500 chars)', () => {
         const invalidPayload = {
           fileId: 'EA001597',
-          mainName: 'x'.repeat(501),
+          shotName: 'x'.repeat(501),
           currentPath: '/path/to/EA001597.MOV',
         };
 
@@ -155,7 +155,7 @@ describe('IPC Handlers: Structured Metadata Persistence', () => {
       it('should reject missing currentPath', () => {
         const invalidPayload = {
           fileId: 'EA001597',
-          mainName: 'kitchen-wine-cooler-CU',
+          shotName: 'kitchen-wine-cooler-CU',
           // Missing currentPath
         };
 
@@ -212,7 +212,7 @@ describe('IPC Handlers: Structured Metadata Persistence', () => {
           currentFilename: 'EA001597-kitchen-oven-cleaning-WS.MOV',
           filePath: '/path/EA001597-kitchen-oven-cleaning-WS.MOV',
           extension: '.MOV',
-          mainName: 'kitchen-oven-cleaning-WS',
+          shotName: 'kitchen-oven-cleaning-WS',
           keywords: [],
           processedByAI: false,
           createdAt: new Date(),
@@ -225,6 +225,7 @@ describe('IPC Handlers: Structured Metadata Persistence', () => {
           subject: structured.subject,
           action: structured.action,
           shotType: structured.shotType,
+          lockedFields: [],
         };
 
         // Assert action field is persisted
@@ -247,7 +248,7 @@ describe('IPC Handlers: Structured Metadata Persistence', () => {
           currentFilename: 'IMG_12345678-kitchen-oven-CU.jpg',
           filePath: '/path/IMG_12345678-kitchen-oven-CU.jpg',
           extension: '.jpg',
-          mainName: 'kitchen-oven-CU',
+          shotName: 'kitchen-oven-CU',
           keywords: [],
           processedByAI: false,
           createdAt: new Date(),
@@ -260,6 +261,7 @@ describe('IPC Handlers: Structured Metadata Persistence', () => {
           subject: structured.subject,
           action: '',
           shotType: structured.shotType,
+          lockedFields: [],
         };
 
         expect(fileMetadata.action).toBe('');
@@ -277,7 +279,7 @@ describe('IPC Handlers: Structured Metadata Persistence', () => {
           currentFilename: 'EA001597-kitchen-oven-WS.MOV',
           filePath: '/path/EA001597-kitchen-oven-WS.MOV',
           extension: '.MOV',
-          mainName: 'kitchen-oven-WS',
+          shotName: 'kitchen-oven-WS',
           keywords: [],
           processedByAI: false,
           createdAt: new Date(),
@@ -290,6 +292,7 @@ describe('IPC Handlers: Structured Metadata Persistence', () => {
           subject: 'oven',
           action: '',
           shotType: 'WS',
+          lockedFields: [],
         };
 
         const structured = {
@@ -315,7 +318,7 @@ describe('IPC Handlers: Structured Metadata Persistence', () => {
           currentFilename: 'EA001597-kitchen-oven-cleaning-WS.MOV',
           filePath: '/path/EA001597-kitchen-oven-cleaning-WS.MOV',
           extension: '.MOV',
-          mainName: 'kitchen-oven-cleaning-WS',
+          shotName: 'kitchen-oven-cleaning-WS',
           keywords: [],
           processedByAI: false,
           createdAt: new Date(),
@@ -328,6 +331,7 @@ describe('IPC Handlers: Structured Metadata Persistence', () => {
           subject: 'oven',
           action: 'cleaning',
           shotType: 'WS',
+          lockedFields: [],
         };
 
         const structured = {
@@ -353,7 +357,7 @@ describe('IPC Handlers: Structured Metadata Persistence', () => {
           currentFilename: 'EA001597-kitchen-oven-cleaning-WS.MOV',
           filePath: '/path/EA001597-kitchen-oven-cleaning-WS.MOV',
           extension: '.MOV',
-          mainName: 'kitchen-oven-cleaning-WS',
+          shotName: 'kitchen-oven-cleaning-WS',
           keywords: [],
           processedByAI: false,
           createdAt: new Date(),
@@ -366,6 +370,7 @@ describe('IPC Handlers: Structured Metadata Persistence', () => {
           subject: 'oven',
           action: 'cleaning',
           shotType: 'WS',
+          lockedFields: [],
         };
 
         // Partial update - only update location
@@ -447,7 +452,7 @@ describe('IPC Handlers: Structured Metadata Persistence', () => {
     it('should reject extremely large structured payloads', () => {
       const maliciousPayload = {
         fileId: 'EA001597',
-        mainName: 'test',
+        shotName: 'test',
         currentPath: '/path',
         structured: {
           location: 'x'.repeat(5000), // Way over limit

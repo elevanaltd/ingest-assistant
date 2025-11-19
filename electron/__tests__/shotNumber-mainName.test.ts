@@ -1,21 +1,21 @@
 import { describe, it, expect } from 'vitest';
 
 /**
- * Bug Reproduction Test: shotNumber in mainName Generation
+ * Bug Reproduction Test: shotNumber in shotName Generation
  *
- * Issue: When shotNumber is present, mainName includes BOTH timestamp AND shot number
+ * Issue: When shotNumber is present, shotName includes BOTH timestamp AND shot number
  * Expected: lounge-media-plate-MID-#1
  * Actual: lounge-media-plate-MID-20251024094631-#1
  *
  * Root Cause: file:update-structured-metadata handler calls generateTitleWithTimestamp()
  * which adds timestamp for uniqueness, but shotNumber already provides uniqueness.
  *
- * Fix: When shotNumber is present, skip timestamp addition in mainName generation.
+ * Fix: When shotNumber is present, skip timestamp addition in shotName generation.
  * The metadataWriter will append -#{shotNumber} suffix for uniqueness.
  */
 
 describe('Shot Number MainName Generation', () => {
-  it('RED: should NOT include timestamp in mainName when shotNumber is present', () => {
+  it('RED: should NOT include timestamp in shotName when shotNumber is present', () => {
     // Given: Structured metadata with shotNumber
     const structured = {
       location: 'lounge',
@@ -31,15 +31,15 @@ describe('Shot Number MainName Generation', () => {
     // Expected baseTitle (before adding shot number suffix)
     expect(baseTitle).toBe('lounge-media-plate-MID');
 
-    // Then: When shotNumber is present, mainName should NOT include timestamp
+    // Then: When shotNumber is present, shotName should NOT include timestamp
     // The shot number provides uniqueness, so timestamp is redundant
 
-    // WRONG (current behavior): mainName includes timestamp
+    // WRONG (current behavior): shotName includes timestamp
     const wrongMainName = `${baseTitle}-20251024094631`; // Timestamp added
     const wrongShotName = `${wrongMainName}-#${structured.shotNumber}`; // Shot number added on top
     expect(wrongShotName).toBe('lounge-media-plate-MID-20251024094631-#1'); // Current bug!
 
-    // CORRECT (desired behavior): mainName skips timestamp when shotNumber present
+    // CORRECT (desired behavior): shotName skips timestamp when shotNumber present
     const correctMainName = baseTitle; // No timestamp
     const correctShotName = `${correctMainName}-#${structured.shotNumber}`; // Only shot number
     expect(correctShotName).toBe('lounge-media-plate-MID-#1'); // Desired output!
@@ -48,7 +48,7 @@ describe('Shot Number MainName Generation', () => {
     // Once fixed, the code should produce correctShotName format
   });
 
-  it('RED: should include timestamp in mainName when shotNumber is ABSENT (legacy behavior)', () => {
+  it('RED: should include timestamp in shotName when shotNumber is ABSENT (legacy behavior)', () => {
     // Given: Structured metadata WITHOUT shotNumber (legacy folders)
     const structured = {
       location: 'kitchen',
@@ -67,7 +67,7 @@ describe('Shot Number MainName Generation', () => {
 
     expect(baseTitle).toBe('kitchen-oven-cleaning-WS');
 
-    // Then: When shotNumber is absent, mainName SHOULD include timestamp for uniqueness
+    // Then: When shotNumber is absent, shotName SHOULD include timestamp for uniqueness
     const expectedMainName = `${baseTitle}-20251103100530`; // Timestamp provides uniqueness
     expect(expectedMainName).toBe('kitchen-oven-cleaning-WS-20251103100530');
 
@@ -89,7 +89,7 @@ describe('Shot Number MainName Generation', () => {
     const baseTitle = `${structured.location}-${structured.subject}-${structured.action}-${structured.shotType}`;
     expect(baseTitle).toBe('bathroom-sink-turning-on-CU');
 
-    // Then: mainName should NOT include timestamp when shotNumber present
+    // Then: shotName should NOT include timestamp when shotNumber present
     const correctMainName = baseTitle; // No timestamp
     const correctShotName = `${correctMainName}-#${structured.shotNumber}`;
     expect(correctShotName).toBe('bathroom-sink-turning-on-CU-#25');
@@ -109,7 +109,7 @@ describe('Shot Number MainName Generation', () => {
     const baseTitle = `${structured.location}-${structured.subject}-${structured.shotType}`;
     expect(baseTitle).toBe('hallway-smoke-detector-CU');
 
-    // Then: mainName should NOT include timestamp when shotNumber present
+    // Then: shotName should NOT include timestamp when shotNumber present
     const correctMainName = baseTitle; // No timestamp
     const correctShotName = `${correctMainName}-#${structured.shotNumber}`;
     expect(correctShotName).toBe('hallway-smoke-detector-CU-#42');

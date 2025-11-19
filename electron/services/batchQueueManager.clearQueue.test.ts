@@ -96,7 +96,7 @@ describe('BatchQueueManager - clearQueue()', () => {
       // Mock processor that succeeds (must return result object)
       const mockProcessor = vi.fn().mockResolvedValue({
         success: true,
-        result: { mainName: 'test', metadata: {}, confidence: 0.9 },
+        result: { shotName: 'test', metadata: {}, confidence: 0.9 },
       });
       const mockProgress = vi.fn();
       const mockComplete = vi.fn();
@@ -130,7 +130,7 @@ describe('BatchQueueManager - clearQueue()', () => {
         }
         return Promise.resolve({
           success: true,
-          result: { mainName: 'test', metadata: {}, confidence: 0.9 },
+          result: { shotName: 'test', metadata: {}, confidence: 0.9 },
         });
       });
       const mockProgress = vi.fn();

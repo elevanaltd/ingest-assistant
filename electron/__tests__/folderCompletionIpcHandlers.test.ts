@@ -40,7 +40,7 @@ describe('Folder Completion IPC Handlers', () => {
         filePath: path.join(testFolderPath, 'kitchen-oven-CU.JPG'),
         extension: 'JPG',
         fileType: 'image',
-        mainName: 'kitchen-oven-CU',
+        shotName: 'kitchen-oven-CU',
         keywords: [],
         location: 'kitchen',
         subject: 'oven',
@@ -51,7 +51,8 @@ describe('Folder Completion IPC Handlers', () => {
         createdBy: 'ingest-assistant',
         modifiedAt: new Date(),
         modifiedBy: 'ingest-assistant',
-        version: '1.1.0'
+        version: '1.1.0',
+        lockedFields: []
       }
     });
 

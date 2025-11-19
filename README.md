@@ -314,6 +314,8 @@ Comprehensive TDD implementation with **527 tests** (34 test files) covering:
 
 Run tests: `npm test`
 
+**Current Test Count:** 543 tests across 35 test files (all passing)
+
 **Test Coverage Areas:**
 - **Service Layer**: High coverage (business logic critical)
 - **Security**: Comprehensive tests for SecurityValidator, batch IPC validation
@@ -322,8 +324,22 @@ Run tests: `npm test`
 - **Performance**: Pagination, caching, virtual scrolling integration
 - **UI Components**: React component behavior, accessibility
 - **Metadata**: XMP writing, JSON schema v2.0, timestamp handling, CEP Panel integration
+- **Sequential Shot Numbers**: EXIF sorting, folder completion, shot number immutability
 
 ## Version History
+
+### v2.2.0 (November 2025) - Sequential Shot Numbers & Production Baseline
+**Major Features:**
+- ✅ **Sequential Shot Number Assignment** - Chronological EXIF-based shot numbering
+  - Files sorted by EXIF DateTimeOriginal (camera capture time)
+  - Shot numbers assigned sequentially: #1, #2, #3... #N
+  - COMPLETE/REOPEN folder workflow prevents shot number drift
+  - Shot numbers immutable after folder marked COMPLETE
+  - Clean shotName format: `location-subject-shotType-#N` (timestamp removed)
+- ✅ **Version Checkpoint Established** - Rollback capability before CFEx integration
+  - Git tag: v2.2.0
+  - GitHub release with DMG artifacts (127M)
+  - Production deployment ready
 
 ### v1.1.0 (November 2025) - Performance & Usability Release
 **Major Features:**
@@ -350,7 +366,7 @@ Run tests: `npm test`
 **Quality Improvements:**
 - ✅ TypeScript strict mode - all `any` types eliminated (Issue #41)
 - ✅ ESLint v9 migration with flat config (Issue #45)
-- ✅ Comprehensive test coverage (527 tests, 34 files, all passing)
+- ✅ Comprehensive test coverage (543 tests, 35 files, all passing)
 - ✅ Batch processing fixes validated with TDD (RED→GREEN→REFACTOR)
 - ✅ JSON schema v2.0 migration complete with backward compatibility
 - ✅ CEP Panel integration validated end-to-end
@@ -369,11 +385,16 @@ Run tests: `npm test`
 - Shared Supabase architecture designed for Reference Image Lookup (Issue #63)
 
 **Upcoming Enhancements (Roadmap):**
-- **Reference Image Lookup (Issue #63)**: AI learning from human corrections
+- **CFEx File Transfer Integration (Phase 1)**: Integrated workflow replacing external app
+  - Zero-click AI pre-analysis during file copy (parallel I/O + compute)
+  - EXIF validation before shot number assignment
+  - Project intelligence with folder pattern matching
+  - Status: D1 North Star complete (7 immutables extracted), commitment ceremony pending
+- **Reference Image Lookup (Issue #63)**: AI learning from human corrections (DEFERRED)
   - Vector similarity search for visually similar reference images
   - Integration with EAV production database for shot lookup
   - Incremental learning: 70% → 85%+ cataloging accuracy over time
-  - Status: D1 North Star approved, ready for D2 Design phase
+  - Status: Deferred until CFEx Phase 1 complete + guardrails (4-6 weeks)
 
 ### v1.0.0 (January 2025) - Initial Release
 - Core manual workflow (view, rename, tag, save)

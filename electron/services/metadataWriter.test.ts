@@ -89,15 +89,15 @@ describe('MetadataWriter (Integration)', () => {
         return;
       }
 
-      const mainName = 'test-image-name';
+      const shotName = 'test-image-name';
       const tags = ['test-tag-1', 'test-tag-2'];
 
-      await metadataWriter.writeMetadataToFile(testFilePath, mainName, tags);
+      await metadataWriter.writeMetadataToFile(testFilePath, shotName, tags);
 
       // Verify metadata was written by reading it back
       const result = await metadataWriter.readMetadataFromFile(testFilePath);
 
-      expect(result.title).toBe(mainName);
+      expect(result.title).toBe(shotName);
       expect(result.keywords).toContain('test-tag-1');
       expect(result.keywords).toContain('test-tag-2');
     });
@@ -108,13 +108,13 @@ describe('MetadataWriter (Integration)', () => {
         return;
       }
 
-      const mainName = 'title-only';
+      const shotName = 'title-only';
 
-      await metadataWriter.writeMetadataToFile(testFilePath, mainName, []);
+      await metadataWriter.writeMetadataToFile(testFilePath, shotName, []);
 
       const result = await metadataWriter.readMetadataFromFile(testFilePath);
 
-      expect(result.title).toBe(mainName);
+      expect(result.title).toBe(shotName);
       // Description only written when tags.length > 0
       expect(result.description).toBeUndefined();
     });
@@ -141,14 +141,14 @@ describe('MetadataWriter (Integration)', () => {
         return;
       }
 
-      const mainName = 'complex-name-with-dashes';
+      const shotName = 'complex-name-with-dashes';
       const tags = ['kitchen appliance', 'stainless-steel', 'commercial-grade'];
 
-      await metadataWriter.writeMetadataToFile(testFilePath, mainName, tags);
+      await metadataWriter.writeMetadataToFile(testFilePath, shotName, tags);
 
       const result = await metadataWriter.readMetadataFromFile(testFilePath);
 
-      expect(result.title).toBe(mainName);
+      expect(result.title).toBe(shotName);
       expect(result.keywords?.length).toBeGreaterThan(0);
     });
 
@@ -192,13 +192,13 @@ describe('MetadataWriter (Integration)', () => {
         return;
       }
 
-      const mainName = 'read-test';
+      const shotName = 'read-test';
       const tags = ['read-tag-1', 'read-tag-2'];
 
-      await metadataWriter.writeMetadataToFile(testFilePath, mainName, tags);
+      await metadataWriter.writeMetadataToFile(testFilePath, shotName, tags);
       const result = await metadataWriter.readMetadataFromFile(testFilePath);
 
-      expect(result.title).toBe(mainName);
+      expect(result.title).toBe(shotName);
       expect(result.keywords).toBeDefined();
       expect(result.description).toBeDefined();
     });
@@ -249,17 +249,17 @@ describe('MetadataWriter (Integration)', () => {
         return;
       }
 
-      const mainName = 'oven-control-panel';
+      const shotName = 'oven-control-panel';
       const tags = ['kitchen', 'appliance', 'oven'];
 
       // Write metadata
-      await metadataWriter.writeMetadataToFile(testFilePath, mainName, tags);
+      await metadataWriter.writeMetadataToFile(testFilePath, shotName, tags);
 
       // Read it back
       const result = await metadataWriter.readMetadataFromFile(testFilePath);
 
       // Verify consistency
-      expect(result.title).toBe(mainName);
+      expect(result.title).toBe(shotName);
       tags.forEach(tag => {
         expect(result.keywords).toContain(tag);
       });
@@ -273,7 +273,7 @@ describe('MetadataWriter (Integration)', () => {
         return;
       }
 
-      const mainName = 'kitchen-oven-cu';
+      const shotName = 'kitchen-oven-cu';
       const tags = ['appliance'];
       const structured = {
         location: 'kitchen',
@@ -283,7 +283,7 @@ describe('MetadataWriter (Integration)', () => {
         cameraId: 'EA001597'
       };
 
-      await metadataWriter.writeMetadataToFile(testFilePath, mainName, tags, structured);
+      await metadataWriter.writeMetadataToFile(testFilePath, shotName, tags, structured);
 
       // Read XMP-xmpDm:TapeName
       const { stdout } = await execAsync(`exiftool -XMP-xmpDm:TapeName -json "${testFilePath}"`);
@@ -309,7 +309,7 @@ describe('MetadataWriter (Integration)', () => {
       expect(beforeData[0]['TapeName']).toBe('EXISTING123');
 
       // Now try to write metadata with a different camera ID
-      const mainName = 'kitchen-oven-cu';
+      const shotName = 'kitchen-oven-cu';
       const tags = ['appliance'];
       const structured = {
         location: 'kitchen',
@@ -319,7 +319,7 @@ describe('MetadataWriter (Integration)', () => {
         cameraId: 'EA999999' // Different camera ID
       };
 
-      await metadataWriter.writeMetadataToFile(testFilePath, mainName, tags, structured);
+      await metadataWriter.writeMetadataToFile(testFilePath, shotName, tags, structured);
 
       // Read TapeName again
       const { stdout: afterStdout } = await execAsync(`exiftool -XMP-xmpDm:TapeName -json "${testFilePath}"`);
@@ -335,7 +335,7 @@ describe('MetadataWriter (Integration)', () => {
         return;
       }
 
-      const mainName = 'kitchen-oven-cleaning-WS';
+      const shotName = 'kitchen-oven-cleaning-WS';
       const tags = ['appliance'];
       const structured = {
         location: 'kitchen',
@@ -345,7 +345,7 @@ describe('MetadataWriter (Integration)', () => {
         shotNumber: 5
       };
 
-      await metadataWriter.writeMetadataToFile(testFilePath, mainName, tags, structured);
+      await metadataWriter.writeMetadataToFile(testFilePath, shotName, tags, structured);
 
       // Read XMP-xmpDm:LogComment
       const { stdout } = await execAsync(`exiftool -XMP-xmpDm:LogComment -json "${testFilePath}"`);
@@ -362,7 +362,7 @@ describe('MetadataWriter (Integration)', () => {
         return;
       }
 
-      const mainName = 'kitchen-oven-cu';
+      const shotName = 'kitchen-oven-cu';
       const tags = ['appliance'];
       const structured = {
         location: 'kitchen',
@@ -371,7 +371,7 @@ describe('MetadataWriter (Integration)', () => {
         shotNumber: 5
       };
 
-      await metadataWriter.writeMetadataToFile(testFilePath, mainName, tags, structured);
+      await metadataWriter.writeMetadataToFile(testFilePath, shotName, tags, structured);
 
       // Read XMP-xmpDm:shotName
       const { stdout } = await execAsync(`exiftool -XMP-xmpDm:shotName -json "${testFilePath}"`);
@@ -388,7 +388,7 @@ describe('MetadataWriter (Integration)', () => {
         return;
       }
 
-      const mainName = 'kitchen-oven-cu';
+      const shotName = 'kitchen-oven-cu';
       const tags = ['appliance'];
       const structured = {
         location: 'kitchen',
@@ -397,7 +397,7 @@ describe('MetadataWriter (Integration)', () => {
         // No shotNumber provided
       };
 
-      await metadataWriter.writeMetadataToFile(testFilePath, mainName, tags, structured);
+      await metadataWriter.writeMetadataToFile(testFilePath, shotName, tags, structured);
 
       // Read XMP-xmpDm:shotName
       const { stdout } = await execAsync(`exiftool -XMP-xmpDm:shotName -json "${testFilePath}"`);
@@ -416,7 +416,7 @@ describe('MetadataWriter (Integration)', () => {
         return;
       }
 
-      const mainName = 'kitchen-oven-cleaning-WS';
+      const shotName = 'kitchen-oven-cleaning-WS';
       const tags = ['appliance', 'demo'];
       const structured = {
         location: 'kitchen',
@@ -425,7 +425,7 @@ describe('MetadataWriter (Integration)', () => {
         shotType: 'WS'
       };
 
-      await metadataWriter.writeMetadataToFile(testFilePath, mainName, tags, structured);
+      await metadataWriter.writeMetadataToFile(testFilePath, shotName, tags, structured);
 
       // Read XMP-xmpDM:shotName (maps to PP Shot field) and dc:Description
       const { stdout } = await execAsync(`exiftool -XMP-xmpDM:shotName -XMP-dc:Description -json "${testFilePath}"`);
@@ -445,11 +445,11 @@ describe('MetadataWriter (Integration)', () => {
         return;
       }
 
-      const mainName = 'test-name';
+      const shotName = 'test-name';
       const tags = ['tag1', 'tag2'];
       const description = 'This is a custom description field';
 
-      await metadataWriter.writeMetadataToFile(testFilePath, mainName, tags, undefined, description);
+      await metadataWriter.writeMetadataToFile(testFilePath, shotName, tags, undefined, description);
 
       const { stdout } = await execAsync(`exiftool -Description -XMP-dc:Description -json "${testFilePath}"`);
       const data = JSON.parse(stdout);
@@ -465,14 +465,14 @@ describe('MetadataWriter (Integration)', () => {
         return;
       }
 
-      const mainName = 'simple-name';
+      const shotName = 'simple-name';
       const tags = ['tag1', 'tag2'];
 
       // Call without structured parameter (backward compatibility)
-      await metadataWriter.writeMetadataToFile(testFilePath, mainName, tags);
+      await metadataWriter.writeMetadataToFile(testFilePath, shotName, tags);
 
       const result = await metadataWriter.readMetadataFromFile(testFilePath);
-      expect(result.title).toBe(mainName);
+      expect(result.title).toBe(shotName);
       expect(result.description).toBe('tag1, tag2');
     });
 
@@ -482,7 +482,7 @@ describe('MetadataWriter (Integration)', () => {
         return;
       }
 
-      const mainName = 'kitchen-oven-WS';
+      const shotName = 'kitchen-oven-WS';
       const tags = ['appliance'];
       const structured = {
         location: 'kitchen',
@@ -490,7 +490,7 @@ describe('MetadataWriter (Integration)', () => {
         shotType: 'WS'
       };
 
-      await metadataWriter.writeMetadataToFile(testFilePath, mainName, tags, structured);
+      await metadataWriter.writeMetadataToFile(testFilePath, shotName, tags, structured);
 
       // Verify individual components are NOT written to XMP
       const { stdout } = await execAsync(`exiftool -XMP:all -json "${testFilePath}"`);
@@ -517,7 +517,7 @@ describe('MetadataWriter (Integration)', () => {
         return;
       }
 
-      const mainName = 'kitchen-oven-cleaning-WS';
+      const shotName = 'kitchen-oven-cleaning-WS';
       const tags = ['plumbing', 'renovation', 'demo'];
       const structured = {
         location: 'kitchen',
@@ -526,7 +526,7 @@ describe('MetadataWriter (Integration)', () => {
         shotType: 'WS'
       };
 
-      await metadataWriter.writeMetadataToFile(testFilePath, mainName, tags, structured);
+      await metadataWriter.writeMetadataToFile(testFilePath, shotName, tags, structured);
 
       // Read XMP-xmpDM:LogComment specifically (CEP panel requirement)
       const { stdout } = await execAsync(`exiftool -XMP-xmpDM:LogComment -json "${testFilePath}"`);
@@ -543,7 +543,7 @@ describe('MetadataWriter (Integration)', () => {
         return;
       }
 
-      const mainName = 'kitchen-oven-cleaning-WS';
+      const shotName = 'kitchen-oven-cleaning-WS';
       const tags = ['appliance', 'demo'];
       const structured = {
         location: 'kitchen',
@@ -552,7 +552,7 @@ describe('MetadataWriter (Integration)', () => {
         shotType: 'WS'
       };
 
-      await metadataWriter.writeMetadataToFile(testFilePath, mainName, tags, structured);
+      await metadataWriter.writeMetadataToFile(testFilePath, shotName, tags, structured);
 
       // Read XMP-xmpDm:LogComment specifically
       const { stdout } = await execAsync(`exiftool -XMP-xmpDm:LogComment -json "${testFilePath}"`);
@@ -569,7 +569,7 @@ describe('MetadataWriter (Integration)', () => {
         return;
       }
 
-      const mainName = 'kitchen-oven-CU';
+      const shotName = 'kitchen-oven-CU';
       const tags = ['appliance'];
       const structured = {
         location: 'kitchen',
@@ -578,7 +578,7 @@ describe('MetadataWriter (Integration)', () => {
         shotType: 'CU'
       };
 
-      await metadataWriter.writeMetadataToFile(testFilePath, mainName, tags, structured);
+      await metadataWriter.writeMetadataToFile(testFilePath, shotName, tags, structured);
 
       // Read XMP-xmpDm:LogComment specifically
       const { stdout } = await execAsync(`exiftool -XMP-xmpDm:LogComment -json "${testFilePath}"`);
@@ -595,7 +595,7 @@ describe('MetadataWriter (Integration)', () => {
         return;
       }
 
-      const mainName = 'kitchen-oven-WS';
+      const shotName = 'kitchen-oven-WS';
       const tags = ['appliance'];
       const structured = {
         location: 'kitchen',
@@ -604,7 +604,7 @@ describe('MetadataWriter (Integration)', () => {
         // action is omitted (will be empty string)
       };
 
-      await metadataWriter.writeMetadataToFile(testFilePath, mainName, tags, structured);
+      await metadataWriter.writeMetadataToFile(testFilePath, shotName, tags, structured);
 
       const { stdout } = await execAsync(`exiftool -XMP-xmpDM:LogComment -json "${testFilePath}"`);
       const data = JSON.parse(stdout);
@@ -620,11 +620,11 @@ describe('MetadataWriter (Integration)', () => {
         return;
       }
 
-      const mainName = 'simple-name';
+      const shotName = 'simple-name';
       const tags = ['tag1', 'tag2'];
 
       // Call without structured parameter
-      await metadataWriter.writeMetadataToFile(testFilePath, mainName, tags);
+      await metadataWriter.writeMetadataToFile(testFilePath, shotName, tags);
 
       const { stdout } = await execAsync(`exiftool -XMP-xmpDM:LogComment -json "${testFilePath}"`);
       const data = JSON.parse(stdout);

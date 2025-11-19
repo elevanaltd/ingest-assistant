@@ -85,7 +85,7 @@ describe('Action Field Feature', () => {
     currentFilename: 'IMG_12345678.mp4',
     filePath: '/test/path/IMG_12345678.mp4',
     extension: '.mp4',
-    mainName: '',
+    shotName: '',
     keywords: [],
     processedByAI: false,
     fileType: 'video',
@@ -93,6 +93,7 @@ describe('Action Field Feature', () => {
     subject: '',
     action: '',
     shotType: '',
+    lockedFields: [],
     createdAt: new Date(),
     createdBy: 'ingest-assistant',
     modifiedAt: new Date(),
@@ -182,7 +183,7 @@ describe('Action Field Feature', () => {
     it('should clear action field when switching from video to photo', async () => {
       const videoFile = createMockFile({
         fileType: 'video',
-        mainName: 'kitchen-oven-cleaning-WS',
+        shotName: 'kitchen-oven-cleaning-WS',
         location: 'kitchen',
         subject: 'oven',
         action: 'cleaning',
@@ -194,7 +195,7 @@ describe('Action Field Feature', () => {
         extension: '.jpg',
         originalFilename: 'IMG_87654321.jpg',
         currentFilename: 'IMG_87654321.jpg',
-        mainName: 'bathroom-sink-CU',
+        shotName: 'bathroom-sink-CU',
         location: 'bathroom',
         subject: 'sink',
         shotType: 'CU',
@@ -229,7 +230,7 @@ describe('Action Field Feature', () => {
     it('should maintain action value when switching between videos', async () => {
       const video1 = createMockFile({
         fileType: 'video',
-        mainName: 'kitchen-oven-cleaning-WS',
+        shotName: 'kitchen-oven-cleaning-WS',
         location: 'kitchen',
         subject: 'oven',
         action: 'cleaning',
@@ -240,7 +241,7 @@ describe('Action Field Feature', () => {
         fileType: 'video',
         originalFilename: 'IMG_87654321.mp4',
         currentFilename: 'IMG_87654321.mp4',
-        mainName: 'bathroom-sink-installing-MID',
+        shotName: 'bathroom-sink-installing-MID',
         location: 'bathroom',
         subject: 'sink',
         action: 'installing',
@@ -281,7 +282,7 @@ describe('Action Field Feature', () => {
       mockElectronAPI.isAIConfigured.mockResolvedValue(true);
 
       const aiResult: AIAnalysisResult = {
-        mainName: 'kitchen-oven-cleaning-WS',
+        shotName: 'kitchen-oven-cleaning-WS',
         keywords: ['appliance', 'cooking'],
         confidence: 0.95,
         location: 'kitchen',
@@ -326,7 +327,7 @@ describe('Action Field Feature', () => {
       mockElectronAPI.isAIConfigured.mockResolvedValue(true);
 
       const aiResult: AIAnalysisResult = {
-        mainName: 'kitchen-oven-WS',
+        shotName: 'kitchen-oven-WS',
         keywords: ['appliance', 'cooking'],
         confidence: 0.95,
         location: 'kitchen',
@@ -363,7 +364,7 @@ describe('Action Field Feature', () => {
 
       // AI result without action field
       const aiResult: AIAnalysisResult = {
-        mainName: 'kitchen-oven-WS',
+        shotName: 'kitchen-oven-WS',
         keywords: ['appliance', 'cooking'],
         confidence: 0.95,
         location: 'kitchen',
@@ -402,7 +403,7 @@ describe('Action Field Feature', () => {
     it('should parse 4-part video filename and populate action field', async () => {
       const videoFile = createMockFile({
         fileType: 'video',
-        mainName: 'kitchen-oven-cleaning-WS',
+        shotName: 'kitchen-oven-cleaning-WS',
         location: 'kitchen',
         subject: 'oven',
         action: 'cleaning',
@@ -428,7 +429,7 @@ describe('Action Field Feature', () => {
     it('should parse 3-part video filename and leave action empty', async () => {
       const videoFile = createMockFile({
         fileType: 'video',
-        mainName: 'kitchen-oven-WS',
+        shotName: 'kitchen-oven-WS',
         location: 'kitchen',
         subject: 'oven',
         shotType: 'WS',
@@ -456,7 +457,7 @@ describe('Action Field Feature', () => {
         extension: '.jpg',
         originalFilename: 'IMG_12345678.jpg',
         currentFilename: 'IMG_12345678.jpg',
-        mainName: 'bathroom-sink-CU',
+        shotName: 'bathroom-sink-CU',
         location: 'bathroom',
         subject: 'sink',
         shotType: 'CU',
@@ -485,7 +486,7 @@ describe('Action Field Feature', () => {
       // by checking if the last segment is a valid shot type
       const videoFile = createMockFile({
         fileType: 'video',
-        mainName: 'bedroom-window-opening-MID',
+        shotName: 'bedroom-window-opening-MID',
         // No structured fields - should be parsed from mainName
       });
       mockElectronAPI.loadFiles.mockResolvedValue([videoFile]);

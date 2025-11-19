@@ -24,13 +24,13 @@ describe('MetadataStore', () => {
     vi.restoreAllMocks();
   });
 
-  const createMockFileMetadata = (id: string, mainName = '', keywords: string[] = []): FileMetadata => ({
+  const createMockFileMetadata = (id: string, shotName = '', keywords: string[] = []): FileMetadata => ({
     id,
     originalFilename: `${id}.jpg`,
-    currentFilename: mainName ? `${id}-${mainName}.jpg` : `${id}.jpg`,
+    currentFilename: shotName ? `${id}-${shotName}.jpg` : `${id}.jpg`,
     filePath: `/path/${id}.jpg`,
     extension: '.jpg',
-    mainName,
+    shotName,
     keywords,
     processedByAI: false,
     fileType: 'image',
@@ -43,6 +43,7 @@ describe('MetadataStore', () => {
     subject: '',
     action: '',
     shotType: '',
+    lockedFields: [],
   });
 
   describe('loadMetadata', () => {
@@ -55,7 +56,7 @@ describe('MetadataStore', () => {
       const metadata = await metadataStore.loadMetadata();
 
       expect(metadata).toHaveProperty('EB001537');
-      expect(metadata['EB001537'].mainName).toBe('oven-control-panel');
+      expect(metadata['EB001537'].shotName).toBe('oven-control-panel');
     });
 
     it('should return empty object if file does not exist', async () => {
@@ -82,7 +83,7 @@ describe('MetadataStore', () => {
           currentFilename: 'EB001537.jpg',
           filePath: '/path/EB001537.jpg',
           extension: '.jpg',
-          mainName: 'kitchen-oven',
+          shotName: 'kitchen-oven',
           // NOTE: No keywords field - this causes the bug
           processedByAI: false,
           fileType: 'image' as const,
@@ -118,7 +119,7 @@ describe('MetadataStore', () => {
           currentFilename: 'EB001537.jpg',
           filePath: '/path/EB001537.jpg',
           extension: '.jpg',
-          mainName: 'kitchen-oven',
+          shotName: 'kitchen-oven',
           keywords: [],
           processedByAI: false,
           fileType: 'image' as const,
@@ -160,7 +161,7 @@ describe('MetadataStore', () => {
       expect(writeCall[0]).toBe(testStorePath);
 
       const savedData = JSON.parse(writeCall[1]);
-      expect(savedData['EB001537'].mainName).toBe('test');
+      expect(savedData['EB001537'].shotName).toBe('test');
     });
 
     it('should return false on write error', async () => {
@@ -183,7 +184,7 @@ describe('MetadataStore', () => {
       const fileMetadata = await metadataStore.getFileMetadata('EB001537');
 
       expect(fileMetadata).toBeDefined();
-      expect(fileMetadata?.mainName).toBe('test-name');
+      expect(fileMetadata?.shotName).toBe('test-name');
     });
 
     it('should return null for non-existent file', async () => {
@@ -212,7 +213,7 @@ describe('MetadataStore', () => {
 
       const writeCall = mockFs.writeFile.mock.calls[0];
       const savedData = JSON.parse(writeCall[1]);
-      expect(savedData['EB001537'].mainName).toBe('new-name');
+      expect(savedData['EB001537'].shotName).toBe('new-name');
     });
 
     it('should create new entry if file does not exist', async () => {

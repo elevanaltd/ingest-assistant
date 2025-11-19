@@ -542,9 +542,12 @@ ipcMain.handle('file:load-files', async () => {
       await store.updateFileMetadata(file.id, file);
     } else {
       // Use existing metadata (which may have been AI-processed)
-      file.mainName = existingMetadata.mainName;
+      // Bug #1 Fix: Fallback to mainName for legacy pre-R1.1 records, then to empty string if both missing
+      file.shotName = existingMetadata.shotName || existingMetadata.mainName || '';
       file.keywords = existingMetadata.keywords;
       file.processedByAI = existingMetadata.processedByAI;
+      // Bug #2 Fix: Propagate lockedFields to renderer
+      file.lockedFields = existingMetadata.lockedFields || [];
       // Preserve structured naming components
       file.location = existingMetadata.location;
       file.subject = existingMetadata.subject;
@@ -578,9 +581,12 @@ ipcMain.handle('file:list-range', async (_event, startIndex: number, pageSize: n
   for (const file of result.files) {
     const existingMetadata = await store.getFileMetadata(file.id);
     if (existingMetadata) {
-      file.mainName = existingMetadata.mainName;
+      // Bug #1 Fix: Fallback to mainName for legacy pre-R1.1 records, then to empty string if both missing
+      file.shotName = existingMetadata.shotName || existingMetadata.mainName || '';
       file.keywords = existingMetadata.keywords;
       file.processedByAI = existingMetadata.processedByAI;
+      // Bug #2 Fix: Propagate lockedFields to renderer
+      file.lockedFields = existingMetadata.lockedFields || [];
       file.location = existingMetadata.location;
       file.subject = existingMetadata.subject;
       file.shotType = existingMetadata.shotType;
@@ -590,18 +596,18 @@ ipcMain.handle('file:list-range', async (_event, startIndex: number, pageSize: n
   return result;
 });
 
-ipcMain.handle('file:rename', async (_event, fileId: string, mainName: string, currentPath: string, structured?: { location?: string; subject?: string; action?: string; shotType?: string }) => {
+ipcMain.handle('file:rename', async (_event, fileId: string, shotName: string, currentPath: string, structured?: { location?: string; subject?: string; action?: string; shotType?: string }) => {
   try {
-    console.log('[main.ts] file:rename called with:', { fileId, mainName, structured });
+    console.log('[main.ts] file:rename called with:', { fileId, shotName, structured });
 
     // Security: Validate input schema (prevents type confusion attacks)
-    const validated = FileRenameSchema.parse({ fileId, mainName, currentPath, structured });
+    const validated = FileRenameSchema.parse({ fileId, shotName, currentPath, structured });
 
     // Rename the file using validated data
     const newPath = await fileManager.renameFile(
       validated.currentPath,
       validated.fileId,
-      validated.mainName
+      validated.shotName
     );
 
     const folderPath = path.dirname(newPath);
@@ -617,7 +623,7 @@ ipcMain.handle('file:rename', async (_event, fileId: string, mainName: string, c
         currentFilename: path.basename(newPath),
         filePath: newPath,
         extension: path.extname(newPath),
-        mainName: mainName,
+        shotName: shotName,
         keywords: [],
         processedByAI: false,
         fileType: fileManager.getFileType(path.basename(newPath)),
@@ -632,10 +638,11 @@ ipcMain.handle('file:rename', async (_event, fileId: string, mainName: string, c
         subject: structured?.subject || '',
         action: structured?.action || '',
         shotType: (structured?.shotType as ShotType) || '',
+        lockedFields: [],
       };
     } else {
       // Update existing metadata
-      fileMetadata.mainName = mainName;
+      fileMetadata.shotName = shotName;
       fileMetadata.currentFilename = path.basename(newPath);
       fileMetadata.filePath = newPath;
       // Update structured components if provided (allow clearing action with empty string)
@@ -647,7 +654,7 @@ ipcMain.handle('file:rename', async (_event, fileId: string, mainName: string, c
 
     console.log('[main.ts] Saving fileMetadata to store:', JSON.stringify({
       id: fileMetadata!.id,
-      mainName: fileMetadata!.mainName,
+      shotName: fileMetadata!.shotName,
       location: fileMetadata!.location,
       subject: fileMetadata!.subject,
       shotType: fileMetadata!.shotType
@@ -662,7 +669,7 @@ ipcMain.handle('file:rename', async (_event, fileId: string, mainName: string, c
     // Write metadata to the file
     await metadataWriter.writeMetadataToFile(
       newPath,
-      fileMetadata!.mainName,
+      fileMetadata!.shotName,
       fileMetadata!.keywords,
       {
         location: fileMetadata!.location,
@@ -701,13 +708,13 @@ ipcMain.handle('file:update-metadata', async (_event, fileId: string, metadata: 
 
     const store = getMetadataStoreForFolder(currentFolderPath);
 
-    // Re-fetch metadata to get latest mainName (in case updateStructuredMetadata was called first)
+    // Re-fetch metadata to get latest shotName (in case updateStructuredMetadata was called first)
     const fileMetadata = await store.getFileMetadata(validated.fileId);
     if (!fileMetadata) {
       throw new Error(`File metadata not found for ID: ${validated.fileId}`);
     }
 
-    console.log('[main.ts] Updating file metadata - current mainName:', fileMetadata.mainName);
+    console.log('[main.ts] Updating file metadata - current shotName:', fileMetadata.shotName);
     console.log('[main.ts] Stored filePath:', fileMetadata.filePath);
     console.log('[main.ts] Original filename:', fileMetadata.originalFilename);
     console.log('[main.ts] Current filename:', fileMetadata.currentFilename);
@@ -727,11 +734,11 @@ ipcMain.handle('file:update-metadata', async (_event, fileId: string, metadata: 
     const formattedDate = timestamp ? formatTimestampForTitle(timestamp) : undefined;
 
     // Write metadata INTO the actual file using exiftool
-    // Use the current mainName from fileMetadata (which may have been updated by updateStructuredMetadata)
-    console.log('[main.ts] Writing to XMP - title:', fileMetadata.mainName, 'keywords:', validated.keywords);
+    // Use the current shotName from fileMetadata (which may have been updated by updateStructuredMetadata)
+    console.log('[main.ts] Writing to XMP - title:', fileMetadata.shotName, 'keywords:', validated.keywords);
     await metadataWriter.writeMetadataToFile(
       actualFilePath,
-      fileMetadata.mainName,
+      fileMetadata.shotName,
       validated.keywords,
       {
         location: fileMetadata.location,
@@ -743,7 +750,7 @@ ipcMain.handle('file:update-metadata', async (_event, fileId: string, metadata: 
       }
     );
 
-    console.log('[main.ts] file:update-metadata - Successfully wrote XMP with title:', fileMetadata.mainName, 'and keywords:', validated.keywords);
+    console.log('[main.ts] file:update-metadata - Successfully wrote XMP with title:', fileMetadata.shotName, 'and keywords:', validated.keywords);
 
     return true;
   } catch (error) {
@@ -787,7 +794,7 @@ ipcMain.handle('file:update-structured-metadata', async (_event, fileId: string,
         currentFilename: path.basename(filePath),
         filePath: filePath,
         extension: path.extname(filePath),
-        mainName: '',
+        shotName: '',
         keywords: [],
         processedByAI: false,
         fileType: fileType || 'image',
@@ -802,7 +809,13 @@ ipcMain.handle('file:update-structured-metadata', async (_event, fileId: string,
         subject: '',
         action: '',
         shotType: '',
+        lockedFields: [],
       };
+    }
+
+    // TypeScript narrowing: fileMetadata is guaranteed non-null after the if block above
+    if (!fileMetadata) {
+      throw new Error('Unexpected: fileMetadata is null after creation attempt');
     }
 
     // Update structured components (allow clearing action with empty string)
@@ -820,19 +833,24 @@ ipcMain.handle('file:update-structured-metadata', async (_event, fileId: string,
     // Append timestamp to title for uniqueness ONLY if shotNumber is not present
     // When shotNumber exists, it provides uniqueness (e.g., lounge-media-plate-MID-#1)
     // When shotNumber absent, timestamp provides uniqueness (e.g., kitchen-oven-WS-20251103100530)
-    const generatedTitle = fileMetadata.shotNumber !== undefined
-      ? baseTitle // No timestamp when shot number present
-      : await generateTitleWithTimestamp(baseTitle, fileMetadata); // Timestamp for legacy folders
+    let generatedShotName: string;
+    if (fileMetadata.shotNumber !== undefined) {
+      // R1.1 Schema: shotName includes #N suffix when shotNumber exists
+      generatedShotName = `${baseTitle}-#${fileMetadata.shotNumber}`;
+    } else {
+      // Legacy folders without shot numbers use timestamp for uniqueness
+      generatedShotName = await generateTitleWithTimestamp(baseTitle, fileMetadata);
+    }
 
-    // Update mainName to match generated title
-    fileMetadata.mainName = generatedTitle;
+    // Update shotName to match generated title (R1.1 schema alignment)
+    fileMetadata.shotName = generatedShotName;
 
     console.log('[main.ts] Updating structured metadata in store:', {
       location: fileMetadata!.location,
       subject: fileMetadata!.subject,
       action: fileMetadata!.action,
       shotType: fileMetadata!.shotType,
-      generatedTitle
+      generatedShotName
     });
 
     // Save to JSON store
@@ -946,9 +964,10 @@ ipcMain.handle('ai:batch-process', async (_event, fileIds: string[]) => {
         // Append timestamp ONLY if shotNumber is not present (same logic as file:update-structured-metadata)
         // When shotNumber exists, it provides uniqueness (e.g., kitchen-fridge-MID-#1)
         // When shotNumber absent, timestamp provides uniqueness (e.g., kitchen-oven-WS-20251103100530)
-        fileMetadata.mainName = fileMetadata.shotNumber !== undefined
-          ? result.mainName // No timestamp when shot number present
-          : await generateTitleWithTimestamp(result.mainName, fileMetadata); // Timestamp for legacy folders
+        // R1.1 Schema: shotName with #N suffix
+        fileMetadata.shotName = fileMetadata.shotNumber !== undefined
+          ? `${result.shotName}-#${fileMetadata.shotNumber}` // Add #N suffix when shot number present
+          : await generateTitleWithTimestamp(result.shotName, fileMetadata); // Timestamp for legacy folders
         fileMetadata.keywords = result.keywords;
         fileMetadata.location = result.location;
         fileMetadata.subject = result.subject;
@@ -1051,9 +1070,10 @@ ipcMain.handle('batch:start', async (_event, fileIds: string[]) => {
           // Append timestamp ONLY if shotNumber is not present (same logic as file:update-structured-metadata)
           // When shotNumber exists, it provides uniqueness (e.g., kitchen-fridge-MID-#1)
           // When shotNumber absent, timestamp provides uniqueness (e.g., kitchen-oven-WS-20251103100530)
-          fileMetadata.mainName = fileMetadata.shotNumber !== undefined
-            ? result.mainName // No timestamp when shot number present
-            : await generateTitleWithTimestamp(result.mainName, fileMetadata); // Timestamp for legacy folders
+          // R1.1 Schema: shotName with #N suffix
+          fileMetadata.shotName = fileMetadata.shotNumber !== undefined
+            ? `${result.shotName}-#${fileMetadata.shotNumber}` // Add #N suffix when shot number present
+            : await generateTitleWithTimestamp(result.shotName, fileMetadata); // Timestamp for legacy folders
           fileMetadata.keywords = result.keywords;
           fileMetadata.location = result.location;
           fileMetadata.subject = result.subject;
@@ -1071,7 +1091,7 @@ ipcMain.handle('batch:start', async (_event, fileIds: string[]) => {
           // This ensures batch processing updates both the JSON store AND the file's EXIF/XMP metadata
           await metadataWriter.writeMetadataToFile(
             fileMetadata.filePath,
-            fileMetadata.mainName,
+            fileMetadata.shotName,
             fileMetadata.keywords,
             {
               location: fileMetadata.location,

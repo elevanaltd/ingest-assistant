@@ -26,7 +26,7 @@ export const FileListRangeSchema = z.object({
 
 export const FileRenameSchema = z.object({
   fileId: z.string().min(1).max(50),
-  mainName: z.string().min(1).max(500),
+  shotName: z.string().min(1).max(500),
   currentPath: z.string().min(1),
   structured: StructuredMetadataSchema,
 });

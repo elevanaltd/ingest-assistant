@@ -281,7 +281,7 @@ describe('Batch IPC Handlers', () => {
           id: fileId,
           filePath: `/path/${fileId}.jpg`,
           processedByAI: false,
-          mainName: '',
+          shotName: '',
           keywords: [] as string[],
         })),
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -290,13 +290,13 @@ describe('Batch IPC Handlers', () => {
 
       const fileId = 'file1';
       const aiResult = {
-        mainName: 'kitchen-wine-cooler-WS',
+        shotName: 'kitchen-wine-cooler-WS',
         keywords: ['built-in', 'wine cooler'],
         confidence: 0.85,
       };
 
       const fileMetadata = await mockMetadataStore.getFileMetadata(fileId);
-      fileMetadata.mainName = aiResult.mainName;
+      fileMetadata.shotName = aiResult.shotName;
       fileMetadata.keywords = aiResult.keywords;
       fileMetadata.processedByAI = true;
 
@@ -305,7 +305,7 @@ describe('Batch IPC Handlers', () => {
       expect(mockMetadataStore.updateFileMetadata).toHaveBeenCalledWith(
         fileId,
         expect.objectContaining({
-          mainName: 'kitchen-wine-cooler-WS',
+          shotName: 'kitchen-wine-cooler-WS',
           processedByAI: true,
         })
       );
@@ -329,7 +329,7 @@ describe('Batch IPC Handlers', () => {
 
       const mockMetadataWriter = {
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        writeMetadataToFile: vi.fn(async (_filePath: string, _mainName: string, _tags: string[]) => {}),
+        writeMetadataToFile: vi.fn(async (_filePath: string, _shotName: string, _tags: string[]) => {}),
       };
 
       const mockMetadataStore = {
@@ -337,7 +337,7 @@ describe('Batch IPC Handlers', () => {
           id: fileId,
           filePath: `/path/to/${fileId}.jpg`,
           processedByAI: false,
-          mainName: '',
+          shotName: '',
           keywords: [] as string[],
         })),
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -346,14 +346,14 @@ describe('Batch IPC Handlers', () => {
 
       const fileId = 'test-file-001';
       const aiResult = {
-        mainName: 'kitchen-oven-WS',
+        shotName: 'kitchen-oven-WS',
         keywords: ['stainless steel', 'double oven'],
         confidence: 0.85,
       };
 
       // Simulate batch processor behavior
       const fileMetadata = await mockMetadataStore.getFileMetadata(fileId);
-      fileMetadata.mainName = aiResult.mainName;
+      fileMetadata.shotName = aiResult.shotName;
       fileMetadata.keywords = aiResult.keywords;
       fileMetadata.processedByAI = true;
 
@@ -363,7 +363,7 @@ describe('Batch IPC Handlers', () => {
       // Write to actual file (THIS IS THE MISSING CALL IN CURRENT IMPLEMENTATION)
       await mockMetadataWriter.writeMetadataToFile(
         fileMetadata.filePath,
-        fileMetadata.mainName,
+        fileMetadata.shotName,
         fileMetadata.keywords
       );
 
@@ -371,7 +371,7 @@ describe('Batch IPC Handlers', () => {
       expect(mockMetadataStore.updateFileMetadata).toHaveBeenCalledWith(
         fileId,
         expect.objectContaining({
-          mainName: 'kitchen-oven-WS',
+          shotName: 'kitchen-oven-WS',
           processedByAI: true,
         })
       );
@@ -388,11 +388,11 @@ describe('Batch IPC Handlers', () => {
       // Only files with confidence > 0.7 should have metadata written
       const mockMetadataWriter = {
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        writeMetadataToFile: vi.fn(async (_filePath: string, _mainName: string, _tags: string[]) => {}),
+        writeMetadataToFile: vi.fn(async (_filePath: string, _shotName: string, _tags: string[]) => {}),
       };
 
       const aiResult = {
-        mainName: 'kitchen-sink-CU',
+        shotName: 'kitchen-sink-CU',
         keywords: ['uncertain'],
         confidence: 0.5,  // Below 0.7 threshold
       };
@@ -401,7 +401,7 @@ describe('Batch IPC Handlers', () => {
       const shouldUpdate = aiResult.confidence > 0.7;
 
       if (shouldUpdate) {
-        await mockMetadataWriter.writeMetadataToFile('/path/file.jpg', aiResult.mainName, aiResult.keywords);
+        await mockMetadataWriter.writeMetadataToFile('/path/file.jpg', aiResult.shotName, aiResult.keywords);
       }
 
       // Verify writeMetadataToFile was NOT called
