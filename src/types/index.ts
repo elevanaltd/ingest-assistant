@@ -38,6 +38,8 @@ export interface FileMetadata {
   // === Core Metadata (matches XMP) ===
   /** Main descriptive name (kebab-case) - XMP-xmpDM:shotName */
   shotName: string;
+  /** Legacy field name from pre-R1.1 (DEPRECATED - use shotName instead) */
+  mainName?: string;
   /** Array of keyword tags - XMP-dc:Description */
   keywords: string[];
   /** Field-level lock array (prevents editing specific fields) - CEP Panel R1.1 */

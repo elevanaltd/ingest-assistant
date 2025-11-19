@@ -542,9 +542,12 @@ ipcMain.handle('file:load-files', async () => {
       await store.updateFileMetadata(file.id, file);
     } else {
       // Use existing metadata (which may have been AI-processed)
-      file.shotName = existingMetadata.shotName;
+      // Bug #1 Fix: Fallback to mainName for legacy pre-R1.1 records, then to empty string if both missing
+      file.shotName = existingMetadata.shotName || existingMetadata.mainName || '';
       file.keywords = existingMetadata.keywords;
       file.processedByAI = existingMetadata.processedByAI;
+      // Bug #2 Fix: Propagate lockedFields to renderer
+      file.lockedFields = existingMetadata.lockedFields || [];
       // Preserve structured naming components
       file.location = existingMetadata.location;
       file.subject = existingMetadata.subject;
@@ -578,9 +581,12 @@ ipcMain.handle('file:list-range', async (_event, startIndex: number, pageSize: n
   for (const file of result.files) {
     const existingMetadata = await store.getFileMetadata(file.id);
     if (existingMetadata) {
-      file.shotName = existingMetadata.shotName;
+      // Bug #1 Fix: Fallback to mainName for legacy pre-R1.1 records, then to empty string if both missing
+      file.shotName = existingMetadata.shotName || existingMetadata.mainName || '';
       file.keywords = existingMetadata.keywords;
       file.processedByAI = existingMetadata.processedByAI;
+      // Bug #2 Fix: Propagate lockedFields to renderer
+      file.lockedFields = existingMetadata.lockedFields || [];
       file.location = existingMetadata.location;
       file.subject = existingMetadata.subject;
       file.shotType = existingMetadata.shotType;
