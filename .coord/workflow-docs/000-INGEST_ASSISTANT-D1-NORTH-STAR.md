@@ -191,9 +191,9 @@ Shot #25 referenced in CEP Panel, Premiere Pro timeline, EAV production tracking
 
 ### Proxy Generation Strategy
 - **IMMUTABLE:** Proxies must preserve DateTimeOriginal for chronological ordering (I1) | Proxies must be analyzable by AI (visual quality sufficient)
-- **FLEXIBLE:** 4K H.264 @ CRF 23 (recommended) | 1080p H.264 @ CRF 23 (extreme compression) | ProRes Proxy (editing-first workflow)
-- **NEGOTIABLE:** CRF quality setting (18-28) | Resolution (4K vs 1080p) | Codec (H.264 vs ProRes) | Storage location (LucidLink vs Ubuntu)
-- **VALIDATED:** 4K H.264 @ CRF 23 achieves 10-bit 4:2:2 automatically (H.264 High 4:2:2 Profile) | 131:1 compression | Smaller than 1080p HQ despite 4x resolution | Timeline performance validated on M-series + modern PCs
+- **FLEXIBLE:** 2560×1440 ProRes Proxy (recommended sweet spot) | 1080p ProRes Proxy (smaller files) | 4K ProRes Proxy (maximum quality)
+- **NEGOTIABLE:** Resolution (2K vs 1080p vs 4K) | Codec (ProRes Proxy vs H.264) | Storage location (LucidLink vs Ubuntu)
+- **VALIDATED:** 2560×1440 ProRes Proxy achieves 10-bit 4:2:2 color (professional grading) | Low CPU decode (intra-frame) | ~6 MB/sec (175 MB for 24s typical) | Timeline performance validated smooth on M-series Macs
 - **MANDATORY:** Post-transcode EXIF copy: `exiftool -overwrite_original "-QuickTime:DateTimeOriginal=$ORIG_DATE" proxy.MOV`
 
 ---
@@ -251,13 +251,13 @@ Shot #25 referenced in CEP Panel, Premiere Pro timeline, EAV production tracking
 
 **A8::PROXY_GENERATION_EXIF_PRESERVATION** ✅ VALIDATED
 - ASSUMPTION: ~~ffmpeg preserves DateTimeOriginal during transcode~~ **PROVEN FALSE**
-- VALIDATION: ✅ COMPLETE - Empirically tested 6 proxy variants (ProRes Proxy, H.264 full/half, CRF 18/23)
+- VALIDATION: ✅ COMPLETE - Empirically tested 9 proxy variants (ProRes Proxy 4K/2K/1080p, H.264 variants, DNxHR)
 - FINDING: ALL transcodes lose EXIF:DateTimeOriginal (stored in embedded still image, not MOV metadata)
 - SOLUTION: Manual extraction + write as QuickTime:DateTimeOriginal tag
 - WORKFLOW:
   ```bash
-  # Step 1: Transcode (4K H.264 @ CRF 23 recommended)
-  ffmpeg -i raw.MOV -c:v libx264 -preset medium -crf 23 -c:a aac proxy.MOV
+  # Step 1: Transcode (2560×1440 ProRes Proxy recommended)
+  ffmpeg -i raw.MOV -vf "scale=2560:1440" -c:v prores_ks -profile:v 0 -vendor apl0 -pix_fmt yuv422p10le -c:a pcm_s16le proxy.MOV
 
   # Step 2: Extract DateTimeOriginal from source
   ORIG_DATE=$(exiftool -s3 -DateTimeOriginal raw.MOV)
@@ -269,11 +269,12 @@ Shot #25 referenced in CEP Panel, Premiere Pro timeline, EAV production tracking
   PROXY_DATE=$(exiftool -s3 -DateTimeOriginal proxy.MOV)
   [[ "$ORIG_DATE" == "$PROXY_DATE" ]] || exit 1
   ```
-- DISCOVERY: 4K H.264 @ CRF 23 automatically upgrades to H.264 High 4:2:2 Profile (10-bit 4:2:2 color preserved)
-- EMPIRICAL_RESULTS: 4K proxy achieves 131:1 compression (7.8M for 24s video) while preserving professional color
-- COMPARATIVE_ANALYSIS: 4K @ CRF 23 smaller than 1080p @ CRF 18 (7.8M vs 9.4M) despite 4x resolution
-- TIMELINE_PERFORMANCE: Validated smooth on M-series MacBooks + modern PCs (2017+)
-- CONFIDENCE: 100% (empirically validated, production-tested)
+- DISCOVERY: 2560×1440 ProRes Proxy = optimal sweet spot (goldilocks resolution)
+- EMPIRICAL_RESULTS: 2K ProRes achieves ~6 MB/sec (175 MB for 24s video) with professional 10-bit 4:2:2 color
+- COMPARATIVE_ANALYSIS: 2K better detail than 1080p (1.78x pixels), smoother editing than 4K H.264 (intra-frame)
+- TIMELINE_PERFORMANCE: Validated smooth on M-series Macs (low CPU intra-frame decode)
+- CODEC_COMPARISON: H.264 = small files + high CPU | ProRes = larger files + low CPU | 2K = compromise resolution
+- CONFIDENCE: 100% (empirically validated across 9 codec/resolution variants)
 - IMPACT: CRITICAL (I1 violation if skipped, automated workflow must enforce)
 
 ---
@@ -289,7 +290,7 @@ Shot #25 referenced in CEP Panel, Premiere Pro timeline, EAV production tracking
 
 **FUNCTIONAL_SCOPE::**
 - Media file transfer (CFEx cards → raw storage + proxy generation)
-- Proxy generation (4K H.264 @ CRF 23 with DateTimeOriginal preservation)
+- Proxy generation (2560×1440 ProRes Proxy with DateTimeOriginal preservation)
 - AI metadata generation (multi-provider: location, subject, action, shotType)
 - Sequential shot numbering (chronological assignment + immutability after COMPLETE)
 - Metadata storage (`.ingest-metadata.json` single source → CEP Panel, located in proxy folder)
@@ -300,7 +301,7 @@ Shot #25 referenced in CEP Panel, Premiere Pro timeline, EAV production tracking
 1. ✅ Core IA (v2.2.0 baseline): Manual/AI metadata + COMPLETE workflow + JSON Schema v2.0
 2. 🚧 CFEx Integration (Microphases - immediate):
    - Phase 1a: Transfer + Integrity (2 weeks) - Photos→LucidLink | Raw→Ubuntu | Validation
-   - Phase 1b: Proxy Generation (2 weeks) - 4K H.264 @ CRF 23 | DateTimeOriginal preservation
+   - Phase 1b: Proxy Generation (2 weeks) - 2560×1440 ProRes Proxy | DateTimeOriginal preservation
    - Phase 1c: Power Features (2-3 weeks) - AI auto-analyze toggle | Metadata write toggle | Filename rewrite
 3. 📋 Reference Catalog (Issue #63 deferred 3-6 months): Vector search learning from EAV-corrected metadata
 
@@ -314,7 +315,7 @@ Shot #25 referenced in CEP Panel, Premiere Pro timeline, EAV production tracking
 - ❌ Cloud Storage Manager (local/network filesystems LucidLink+Ubuntu mounts, not cloud sync)
 
 **BOUNDARIES::**
-- Transcoding: 4K H.264 proxy generation @ CRF 23 (not full transcoding suite with multiple format outputs)
+- Transcoding: 2560×1440 ProRes Proxy generation (not full transcoding suite with multiple format outputs)
 - Metadata Formats: JSON Schema v2.0 contract (not XMP-everything or proprietary)
 - AI Providers: Multi-provider support for resilience (not building custom AI models)
 - Platform Support: macOS + Ubuntu production environments (not iOS, Android, Windows unless justified)

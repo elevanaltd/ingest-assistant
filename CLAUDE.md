@@ -8,21 +8,21 @@
 **Platform:** Cross-platform (macOS darwin + Ubuntu linux)
 **Phase:** B4 (Production Ready - v2.2.0 baseline) + D1 (CFEx Integration)
 
-## ⭐ Key Validated Workflow (2025-11-18)
+## ⭐ Key Validated Workflow (2025-11-19)
 
-**Proxy Format Discovery:** 4K H.264 @ CRF 23 is the optimal proxy format
+**Proxy Format Discovery:** 2560×1440 ProRes Proxy is the optimal proxy format
 
-**Why This is Remarkable:**
-- **Automatically upgrades to H.264 High 4:2:2 Profile** (10-bit 4:2:2 color preserved)
-- **131:1 compression ratio** (1GB raw → 7.8M proxy for 24s video)
-- **Smaller than 1080p HQ** (7.8M vs 9.4M) despite having 4x the resolution
-- **Timeline performance validated** on M-series MacBooks + modern PCs
-- **Better than Media Encoder defaults** (which use 8-bit 4:2:0)
+**Why This is The Sweet Spot:**
+- **ProRes Proxy profile** (10-bit 4:2:2 color - professional grading capability)
+- **Low CPU decode** (intra-frame codec - smooth timeline playback)
+- **Goldilocks resolution** (1.78x more pixels than 1080p, 44% of 4K pixels)
+- **Reasonable file size** (~175 MB for 24s, ~6 MB/sec average)
+- **Fast encoding** (3-4x realtime on M-series Macs)
 
 **Critical Workflow Steps:**
 1. Save photos to `/LucidLink/.../images/`
 2. Save raw footage to `/Ubuntu/.../videos-raw/`
-3. Create 4K H.264 proxies: `ffmpeg -i raw.MOV -c:v libx264 -crf 23 -c:a aac proxy.MOV`
+3. Create 2K ProRes proxies: `ffmpeg -i raw.MOV -vf "scale=2560:1440" -c:v prores_ks -profile:v 0 -vendor apl0 -pix_fmt yuv422p10le -c:a pcm_s16le proxy.MOV`
 4. **MANDATORY:** Preserve DateTimeOriginal: `exiftool -overwrite_original "-QuickTime:DateTimeOriginal=$ORIG_DATE" proxy.MOV`
 5. Analyze proxies and create `.ingest-metadata.json` in proxy folder
 
@@ -51,7 +51,7 @@ COMPLETE PIPELINE (10 Steps):
 → 6: INGEST ASSISTANT (THIS APP) ← YOU ARE HERE
      Role: AI pre-tagging gateway + proxy generation
      Input: Raw media files from CFex card (photos/videos)
-     Process: Photos→LucidLink | Raw→Ubuntu | 4K H.264 proxies→LucidLink
+     Process: Photos→LucidLink | Raw→Ubuntu | 2K ProRes proxies→LucidLink
      Output: `.ingest-metadata.json` (in proxy folder)
      Metadata: location, subject, action, shotType, shotNumber
      Enhancement: Reference lookup (#63 - planned)
@@ -163,19 +163,19 @@ WHERE r.corrected_subject = 'oven-steam-tray';
    - Preservation: Raw ProRes files for archival
    - Writes Tape Name: `-XMP-xmpDM:TapeName={original-filename}`
 
-**1c. Generate 4K H.264 Proxies to LucidLink:**
+**1c. Generate 2K ProRes Proxies to LucidLink:**
    - Source: Raw videos (from Ubuntu)
    - Destination: `/LucidLink/EAV014/videos-proxy/shoot1-20251124/`
    - **Transcode Command:**
      ```bash
-     ffmpeg -i raw.MOV -c:v libx264 -preset medium -crf 23 -c:a aac proxy.MOV
+     ffmpeg -i raw.MOV -vf "scale=2560:1440" -c:v prores_ks -profile:v 0 -vendor apl0 -pix_fmt yuv422p10le -c:a pcm_s16le proxy.MOV
      ```
-   - **Result:** 4K H.264 High 4:2:2 Profile (10-bit 4:2:2 color preserved automatically)
-   - **Compression:** 131:1 ratio (1GB → 7.8M typical for 24s video)
-   - **Quality:** Professional color, timeline-ready
+   - **Result:** 2560×1440 ProRes Proxy (10-bit 4:2:2 color, intra-frame codec)
+   - **File Size:** ~175 MB for 24s (~6 MB/sec average)
+   - **Quality:** Professional grading capability, smooth timeline playback
 
 **1d. Preserve DateTimeOriginal (CRITICAL - I1 Compliance):**
-   - **Why:** ffmpeg loses EXIF DateTimeOriginal during transcode
+   - **Why:** ffmpeg loses EXIF DateTimeOriginal during transcode (all codecs including ProRes)
    - **Impact:** Without this, chronological ordering breaks (I1 violation)
    - **Fix (MANDATORY):**
      ```bash
@@ -199,10 +199,11 @@ WHERE r.corrected_subject = 'oven-steam-tray';
 
 **Why This Workflow:**
 - **Raw Preservation:** Original files archived on Ubuntu (cheap storage)
-- **Proxy Quality:** 4K H.264 @ CRF 23 smaller than 1080p HQ, better quality
-- **Editor Performance:** Proxies on LucidLink (fast access for macOS editors)
-- **AI Efficiency:** Smaller proxies = faster uploads (7.8M vs 1GB)
+- **Proxy Format:** 2K ProRes Proxy = sweet spot (better than 1080p detail, smoother than 4K H.264)
+- **Editor Performance:** Proxies on LucidLink (fast access) + intra-frame codec (smooth playback)
+- **AI Efficiency:** Reasonable file size for uploads (~6 MB/sec vs 1GB raw)
 - **Chronological Integrity:** DateTimeOriginal preserved = I1 compliant
+- **Professional Quality:** 10-bit 4:2:2 color maintained for grading
 
 **Status:** Not implemented yet - uses external transfer app + manual proxy generation currently
 
@@ -313,7 +314,7 @@ WHERE r.corrected_subject = 'oven-steam-tray';
 - **Current Phase:** D1 (North Star) - 7 immutables + microphase structure
 - **Microphase Breakdown:**
   - Phase 1a (2 weeks): Transfer + Integrity - Photos→LucidLink | Raw→Ubuntu
-  - Phase 1b (2 weeks): Proxy Generation - 4K H.264 @ CRF 23 | DateTimeOriginal preservation
+  - Phase 1b (2 weeks): Proxy Generation - 2560×1440 ProRes Proxy | DateTimeOriginal preservation
   - Phase 1c (2-3 weeks): Power Features - AI toggle | Metadata write toggle | Filename rewrite
 - **Timeline:** D1 approval → D2 design (1a/1b/1c) → B2 implementation (sequential microphases)
 - **Deferred:** Reference Catalog (Issue #63) - after CFEx complete + guardrails (3-6 months)

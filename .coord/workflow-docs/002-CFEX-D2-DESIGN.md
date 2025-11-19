@@ -39,7 +39,7 @@ Phase 1a-POLISH (1 week) → Runs PARALLEL to Phase 1b
     └─ Enhanced error log UI (real-time transparency)
 
 Phase 1b (2 weeks) → Starts after Phase 1a-CORE completes
-    ├─ Proxy generation (4K H.264 @ CRF 23)
+    ├─ Proxy generation (2560×1440 ProRes Proxy)
     ├─ DateTimeOriginal preservation (I1 compliance)
     └─ Integrity validation (timestamp matching)
 ```
@@ -93,7 +93,7 @@ Week 4-5: PARALLEL WORK
 │   └─ Error log: Real-time transparency panel
 │
 └─ Phase 1b PROXY GENERATION (2 weeks):
-    ├─ ffmpeg integration (4K H.264 @ CRF 23)
+    ├─ ffmpeg integration (2560×1440 ProRes Proxy)
     ├─ DateTimeOriginal preservation (MANDATORY I1)
     └─ Integrity validation (timestamp matching)
 
@@ -834,7 +834,7 @@ Scenario 7 (multi-card) deferred to **POLISH Phase** (runs parallel to Phase 1b)
 ### OUT OF SCOPE (Deferred to Phase 1b/1c)
 
 **Phase 1b (Proxy Generation - 2 weeks):**
-- ❌ Proxy generation (4K H.264 @ CRF 23)
+- ❌ Proxy generation (2560×1440 ProRes Proxy)
 - ❌ DateTimeOriginal preservation (ffmpeg + exiftool)
 - ❌ Integrity validation (timestamp matching)
 
@@ -965,7 +965,7 @@ WEEK 4-5: PARALLEL WORK
 │   └─ Day 5: Integration + UI testing
 │
 └─ Phase 1b (10 days - separate D2 cycle):
-    ├─ Days 1-3: ffmpeg integration (4K H.264 @ CRF 23)
+    ├─ Days 1-3: ffmpeg integration (2560×1440 ProRes Proxy)
     ├─ Days 4-6: DateTimeOriginal preservation (exiftool, validation)
     ├─ Days 7-8: Integrity validation (timestamp matching)
     └─ Days 9-10: Testing (proxy quality, EXIF preservation)

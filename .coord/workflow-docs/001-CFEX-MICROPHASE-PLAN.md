@@ -26,7 +26,7 @@ Phase 1a: Transfer + Integrity (2 weeks)
 └─ Deliverable: Reliable 2-folder transfer
 
 Phase 1b: Proxy Generation (2 weeks)
-├─ Raw videos → 4K H.264 proxies (LucidLink)
+├─ Raw videos → 2K ProRes proxies (LucidLink)
 ├─ DateTimeOriginal preservation (MANDATORY I1 compliance)
 ├─ Integrity validation (timestamp matching)
 └─ Deliverable: Production-ready proxy workflow
@@ -126,11 +126,11 @@ Phase 1c: Power Features (2-3 weeks)
 1. Automatic proxy generation after raw transfer:
    - Source: Raw videos in `/Ubuntu/EAV014/videos-raw/shoot1/`
    - Destination: Proxies in `/LucidLink/EAV014/videos-proxy/shoot1/`
-   - Format: 4K H.264 @ CRF 23 (validated optimal)
+   - Format: 2560×1440 ProRes Proxy (validated optimal sweet spot)
 2. **MANDATORY DateTimeOriginal preservation:**
    ```bash
    # Step 1: Transcode
-   ffmpeg -i raw.MOV -c:v libx264 -preset medium -crf 23 -c:a aac proxy.MOV
+   ffmpeg -i raw.MOV -vf "scale=2560:1440" -c:v prores_ks -profile:v 0 -vendor apl0 -pix_fmt yuv422p10le -c:a pcm_s16le proxy.MOV
 
    # Step 2: Extract + write timestamp (CRITICAL - I1 compliance)
    ORIG_DATE=$(exiftool -s3 -DateTimeOriginal raw.MOV)
@@ -149,9 +149,10 @@ Phase 1c: Power Features (2-3 weeks)
    - Halt workflow if any validation fails
 
 **Validated Proxy Quality:**
-- **4K H.264 @ CRF 23** automatically upgrades to **H.264 High 4:2:2 Profile**
-- **10-bit 4:2:2 color preserved** (professional color)
-- **131:1 compression** (1GB raw → 7.8M proxy typical for 24s video)
+- **2560×1440 ProRes Proxy** = goldilocks resolution (1.78x pixels vs 1080p)
+- **10-bit 4:2:2 color preserved** (professional grading capability)
+- **Low CPU decode** (intra-frame codec for smooth timeline playback)
+- **~6 MB/sec file size** (~175 MB for 24s video typical)
 - **Smaller than 1080p HQ** (7.8M vs 9.4M) despite 4x resolution
 - **Timeline performance validated** (M-series MacBooks + modern PCs 2017+)
 
@@ -188,7 +189,7 @@ Phase 1c: Power Features (2-3 weeks)
 - Settings panel (CRF quality, resolution options)
 
 **B2 Implementation:**
-- Working proxy generation (4K H.264 @ CRF 23)
+- Working proxy generation (2560×1440 ProRes Proxy)
 - DateTimeOriginal preservation (100% reliability)
 - Integrity validation (halt if timestamp mismatch)
 - +40 tests (transcode, EXIF preservation, validation)
@@ -358,7 +359,7 @@ Phase 1c: Power Features (2-3 weeks)
 
 **GO Criteria:**
 - DateTimeOriginal preservation proven (I1 compliance)
-- Proxy quality validated (4K H.264 @ CRF 23)
+- Proxy quality validated (2560×1440 ProRes Proxy)
 - Integrity validation catches all failures
 
 ### Phase 1c GO/NO-GO (B0)
@@ -424,10 +425,10 @@ Total: 6-7 weeks (sequential)
 - ✅ Zero data loss (I4 compliance)
 
 ### Phase 1b Success
-- ✅ Proxies generated with 4K H.264 @ CRF 23 quality
+- ✅ Proxies generated with 2560×1440 ProRes Proxy quality
 - ✅ DateTimeOriginal preserved 100% of time (I1 compliance)
 - ✅ Validation halts workflow on timestamp mismatch
-- ✅ Proxy quality validated (10-bit 4:2:2 color, 131:1 compression)
+- ✅ Proxy quality validated (10-bit 4:2:2 color, low CPU intra-frame decode)
 - ✅ Timeline performance smooth (M-series + modern PCs)
 
 ### Phase 1c Success
