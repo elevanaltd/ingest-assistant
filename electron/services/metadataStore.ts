@@ -160,8 +160,9 @@ export class MetadataStore {
     filePath: string;
     extension: string;
     fileType: 'image' | 'video';
-    mainName: string;
+    shotName: string;
     keywords?: string[];
+    lockedFields?: string[];
     location?: string;
     subject?: string;
     action?: string;
@@ -185,8 +186,9 @@ export class MetadataStore {
       shotNumber: params.shotNumber,
 
       // Core metadata
-      mainName: params.mainName,
+      shotName: params.shotName,
       keywords: params.keywords || [],
+      lockedFields: params.lockedFields || [],
 
       // Structured components (always present, empty string if not provided)
       location: params.location || '',

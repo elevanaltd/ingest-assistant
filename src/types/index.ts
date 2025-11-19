@@ -37,9 +37,11 @@ export interface FileMetadata {
 
   // === Core Metadata (matches XMP) ===
   /** Main descriptive name (kebab-case) - XMP-xmpDM:shotName */
-  mainName: string;
+  shotName: string;
   /** Array of keyword tags - XMP-dc:Description */
   keywords: string[];
+  /** Field-level lock array (prevents editing specific fields) - CEP Panel R1.1 */
+  lockedFields: string[];
 
   // === Structured Components (XMP-xmpDM:LogComment) ===
   /** Location where shot takes place (e.g., "kitchen", "bathroom") */
@@ -171,13 +173,13 @@ export interface AIConnectionTestResult {
 
 export interface AIAnalysisResult {
   /** Structured main name: {location}-{subject}-{shotType} or {location}-{subject}-{action}-{shotType} */
-  mainName: string;
+  shotName: string;
   /** Array of keyword tags */
   keywords: string[];
   /** AI confidence score (0-1) */
   confidence: number;
 
-  // Structured components (required - parsed from mainName or provided directly)
+  // Structured components (required - parsed from shotName or provided directly)
   /** Location component */
   location: string;
   /** Subject component */
@@ -269,7 +271,7 @@ export interface IPCChannels {
   'file:load-files': () => Promise<FileMetadata[]>;
   'file:list-range': (startIndex: number, pageSize: number) => Promise<FileListRangeResponse>;
   'file:read-as-data-url': (filePath: string) => Promise<string>;
-  'file:rename': (fileId: string, mainName: string, currentPath: string, structured?: { location?: string; subject?: string; action?: string; shotType?: string }) => Promise<boolean>;
+  'file:rename': (fileId: string, shotName: string, currentPath: string, structured?: { location?: string; subject?: string; action?: string; shotType?: string }) => Promise<boolean>;
   'file:update-metadata': (fileId: string, metadata: string[]) => Promise<boolean>;
   'file:update-structured-metadata': (fileId: string, structured: { location: string; subject: string; action?: string; shotType: string }, filePath?: string, fileType?: 'image' | 'video') => Promise<boolean>;
 

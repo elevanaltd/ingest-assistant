@@ -101,13 +101,13 @@ export class FileManager {
 
       const extension = path.extname(filename);
 
-      // Check if filename already has a main name (format: ID-name.ext)
+      // Check if filename already has a shot name (format: ID-name.ext)
       // Use baseId (not finalId) for extraction since filename has original ID
       const namePart = filename
         .slice(0, -extension.length) // Remove extension
         .slice(baseId.length); // Remove ID
 
-      const mainName = namePart.startsWith('-') ? namePart.slice(1) : '';
+      const shotName = namePart.startsWith('-') ? namePart.slice(1) : '';
 
       // Read EXIF DateTimeOriginal for accurate chronological sorting
       // Fall back to filesystem mtime if EXIF not available
@@ -131,8 +131,9 @@ export class FileManager {
         currentFilename: filename,
         filePath,
         extension,
-        mainName,
+        shotName,
         keywords: [],
+        lockedFields: [],
         fileType: this.getFileType(filename),
         processedByAI: false,
         creationTimestamp, // Use EXIF DateTimeOriginal (or mtime fallback)
