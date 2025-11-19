@@ -319,3 +319,221 @@ function calculateETA(
 
   return Math.round(estimatedRemainingMs);
 }
+
+// ============================================================================
+// ORCHESTRATION LAYER - STARTRANSFER
+// ============================================================================
+
+import { IntegrityValidator, FileValidationResult, IntegrityError } from './integrityValidator';
+
+/**
+ * Transfer configuration for orchestration layer
+ */
+export interface TransferConfig {
+  source: string;
+  destinations: TransferDestinations;
+  onProgress?: (progress: TransferProgress) => void;
+  onFileComplete?: (result: FileTransferResult) => void;
+  onValidation?: (result: FileValidationResult) => void;
+  onError?: (error: TransferError) => void;
+}
+
+/**
+ * Overall transfer result with validation warnings and error aggregation
+ */
+export interface TransferResult {
+  success: boolean;
+  filesTransferred: number;
+  filesTotal: number;
+  bytesTransferred: number;
+  duration: number;
+  validationWarnings: ValidationWarning[];
+  errors: TransferError[];
+}
+
+/**
+ * Validation warning structure
+ */
+export interface ValidationWarning {
+  file: string;
+  message: string;
+  severity: 'low' | 'medium' | 'high';
+}
+
+/**
+ * Transfer error structure
+ */
+export interface TransferError {
+  file: string;
+  error: Error;
+  phase: 'scan' | 'transfer' | 'validation';
+}
+
+/**
+ * Enhanced file transfer result with EXIF timestamp validation
+ */
+export interface FileTransferResultEnhanced extends FileTransferResult {
+  exifTimestamp: Date | null;
+  exifSource: 'EXIF' | 'FILESYSTEM' | null;
+}
+
+/**
+ * CFEx Transfer Service - Orchestration Layer
+ *
+ * Integrates scanSourceFiles → transferFile → validateFile into complete pipeline.
+ *
+ * RESPONSIBILITIES:
+ * 1. Scan source files and create transfer tasks
+ * 2. Transfer files with streaming progress tracking
+ * 3. Validate files post-transfer (size match + EXIF extraction)
+ * 4. Aggregate progress across all files
+ * 5. Collect validation warnings and transfer errors
+ * 6. Continue on individual file failures (error resilience)
+ *
+ * SYSTEM INTEGRATION:
+ * - scanSourceFiles() → FileTransferTask[] (dual routing)
+ * - transferFile() → streaming I/O with progress
+ * - IntegrityValidator.validateFile() → post-transfer verification
+ *
+ * Reference: D3 Blueprint lines 137-195
+ */
+export class CfexTransferService {
+  private integrityValidator: IntegrityValidator;
+
+  constructor() {
+    this.integrityValidator = new IntegrityValidator();
+  }
+
+  /**
+   * Start complete transfer workflow: scan → transfer → validate
+   *
+   * PHASES:
+   * 1. SCAN: Enumerate files from CFEx card structure
+   * 2. TRANSFER: Stream files to dual destinations (photos/videos)
+   * 3. VALIDATE: Verify size match + extract EXIF timestamps
+   * 4. AGGREGATE: Collect warnings and errors
+   *
+   * ERROR RESILIENCE:
+   * - Individual file failures don't cascade to pipeline abort
+   * - Errors collected in TransferResult.errors array
+   * - Success flag = true only if ALL files transferred successfully
+   *
+   * @param config - Transfer configuration with source, destinations, callbacks
+   * @returns TransferResult with success status, counts, warnings, errors
+   */
+  async startTransfer(config: TransferConfig): Promise<TransferResult> {
+    const startTime = Date.now();
+
+    // PHASE 1: Scan source files
+    const tasks = await scanSourceFiles(config.source, config.destinations);
+
+    const bytesTotal = tasks.reduce((sum, task) => sum + task.size, 0);
+
+    // PHASE 2: Transfer + Validate files
+    const errors: TransferError[] = [];
+    const warnings: ValidationWarning[] = [];
+    let filesTransferred = 0;
+    let bytesTransferred = 0;
+
+    for (let i = 0; i < tasks.length; i++) {
+      const task = tasks[i];
+
+      try {
+        // Transfer with progress tracking
+        const fileResult = await transferFile(task, (fileProgress) => {
+          if (config.onProgress) {
+            config.onProgress({
+              currentFile: path.basename(task.source),
+              fileIndex: i + 1,
+              filesTotal: tasks.length,
+              currentFileBytes: fileProgress.currentFileBytes,
+              currentFileSize: task.size,
+              totalBytesTransferred: bytesTransferred + fileProgress.currentFileBytes,
+              totalBytesExpected: bytesTotal,
+              percentComplete: ((bytesTransferred + fileProgress.currentFileBytes) / bytesTotal) * 100,
+              estimatedTimeRemaining: this.calculateOverallETA(
+                bytesTransferred + fileProgress.currentFileBytes,
+                bytesTotal,
+                Date.now() - startTime
+              ),
+            });
+          }
+        });
+
+        // Post-transfer validation (I1 immutable compliance)
+        const validation = await this.integrityValidator.validateFile(
+          task.source,
+          task.destination
+        );
+
+        // Collect validation warnings
+        if (validation.warnings.length > 0) {
+          validation.warnings.forEach((warning) => {
+            warnings.push({
+              file: path.basename(task.source),
+              message: warning,
+              severity: warning.includes('fallback') ? 'medium' : 'low',
+            });
+          });
+        }
+
+        // Notify validation complete
+        if (config.onValidation) {
+          config.onValidation(validation);
+        }
+
+        // Update state
+        filesTransferred++;
+        bytesTransferred += fileResult.bytesTransferred;
+
+        // Notify file completion
+        if (config.onFileComplete) {
+          const enhancedResult: FileTransferResultEnhanced = {
+            ...fileResult,
+            exifTimestamp: validation.timestamp,
+            exifSource: validation.timestampSource,
+          };
+          config.onFileComplete(enhancedResult);
+        }
+      } catch (error) {
+        // Capture error but continue with remaining files
+        const transferError: TransferError = {
+          file: task.source,
+          error: error as Error,
+          phase: error instanceof IntegrityError ? 'validation' : 'transfer',
+        };
+        errors.push(transferError);
+
+        if (config.onError) {
+          config.onError(transferError);
+        }
+      }
+    }
+
+    return {
+      success: errors.length === 0,
+      filesTransferred,
+      filesTotal: tasks.length,
+      bytesTransferred,
+      duration: Date.now() - startTime,
+      validationWarnings: warnings,
+      errors,
+    };
+  }
+
+  /**
+   * Calculate overall ETA based on cumulative transfer rate
+   *
+   * @param bytesTransferred - Total bytes transferred across all files
+   * @param totalBytes - Total bytes to transfer across all files
+   * @param elapsedMs - Elapsed time since transfer start
+   * @returns Estimated time remaining in milliseconds (null if unknown)
+   */
+  private calculateOverallETA(
+    bytesTransferred: number,
+    totalBytes: number,
+    elapsedMs: number
+  ): number | null {
+    return calculateETA(bytesTransferred, totalBytes, elapsedMs);
+  }
+}
