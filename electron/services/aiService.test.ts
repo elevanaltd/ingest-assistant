@@ -35,13 +35,13 @@ describe('AIService', () => {
   describe('parseAIResponse', () => {
     it('should parse valid JSON response', () => {
       const response = JSON.stringify({
-        mainName: 'oven-control-panel',
+        shotName: 'oven-control-panel',
         keywords: ['oven', 'control panel'],
       });
 
       const result = aiService.parseAIResponse(response);
 
-      expect(result.mainName).toBe('oven-control-panel');
+      expect(result.shotName).toBe('oven-control-panel');
       expect(result.keywords).toEqual(['oven', 'control panel']);
       expect(result.confidence).toBeGreaterThan(0);
     });
@@ -51,7 +51,7 @@ describe('AIService', () => {
 
       const result = aiService.parseAIResponse(response);
 
-      expect(result.mainName).toBe('');
+      expect(result.shotName).toBe('');
       expect(result.keywords).toEqual([]);
       expect(result.confidence).toBe(0);
     });
@@ -59,14 +59,14 @@ describe('AIService', () => {
     it('should parse markdown-wrapped JSON (```json ... ```)', () => {
       const response = `\`\`\`json
 {
-  "mainName": "microwave-controls",
+  "shotName": "microwave-controls",
   "metadata": ["microwave", "control panel"]
 }
 \`\`\``;
 
       const result = aiService.parseAIResponse(response);
 
-      expect(result.mainName).toBe('microwave-controls');
+      expect(result.shotName).toBe('microwave-controls');
       expect(result.keywords).toEqual(['microwave', 'control panel']);
       expect(result.confidence).toBe(0.8);
     });
@@ -74,24 +74,24 @@ describe('AIService', () => {
     it('should parse markdown-wrapped JSON (``` ... ```)', () => {
       const response = `\`\`\`
 {
-  "mainName": "oven-panel",
+  "shotName": "oven-panel",
   "metadata": ["oven", "panel"]
 }
 \`\`\``;
 
       const result = aiService.parseAIResponse(response);
 
-      expect(result.mainName).toBe('oven-panel');
+      expect(result.shotName).toBe('oven-panel');
       expect(result.keywords).toEqual(['oven', 'panel']);
       expect(result.confidence).toBe(0.8);
     });
 
     it('should parse JSON with trailing period', () => {
-      const response = '{ "mainName": "siemens-microwave-control-panel", "metadata": ["appliance", "control panel", "european", "kitchen"] }.';
+      const response = '{ "shotName": "siemens-microwave-control-panel", "metadata": ["appliance", "control panel", "european", "kitchen"] }.';
 
       const result = aiService.parseAIResponse(response);
 
-      expect(result.mainName).toBe('siemens-microwave-control-panel');
+      expect(result.shotName).toBe('siemens-microwave-control-panel');
       expect(result.keywords).toEqual(['appliance', 'control panel', 'european', 'kitchen']);
       expect(result.confidence).toBe(0.8);
     });
@@ -107,7 +107,7 @@ describe('AIService', () => {
 
       const result = aiService.parseAIResponse(response);
 
-      expect(result.mainName).toBe('under-sink-bin');
+      expect(result.shotName).toBe('under-sink-bin');
       expect(result.keywords).toContain('furniture');
       expect(result.keywords).toContain('household');
       expect(result.confidence).toBe(0.7);
@@ -121,7 +121,7 @@ describe('AIService', () => {
 
       const result = aiService.parseAIResponse(response);
 
-      expect(result.mainName).toBe('minimalist-sink-cabinet');
+      expect(result.shotName).toBe('minimalist-sink-cabinet');
       expect(result.keywords).toEqual(['sustainable living', 'home', 'kitchen']);
       expect(result.confidence).toBe(0.7);
     });
@@ -133,7 +133,7 @@ describe('AIService', () => {
         location: 'hallway',
         subject: 'consumer-unit',
         shotType: 'MID',
-        mainName: 'hallway-consumer-unit-MID',
+        shotName: 'hallway-consumer-unit-MID',
         keywords: ['electrical', 'utility'],
       });
 
@@ -153,7 +153,7 @@ describe('AIService', () => {
         subject: 'cooker-hood',
         action: 'turning-on',
         shotType: 'MID',
-        mainName: 'kitchen-cooker-hood-turning-on-MID',
+        shotName: 'kitchen-cooker-hood-turning-on-MID',
         keywords: ['appliance', 'demo'],
       });
 
@@ -166,20 +166,20 @@ describe('AIService', () => {
       expect(result.shotType).toBe('MID');
     });
 
-    it('should handle mainName-only format with hyphenated concepts correctly', () => {
-      // Fallback: AI returns only mainName (no structured fields)
-      // This should NOT attempt to parse mainName by splitting on hyphens
+    it('should handle shotName-only format with hyphenated concepts correctly', () => {
+      // Fallback: AI returns only shotName (no structured fields)
+      // This should NOT attempt to parse shotName by splitting on hyphens
       // Instead, it should return legacy format without attempting structured extraction
       const response = JSON.stringify({
-        mainName: 'hallway-consumer-unit-MID',
+        shotName: 'hallway-consumer-unit-MID',
         keywords: ['electrical', 'utility'],
       });
 
       const result = aiService.parseAIResponse(response);
 
-      // When AI provides only mainName without structured fields,
+      // When AI provides only shotName without structured fields,
       // should treat as legacy format (no structured extraction)
-      expect(result.mainName).toBe('hallway-consumer-unit-MID');
+      expect(result.shotName).toBe('hallway-consumer-unit-MID');
       expect(result.keywords).toEqual(['electrical', 'utility']);
       // Should NOT have structured fields extracted from naive splitting (v2.0: empty string)
       expect(result.subject).toBe('');
@@ -209,7 +209,7 @@ describe('AIService', () => {
 
       // Spy on analyzeImage method
       const mockAnalysis = {
-        mainName: 'kitchen-oven-CU',
+        shotName: 'kitchen-oven-CU',
         keywords: ['kitchen', 'oven', 'appliance'],
         confidence: 0.9,
         location: 'kitchen',

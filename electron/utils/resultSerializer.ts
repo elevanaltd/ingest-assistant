@@ -146,7 +146,7 @@ export function deserializeResult(data: unknown): AIAnalysisResultV2 {
  * @private
  */
 function migrateV1ToV2(v1: AIAnalysisResultV1): AIAnalysisResultV2 {
-  const parts = v1.mainName.split('-');
+  const parts = v1.shotName.split('-');
 
   // Try parsing as 3-part pattern: {location}-{subject}-{shotType}
   if (parts.length === 3) {
@@ -157,7 +157,7 @@ function migrateV1ToV2(v1: AIAnalysisResultV1): AIAnalysisResultV2 {
 
     if (shotTypeResult.success) {
       console.log('[resultSerializer] Migrated v1→v2 (3-part pattern):', {
-        mainName: v1.mainName,
+        shotName: v1.shotName,
         location: parts[0],
         subject: parts[1],
         shotType: shotTypeResult.data,
@@ -165,7 +165,7 @@ function migrateV1ToV2(v1: AIAnalysisResultV1): AIAnalysisResultV2 {
 
       return {
         version: '2',
-        mainName: v1.mainName,
+        shotName: v1.shotName,
         keywords: v1.keywords,
         confidence: v1.confidence,
         location: parts[0],
@@ -184,7 +184,7 @@ function migrateV1ToV2(v1: AIAnalysisResultV1): AIAnalysisResultV2 {
 
     if (shotTypeResult.success) {
       console.log('[resultSerializer] Migrated v1→v2 (4-part pattern):', {
-        mainName: v1.mainName,
+        shotName: v1.shotName,
         location: parts[0],
         subject: parts[1],
         action: parts[2],
@@ -193,7 +193,7 @@ function migrateV1ToV2(v1: AIAnalysisResultV1): AIAnalysisResultV2 {
 
       return {
         version: '2',
-        mainName: v1.mainName,
+        shotName: v1.shotName,
         keywords: v1.keywords,
         confidence: v1.confidence,
         location: parts[0],
@@ -206,13 +206,13 @@ function migrateV1ToV2(v1: AIAnalysisResultV1): AIAnalysisResultV2 {
 
   // No pattern match - return without structured components
   console.log('[resultSerializer] Migrated v1→v2 (no pattern match):', {
-    mainName: v1.mainName,
-    reason: 'mainName does not match {location}-{subject}-{shotType} or {location}-{subject}-{action}-{shotType} pattern',
+    shotName: v1.shotName,
+    reason: 'shotName does not match {location}-{subject}-{shotType} or {location}-{subject}-{action}-{shotType} pattern',
   });
 
   return {
     version: '2',
-    mainName: v1.mainName,
+    shotName: v1.shotName,
     keywords: v1.keywords,
     confidence: v1.confidence,
   };

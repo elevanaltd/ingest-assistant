@@ -630,7 +630,7 @@ describe('FileManager', () => {
               filePath: '/test/folder/EA001621.JPG',
               extension: '.JPG',
               fileType: 'image',
-              mainName: 'test',
+              shotName: 'test',
               keywords: [],
               location: '',
               subject: '',

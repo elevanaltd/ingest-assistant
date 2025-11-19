@@ -47,8 +47,8 @@ describe('Batch Process Security Validation', () => {
       validator.setAllowedBasePath('/selected/folder');
 
       const fileMetadataList: Partial<FileMetadata>[] = [
-        { id: 'file1', filePath: '/selected/folder/image1.jpg', mainName: 'test1', keywords: [], fileType: 'image', processedByAI: false },
-        { id: 'file2', filePath: '/selected/folder/image2.jpg', mainName: 'test2', keywords: [], fileType: 'image', processedByAI: false },
+        { id: 'file1', filePath: '/selected/folder/image1.jpg', shotName: 'test1', keywords: [], fileType: 'image', processedByAI: false },
+        { id: 'file2', filePath: '/selected/folder/image2.jpg', shotName: 'test2', keywords: [], fileType: 'image', processedByAI: false },
       ];
 
       // Mock realpath to return same paths (valid files)
@@ -68,7 +68,7 @@ describe('Batch Process Security Validation', () => {
       const maliciousFileMetadata: Partial<FileMetadata> = {
         id: 'malicious1',
         filePath: '/etc/passwd',
-        mainName: 'malicious',
+        shotName: 'malicious',
         keywords: [],
         fileType: 'image',
         processedByAI: false,
@@ -88,7 +88,7 @@ describe('Batch Process Security Validation', () => {
       const traversalFileMetadata: Partial<FileMetadata> = {
         id: 'traversal1',
         filePath: '/selected/folder/../../etc/passwd',
-        mainName: 'traversal',
+        shotName: 'traversal',
         keywords: [],
         fileType: 'image',
         processedByAI: false,
@@ -106,9 +106,9 @@ describe('Batch Process Security Validation', () => {
       validator.setAllowedBasePath('/selected/folder');
 
       const mixedFiles: Partial<FileMetadata>[] = [
-        { id: 'valid1', filePath: '/selected/folder/image1.jpg', mainName: 'test1', keywords: [], fileType: 'image', processedByAI: false },
-        { id: 'invalid1', filePath: '/etc/passwd', mainName: 'malicious', keywords: [], fileType: 'image', processedByAI: false },
-        { id: 'valid2', filePath: '/selected/folder/image2.jpg', mainName: 'test2', keywords: [], fileType: 'image', processedByAI: false },
+        { id: 'valid1', filePath: '/selected/folder/image1.jpg', shotName: 'test1', keywords: [], fileType: 'image', processedByAI: false },
+        { id: 'invalid1', filePath: '/etc/passwd', shotName: 'malicious', keywords: [], fileType: 'image', processedByAI: false },
+        { id: 'valid2', filePath: '/selected/folder/image2.jpg', shotName: 'test2', keywords: [], fileType: 'image', processedByAI: false },
       ];
 
       const results: { id: string; valid: boolean; error?: string }[] = [];
@@ -147,8 +147,8 @@ describe('Batch Process Security Validation', () => {
       validator.setAllowedBasePath('/selected/folder');
 
       const fileMetadataList: Partial<FileMetadata>[] = [
-        { id: 'file1', filePath: '/selected/folder/image1.jpg', mainName: 'test1', keywords: [], fileType: 'image', processedByAI: false },
-        { id: 'file2', filePath: '/selected/folder/image2.jpg', mainName: 'test2', keywords: [], fileType: 'image', processedByAI: false },
+        { id: 'file1', filePath: '/selected/folder/image1.jpg', shotName: 'test1', keywords: [], fileType: 'image', processedByAI: false },
+        { id: 'file2', filePath: '/selected/folder/image2.jpg', shotName: 'test2', keywords: [], fileType: 'image', processedByAI: false },
       ];
 
       // Mock file sizes within limit
@@ -169,7 +169,7 @@ describe('Batch Process Security Validation', () => {
       const oversizedFileMetadata: Partial<FileMetadata> = {
         id: 'oversized1',
         filePath: '/selected/folder/huge-image.jpg',
-        mainName: 'huge',
+        shotName: 'huge',
         keywords: [],
         fileType: 'image',
         processedByAI: false,
@@ -196,9 +196,9 @@ describe('Batch Process Security Validation', () => {
       validator.setAllowedBasePath('/selected/folder');
 
       const mixedSizeFiles: Partial<FileMetadata>[] = [
-        { id: 'small1', filePath: '/selected/folder/image1.jpg', mainName: 'test1', keywords: [], fileType: 'image', processedByAI: false },
-        { id: 'large1', filePath: '/selected/folder/huge.jpg', mainName: 'huge', keywords: [], fileType: 'image', processedByAI: false },
-        { id: 'small2', filePath: '/selected/folder/image2.jpg', mainName: 'test2', keywords: [], fileType: 'image', processedByAI: false },
+        { id: 'small1', filePath: '/selected/folder/image1.jpg', shotName: 'test1', keywords: [], fileType: 'image', processedByAI: false },
+        { id: 'large1', filePath: '/selected/folder/huge.jpg', shotName: 'huge', keywords: [], fileType: 'image', processedByAI: false },
+        { id: 'small2', filePath: '/selected/folder/image2.jpg', shotName: 'test2', keywords: [], fileType: 'image', processedByAI: false },
       ];
 
       const results: { id: string; valid: boolean; error?: string }[] = [];
@@ -239,7 +239,7 @@ describe('Batch Process Security Validation', () => {
       const fileMetadata: Partial<FileMetadata> = {
         id: 'file1',
         filePath: '/selected/folder/image1.jpg',
-        mainName: 'test1',
+        shotName: 'test1',
         keywords: [],
         fileType: 'image',
         processedByAI: false,
@@ -268,7 +268,7 @@ describe('Batch Process Security Validation', () => {
       const fileMetadata: Partial<FileMetadata> = {
         id: 'file1',
         filePath: '/selected/folder/huge.jpg',
-        mainName: 'huge',
+        shotName: 'huge',
         keywords: [],
         fileType: 'image',
         processedByAI: false,
@@ -298,7 +298,7 @@ describe('Batch Process Security Validation', () => {
       const fileMetadata: Partial<FileMetadata> = {
         id: 'file1',
         filePath: '/etc/passwd',
-        mainName: 'malicious',
+        shotName: 'malicious',
         keywords: [],
         fileType: 'image',
         processedByAI: false,
@@ -319,9 +319,9 @@ describe('Batch Process Security Validation', () => {
       validator.setAllowedBasePath('/selected/folder');
 
       const batchFiles: Partial<FileMetadata>[] = [
-        { id: 'file1', filePath: '/selected/folder/image1.jpg', mainName: 'test1', keywords: [], fileType: 'image', processedByAI: false },
-        { id: 'file2', filePath: '/etc/passwd', mainName: 'malicious', keywords: [], fileType: 'image', processedByAI: false },
-        { id: 'file3', filePath: '/selected/folder/image3.jpg', mainName: 'test3', keywords: [], fileType: 'image', processedByAI: false },
+        { id: 'file1', filePath: '/selected/folder/image1.jpg', shotName: 'test1', keywords: [], fileType: 'image', processedByAI: false },
+        { id: 'file2', filePath: '/etc/passwd', shotName: 'malicious', keywords: [], fileType: 'image', processedByAI: false },
+        { id: 'file3', filePath: '/selected/folder/image3.jpg', shotName: 'test3', keywords: [], fileType: 'image', processedByAI: false },
       ];
 
       const processedFiles: string[] = [];

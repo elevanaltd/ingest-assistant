@@ -115,7 +115,7 @@ VOCAB::[
     }
 
     // Include action field in output schema for videos
-    prompt += `\n\nOUT::JSON{"location":"str","subject":"str","action":"str[video_only|optional]","shotType":"${staticShots.split(', ')[0]}","mainName":"loc-sub-shot|loc-sub-act-shot[if_video_with_action]","metadata":["max4","brand_if_visible"]}`;
+    prompt += `\n\nOUT::JSON{"location":"str","subject":"str","action":"str[video_only|optional]","shotType":"${staticShots.split(', ')[0]}","shotName":"loc-sub-shot|loc-sub-act-shot[if_video_with_action]","metadata":["max4","brand_if_visible"]}`;
 
     return prompt;
   }
@@ -190,24 +190,24 @@ Lexicon rules:
           console.log('[AIService] Using structured format (separate fields provided)');
 
           // Trust AI-provided structured fields (Issue #54: preserve hyphenated concepts)
-          // DO NOT parse mainName - it's a display artifact, not source of truth
+          // DO NOT parse shotName - it's a display artifact, not source of truth
           return {
             location: parsed.location,
             subject: parsed.subject,
             action: parsed.action || undefined,
             shotType: parsed.shotType,
-            mainName: parsed.mainName || `${parsed.location}-${parsed.subject}-${parsed.shotType}`,
+            shotName: parsed.shotName || `${parsed.location}-${parsed.subject}-${parsed.shotType}`,
             keywords: Array.isArray(parsed.keywords) ? parsed.keywords : (Array.isArray(parsed.metadata) ? parsed.metadata : []),
             confidence: 0.8,
           };
         }
 
-        // Handle legacy format (mainName without structured fields)
-        // DO NOT attempt to parse mainName - hyphenated concepts break naive splitting
-        // mainName is display artifact for Premiere Pro, not source of structured data
+        // Handle legacy format (shotName without structured fields)
+        // DO NOT attempt to parse shotName - hyphenated concepts break naive splitting
+        // shotName is display artifact for Premiere Pro, not source of structured data
         console.log('[AIService] Legacy format detected (no structured fields)');
         return {
-          mainName: parsed.mainName || '',
+          shotName: parsed.shotName || '',
           keywords: Array.isArray(parsed.keywords) ? parsed.keywords : (Array.isArray(parsed.metadata) ? parsed.metadata : []),
           confidence: 0.8,
           location: '',
@@ -223,7 +223,7 @@ Lexicon rules:
       console.error('Failed to parse AI response:', error);
       console.error('Response was:', response);
       return {
-        mainName: '',
+        shotName: '',
         keywords: [],
         confidence: 0,
         location: '',
@@ -242,10 +242,10 @@ Lexicon rules:
    * - **Metadata**: ["tag1", "tag2"]
    */
   private parseMarkdownFormat(response: string): AIAnalysisResult {
-    let mainName = '';
+    let shotName = '';
     const metadata: string[] = [];
 
-    // Extract main name (various formats)
+    // Extract shot name (various formats)
     const namePatterns = [
       /\*\*\s*Main Name\s*\*\*:\s*([^\n]+)/i,          // **Main Name**: value
       /\*\s*\*\*\s*Main Name\s*:\*\*\s*([^\n]+)/i,     // * **Main Name:** value (with space before closing **)
@@ -257,7 +257,7 @@ Lexicon rules:
     for (const pattern of namePatterns) {
       const match = response.match(pattern);
       if (match) {
-        mainName = match[1].trim();
+        shotName = match[1].trim();
         break;
       }
     }
@@ -281,14 +281,14 @@ Lexicon rules:
     }
 
     // Convert to kebab-case if needed
-    if (mainName && !mainName.includes('-')) {
-      mainName = mainName.toLowerCase().replace(/\s+/g, '-');
+    if (shotName && !shotName.includes('-')) {
+      shotName = shotName.toLowerCase().replace(/\s+/g, '-');
     }
 
     return {
-      mainName: mainName || '',
+      shotName: shotName || '',
       keywords: metadata.length > 0 ? metadata : [],
-      confidence: mainName || metadata.length > 0 ? 0.7 : 0,
+      confidence: shotName || metadata.length > 0 ? 0.7 : 0,
       location: '',
       subject: '',
       action: '',
@@ -318,7 +318,7 @@ Lexicon rules:
     } catch (error) {
       console.error('AI analysis failed:', error);
       return {
-        mainName: '',
+        shotName: '',
         keywords: [],
         confidence: 0,
         location: '',
@@ -498,7 +498,7 @@ Lexicon rules:
     } catch (error) {
       console.error('[AIService] Video analysis failed:', error);
       return {
-        mainName: '',
+        shotName: '',
         keywords: [],
         confidence: 0,
         location: '',
@@ -522,7 +522,7 @@ Lexicon rules:
   ): AIAnalysisResult {
     if (analyses.length === 0) {
       return {
-        mainName: '',
+        shotName: '',
         keywords: [],
         confidence: 0,
         location: "",
@@ -532,8 +532,8 @@ Lexicon rules:
       };
     }
 
-    // Select best mainName (most common, or highest confidence if tie)
-    const mainName = this.selectBestMainName(analyses);
+    // Select best shotName (most common, or highest confidence if tie)
+    const shotName = this.selectBestShotName(analyses);
 
     // Consolidate metadata (unique tags, frequency-weighted)
     const metadata = this.consolidateMetadata(analyses);
@@ -548,7 +548,7 @@ Lexicon rules:
     );
 
     return {
-      mainName,
+      shotName,
       keywords: metadata,
       confidence: avgConfidence,
       // Include structured components (required in v2.0)
@@ -560,17 +560,17 @@ Lexicon rules:
   }
 
   /**
-   * Select best mainName from multiple analyses
+   * Select best shotName from multiple analyses
    * Strategy: Most frequent, or highest confidence if tie
    * @private
    */
-  private selectBestMainName(analyses: AIAnalysisResult[]): string {
+  private selectBestShotName(analyses: AIAnalysisResult[]): string {
     const nameFrequency = new Map<string, number>();
     const nameConfidence = new Map<string, number>();
 
     // Count frequency and track max confidence for each name
     for (const analysis of analyses) {
-      const name = analysis.mainName;
+      const name = analysis.shotName;
       if (!name) continue;
 
       nameFrequency.set(name, (nameFrequency.get(name) || 0) + 1);

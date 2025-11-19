@@ -22,9 +22,9 @@ function App() {
   const [shotTypes, setShotTypes] = useState<string[]>([]);
 
   // Legacy field (still used for backward compatibility when loading existing files)
-  // @ts-expect-error - mainName is set but not directly read (used for legacy data migration)
+  // @ts-expect-error - shotName is set but not directly read (used for legacy data migration)
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [mainName, setMainName] = useState<string>('');
+  const [shotName, setShotName] = useState<string>('');
   const [keywords, setKeywords] = useState<string>('');
   const [isAIConfigured, setIsAIConfigured] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -105,7 +105,7 @@ function App() {
       setSubject('');
       setAction('');
       setShotType('');
-      setMainName('');
+      setShotName('');
       setKeywords('');
       return;
     }
@@ -116,38 +116,38 @@ function App() {
       setSubject(currentFile.subject);
       setAction(currentFile.action || '');
       setShotType(currentFile.shotType as ShotType);
-      setMainName(currentFile.mainName);
-    } else if (currentFile.mainName) {
-      // Try parsing mainName pattern: {location}-{subject}-{shotType} or {location}-{subject}-{action}-{shotType}
-      const parts = currentFile.mainName.split('-');
+      setShotName(currentFile.shotName);
+    } else if (currentFile.shotName) {
+      // Try parsing shotName pattern: {location}-{subject}-{shotType} or {location}-{subject}-{action}-{shotType}
+      const parts = currentFile.shotName.split('-');
       if (parts.length === 4 && shotTypes.includes(parts[3].toUpperCase())) {
         // 4-part video format
         setLocation(parts[0]);
         setSubject(parts[1]);
         setAction(parts[2]);
         setShotType(parts[3].toUpperCase() as ShotType);
-        setMainName(currentFile.mainName);
+        setShotName(currentFile.shotName);
       } else if (parts.length === 3 && shotTypes.includes(parts[2].toUpperCase())) {
         // 3-part photo format
         setLocation(parts[0]);
         setSubject(parts[1]);
         setAction('');
         setShotType(parts[2].toUpperCase() as ShotType);
-        setMainName(currentFile.mainName);
+        setShotName(currentFile.shotName);
       } else {
-        // Legacy format - populate mainName directly
+        // Legacy format - populate shotName directly
         setLocation('');
         setSubject('');
         setAction('');
         setShotType('');
-        setMainName(currentFile.mainName);
+        setShotName(currentFile.shotName);
       }
     } else {
       setLocation('');
       setSubject('');
       setAction('');
       setShotType('');
-      setMainName('');
+      setShotName('');
     }
 
     setKeywords(currentFile.keywords?.join(', ') || '');
@@ -265,7 +265,7 @@ function App() {
         } else {
           generatedTitle = `${location}-${subject}-${shotType}`;
         }
-        setMainName(generatedTitle); // Update mainName state for consistency
+        setShotName(generatedTitle); // Update shotName state for consistency
       }
 
       // Build metadata tags array
@@ -301,7 +301,7 @@ function App() {
           if (f.id === currentFileId) {
             return {
               ...f,
-              // Preserve mainName with timestamp (backend is authoritative source)
+              // Preserve shotName with timestamp (backend is authoritative source)
               // Backend adds timestamp during save, don't overwrite with client-side generatedTitle
               keywords: metadataTags,
               location,
@@ -382,11 +382,11 @@ function App() {
         setSubject(result.subject);
         setAction(result.action || '');
         setShotType(result.shotType);
-        setMainName(result.mainName);
+        setShotName(result.shotName);
       } else {
-        // Legacy format - populate mainName directly
-        console.log('[App] Using legacy format, mainName only:', result.mainName);
-        setMainName(result.mainName);
+        // Legacy format - populate shotName directly
+        console.log('[App] Using legacy format, shotName only:', result.shotName);
+        setShotName(result.shotName);
       }
 
       setKeywords(result.keywords?.join(', ') || '');

@@ -51,7 +51,7 @@ describe('aiResultSchemas', () => {
     it('validates v1 result with version field', () => {
       const v1 = {
         version: '1',
-        mainName: 'kitchen-oven',
+        shotName: 'kitchen-oven',
         keywords: ['kitchen', 'oven'],
         confidence: 0.8,
       };
@@ -62,7 +62,7 @@ describe('aiResultSchemas', () => {
 
     it('defaults version to "1" when missing', () => {
       const v1NoVersion = {
-        mainName: 'kitchen-oven',
+        shotName: 'kitchen-oven',
         keywords: ['kitchen'],
         confidence: 0.7,
       };
@@ -74,12 +74,12 @@ describe('aiResultSchemas', () => {
       }
     });
 
-    it('requires mainName field', () => {
+    it('requires shotName field', () => {
       const missing = {
         version: '1',
         keywords: [],
         confidence: 0.8,
-        // Missing mainName
+        // Missing shotName
       };
 
       expect(AIAnalysisResultV1Schema.safeParse(missing).success).toBe(false);
@@ -88,7 +88,7 @@ describe('aiResultSchemas', () => {
     it('requires metadata array', () => {
       const missing = {
         version: '1',
-        mainName: 'test',
+        shotName: 'test',
         confidence: 0.8,
         // Missing metadata
       };
@@ -99,7 +99,7 @@ describe('aiResultSchemas', () => {
     it('requires confidence number', () => {
       const missing = {
         version: '1',
-        mainName: 'test',
+        shotName: 'test',
         keywords: [],
         // Missing confidence
       };
@@ -112,12 +112,12 @@ describe('aiResultSchemas', () => {
       const invalidConfidences = [-0.1, 1.1, 2];
 
       for (const conf of validConfidences) {
-        const data = { mainName: 'test', keywords: [], confidence: conf };
+        const data = { shotName: 'test', keywords: [], confidence: conf };
         expect(AIAnalysisResultV1Schema.safeParse(data).success).toBe(true);
       }
 
       for (const conf of invalidConfidences) {
-        const data = { mainName: 'test', keywords: [], confidence: conf };
+        const data = { shotName: 'test', keywords: [], confidence: conf };
         expect(AIAnalysisResultV1Schema.safeParse(data).success).toBe(false);
       }
     });
@@ -125,7 +125,7 @@ describe('aiResultSchemas', () => {
     it('accepts empty metadata array', () => {
       const v1 = {
         version: '1',
-        mainName: 'test',
+        shotName: 'test',
         keywords: [],
         confidence: 0.5,
       };
@@ -138,7 +138,7 @@ describe('aiResultSchemas', () => {
     it('validates v2 result with all fields', () => {
       const v2 = {
         version: '2',
-        mainName: 'kitchen-oven-CU',
+        shotName: 'kitchen-oven-CU',
         keywords: ['kitchen', 'oven'],
         confidence: 0.9,
         location: 'kitchen',
@@ -153,7 +153,7 @@ describe('aiResultSchemas', () => {
     it('validates v2 result with action (video)', () => {
       const v2Video = {
         version: '2',
-        mainName: 'kitchen-oven-installing-CU',
+        shotName: 'kitchen-oven-installing-CU',
         keywords: ['kitchen', 'installation'],
         confidence: 0.85,
         location: 'kitchen',
@@ -169,7 +169,7 @@ describe('aiResultSchemas', () => {
     it('accepts v2 with only required fields', () => {
       const minimal = {
         version: '2',
-        mainName: 'test',
+        shotName: 'test',
         keywords: [],
         confidence: 0.5,
       };
@@ -181,7 +181,7 @@ describe('aiResultSchemas', () => {
     it('requires version to be exactly "2"', () => {
       const wrongVersion = {
         version: '1', // Wrong version
-        mainName: 'test',
+        shotName: 'test',
         keywords: [],
         confidence: 0.8,
         location: 'kitchen',
@@ -192,7 +192,7 @@ describe('aiResultSchemas', () => {
 
     it('requires version field (no default)', () => {
       const noVersion = {
-        mainName: 'test',
+        shotName: 'test',
         keywords: [],
         confidence: 0.8,
         // Missing version
@@ -207,7 +207,7 @@ describe('aiResultSchemas', () => {
       for (const shot of validShots) {
         const data = {
           version: '2',
-          mainName: 'test',
+          shotName: 'test',
           keywords: [],
           confidence: 0.8,
           shotType: shot,
@@ -219,7 +219,7 @@ describe('aiResultSchemas', () => {
     it('rejects invalid shotType', () => {
       const invalid = {
         version: '2',
-        mainName: 'test',
+        shotName: 'test',
         keywords: [],
         confidence: 0.8,
         shotType: 'INVALID',
@@ -231,7 +231,7 @@ describe('aiResultSchemas', () => {
     it('allows optional fields to be undefined', () => {
       const v2 = {
         version: '2',
-        mainName: 'test',
+        shotName: 'test',
         keywords: [],
         confidence: 0.7,
         location: undefined,
@@ -247,7 +247,7 @@ describe('aiResultSchemas', () => {
     it('allows optional fields to be omitted', () => {
       const v2 = {
         version: '2',
-        mainName: 'test',
+        shotName: 'test',
         keywords: [],
         confidence: 0.7,
         // No optional fields
@@ -262,7 +262,7 @@ describe('aiResultSchemas', () => {
     it('validates v1 result via union', () => {
       const v1 = {
         version: '1',
-        mainName: 'test',
+        shotName: 'test',
         keywords: [],
         confidence: 0.8,
       };
@@ -274,7 +274,7 @@ describe('aiResultSchemas', () => {
     it('validates v2 result via union', () => {
       const v2 = {
         version: '2',
-        mainName: 'test',
+        shotName: 'test',
         keywords: [],
         confidence: 0.8,
       };
@@ -285,7 +285,7 @@ describe('aiResultSchemas', () => {
 
     it('validates v1 without version field (defaults to v1)', () => {
       const legacyV1 = {
-        mainName: 'test',
+        shotName: 'test',
         keywords: [],
         confidence: 0.7,
       };
@@ -297,7 +297,7 @@ describe('aiResultSchemas', () => {
     it('rejects unknown version', () => {
       const unknownVersion = {
         version: '99',
-        mainName: 'test',
+        shotName: 'test',
         keywords: [],
         confidence: 0.8,
       };
@@ -316,14 +316,14 @@ describe('aiResultSchemas', () => {
     it('provides discriminated union type narrowing', () => {
       const v1Data = {
         version: '1',
-        mainName: 'test',
+        shotName: 'test',
         keywords: [],
         confidence: 0.8,
       };
 
       const v2Data = {
         version: '2',
-        mainName: 'test',
+        shotName: 'test',
         keywords: [],
         confidence: 0.8,
         location: 'kitchen',
@@ -335,7 +335,7 @@ describe('aiResultSchemas', () => {
       // TypeScript should narrow types based on version
       if (v1Result.version === '1') {
         // v1Result is AIAnalysisResultV1
-        expect(v1Result.mainName).toBe('test');
+        expect(v1Result.shotName).toBe('test');
       }
 
       if (v2Result.version === '2') {
@@ -350,7 +350,7 @@ describe('aiResultSchemas', () => {
       it('returns true for v1 result with version="1"', () => {
         const v1 = {
           version: '1' as const,
-          mainName: 'test',
+          shotName: 'test',
           keywords: [],
           confidence: 0.8,
         };
@@ -360,7 +360,7 @@ describe('aiResultSchemas', () => {
 
       it('returns true for result without version field (legacy)', () => {
         const legacy = {
-          mainName: 'test',
+          shotName: 'test',
           keywords: [],
           confidence: 0.8,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -372,7 +372,7 @@ describe('aiResultSchemas', () => {
       it('returns false for v2 result', () => {
         const v2 = {
           version: '2' as const,
-          mainName: 'test',
+          shotName: 'test',
           keywords: [],
           confidence: 0.8,
         };
@@ -385,7 +385,7 @@ describe('aiResultSchemas', () => {
       it('returns true for v2 result', () => {
         const v2 = {
           version: '2' as const,
-          mainName: 'test',
+          shotName: 'test',
           keywords: [],
           confidence: 0.8,
         };
@@ -396,7 +396,7 @@ describe('aiResultSchemas', () => {
       it('returns false for v1 result', () => {
         const v1 = {
           version: '1' as const,
-          mainName: 'test',
+          shotName: 'test',
           keywords: [],
           confidence: 0.8,
         };
@@ -406,7 +406,7 @@ describe('aiResultSchemas', () => {
 
       it('returns false for legacy result without version', () => {
         const legacy = {
-          mainName: 'test',
+          shotName: 'test',
           keywords: [],
           confidence: 0.8,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -423,14 +423,14 @@ describe('aiResultSchemas', () => {
         version: '2',
         keywords: [],
         confidence: 0.8,
-        // Missing mainName
+        // Missing shotName
       };
 
       const result = AIAnalysisResultV2Schema.safeParse(missing);
       expect(result.success).toBe(false);
       if (!result.success) {
         const error = result.error.issues[0];
-        expect(error.path).toContain('mainName');
+        expect(error.path).toContain('shotName');
         expect(error.message).toContain('Required');
       }
     });
@@ -438,7 +438,7 @@ describe('aiResultSchemas', () => {
     it('provides clear error for wrong type', () => {
       const wrongType = {
         version: '2',
-        mainName: 123, // Should be string
+        shotName: 123, // Should be string
         keywords: [],
         confidence: 0.8,
       };
@@ -447,7 +447,7 @@ describe('aiResultSchemas', () => {
       expect(result.success).toBe(false);
       if (!result.success) {
         const error = result.error.issues[0];
-        expect(error.path).toContain('mainName');
+        expect(error.path).toContain('shotName');
         expect(error.message).toContain('Expected string');
       }
     });
@@ -455,7 +455,7 @@ describe('aiResultSchemas', () => {
     it('provides clear error for out of range value', () => {
       const outOfRange = {
         version: '2',
-        mainName: 'test',
+        shotName: 'test',
         keywords: [],
         confidence: 1.5, // > 1
       };

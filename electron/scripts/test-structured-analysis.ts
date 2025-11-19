@@ -67,10 +67,10 @@ function printResult(testResult: TestResult): void {
     console.log(`  Subject:   ${colors.cyan}${result.subject}${colors.reset}`);
     console.log(`  Shot Type: ${colors.cyan}${result.shotType}${colors.reset}`);
     console.log();
-    console.log(`${colors.bright}Generated Name:${colors.reset} ${colors.green}${result.mainName}${colors.reset}`);
+    console.log(`${colors.bright}Generated Name:${colors.reset} ${colors.green}${result.shotName}${colors.reset}`);
   } else {
     console.log(`${colors.yellow}⚠ WARNING: AI returned legacy format (no structured components)${colors.reset}`);
-    console.log(`Main Name: ${result.mainName}`);
+    console.log(`Shot Name: ${result.shotName}`);
   }
 
   console.log();
@@ -91,14 +91,14 @@ function printResult(testResult: TestResult): void {
       fail: `${colors.red}✗${colors.reset} Legacy format returned (missing location/subject/shotType)`,
     },
     {
-      check: result.mainName.includes('-'),
+      check: result.shotName.includes('-'),
       pass: `${colors.green}✓${colors.reset} Name uses kebab-case pattern`,
       fail: `${colors.red}✗${colors.reset} Name not in kebab-case`,
     },
     {
-      check: result.mainName.split('-').length === 3,
+      check: result.shotName.split('-').length === 3,
       pass: `${colors.green}✓${colors.reset} Name has 3 components (location-subject-shotType)`,
-      fail: `${colors.yellow}⚠${colors.reset} Name has ${result.mainName.split('-').length} components (expected 3)`,
+      fail: `${colors.yellow}⚠${colors.reset} Name has ${result.shotName.split('-').length} components (expected 3)`,
     },
     {
       check: result.shotType ? ['WS', 'MID', 'CU', 'UNDER', 'FP', 'TRACK', 'ESTAB'].includes(result.shotType) : false,

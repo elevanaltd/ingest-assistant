@@ -41,7 +41,7 @@ const createMockFile = (overrides: Partial<FileMetadata> = {}): FileMetadata => 
   currentFilename: 'IMG_12345678.mp4',
   filePath: '/test/path/IMG_12345678.mp4',
   extension: '.mp4',
-  mainName: '',
+  shotName: '',
   keywords: [],
   processedByAI: false,
   fileType: 'video',
@@ -49,6 +49,7 @@ const createMockFile = (overrides: Partial<FileMetadata> = {}): FileMetadata => 
   subject: 'oven',
   action: 'cleaning',
   shotType: 'WS',
+  lockedFields: [],
   createdAt: new Date(),
   createdBy: 'ingest-assistant',
   modifiedAt: new Date(),
@@ -157,7 +158,7 @@ describe('Keyboard Shortcuts', () => {
       mockElectronAPI.loadFiles.mockResolvedValue([file]);
       mockElectronAPI.selectFolder.mockResolvedValue('/test/folder');
       mockElectronAPI.analyzeFile.mockResolvedValue({
-        mainName: 'kitchen-oven-cleaning-WS',
+        shotName: 'kitchen-oven-cleaning-WS',
         keywords: ['appliance', 'cooking'],
         confidence: 0.95,
         location: 'kitchen',

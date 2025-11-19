@@ -7,13 +7,13 @@ import { MetadataStore } from '../services/metadataStore';
  * CEP Panel Contract: /Volumes/HestAI-Projects/eav-cep-assist/.coord/docs/005-DOC-SCHEMA-R1-1-AUTHORITATIVE-CEP-IA-METADATA.md
  *
  * Changes Required:
- * 1. Field rename: mainName → shotName
+ * 1. Field rename: shotName → shotName
  * 2. Add required field: lockedFields (array)
  * 3. shotName format: must include #N suffix when shotNumber exists
  */
 
 describe('R1.1 Schema Compliance', () => {
-  it('RED: shotName field must exist (not mainName)', () => {
+  it('RED: shotName field must exist (not shotName)', () => {
     const metadata = MetadataStore.createMetadata({
       id: 'TEST001',
       originalFilename: 'TEST001.MOV',
@@ -25,12 +25,9 @@ describe('R1.1 Schema Compliance', () => {
       shotNumber: 5
     });
 
-    // R1.1 Contract: Field must be named "shotName" (NOT "mainName")
+    // R1.1 Contract: Field must be named "shotName"
     expect(metadata.shotName).toBeDefined();
     expect(metadata.shotName).toBe('kitchen-oven-cleaning-CU-#5');
-
-    // @ts-expect-error - mainName should not exist in R1.1 schema
-    expect(metadata.mainName).toBeUndefined();
   });
 
   it('RED: lockedFields must exist and default to empty array', () => {

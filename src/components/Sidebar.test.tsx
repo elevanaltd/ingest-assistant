@@ -42,7 +42,7 @@ const mockFiles: FileMetadata[] = [
     currentFilename: '12345678-kitchen-oven.jpg',
     filePath: '/test/path/12345678-kitchen-oven.jpg',
     extension: 'jpg',
-    mainName: 'kitchen-oven',
+    shotName: 'kitchen-oven',
     keywords: ['kitchen', 'oven'],
     processedByAI: true,
     createdAt: new Date(),
@@ -54,6 +54,7 @@ const mockFiles: FileMetadata[] = [
     subject: "",
     action: "",
     shotType: "",
+    lockedFields: [],
     fileType: 'image'
   },
   {
@@ -62,7 +63,7 @@ const mockFiles: FileMetadata[] = [
     currentFilename: '87654321-bedroom-window.jpg',
     filePath: '/test/path/87654321-bedroom-window.jpg',
     extension: 'jpg',
-    mainName: 'bedroom-window',
+    shotName: 'bedroom-window',
     keywords: ['bedroom', 'window'],
     processedByAI: false,
     createdAt: new Date(),
@@ -74,6 +75,7 @@ const mockFiles: FileMetadata[] = [
     subject: "",
     action: "",
     shotType: "",
+    lockedFields: [],
     fileType: 'image'
   },
   {
@@ -82,7 +84,7 @@ const mockFiles: FileMetadata[] = [
     currentFilename: '11223344-demo-video.mp4',
     filePath: '/test/path/11223344-demo-video.mp4',
     extension: 'mp4',
-    mainName: 'demo-video',
+    shotName: 'demo-video',
     keywords: ['video', 'demo'],
     processedByAI: false,
     createdAt: new Date(),
@@ -94,6 +96,7 @@ const mockFiles: FileMetadata[] = [
     subject: "",
     action: "",
     shotType: "",
+    lockedFields: [],
     fileType: 'video'
   }
 ];
@@ -439,7 +442,7 @@ describe('Sidebar Component', () => {
         currentFilename: `file-${i.toString().padStart(8, '0')}-test-${i}.jpg`,
         filePath: `/test/path/file-${i}.jpg`,
         extension: 'jpg',
-        mainName: `test-${i}`,
+        shotName: `test-${i}`,
         keywords: ['test', `file-${i}`],
         processedByAI: i % 2 === 0,
         createdAt: new Date(),
@@ -451,6 +454,7 @@ describe('Sidebar Component', () => {
     subject: "",
     action: "",
     shotType: "",
+    lockedFields: [],
         fileType: 'image'
       }));
     };
