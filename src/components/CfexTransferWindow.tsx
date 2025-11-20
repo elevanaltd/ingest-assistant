@@ -90,51 +90,114 @@ interface FolderPickerProps {
 }
 
 function FolderPicker({ sourcePath, onSourceChange, destinationPaths, onDestinationChange, disabled }: FolderPickerProps) {
+  async function handleBrowseSource() {
+    const path = await window.electronAPI.selectFolder()
+    if (path) onSourceChange(path)
+  }
+
+  async function handleBrowsePhotos() {
+    const path = await window.electronAPI.selectFolder()
+    if (path) onDestinationChange({ ...destinationPaths, photos: path })
+  }
+
+  async function handleBrowseVideos() {
+    const path = await window.electronAPI.selectFolder()
+    if (path) onDestinationChange({ ...destinationPaths, rawVideos: path })
+  }
+
   return (
     <div style={{ marginBottom: '20px' }}>
       <div style={{ marginBottom: '12px' }}>
         <label htmlFor="source-folder" style={{ display: 'block', marginBottom: '4px', fontSize: '13px', fontWeight: 500 }}>
           Source Folder (CFEx Card)
         </label>
-        <input
-          id="source-folder"
-          type="text"
-          value={sourcePath}
-          onChange={(e) => onSourceChange(e.target.value)}
-          disabled={disabled}
-          placeholder="/Volumes/CFExpress"
-          style={{ width: '100%', padding: '6px 8px', fontSize: '13px' }}
-        />
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <input
+            id="source-folder"
+            type="text"
+            value={sourcePath}
+            onChange={(e) => onSourceChange(e.target.value)}
+            disabled={disabled}
+            placeholder="/Volumes/CFExpress"
+            style={{ flex: 1, padding: '6px 8px', fontSize: '13px' }}
+          />
+          <button
+            onClick={handleBrowseSource}
+            disabled={disabled}
+            style={{
+              padding: '6px 16px',
+              fontSize: '13px',
+              backgroundColor: '#f0f0f0',
+              border: '1px solid #ccc',
+              borderRadius: '4px',
+              cursor: disabled ? 'not-allowed' : 'pointer'
+            }}
+          >
+            Browse...
+          </button>
+        </div>
       </div>
 
       <div style={{ marginBottom: '12px' }}>
         <label htmlFor="photos-dest" style={{ display: 'block', marginBottom: '4px', fontSize: '13px', fontWeight: 500 }}>
           Photos Destination (LucidLink)
         </label>
-        <input
-          id="photos-dest"
-          type="text"
-          value={destinationPaths.photos}
-          onChange={(e) => onDestinationChange({ ...destinationPaths, photos: e.target.value })}
-          disabled={disabled}
-          placeholder="/Volumes/LucidLink/photos"
-          style={{ width: '100%', padding: '6px 8px', fontSize: '13px' }}
-        />
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <input
+            id="photos-dest"
+            type="text"
+            value={destinationPaths.photos}
+            onChange={(e) => onDestinationChange({ ...destinationPaths, photos: e.target.value })}
+            disabled={disabled}
+            placeholder="/Volumes/LucidLink/photos"
+            style={{ flex: 1, padding: '6px 8px', fontSize: '13px' }}
+          />
+          <button
+            onClick={handleBrowsePhotos}
+            disabled={disabled}
+            style={{
+              padding: '6px 16px',
+              fontSize: '13px',
+              backgroundColor: '#f0f0f0',
+              border: '1px solid #ccc',
+              borderRadius: '4px',
+              cursor: disabled ? 'not-allowed' : 'pointer'
+            }}
+          >
+            Browse...
+          </button>
+        </div>
       </div>
 
       <div style={{ marginBottom: '12px' }}>
         <label htmlFor="videos-dest" style={{ display: 'block', marginBottom: '4px', fontSize: '13px', fontWeight: 500 }}>
           Raw Videos Destination (Ubuntu)
         </label>
-        <input
-          id="videos-dest"
-          type="text"
-          value={destinationPaths.rawVideos}
-          onChange={(e) => onDestinationChange({ ...destinationPaths, rawVideos: e.target.value })}
-          disabled={disabled}
-          placeholder="/Volumes/Ubuntu/videos-raw"
-          style={{ width: '100%', padding: '6px 8px', fontSize: '13px' }}
-        />
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <input
+            id="videos-dest"
+            type="text"
+            value={destinationPaths.rawVideos}
+            onChange={(e) => onDestinationChange({ ...destinationPaths, rawVideos: e.target.value })}
+            disabled={disabled}
+            placeholder="/Volumes/Ubuntu/videos-raw"
+            style={{ flex: 1, padding: '6px 8px', fontSize: '13px' }}
+          />
+          <button
+            onClick={handleBrowseVideos}
+            disabled={disabled}
+            style={{
+              padding: '6px 16px',
+              fontSize: '13px',
+              backgroundColor: '#f0f0f0',
+              border: '1px solid #ccc',
+              borderRadius: '4px',
+              cursor: disabled ? 'not-allowed' : 'pointer'
+            }}
+          >
+            Browse...
+          </button>
+        </div>
       </div>
     </div>
   )
@@ -158,7 +221,7 @@ function TransferProgress({ currentFile, filesCompleted, filesTotal, percentComp
         <strong>Current File:</strong> {currentFile || 'N/A'}
       </div>
       <div style={{ marginBottom: '8px', fontSize: '14px' }}>
-        <strong>Progress:</strong> {filesCompleted} / {filesTotal} files ({percentComplete}%)
+        <strong>Progress:</strong> {filesCompleted} / {filesTotal} files ({percentComplete.toFixed(2)}%)
       </div>
       <div style={{ height: '8px', backgroundColor: '#ddd', borderRadius: '4px', overflow: 'hidden' }}>
         <div style={{ width: `${percentComplete}%`, height: '100%', backgroundColor: '#007bff' }} />
@@ -297,6 +360,23 @@ export function CfexTransferWindow() {
   }
 
   const canStart = Boolean(state.sourcePath) && state.status === 'idle'
+  const isTransferring = state.status !== 'idle' && state.status !== 'complete' && state.status !== 'error'
+
+  // Basic cancel handler (Week 1 - UI only)
+  // Note: Full graceful cancellation with IPC handler deferred to Week 2
+  function handleCancel() {
+    setState(prev => ({
+      ...prev,
+      status: 'idle',
+      currentFile: null,
+      filesCompleted: 0,
+      filesTotal: 0,
+      bytesTransferred: 0,
+      bytesTotal: 0,
+      percentComplete: 0,
+      estimatedTimeRemaining: null
+    }))
+  }
 
   return (
     <div style={{ padding: '20px', maxWidth: '800px', margin: '0 auto' }}>
@@ -323,23 +403,49 @@ export function CfexTransferWindow() {
         />
       )}
 
-      <button
-        onClick={handleStartTransfer}
-        disabled={!canStart}
-        style={{
-          width: '100%',
-          padding: '12px',
-          fontSize: '14px',
-          fontWeight: 500,
-          backgroundColor: canStart ? '#007bff' : '#ccc',
-          color: 'white',
-          border: 'none',
-          borderRadius: '4px',
-          cursor: canStart ? 'pointer' : 'not-allowed'
-        }}
-      >
-        {state.status === 'idle' ? 'Start Transfer' : 'Transfer In Progress...'}
-      </button>
+      <div style={{ display: 'flex', gap: '12px', marginBottom: '20px' }}>
+        <button
+          onClick={handleStartTransfer}
+          disabled={!canStart}
+          style={{
+            flex: 1,
+            padding: '12px',
+            fontSize: '14px',
+            fontWeight: 500,
+            backgroundColor: canStart ? '#007bff' : '#ccc',
+            color: 'white',
+            border: 'none',
+            borderRadius: '4px',
+            cursor: canStart ? 'pointer' : 'not-allowed'
+          }}
+        >
+          {state.status === 'idle' ? 'Start Transfer' : 'Transfer In Progress...'}
+        </button>
+
+        {isTransferring && (
+          <button
+            onClick={handleCancel}
+            style={{
+              padding: '12px 24px',
+              fontSize: '14px',
+              fontWeight: 500,
+              backgroundColor: '#dc3545',
+              color: 'white',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: 'pointer'
+            }}
+          >
+            Cancel
+          </button>
+        )}
+      </div>
+
+      {isTransferring && (
+        <div style={{ marginBottom: '12px', padding: '8px', backgroundColor: '#fff3cd', borderRadius: '4px', fontSize: '12px', color: '#856404' }}>
+          <strong>Note:</strong> Cancel currently stops UI updates only. Full graceful cancellation (stopping file operations) coming in Week 2.
+        </div>
+      )}
 
       <ValidationResults
         warnings={state.warnings}
