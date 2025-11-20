@@ -1,0 +1,688 @@
+# Ingest Assistant - North Star
+
+**Document Authority:** D1 Phase Deliverable (Project-Level Consolidation)
+**Created:** 2025-11-18
+**Approval Status:** Pending Commitment Ceremony
+**Governance:** Project-level immutables for ALL features (Core IA, CFEx Integration, Reference Catalog)
+**Supersedes:** Previous feature-specific North Star (Issue #63 only)
+
+---
+
+## Commitment Statement
+
+This North Star document represents the immutable requirements for **Ingest Assistant**. All work must align with these requirements across all features and phases. Any detected misalignment will trigger escalation to requirements-steward.
+
+Changes to immutables require formal amendment process. These requirements govern:
+- Core IA functionality (v2.2.0 baseline)
+- CFEx File Transfer Integration (Phase 1 - immediate priority)
+- Reference Image Lookup (Issue #63 - deferred 3-6 months)
+- All future Ingest Assistant features
+
+---
+
+## Project Mission
+
+Ingest Assistant enables production teams to transform raw media files into cataloged assets through AI-augmented metadata creation, maintaining temporal integrity and human oversight while feeding structured metadata to downstream production tools.
+
+The application serves as the critical gateway between field capture and post-production, ensuring chronological accuracy, data integrity, and ecosystem coherence across the complete production pipeline.
+
+---
+
+## Immutables (7 Total)
+
+### I1: Chronological Temporal Ordering
+
+**Statement:** Media assets must be ordered by their capture timestamp, establishing an immutable temporal sequence that reflects the original recording chronology.
+
+**Technology-Agnostic Translation:**
+- Files sorted by embedded capture timestamp metadata
+- Temporal sequence preserved from camera to downstream systems
+- Ordering reproducible across sessions and platforms
+- Fallback mechanisms when primary timestamp unavailable
+
+**Evidence (Oath Passage):**
+- Q1: Commit as IMMUTABLE for entire project? **YES** - Sequential shot numbering depends on chronological stability
+- Q2: Allow randomized ordering for faster processing? **NO** - Breaks shot number assignment, violates temporal integrity
+- Q3: Still true in 3 years? **YES** - Camera capture timestamps are fundamental to media production workflows
+
+**Rationale (WHY Immutable):**
+Sequential shot numbers (#1, #2, #3...) derive meaning from chronological ordering. If temporal sequence changes, shot numbers become arbitrary, downstream references break, and production continuity fails. Entire project restarts if this principle violated.
+
+**Validation Plan:**
+- MUST: Files sortable by capture timestamp before shot number assignment
+- MUST: Warn if timestamps missing/corrupt
+- MUST: Provide fallback timestamp mechanism (filesystem as last resort)
+- TEST: "If two sessions order same files differently, does workflow break?" → YES = validation failure
+
+**Cross-Feature Application:**
+- **CFEx Integration:** Files copied from card preserve temporal ordering during transfer
+- **Reference Catalog:** Vector search results respect chronological context when matching
+- **Core IA:** Shot number assignment relies entirely on temporal ordering
+
+**Status:** 🟢 Implementation confident (EXIF DateTimeOriginal validation in place)
+
+---
+
+### I2: Human Oversight Authority
+
+**Statement:** Human judgment must have final authority over all metadata decisions, with AI systems serving as augmentation tools rather than autonomous decision-makers.
+
+**Technology-Agnostic Translation:**
+- AI-generated metadata presented as suggestions, not final state
+- Humans approve, correct, or override AI outputs at all stages
+- System enforces human-in-loop before metadata commitment
+- Quality/legal accountability rests with human reviewers
+
+**Evidence (Oath Passage):**
+- Q1: Commit as IMMUTABLE? **YES** - Core project philosophy: AI augments human expertise
+- Q2: Let AI have final authority for speed? **NO** - Quality/legal liability unacceptable
+- Q3: Still true in 3 years? **YES** - Even perfect AI requires human accountability for production work
+
+**Rationale (WHY Immutable):**
+Production media has legal/contractual implications. Client deliverables require human accountability. AI errors propagating to final deliverables create liability. If humans cannot override AI, project fails its core mission of "assisted" cataloging.
+
+**Validation Plan:**
+- MUST: All AI suggestions marked as provisional until human approval
+- MUST: Humans can edit any metadata field after AI processing
+- MUST: Audit trail captures human corrections vs. AI suggestions
+- TEST: "Can system commit metadata without human interaction?" → YES = violation
+
+**Cross-Feature Application:**
+- **CFEx Integration:** Zero-click AI pre-analysis runs during copy, but metadata remains editable
+- **Reference Catalog:** Vector search suggests matches, humans confirm relevance
+- **Core IA:** Confidence thresholds auto-populate, but user can override any field
+
+**Status:** 🟢 Implementation confident (manual edit always available, AI suggestions never locked)
+
+---
+
+### I3: Single Source of Truth
+
+**Statement:** Each metadata attribute must have exactly one authoritative source to prevent divergence, conflicts, and synchronization failures.
+
+**Technology-Agnostic Translation:**
+- One canonical location for each metadata element
+- All consumers read from authoritative source
+- No duplication requiring sync mechanisms
+- Clear authority hierarchy when multiple representations exist
+
+**Evidence (Oath Passage):**
+- Q1: Commit as IMMUTABLE? **YES** - Prevents metadata divergence across file/JSON/database
+- Q2: Duplicate for convenience? **NO** - Sync bugs and "which is correct?" conflicts unacceptable
+- Q3: Still true in 3 years? **YES** - Fundamental data architecture principle
+
+**Rationale (WHY Immutable):**
+If metadata exists in multiple places (file XMP + JSON + database), conflicts become inevitable. "File says kitchen, JSON says bathroom" scenarios break downstream workflows. CEP Panel needs ONE source. Entire project restarts if we allow metadata duplication.
+
+**Validation Plan:**
+- MUST: Document authoritative source for each metadata attribute
+- MUST: Derived copies marked as cache (not source of truth)
+- MUST: Update flows unidirectional (source → derived, never reverse)
+- TEST: "If file XMP and JSON conflict, which wins?" → Must have clear answer
+
+**Cross-Feature Application:**
+- **CFEx Integration:** TapeName written to files (anchor), metadata in JSON (authoritative for content)
+- **Reference Catalog:** EAV `public.shots` table is authoritative, IA references learn from it
+- **Core IA:** `.ingest-metadata.json` is single source, files contain minimal anchor data only
+
+**Status:** 🟢 Implementation confident (JSON Schema v2.0 established as source of truth)
+
+---
+
+### I4: Zero Data Loss Guarantee
+
+**Statement:** No media file content or metadata may be lost, corrupted, or degraded during any system operation involving authoritative assets.
+
+**Technology-Agnostic Translation:**
+- File transfer operations preserve bit-perfect integrity
+- Metadata operations reversible or auditable
+- Validation confirms completeness before declaring success
+- Errors halt operations rather than continuing with partial state
+
+**Evidence (Oath Passage):**
+- Q1: Commit as IMMUTABLE? **YES** - Production media is irreplaceable, retakes costly
+- Q2: Allow small data loss for performance? **NO** - Unacceptable for professional production
+- Q3: Still true in 3 years? **YES** - Data integrity is timeless requirement
+
+**Rationale (WHY Immutable):**
+Media files represent field capture investment (crew time, location access, talent cost). Losing even one file or corrupting metadata can render project incomplete. If system cannot guarantee data integrity, professional production teams cannot trust it. Project restarts if data loss acceptable.
+
+**Validation Plan:**
+- MUST: Integrity checks before declaring transfer complete (file count, sizes, checksums)
+- MUST: Atomic metadata updates (all-or-nothing, no partial writes)
+- MUST: Error reporting halts workflow rather than silently continuing
+- TEST: "If transfer reports success but files missing, is this acceptable?" → NO = correct behavior
+
+**Cross-Feature Application:**
+- **CFEx Integration:** Validate all files transferred before proceeding to AI analysis
+- **Reference Catalog:** Database transactions ensure FK integrity (no orphaned references)
+- **Core IA:** JSON writes atomic, file operations validated
+
+**Status:** 🟡 Partial implementation (current system lacks comprehensive integrity validation for CFex workflow)
+
+---
+
+### I5: Ecosystem Contract Coherence
+
+**Statement:** Metadata format and content contracts with downstream systems must remain stable and backwards-compatible to prevent pipeline fragmentation.
+
+**Technology-Agnostic Translation:**
+- Output format matches downstream expectations (schema contracts)
+- Breaking changes coordinated across ecosystem boundaries
+- Versioning enables graceful evolution
+- Integration tests validate contract compliance
+
+**Evidence (Oath Passage):**
+- Q1: Commit as IMMUTABLE? **YES** - IA → CEP Panel → EAV pipeline depends on contract stability
+- Q2: Break contract for local optimization? **NO** - Orphans downstream systems, breaks production workflow
+- Q3: Still true in 3 years? **YES** - Cross-application contracts are architectural foundation
+
+**Rationale (WHY Immutable):**
+Ingest Assistant is Step 6 of 10 in production pipeline. CEP Panel (Step 7) expects specific JSON schema. Breaking this contract renders CEP Panel unable to import, halting entire production workflow. If contract coherence negotiable, ecosystem fragments. Project restarts if we allow unilateral breaking changes.
+
+**Validation Plan:**
+- MUST: Document contract specifications (JSON Schema v2.0)
+- MUST: Version changes with migration paths
+- MUST: Integration tests against downstream consumers
+- TEST: "If IA changes JSON schema without CEP Panel update, does import break?" → YES = contract violation
+
+**Cross-Feature Application:**
+- **CFEx Integration:** AI pre-analysis outputs same JSON schema as manual cataloging
+- **Reference Catalog:** Cross-schema FK constraints validate against EAV authoritative data
+- **Core IA:** `.ingest-metadata.json` follows Schema v2.0 contract with CEP Panel
+
+**Status:** 🟢 Implementation confident (Schema v2.0 established, CEP Panel compatibility tested)
+
+---
+
+### I6: Committed Identifier Immutability
+
+**Statement:** Once identifiers are externally referenced (committed state), they must never change to preserve referential integrity across systems and time.
+
+**Technology-Agnostic Translation:**
+- Identifiers stable after commitment boundary (e.g., COMPLETE folder state)
+- External systems can safely reference identifiers without staleness risk
+- Renumbering/reordering prohibited after commitment
+- New versions create new identifiers rather than mutating existing
+
+**Evidence (Oath Passage):**
+- Q1: Commit as IMMUTABLE? **YES** - CEP Panel, Premiere Pro, EAV all reference shot numbers
+- Q2: Allow renumbering for convenience? **NO** - Breaks downstream references, causes catalog chaos
+- Q3: Still true in 3 years? **YES** - Referential integrity is database/architecture fundamental
+
+**Rationale (WHY Immutable):**
+Shot #25 referenced in CEP Panel, Premiere Pro timeline, EAV production tracking. If IA renumbers shots after commitment, all downstream references break. "Find shot #25" returns wrong content. If identifier mutability acceptable, referential integrity impossible. Project restarts if we allow post-commitment changes.
+
+**Validation Plan:**
+- MUST: Define commitment boundary (e.g., COMPLETE folder state)
+- MUST: Prevent identifier mutation after commitment (UI disabled, API rejects)
+- MUST: Warn before commitment ("shot numbers become immutable")
+- TEST: "After marking COMPLETE, can shot numbers change?" → YES = violation
+
+**Cross-Feature Application:**
+- **CFEx Integration:** Shot numbers assigned during AI pre-analysis remain stable through workflow
+- **Reference Catalog:** Vector search results reference stable identifiers from EAV authoritative source
+- **Core IA:** COMPLETE/REOPEN workflow enforces shot number immutability
+
+**Status:** 🟢 Implementation confident (COMPLETE folder locking prevents re-sorting)
+
+---
+
+### I7: Human Primacy Over Automation
+
+**Statement:** Automation must optimize human workflows rather than replace human judgment, preserving user agency and decision-making authority.
+
+**Technology-Agnostic Translation:**
+- Automated processes enhance efficiency, not remove human control
+- Users can intervene, override, or halt automation at any point
+- System exposes automation decisions for human review
+- "Zero-click" means removing friction, not removing human awareness
+
+**Evidence (Oath Passage):**
+- Q1: Commit as IMMUTABLE? **YES** - Users must maintain workflow control and override capability
+- Q2: Full automation without user intervention? **NO** - Removes agency, violates "assistant" philosophy
+- Q3: Still true in 3 years? **YES** - Human agency endures regardless of automation capability
+
+**Rationale (WHY Immutable):**
+"Ingest Assistant" name reflects philosophy: AI assists humans, not replaces. Removing human agency creates "black box" system where errors propagate invisibly. Professional workflows require human checkpoint authority. If automation becomes mandatory/non-overridable, project fails its assistive mission. Restart required if we remove human primacy.
+
+**Validation Plan:**
+- MUST: All automation provides manual override/intervention points
+- MUST: Users can disable automation features without breaking workflow
+- MUST: Automated decisions visible and reviewable
+- TEST: "Can users complete workflow without any AI/automation?" → NO = violation of human primacy
+
+**Cross-Feature Application:**
+- **CFEx Integration:** Zero-click AI pre-analysis runs during copy, but users can disable/skip/override
+- **Reference Catalog:** Vector search suggests matches, users confirm or reject (not auto-applied)
+- **Core IA:** AI Assist is optional, manual metadata entry always available
+
+**Status:** 🟢 Implementation confident (manual workflow fully supported, AI optional)
+
+---
+
+## Constrained Variables
+
+### Area: Metadata Storage Format
+
+**Immutable Aspect:**
+- Single source of truth principle (I3)
+- Downstream contract coherence (I5)
+
+**Flexible Aspect:**
+- JSON → could evolve to Protocol Buffers, database records, etc.
+- Schema versioning allows format evolution
+- Storage location negotiable (sidecar files, database, embedded)
+
+**Negotiable Aspect:**
+- Specific field names (can rename with migration)
+- Nesting structure (can flatten/nest differently)
+- Serialization format (JSON, YAML, binary)
+
+---
+
+### Area: AI Provider Integration
+
+**Immutable Aspect:**
+- Human oversight authority (I2)
+- Human primacy over automation (I7)
+
+**Flexible Aspect:**
+- Multi-provider support (OpenRouter, Anthropic, OpenAI)
+- Confidence threshold tuning (currently 0.7)
+- Sequential vs. parallel processing strategies
+
+**Negotiable Aspect:**
+- Specific AI models (Claude, GPT, Gemini)
+- Prompt engineering approaches
+- Frame sampling strategies for videos
+
+---
+
+### Area: Chronological Ordering Mechanism
+
+**Immutable Aspect:**
+- Temporal ordering principle (I1)
+- Committed identifier immutability (I6)
+
+**Flexible Aspect:**
+- EXIF DateTimeOriginal → filesystem timestamps → manual timestamps
+- Fallback hierarchy configurable
+- Timezone handling approaches
+
+**Negotiable Aspect:**
+- Specific timestamp format parsing
+- Missing timestamp handling UX
+- Manual override mechanisms for edge cases
+
+---
+
+### Area: Platform Support
+
+**Immutable Aspect:**
+- Zero data loss guarantee (I4) must work cross-platform
+- Ecosystem contracts (I5) platform-independent
+
+**Flexible Aspect:**
+- macOS + Ubuntu currently supported
+- Windows, Linux variants could be added
+- Platform-specific optimizations allowed
+
+**Negotiable Aspect:**
+- Hardware acceleration strategies
+- Filesystem convention adaptations
+- UI framework choices per platform
+
+---
+
+### Area: Transfer Integrity Validation
+
+**Immutable Aspect:**
+- Zero data loss guarantee (I4)
+
+**Flexible Aspect:**
+- Checksum algorithms (MD5, SHA256, xxHash)
+- Validation depth (file count, sizes, full hash)
+- Error recovery strategies
+
+**Negotiable Aspect:**
+- Progress reporting UX
+- Retry logic parameters
+- Background vs. foreground validation
+
+---
+
+## Assumption Register
+
+### A1: EXIF Timestamps Are Reliable
+
+**Source:** Current production workflow, 2+ years EAV field experience
+
+**Category:** Technical
+
+**Assumption:** Camera-embedded EXIF DateTimeOriginal accurately reflects capture chronology for 95%+ of media files.
+
+**Risk if False:**
+- Shot number assignment becomes non-chronological
+- Downstream workflows expect temporal ordering
+- Manual timestamp correction workflow needed
+
+**Confidence:** 85% (high - proven in production, but edge cases exist: wrong camera clock, timezone issues, manual date changes)
+
+**Impact:** High - Chronological ordering (I1) depends on timestamp reliability
+
+**Validation Plan:**
+- **Owner:** Implementation Lead
+- **Method:** EXIF validation during CFEx transfer (detect missing/corrupt timestamps)
+- **Timing:** Before B1 (CFEx Phase 1 implementation)
+- **Contingency:** Fallback to filesystem timestamps + user warning workflow
+
+---
+
+### A2: CEP Panel Contract Stability
+
+**Source:** EAV ecosystem integration, JSON Schema v2.0 specification
+
+**Category:** Integration
+
+**Assumption:** CEP Panel will maintain JSON Schema v2.0 compatibility for 12+ months, allowing gradual evolution rather than breaking changes.
+
+**Risk if False:**
+- IA outputs become incompatible with CEP Panel
+- Production pipeline breaks between Steps 6-7
+- Emergency migration required
+
+**Confidence:** 90% (very high - CEP Panel under same development control, versioning protocol established)
+
+**Impact:** Critical - Ecosystem contract coherence (I5) breaks if false
+
+**Validation Plan:**
+- **Owner:** Requirements Steward
+- **Method:** Integration tests against CEP Panel codebase, contract spec documentation
+- **Timing:** Before each IA release (continuous validation)
+- **Contingency:** Schema versioning protocol + migration tooling
+
+---
+
+### A3: AI Pre-Analysis Accuracy Sufficient
+
+**Source:** Initial testing, user acceptance criteria
+
+**Category:** User Behavior
+
+**Assumption:** AI metadata suggestions are accurate enough (>60% correct) that zero-click pre-analysis provides net time savings despite correction overhead.
+
+**Risk if False:**
+- Users spend more time correcting AI errors than manual entry
+- Zero-click workflow rejected as "more work, not less"
+- Feature adoption fails
+
+**Confidence:** 70% (medium - limited production testing, varies by media type/complexity)
+
+**Impact:** Medium - Affects CFEx Integration value proposition, but doesn't break core workflow
+
+**Validation Plan:**
+- **Owner:** User Research / Product Owner
+- **Method:** Pilot testing with 5+ production shoots, measure correction time vs. manual time
+- **Timing:** Before B2 (CFEx Phase 1 completion)
+- **Contingency:** Make AI pre-analysis opt-in rather than default, tune confidence thresholds
+
+---
+
+### A4: Parallel I/O + AI Saves Time
+
+**Source:** Edge-Optimizer analysis, theoretical performance model
+
+**Category:** Performance
+
+**Assumption:** Running AI analysis during file copy (parallel I/O + compute) provides measurable time savings (4-5 min per shoot) without data integrity risks.
+
+**Risk if False:**
+- Resource contention slows both operations (net negative)
+- AI errors increase due to incomplete file writes
+- Users perceive slowness despite actual speedup
+
+**Confidence:** 75% (medium-high - theoretical sound, but needs production validation)
+
+**Impact:** Medium - Performance optimization, not functional requirement
+
+**Validation Plan:**
+- **Owner:** Implementation Lead
+- **Method:** Benchmark tests: sequential vs. parallel timing, monitor file integrity during parallel ops
+- **Timing:** During B1 (CFEx implementation)
+- **Contingency:** Sequential workflow as fallback, make parallel mode opt-in
+
+---
+
+### A5: Reference Catalog Improves Accuracy
+
+**Source:** Issue #63 design, coherence loop hypothesis
+
+**Category:** Technical
+
+**Assumption:** Vector similarity search against human-corrected reference images will improve AI cataloging accuracy by 15-25% compared to zero-shot analysis.
+
+**Risk if False:**
+- Reference Catalog (Issue #63) provides minimal accuracy benefit
+- Supabase integration complexity not justified by ROI
+- 3-6 month deferral reasonable, but feature may not be worth building
+
+**Confidence:** 60% (medium - hypothesis untested, depends on embedding quality and reference corpus size)
+
+**Impact:** Low (immediate) - Deferred feature, doesn't affect v2.2.0 baseline or CFEx Phase 1
+
+**Validation Plan:**
+- **Owner:** Principal Engineer
+- **Method:** A/B testing: zero-shot AI vs. reference-augmented AI on same media corpus
+- **Timing:** Before B0 of Reference Catalog phase (3-6 months out)
+- **Contingency:** Defer indefinitely if accuracy improvement <10%, pivot to alternative learning approaches
+
+---
+
+### A6: Cross-Schema FK Integrity Maintainable
+
+**Source:** EAV ecosystem architecture, Supabase multi-schema design
+
+**Category:** Integration
+
+**Assumption:** PostgreSQL cross-schema foreign keys (`media_references.shot_references` → `public.shots`) remain maintainable with proper guardrails (contracts, compatibility tests, migration sequencing).
+
+**Risk if False:**
+- Migration sequencing errors create orphaned FK violations
+- Schema evolution in EAV breaks IA reference catalog
+- Deployment coordination becomes brittle
+
+**Confidence:** 80% (high - PostgreSQL supports cross-schema FK natively, but operational discipline required)
+
+**Impact:** Medium (future) - Affects Reference Catalog (Issue #63), not immediate CFEx work
+
+**Validation Plan:**
+- **Owner:** Technical Architect (Reference Catalog phase)
+- **Method:** Contract specs (EAV_CONTRACT:v1), compatibility test suite, migration validation scripts
+- **Timing:** Before B0 of Reference Catalog phase (3-6 months out)
+- **Contingency:** Denormalize reference data to avoid FK dependency, accept eventual consistency trade-offs
+
+---
+
+### A7: Warm AI Model Reuse Viable
+
+**Source:** CFEx zero-click design, AI provider API behavior
+
+**Category:** Technical
+
+**Assumption:** AI provider configurations loaded during file copy can be reused for zero-click pre-analysis without re-initialization overhead.
+
+**Risk if False:**
+- Each AI call requires full model reload (negates time savings)
+- API rate limits triggered by rapid sequential calls
+- Session state management complexity increases
+
+**Confidence:** 70% (medium - depends on AI provider implementation details, untested in production)
+
+**Impact:** Low - Performance optimization, fallback is sequential analysis after copy completes
+
+**Validation Plan:**
+- **Owner:** Implementation Lead
+- **Method:** API response time testing: cold start vs. warm reuse, monitor rate limit behavior
+- **Timing:** During B1 (CFEx implementation)
+- **Contingency:** Disable AI pre-analysis if warm reuse unavailable, offer manual trigger instead
+
+---
+
+## What This App IS
+
+### Core Identity
+- **AI-Augmented Cataloging Tool:** Humans drive metadata creation, AI provides intelligent suggestions
+- **Production Pipeline Gateway:** Step 6 of 10, critical handoff point between field capture and post-production
+- **Temporal Integrity Guardian:** Preserves chronological ordering from camera capture through downstream workflows
+- **Cross-Platform Media Assistant:** Works on macOS (editors) and Ubuntu (video processing servers)
+
+### Functional Scope
+- **Media File Transfer:** Copying from CFEx cards to project folders with integrity validation
+- **AI Metadata Generation:** Multi-provider AI analysis suggesting location, subject, action, shotType
+- **Sequential Shot Numbering:** Chronological assignment with immutability after COMPLETE state
+- **Metadata Storage:** Single source of truth (`.ingest-metadata.json`) feeding downstream CEP Panel
+- **Human QC Workflow:** Review, correct, approve AI suggestions before commitment
+- **Ecosystem Integration:** Coordinated contracts with CEP Panel (downstream) and EAV production tracking (authoritative)
+
+### Feature Inventory (Current + Planned)
+1. ✅ **Core IA** (v2.2.0 baseline): Manual/AI metadata, COMPLETE workflow, JSON Schema v2.0
+2. 🚧 **CFEx Integration** (Phase 1 - immediate): Zero-click transfer + AI pre-analysis, EXIF validation, project intelligence
+3. 📋 **Reference Catalog** (Issue #63 - 3-6 months): Vector search learning from EAV-corrected metadata
+
+---
+
+## What This App is NOT
+
+### Out of Scope (Explicitly)
+- **Not a Video Editor:** Media playback for preview only, no editing/trimming/effects
+- **Not a DAM System:** Cataloging feeds into production pipeline, not long-term archival management
+- **Not Premiere Pro Replacement:** Integration via CEP Panel, not standalone NLE
+- **Not Client Deliverable Tool:** Production workflow tool, not client-facing interface
+- **Not Batch Rename Utility:** Metadata stored in JSON, not filename-based organization
+- **Not Cloud Storage Manager:** Works with local/network filesystems (LucidLink, Ubuntu mounts), not cloud sync
+
+### Boundaries (Prevent Scope Creep)
+- **Transcoding:** H.264 compatibility conversion only (not full transcoding suite)
+- **Metadata Formats:** JSON Schema v2.0 contract (not XMP-everything or proprietary formats)
+- **AI Providers:** Multi-provider support for resilience (not building custom AI models)
+- **Platform Support:** macOS + Ubuntu production environments (not iOS, Android, Windows unless justified)
+- **Upstream Integration:** Receives files from CFEx cards (not camera remote control, live capture)
+- **Downstream Integration:** Feeds CEP Panel via JSON contract (not direct Premiere Pro API integration)
+
+### Future Considerations (Not Ruled Out, But Deferred)
+- Windows support (if client workflows require)
+- Custom AI model training (if multi-provider insufficient)
+- Real-time field capture integration (if cam-op PWA workflow changes)
+- Advanced search/filtering (if cataloging volume justifies)
+- Collaborative QC workflows (if multi-user editing needed)
+
+---
+
+## Evidence Summary
+
+**Total Immutables:** 7 (Miller's Law compliant: 7±2)
+
+**Pressure Testing:**
+- I1 (Chronological Ordering): ✅ Passed - "Would restart if violated" YES
+- I2 (Human Oversight): ✅ Passed - "Would restart if violated" YES
+- I3 (Single Source of Truth): ✅ Passed - "Would restart if violated" YES
+- I4 (Zero Data Loss): ✅ Passed - "Would restart if violated" YES
+- I5 (Ecosystem Contracts): ✅ Passed - "Would restart if violated" YES
+- I6 (Committed Identifiers): ✅ Passed - "Would restart if violated" YES
+- I7 (Human Primacy): ✅ Passed - "Would restart if violated" YES
+
+**System-Agnostic Translation:**
+- I1: ✅ No mentions of "EXIF", "exiftool", "JavaScript" (uses "capture timestamp metadata")
+- I2: ✅ No mentions of "React", "Electron", "UI components" (uses "human-in-loop")
+- I3: ✅ No mentions of "JSON", "XMP", "database" (uses "authoritative source")
+- I4: ✅ No mentions of "checksums", "MD5", "filesystem" (uses "integrity validation")
+- I5: ✅ No mentions of "CEP Panel", "Supabase", "PostgreSQL" (uses "downstream contracts")
+- I6: ✅ No mentions of "shot numbers", "COMPLETE button" (uses "committed identifiers")
+- I7: ✅ No mentions of "AI Assist", "OpenRouter" (uses "automation")
+
+**Assumptions Tracked:** 7 total (exceeds 6+ minimum per PROPHETIC_VIGILANCE)
+- A1-A7: All categorized (Technical/Integration/User Behavior/Performance)
+- A1-A7: All risk-assessed (Confidence % + Impact rating)
+- A1-A7: All validation plans assigned (Owner + Method + Timing + Contingency)
+- Critical/High impact assumptions: A2 (CEP Panel contract), A6 (cross-schema FK) - both require pre-B0 validation
+
+**Cross-Feature Coverage:**
+- CFEx Integration: All 7 immutables apply ✅
+- Reference Catalog: All 7 immutables apply ✅
+- Core IA: All 7 immutables apply ✅
+
+**Technology Change Test Examples:**
+- I1: Works with EXIF ✅ AND filesystem timestamps ✅ → System-agnostic ✅
+- I3: Works with JSON ✅ AND Protocol Buffers ✅ → System-agnostic ✅
+- I5: Works with CEP Panel ✅ AND alternative downstream tool ✅ → System-agnostic ✅
+
+---
+
+## Commitment Ceremony
+
+**Status:** 🟡 Pending User Approval
+
+**Ceremony Script:**
+
+> I'm about to show you the 7 immutable requirements that will guide the entire Ingest Assistant project (Core IA, CFEx Integration, Reference Catalog, and all future features).
+>
+> Once you approve these, I will use them as the North Star - meaning I will actively PREVENT any work that contradicts them, even if you ask me to do it later.
+>
+> These immutables passed the Immutability Oath:
+> - Q1: "Are you willing to commit this as IMMUTABLE for the entire project?" → YES (all 7)
+> - Q2: "If I could deliver faster/cheaper by changing this, would you allow it?" → NO (all 7)
+> - Q3: "Three years from now, will this still be true?" → YES (all 7)
+>
+> **The 7 Immutables:**
+> 1. Chronological Temporal Ordering (camera capture time drives sequence)
+> 2. Human Oversight Authority (AI suggests, humans decide)
+> 3. Single Source of Truth (no metadata duplication)
+> 4. Zero Data Loss Guarantee (production media integrity)
+> 5. Ecosystem Contract Coherence (IA → CEP Panel → EAV stability)
+> 6. Committed Identifier Immutability (shot numbers stable after COMPLETE)
+> 7. Human Primacy Over Automation (users maintain agency)
+>
+> **Future-you may want to change these, but present-you is making a commitment to future-you.**
+>
+> If you approve, I commit to defending these throughout this project. Do you approve?
+
+**Approval Placeholder:**
+```
+[ ] APPROVED on [DATE] at [TIME] by [STAKEHOLDER NAME]
+[ ] REJECTED - Revisions required (see notes below)
+```
+
+**Next Steps After Approval:**
+1. North Star gains binding authority (all agents reference this document)
+2. Requirements Steward validates completeness at D1_04 gate
+3. Critical Engineer validates against production codebase reality
+4. CFEx Phase 1 design (D2) inherits these immutables
+5. Reference Catalog design (D2 - deferred) inherits these immutables
+
+---
+
+## Protection Clause
+
+**If ANY agent detects misalignment between work and this North Star during phases D2-B5:**
+
+1. **STOP** current work immediately
+2. **CITE** specific North Star requirement being violated (I1-I7)
+3. **ESCALATE** to requirements-steward for resolution
+
+**Resolution Options:**
+- **CONFORM:** Modify work to align with North Star (preferred)
+- **AMEND:** User formally amends North Star via requirements-steward (rare, requires re-approval)
+- **ABANDON:** Incompatible path abandoned, alternative approach required
+
+**Authority Chain:**
+- North Star (this document) > Feature designs (D2/D3) > Implementation code (B0-B5)
+- Immutables override all downstream decisions
+- Changes to immutables require Commitment Ceremony re-execution
+
+---
+
+**Document Version:** 2.0 (Project-Level Consolidation)
+**Previous Version:** 1.0 (Reference Catalog Feature-Specific, superseded 2025-11-18)
+**Next Review:** D1_04 validation gate (requirements-steward)
+**Constitutional Compliance:** ✅ 7±2 immutables, ✅ System-agnostic, ✅ Pressure tested, ✅ 6+ assumptions, ✅ Evidence trail
