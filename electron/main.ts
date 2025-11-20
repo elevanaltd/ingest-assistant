@@ -24,6 +24,7 @@ import { FileRenameSchema, FileUpdateMetadataSchema, FileStructuredUpdateSchema,
 import type { AppConfig, LexiconConfig, ShotType, AIAnalysisResult } from '../src/types';
 import { migrateToKeychain } from './services/keychainMigration';
 import { BatchQueueManager } from './services/batchQueueManager';
+import { registerCfexTransferHandlers } from './ipc/cfexTransferHandlers';
 
 let mainWindow: BrowserWindow | null = null;
 let mediaServer: http.Server | null = null;
@@ -324,6 +325,9 @@ async function createWindow() {
   if (aiConfig) {
     aiService = new AIService(aiConfig.provider, aiConfig.model, aiConfig.apiKey);
   }
+
+  // Register CFEx transfer IPC handlers
+  registerCfexTransferHandlers(mainWindow);
 
   // In development, use Vite dev server; in production, load built files
   const isDev = !app.isPackaged;

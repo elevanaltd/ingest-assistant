@@ -8,6 +8,34 @@
 **Platform:** Cross-platform (macOS darwin + Ubuntu linux)
 **Phase:** B4 (Production Ready - v2.2.0 baseline) + D1 (CFEx Integration)
 
+## ⭐ Key Validated Workflow (2025-11-19)
+
+**Proxy Format Discovery:** 2560×1440 ProRes Proxy is the optimal proxy format
+
+**Why This is The Sweet Spot:**
+- **ProRes Proxy profile** (10-bit 4:2:2 color - professional grading capability)
+- **Low CPU decode** (intra-frame codec - smooth timeline playback)
+- **Goldilocks resolution** (1.78x more pixels than 1080p, 44% of 4K pixels)
+- **Reasonable file size** (~175 MB for 24s, ~6 MB/sec average)
+- **Fast encoding** (3-4x realtime on M-series Macs)
+
+**Critical Workflow Steps:**
+1. Save photos to `/Volumes/videos-current/2. WORKING PROJECTS/[project]/images/`
+2. Save raw footage to `/Volumes/EAV_Video_RAW/[project]/videos-raw/`
+3. Create 2K ProRes proxies: `ffmpeg -i raw.MOV -vf "scale=2560:1440" -c:v prores_ks -profile:v 0 -vendor apl0 -pix_fmt yuv422p10le -c:a pcm_s16le proxy.MOV`
+4. **MANDATORY:** Preserve DateTimeOriginal: `exiftool -overwrite_original "-QuickTime:DateTimeOriginal=$ORIG_DATE" proxy.MOV`
+5. Analyze proxies and create `.ingest-metadata.json` in proxy folder
+
+**Actual Production Paths:**
+- **LucidLink (Working Projects):** `/Volumes/videos-current/2. WORKING PROJECTS` - Cloud storage with fast access
+- **Ubuntu NFS (Raw Archive):** `/Volumes/EAV_Video_RAW/` - Local NFS mount for raw file archival
+- **Note:** LucidLink path contains spaces - requires proper quoting in shell commands
+
+**JSON Location Rationale:**
+- Proxy folder is where editors work (LucidLink for fast access)
+- Raw files archived on Ubuntu NFS (cheaper storage, offline from editing)
+- Single source of truth for CEP Panel to read
+
 ## EAV Ecosystem Integration
 
 **Position:** Step 6 of 10 in complete production pipeline
@@ -26,10 +54,11 @@ COMPLETE PIPELINE (10 Steps):
   └─ data-entry-web: Client specs
 
 → 6: INGEST ASSISTANT (THIS APP) ← YOU ARE HERE
-     Role: AI pre-tagging gateway
-     Input: Raw media files (photos/videos)
-     Output: XMP-embedded metadata
-     Metadata: location, subject, action, shotType
+     Role: AI pre-tagging gateway + proxy generation
+     Input: Raw media files from CFex card (photos/videos)
+     Process: Photos→LucidLink | Raw→Ubuntu | 2K ProRes proxies→LucidLink
+     Output: `.ingest-metadata.json` (in proxy folder)
+     Metadata: location, subject, action, shotType, shotNumber
      Enhancement: Reference lookup (#63 - planned)
 
 7: CEP Panel (Adobe Premiere Pro extension)
@@ -51,8 +80,9 @@ COMPLETE PIPELINE (10 Steps):
    - XMP writes: location=kitchen, subject=hob-cover, shotType=CU
 
 2. CEP Panel Imports:
-   - Reads XMP from files
-   - Imports to Premiere Pro with metadata
+   - Reads `.ingest-metadata.json` from proxy/image folder
+   - Uses filename to match JSON entries to Premiere Pro clips
+   - Imports metadata (no file XMP reading)
 
 3. EAV Production (Shoots Table):
    - Scripts app plans: kitchen-oven-steam-tray-CU
@@ -117,49 +147,85 @@ WHERE r.corrected_subject = 'oven-steam-tray';
 
 **Overview:** Ingest Assistant handles Steps 1-2 (CFex file transfer + AI cataloging). Steps 3-5 (Premiere Pro import, batch processing, QC) handled by CEP Panel.
 
-### Step 1: CFex File Transfer ⚠️ NEW FEATURE (Future Implementation)
+### Step 1: CFex File Transfer + Proxy Generation ⚠️ NEW FEATURE (Future Implementation)
 
-**Purpose:** Extract media files from CFex card and embed Tape Name metadata
+**Purpose:** Extract media files from CFex card, generate editing proxies, and preserve chronological metadata
 
 **Current State:** Uses external app (`/Applications/%-SystemApps/CFEx File Transfer.app`)
 **Future State:** Built into Ingest Assistant for integrated workflow
 
 **Process:**
-1. **Select Destination Folders:**
-   - Images: Navigate to project image folder (e.g., `/LucidLink/EAV014/images/shoot1-20251124/`)
-   - Raw Video: Navigate to raw video folder (e.g., `/Ubuntu/EAV014/videos-raw/shoot1-20251124/`)
 
-2. **Press "Process" Button:**
-   - Copies all files from CFex card to selected folders
-   - Runs integrity checks (verify file count, sizes match, no corruption)
-   - Writes Tape Name metadata to each file: `-XMP-xmpDM:TapeName={original-filename}`
-     - Example: `EA001621.MOV` → TapeName=EA001621
-     - Example: `EA001622.JPG` → TapeName=EA001622
+**1a. Transfer Photos to LucidLink:**
+   - Source: CFex card `/DCIM/`
+   - Destination: `/LucidLink/EAV014/images/shoot1-20251124/`
+   - Writes Tape Name: `-XMP-xmpDM:TapeName={original-filename}`
+   - Example: `EA001622.JPG` → TapeName=EA001622
 
-3. **Validation:**
-   - Confirms all files transferred successfully
-   - Reports any errors (missing files, checksum failures)
+**1b. Transfer Raw Videos to Ubuntu:**
+   - Source: CFex card `/PRIVATE/M4ROOT/CLIP/`
+   - Destination: `/Ubuntu/EAV014/videos-raw/shoot1-20251124/`
+   - Preservation: Raw ProRes files for archival
+   - Writes Tape Name: `-XMP-xmpDM:TapeName={original-filename}`
+
+**1c. Generate 2K ProRes Proxies to LucidLink:**
+   - Source: Raw videos (from Ubuntu)
+   - Destination: `/LucidLink/EAV014/videos-proxy/shoot1-20251124/`
+   - **Transcode Command:**
+     ```bash
+     ffmpeg -i raw.MOV -vf "scale=2560:1440" -c:v prores_ks -profile:v 0 -vendor apl0 -pix_fmt yuv422p10le -c:a pcm_s16le proxy.MOV
+     ```
+   - **Result:** 2560×1440 ProRes Proxy (10-bit 4:2:2 color, intra-frame codec)
+   - **File Size:** ~175 MB for 24s (~6 MB/sec average)
+   - **Quality:** Professional grading capability, smooth timeline playback
+
+**1d. Preserve DateTimeOriginal (CRITICAL - I1 Compliance):**
+   - **Why:** ffmpeg loses EXIF DateTimeOriginal during transcode (all codecs including ProRes)
+   - **Impact:** Without this, chronological ordering breaks (I1 violation)
+   - **Fix (MANDATORY):**
+     ```bash
+     # Extract from raw
+     ORIG_DATE=$(exiftool -s3 -DateTimeOriginal raw.MOV)
+
+     # Write to proxy
+     exiftool -overwrite_original "-QuickTime:DateTimeOriginal=$ORIG_DATE" proxy.MOV
+
+     # Validate (halt if mismatch)
+     PROXY_DATE=$(exiftool -s3 -DateTimeOriginal proxy.MOV)
+     [[ "$ORIG_DATE" == "$PROXY_DATE" ]] || exit 1
+     ```
+
+**2. Integrity Validation:**
+   - File count matches (CFex vs destinations)
+   - File sizes match (checksums optional)
+   - DateTimeOriginal preserved on all proxies
+   - Reports any errors (missing files, timestamp failures)
    - Green checkmark on completion
 
-**Why Tape Name Matters:**
-Premiere Pro Tape Name field is **immutable** after import. This becomes the permanent ID for metadata lookup in CEP Panel, even if PP Clip Name changes.
+**Why This Workflow:**
+- **Raw Preservation:** Original files archived on Ubuntu (cheap storage)
+- **Proxy Format:** 2K ProRes Proxy = sweet spot (better than 1080p detail, smoother than 4K H.264)
+- **Editor Performance:** Proxies on LucidLink (fast access) + intra-frame codec (smooth playback)
+- **AI Efficiency:** Reasonable file size for uploads (~6 MB/sec vs 1GB raw)
+- **Chronological Integrity:** DateTimeOriginal preserved = I1 compliant
+- **Professional Quality:** 10-bit 4:2:2 color maintained for grading
 
-**Status:** Not implemented yet - uses external transfer app currently
+**Status:** Not implemented yet - uses external transfer app + manual proxy generation currently
 
 ---
 
 ### Step 2: AI Cataloging (Current Production Feature)
 
-**Purpose:** Analyze media files with AI and generate JSON sidecar metadata
+**Purpose:** Analyze proxy files with AI and generate JSON sidecar metadata
 
-**When:** After files transferred to folders (can be immediate or delayed)
+**When:** After proxies generated (Step 1c) and DateTimeOriginal preserved (Step 1d)
 
 **Process:**
-1. **Open Folder:** Navigate to folder containing transferred files (raw OR proxy)
-   - **Images (macOS):** `/LucidLink/EAV014/images/shoot1-20251124/`
-   - **Raw Video (Ubuntu):** `/Ubuntu/EAV014/videos-raw/shoot1-20251124/`
-   - **Proxies (macOS):** `/LucidLink/EAV014/videos-proxy/shoot1-20251124/` (after proxy generation)
-   - **Note:** App runs on both macOS and Ubuntu - folder paths adapt to platform
+1. **Open Proxy Folder:** Navigate to folder containing proxies
+   - **Images:** `/LucidLink/EAV014/images/shoot1-20251124/`
+   - **Videos:** `/LucidLink/EAV014/videos-proxy/shoot1-20251124/`
+   - **Why Proxies:** Smaller files (7.8M vs 1GB) = faster AI uploads, sufficient quality for visual analysis
+   - **Note:** Raw files stay on Ubuntu, AI analyzes LucidLink proxies only
 
 2. **Batch AI Processing:**
    - Select all files (or use "Reprocess First 100 Files" button)
@@ -188,11 +254,13 @@ Premiere Pro Tape Name field is **immutable** after import. This becomes the per
    - **Reopen:** Click "REOPEN" if corrections needed (unlocks folder)
 
 **Output Files:**
-- `.ingest-metadata.json` (in same folder as media files) - **Single source of truth**
+- `.ingest-metadata.json` (in proxy folder) - **Single source of truth**
+  - Location: `/LucidLink/EAV014/videos-proxy/shoot1-20251124/.ingest-metadata.json`
   - Contains all metadata: location, subject, action, shotType, shotNumber, keywords
   - Schema 2.0 format
   - `_completed: true/false` flag controls folder lock status
-  - **Files are NOT modified** - JSON is the authoritative metadata store
+  - **Proxy files are NOT modified** - JSON is the authoritative metadata store
+  - **Why Proxy Folder:** Matches editor workflow (editors work with proxies, not raw)
 
 **⚠️ Important:**
 - Do NOT re-catalog a folder after marking COMPLETE - shot numbers will change if files re-sorted chronologically
@@ -247,11 +315,14 @@ Premiere Pro Tape Name field is **immutable** after import. This becomes the per
 - **Artifacts:** DMG (127M) + ZIP (123M) for macOS ARM64
 - **Rollback:** git checkout v2.2.0 OR download release artifacts
 
-**Active Development:** CFEx File Transfer Integration (Phase 1)
-- **Phase:** D1 (North Star) - 7 immutables extracted, commitment ceremony pending
-- **Scope:** Zero-click AI pre-analysis + EXIF validation + path intelligence
-- **Timeline:** D1 approval → D2 design → B2 implementation
-- **Deferred:** Reference Catalog (Issue #63) - after CFEx Phase 1 + guardrails (4-6 weeks)
+**Active Development:** CFEx File Transfer Integration (Microphases)
+- **Current Phase:** D1 (North Star) - 7 immutables + microphase structure
+- **Microphase Breakdown:**
+  - Phase 1a (2 weeks): Transfer + Integrity - Photos→LucidLink | Raw→Ubuntu
+  - Phase 1b (2 weeks): Proxy Generation - 2560×1440 ProRes Proxy | DateTimeOriginal preservation
+  - Phase 1c (2-3 weeks): Power Features - AI toggle | Metadata write toggle | Filename rewrite
+- **Timeline:** D1 approval → D2 design (1a/1b/1c) → B2 implementation (sequential microphases)
+- **Deferred:** Reference Catalog (Issue #63) - after CFEx complete + guardrails (3-6 months)
 
 ## Tech Stack
 
@@ -405,11 +476,18 @@ Renderer Process (src/App.tsx)
   - Portable and version-controllable
   - CEP Panel reads JSON, not file metadata
 
-**File Metadata (Minimal):**
+**File Metadata (Optional - Toggle-Driven):**
 - **XMP-xmpDM:TapeName** = Original filename (immutable anchor)
-  - Written during Step 1 (CFex transfer)
-  - Used by CEP Panel to match JSON entries to PP clips
-  - Never modified after initial transfer
+  - Written ONLY when file modification enabled:
+    - Metadata write toggle ON (writes shotName, LogComment, Description, TapeName)
+    - Filename rename toggle ON (preserves original name via TapeName before rename)
+  - NOT written in JSON-only workflow (default)
+  - Purpose: Preserves original filename when files are modified
+
+**CEP Panel Integration:**
+- Reads `.ingest-metadata.json` from proxy folder (videos) or image folder (photos)
+- Uses filename as immutable reference (camera_id/unique_ref)
+- Proxy matching: `{filename}_proxy.MOV` → `{filename}.MOV` (deterministic, works even if raw offline)
 
 **Why This Approach:**
 - JSON is easily correctable (no file I/O required)

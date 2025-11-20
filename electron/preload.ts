@@ -104,4 +104,52 @@ contextBridge.exposeInMainWorld('electronAPI', {
     save: (config: LexiconConfig): Promise<boolean> =>
       ipcRenderer.invoke('lexicon:save', config),
   },
+
+  // CFEx transfer operations (v2.2.0 contextBridge pattern)
+  cfex: {
+    startTransfer: (config: { source: string; destinations: { photos: string; rawVideos: string } }): Promise<{
+      success: boolean;
+      filesTransferred: number;
+      filesTotal: number;
+      bytesTransferred: number;
+      duration: number;
+      validationWarnings: Array<{ file: string; message: string; severity: 'low' | 'medium' | 'high' }>;
+      errors: Array<{ file: string; error: Error; phase: 'scan' | 'transfer' | 'validation' }>;
+    }> =>
+      ipcRenderer.invoke('cfex:start-transfer', config),
+
+    getTransferState: (): Promise<{
+      status: 'idle' | 'scanning' | 'transferring' | 'validating' | 'complete' | 'error';
+      filesCompleted: number;
+      filesTotal: number;
+      bytesTransferred: number;
+      bytesTotal: number;
+      currentFile?: string;
+      error?: Error;
+    }> =>
+      ipcRenderer.invoke('cfex:get-transfer-state'),
+
+    onTransferProgress: (callback: (progress: {
+      currentFile: string;
+      fileIndex: number;
+      filesTotal: number;
+      percentComplete: number;
+      totalBytesTransferred: number;
+      totalBytesExpected: number;
+      estimatedTimeRemaining: number;
+    }) => void): (() => void) => {
+      const listener = (_event: Electron.IpcRendererEvent, progress: {
+        currentFile: string;
+        fileIndex: number;
+        filesTotal: number;
+        percentComplete: number;
+        totalBytesTransferred: number;
+        totalBytesExpected: number;
+        estimatedTimeRemaining: number;
+      }) => callback(progress);
+      ipcRenderer.on('cfex:transfer-progress', listener);
+      // Return cleanup function for useEffect compatibility
+      return () => ipcRenderer.removeListener('cfex:transfer-progress', listener);
+    },
+  },
 });
