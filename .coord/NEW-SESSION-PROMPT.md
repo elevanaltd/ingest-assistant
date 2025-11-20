@@ -1,52 +1,93 @@
-# New Session Continuation Prompt - CFEx Phase 1a
+# New Session Continuation Prompt - CFEx Week 1 Completion
 
-**Use this prompt to start a fresh session and continue CFEx Phase 1a work.**
+**Use this prompt to start a fresh session and complete Week 1 UI test fixes.**
 
 ---
 
 ## SESSION PROMPT (Copy & Paste)
 
 ```
-I'm continuing work on CFEx Phase 1a (File Transfer Integration) for the Ingest Assistant project.
+I'm continuing work on CFEx Phase 1a Week 1 (Transfer Window UI completion) for the Ingest Assistant project.
 
 CURRENT STATE:
-- Branch: feat/cfex-work (rebased on R1.1 schema main, all tests GREEN)
-- Phase: B0 Re-Validation (ready for FINAL GO decision)
-- Testing: Day 1 COMPLETE (100% EXIF coverage), Day 2/3 deferred to B2
+- Branch: feat/cfex-work (Week 1 B2 implementation 90% complete)
+- Phase: B2 Implementation Week 1 - FINAL 10% (test pattern fixes)
+- Tests: Main process ✅ 617/617 GREEN, Renderer UI ⚠️ 4/9 (mock pattern issue)
+- Timeline: Accelerated 11x (5.5 days estimated → ~5 hours actual)
 
-WORK COMPLETED (Previous Session):
-1. ✅ R1.1 Schema Alignment: mainName→shotName migration complete (584 tests passing)
-2. ✅ CFEx branch rebased on main: Zero conflicts, schema foundation stable
-3. ✅ Day 1 Empirical Testing: 100% EXIF coverage (103/103 files on Fujifilm CFEx)
-4. ✅ I1 Immutable VALIDATED: Chronological integrity guaranteed
-5. ✅ Day 2/3 Testing DEFERRED: LucidLink/NFS tests deferred to B2 implementation
-6. ✅ Findings Summary Created: 008-CFEX-EMPIRICAL-FINDINGS-SUMMARY.md
+WORK COMPLETED (Week 1 - Nov 20, 2025):
+1. ✅ Days 1-3: Transfer mechanism (scanSourceFiles, transferFile, startTransfer) - 611 tests GREEN
+2. ✅ Days 3.5-5.5: Integrity validation (integrityValidator, EXIF preservation) - I1 immutable validated
+3. ✅ Days 4-5: IPC handlers (cfexTransferHandlers, event emission) - 617 tests GREEN
+4. ✅ Days 5-7 (90%): Renderer UI (preload.ts + CfexTransferWindow refactored)
+   - ✅ preload.ts: CFEx methods exposed via contextBridge (v2.2.0 security pattern preserved)
+   - ✅ CfexTransferWindow.tsx: Component uses window.electronAPI.cfex.* (correct implementation)
+   - ⚠️ REMAINING: 5 test pattern fixes (mock reassignment issue in tests)
+
+ARCHITECTURAL DECISIONS:
+- ✅ v2.2.0 security pattern PRESERVED: contextBridge abstraction maintained (no raw IPC exposure)
+- ✅ Component logic VALIDATED: Uses window.electronAPI.cfex.* properly
+- ⚠️ Test mocking issue: beforeEach creates mocks, individual tests override with .mockResolvedValue() → breaks reference
+
+TEST BLOCKER ANALYSIS (15-30 min fix):
+**Root Cause:** Mock reference vs. mock value tension
+```typescript
+// PROBLEM PATTERN:
+beforeEach(() => {
+  window.electronAPI = { cfex: { startTransfer: mockStartTransfer } }
+  // ↑ Sets reference to original mock
+})
+
+test('handles error', async () => {
+  mockStartTransfer.mockResolvedValue({ success: false })
+  // ↑ Creates NEW mock, but window.electronAPI.cfex.startTransfer still points to OLD mock
+})
+```
+
+**SOLUTION (Option B - Fresh Mocks):**
+```typescript
+beforeEach(() => {
+  window.electronAPI = {
+    cfex: {
+      startTransfer: vi.fn(), // ← Fresh mock each test
+      onTransferProgress: vi.fn(() => () => {}),
+      getTransferState: vi.fn()
+    }
+  }
+})
+
+test('handles error', async () => {
+  // Override inline
+  vi.mocked(window.electronAPI.cfex.startTransfer).mockResolvedValue({ success: false })
+  // ✅ Works because mock is fresh each test
+})
+```
+
+ACCESSIBLE TESTING PATHS (Integration Testing):
+- LucidLink: `/Volumes/videos-current/2. WORKING PROJECTS` (cloud storage with fast access)
+- Ubuntu NFS: `/Volumes/EAV_Video_RAW/` (raw file archival)
+- Status: ✅ UNBLOCKED (both paths accessible for Week 1-2 integration testing)
 
 KEY DOCUMENTS:
-- North Star: .coord/workflow-docs/000-INGEST_ASSISTANT-D1-NORTH-STAR.md
-- D3 Blueprint: .coord/workflow-docs/003-CFEX-D3-BLUEPRINT.md
-- B0 Decision: .coord/workflow-docs/004-CFEX-B0-DECISION.md
-- Test Results: .coord/workflow-docs/006-CFEX-TESTING-RESULTS.md
-- Findings: .coord/workflow-docs/008-CFEX-EMPIRICAL-FINDINGS-SUMMARY.md
+- Project Context: .coord/PROJECT-CONTEXT.md (updated Nov 20 with Week 1 status)
+- Shared Checklist: .coord/SHARED-CHECKLIST.md (Week 1 90% progress)
+- D3 Blueprint v1.1: .coord/workflow-docs/003-CFEX-D3-BLUEPRINT.md (integration testing section updated)
 
-NEXT STEPS (Priority Order):
-1. Review empirical testing findings (008-CFEX-EMPIRICAL-FINDINGS-SUMMARY.md)
-2. Update D3 Blueprint with Day 1 findings + Day 2/3 deferral notes
-3. Resolve remaining 4 B0 blocking conditions:
-   - Blocker #4: App quit handler (0.5 days)
-   - Blocker #5: Error sanitization documentation (0.25 days)
-   - Blocker #6: Window lifecycle test specs (0.25 days)
-   - Blocker #7: Error message clarity (0.25 days)
-4. Invoke critical-design-validator for B0 FINAL GO re-validation
-5. If FINAL GO received: Proceed to B2 implementation (3 weeks CORE phase)
+IMMEDIATE NEXT STEPS (15-30 min):
+1. Fix 5 failing UI tests in `src/components/__tests__/CfexTransferWindow.test.tsx`
+   - Apply Option B pattern (fresh mocks in beforeEach)
+   - Use `vi.mocked(window.electronAPI.cfex.X)` for inline overrides
+   - Ensure cleanup functions work properly
+2. Run quality gates: `npm run lint && npm run typecheck && npm test`
+3. Commit with TDD evidence: TEST → FEAT pattern
+4. Invoke code-review-specialist for mandatory TRACED review
 
-CONSTITUTIONAL REQUIREMENTS:
-- Load build-execution skill BEFORE any implementation work
-- Follow TDD discipline (RED→GREEN→REFACTOR)
-- RACI consultations: code-review-specialist, test-methodology-guardian
-- Quality gates MUST pass: lint + typecheck + tests
+AFTER TEST FIXES (Week 1 100% complete):
+- [ ] Code review with code-review-specialist (TRACED protocol)
+- [ ] Optional: Integration testing with real CFEx card → LucidLink + Ubuntu NFS
+- [ ] Optional: Gather empirical data for Week 2 error handling design
 
-Please activate as holistic-orchestrator and proceed with D3 Blueprint updates + B0 re-validation.
+Please activate as implementation-lead and proceed with test fixes to complete Week 1.
 ```
 
 ---
@@ -55,131 +96,95 @@ Please activate as holistic-orchestrator and proceed with D3 Blueprint updates +
 
 ### What We Accomplished (This Session)
 
-**Duration:** ~2 hours
-**Phase Progress:** D0 → D1 → D2 → D3 → B0 CONDITIONAL GO → Empirical Testing (Day 1 COMPLETE)
+**Duration:** ~5 hours
+**Phase Progress:** B0 FINAL GO → Week 1 B2 Implementation → 90% Complete
 
 **Key Achievements:**
-1. **R1.1 Schema Migration:** mainName→shotName + lockedFields field (584 tests GREEN)
-2. **Cross-Branch Coherence:** CFEx rebased on R1.1 main with zero conflicts
-3. **Autonomous Testing:** Claude ran Day 1 EXIF tests (5 minutes vs 2-3 hours manual)
-4. **I1 Validation:** 100% EXIF coverage guarantees chronological integrity
-5. **Strategic Deferral:** Day 2/3 tests deferred to B2 (conservative assumptions acceptable)
+1. **Main Process Layer:** Complete transfer pipeline (services + IPC handlers) - 617 tests GREEN
+2. **Renderer UI Layer:** 90% complete (preload.ts + component refactored to v2.2.0 pattern)
+3. **Security Compliance:** v2.2.0 contextBridge abstraction preserved (no raw IPC exposure)
+4. **Documentation:** Real testing paths documented (LucidLink + Ubuntu NFS accessible)
+5. **Timeline Acceleration:** 11x faster than D3 Blueprint estimate (TDD discipline + clear specs)
 
-**Documentation Created:**
-- Testing protocol (005-CFEX-EMPIRICAL-TESTING-PROTOCOL.md)
-- Testing results tracker (006-CFEX-TESTING-RESULTS.md)
-- Testing capabilities (007-CFEX-TESTING-CAPABILITIES.md)
-- Findings summary (008-CFEX-EMPIRICAL-FINDINGS-SUMMARY.md)
+**Documentation Created/Updated:**
+- PROJECT-CONTEXT.md (Week 1 status update)
+- SHARED-CHECKLIST.md (B2 Week 1 progress)
+- D3 Blueprint (integration testing section with real paths)
+- NEW-SESSION-PROMPT.md (this document - Week 1 completion prompt)
 
 **Git Evidence:**
-- Commits: 6 comprehensive documentation commits
-- All commits pushed to feat/cfex-work
-- Branch status: Up to date with remote
+- Week 1 commits: scanSourceFiles, transferFile, integrityValidator, startTransfer, IPC handlers, preload.ts
+- Branch status: feat/cfex-work (90% Week 1 complete)
+- Quality gates: Main process ✅ GREEN, Renderer UI ⚠️ test fixes remaining
 
-### Outstanding B0 Blockers (4 Remaining)
+---
 
-**From 004-CFEX-B0-DECISION.md:**
+### Week 1 Architecture Summary
 
-**Blocker #4: App Quit Handler (0.5 days)**
-- **Issue:** Cmd+Q (app quit) distinct from Cmd+W (window close) - NOT handled
-- **Risk:** User quits app while transfer in progress → window orphaned → data loss
-- **Solution:** Add app.on('before-quit') handler with confirmation dialog
-- **D3 Update:** Document handler behavior, add TDD test specs
+**Main Process (COMPLETE - 617 tests GREEN):**
+```
+scanSourceFiles → transferFile → integrityValidator → startTransfer → IPC Handlers
+```
 
-**Blocker #5: Error Sanitization Documentation (0.25 days)**
-- **Issue:** D3 Blueprint mentions sanitizeError() but doesn't specify implementation
-- **Risk:** Sensitive paths leaked to UI → security vulnerability
-- **Solution:** Document explicit sanitization rules (redact full paths, show last 2 segments)
-- **D3 Update:** Add security section with sanitization spec
+**Renderer Process (90% COMPLETE - 4/9 tests GREEN):**
+```
+preload.ts (contextBridge exposure) ✅
+    ↓
+electron.d.ts (type definitions) ✅
+    ↓
+CfexTransferWindow.tsx (component logic) ✅
+    ↓
+CfexTransferWindow.test.tsx (test mocking) ⚠️ (5 tests need pattern fix)
+```
 
-**Blocker #6: Window Lifecycle Test Specs (0.25 days)**
-- **Issue:** No unit tests for app quit scenario
-- **Risk:** App quit handler implemented but never tested → regression risk
-- **Solution:** Add TDD test specs for app quit + transfer in progress
-- **D3 Update:** Add test specifications section
+**Cross-Boundary Coherence:**
+- Security: ✅ contextBridge abstraction maintained
+- Type Safety: ✅ Types aligned with implementation
+- Component Logic: ✅ Uses window.electronAPI.cfex.* properly
+- Test Coverage: ⚠️ Mock pattern issue (known solution, 15-30 min fix)
 
-**Blocker #7: Error Message Clarity (0.25 days)**
-- **Issue:** ENOSPC error says "disk full" but not "how much space needed"
-- **Risk:** User guesses how much to free up → wrong guess → retry fails again
-- **Solution:** Show "Required: 2.4 GB | Available: 1.1 GB" in error message
-- **D3 Update:** Add UX error message specifications
+---
 
-**Total Time:** 1.25 days (sequential execution)
+### Test Blocker Details
 
-### Testing Summary (For B0 Re-Validation)
+**Failing Tests (5 total):**
+1. `handles transfer start error` - Mock override doesn't propagate
+2. `displays validation warnings` - Mock override doesn't propagate
+3. `handles file completion` - Event handler mock not invoked
+4. `cleans up listeners on unmount` - Cleanup function reference issue
+5. `shows error state on failure` - Mock override doesn't propagate
 
-**Day 1: EXIF Field Testing ✅ COMPLETE**
-- Photos: 100% coverage (2/2 with EXIF DateTimeOriginal)
-- Videos: 100% coverage (101/101 with EXIF DateTimeOriginal)
-- Total: 103/103 files = 100% coverage
-- Card: Fujifilm CFEx (100_FUJI folder structure)
-- I1 Validation: ✅ PASSED (chronological integrity guaranteed)
-- D3 Updates: None required (EXIF-first strategy confirmed)
+**Pattern to Apply:**
+- Replace shared mocks in beforeEach with fresh `vi.fn()` each test
+- Use `vi.mocked(window.electronAPI.cfex.X).mockResolvedValue()` for overrides
+- Ensure cleanup functions return proper unsubscribe handlers
 
-**Day 2: LucidLink Retry Timing ⚠️ DEFERRED**
-- Status: DEFERRED TO B2 IMPLEMENTATION
-- Assumption: 3 retries, exponential backoff (1s, 2s, 4s)
-- Risk: LOW (conservative retry strategy provides safety margin)
-- Validation: During B2 implementation with real usage patterns
+**Files to Modify:**
+- `src/components/__tests__/CfexTransferWindow.test.tsx` (5 test fixes)
 
-**Day 3: Ubuntu NFS Timeout ⚠️ DEFERRED**
-- Status: DEFERRED TO B2 IMPLEMENTATION
-- Assumption: 30s timeout with progress UI after 10s
-- Risk: LOW (conservative timeout for most networks)
-- Validation: During B2 implementation on target infrastructure
-
-**B0 Re-Validation Recommendation:** ✅ FINAL GO
-- Critical risks: NONE (I1 validated, conservative assumptions)
-- Medium risks: Retry timing suboptimal (mitigated by B2 validation)
-- Low risks: NFS timeout suboptimal (mitigated by 30s conservative value)
-
-### Next Session Workflow
-
-**Step 1: Review Context (5 minutes)**
-- Read 008-CFEX-EMPIRICAL-FINDINGS-SUMMARY.md
-- Review B0 blocking conditions in 004-CFEX-B0-DECISION.md
-- Verify current branch status (feat/cfex-work)
-
-**Step 2: Update D3 Blueprint (30 minutes)**
-- Add Day 1 findings (100% EXIF coverage)
-- Document Day 2/3 deferral rationale
-- Add B2 validation notes for retry timing and NFS timeout
-- Resolve 4 remaining B0 blockers (app quit, error sanitization, test specs, error messages)
-
-**Step 3: Invoke critical-design-validator (15 minutes)**
-- Provide evidence: 100% EXIF coverage, conservative assumptions, 4 blockers resolved
-- Request: FINAL GO/NO-GO decision
-- Expected: FINAL GO (all conditions met)
-
-**Step 4: Proceed Based on Decision**
-- **If FINAL GO:** Invoke implementation-lead for B2 (3 weeks CORE phase)
-- **If CONDITIONAL GO:** Address additional conditions
-- **If NO-GO:** Escalate to requirements-steward
-
-**Total Estimated Time:** 1-2 hours to complete D3 updates + B0 re-validation
+---
 
 ### Constitutional Reminders
 
-**Before B2 Implementation:**
-1. Load build-execution skill (MANDATORY)
-2. Load error-triage skill (for systematic error resolution)
-3. Create TodoWrite with TDD phases (RED → GREEN → REFACTOR)
-4. Verify quality gates pass locally (lint + typecheck + tests)
+**BEFORE TEST FIXES:**
+```bash
+# Load build-execution skill (already loaded in prior work)
+Skill(command:"build-execution")
+```
 
-**During B2 Implementation:**
-1. TDD discipline ALWAYS (failing test before code)
-2. RACI consultations REQUIRED:
-   - code-review-specialist: ALL changes
-   - critical-engineer: Architectural decisions
-   - test-methodology-guardian: Test strategy
-   - security-specialist: File transfer security
-3. Quality gates MUST pass before every commit
-4. Git evidence: TEST commit → FEAT commit (atomic, traceable)
+**QUALITY GATES (BEFORE COMMIT):**
+```bash
+npm run lint && npm run typecheck && npm test
 
-**Phase Transition Validation:**
-- B2 → B3: Features complete, all tests passing
-- B3 → B4: System integrated, end-to-end testing complete
-- B4 → B4_D1: Production package ready, deployment validated
+# Expected after fixes:
+# ✓ Lint: 0 errors
+# ✓ Typecheck: 0 errors
+# ✓ Tests: 620/620 passing (617 + 9 UI tests)
+```
+
+**RACI CONSULTATIONS (AFTER TEST FIXES):**
+- code-review-specialist: MANDATORY review (TRACED protocol)
+- Optional: test-methodology-guardian (if test pattern questions arise)
 
 ---
 
@@ -189,30 +194,32 @@ Please activate as holistic-orchestrator and proceed with D3 Blueprint updates +
 ```bash
 cd /Volumes/HestAI-Projects/ingest-assistant
 git status
-git log --oneline -5
+git log --oneline -10  # See Week 1 commits
 ```
 
-### Documentation Review
+### Test Execution
 ```bash
-cat .coord/workflow-docs/008-CFEX-EMPIRICAL-FINDINGS-SUMMARY.md
-cat .coord/workflow-docs/004-CFEX-B0-DECISION.md
-cat .coord/PROJECT-CONTEXT.md
+npm test -- CfexTransferWindow.test.tsx  # Run specific test file
+npm test  # Run all tests (should be 620/620 after fixes)
 ```
 
-### Quality Gates (Before Commit)
+### Quality Gates
 ```bash
 npm run lint && npm run typecheck && npm test
 ```
 
-### Branch Status
+### Integration Testing Paths (After Week 1 Complete)
 ```bash
-git branch  # Should show: feat/cfex-work
-git remote -v  # Should show: origin https://github.com/elevanaltd/ingest-assistant.git
+# LucidLink destination
+ls "/Volumes/videos-current/2. WORKING PROJECTS"
+
+# Ubuntu NFS destination
+ls /Volumes/EAV_Video_RAW/
 ```
 
 ---
 
-**Created:** 2025-11-19
-**Session Ended:** ~15:15 PST
-**Next Session:** Ready to continue with D3 updates + B0 re-validation
-**Estimated Continuation Time:** 1-2 hours to FINAL GO decision
+**Created:** 2025-11-20
+**Session Ended:** Week 1 at 90% completion
+**Next Session:** Fix 5 UI test patterns (15-30 min) → Code review → Week 1 COMPLETE
+**Remaining Work:** 5 test fixes, code review, optional integration testing

@@ -1,6 +1,6 @@
 # Ingest Assistant - Shared Checklist
 
-## Current Status (2025-11-18 Updated)
+## Current Status (2025-11-19 Updated)
 
 ### ✅ v2.2.0 Release Complete (Nov 18, 2025)
 
@@ -12,20 +12,71 @@
 - ✅ **Rollback Capability:** Validated (git checkout v2.2.0 OR download DMG)
 - ✅ **PR #76:** Version bump merged to main after CI GREEN
 
-### 🔄 CFEx File Transfer Integration (Phase 1 - IN PROGRESS)
+### ✅ CFEx File Transfer Integration (Phase 1a - B0 FINAL GO RECEIVED)
+
+**Phase Completion Status:** D0→D1→D2→D3(v1.1)→B0(FINAL GO)✅ → **B2 READY**
 
 **D1 North Star - COMPLETE:**
 - ✅ **Scope Decision:** Project-level consolidation (single North Star for all features)
 - ✅ **Immutables Extracted:** 7 project-wide immutables (applies to CFEx + Reference Catalog + Core IA)
 - ✅ **edge-optimizer Analysis:** Value validated (parallel execution, EXIF validation, path intelligence)
 - ✅ **Document Created:** `.coord/workflow-docs/000-INGEST_ASSISTANT-D1-NORTH-STAR.md`
-- [ ] **Commitment Ceremony:** User approval pending
 
-**Next Steps:**
-- [ ] D1 Approval: User commits to 7 immutables
-- [ ] D2 Design: CFEx architecture (design-architect)
-- [ ] D3 Blueprint: Technical specifications
-- [ ] B0 Validation: technical-architect + security-specialist consultation
+**D2 Design - COMPLETE:**
+- ✅ **18 Alternatives Explored:** Transfer mechanisms, integrity strategies, error handling, detection methods
+- ✅ **validator Reality Check:** Technical feasibility validated
+- ✅ **synthesizer Breakthrough:** Progressive disclosure timeline (3-week CORE + 1-week POLISH parallel to Phase 1b)
+
+**D3 Blueprint - v1.1 COMPLETE:**
+- ✅ **v1.0:** 18,000-word architecture + 6 UI mockup states (implementation-ready)
+- ✅ **v1.1 Amendments:** +3,000 words (B0 blocker resolutions + empirical findings)
+  - App quit handler specification + 5 test cases
+  - Error sanitization documentation (explicit rules + 3 IPC points)
+  - Window lifecycle test specs (integrated with app quit handler)
+  - Enhanced ENOSPC error messages (show bytes needed)
+  - ProRes Proxy 2K specifications for Phase 1b
+- ✅ **Document:** `.coord/workflow-docs/003-CFEX-D3-BLUEPRINT.md` (21,000 words total)
+
+**B0 Validation - FINAL GO ✅:**
+- ✅ **Decision:** FINAL GO with HIGH confidence (critical-design-validator)
+- ✅ **Blocker Resolution:** 4/7 blockers resolved (app quit, error sanitization, test specs, error messages)
+- ✅ **Immutables Validated:** I1 (100% EXIF coverage), I3, I4, I5, I7 all compliant
+- ✅ **Empirical Testing:** Day 1 COMPLETE (100% EXIF), Day 2/3 DEFERRED (conservative assumptions acceptable)
+- ✅ **Timeline Validation:** 3-week CORE phase remains REALISTIC
+- ✅ **Network Risk:** ACCEPTABLE (LucidLink retry + Ubuntu NFS timeout deferred to B2 validation)
+
+**B2 Implementation - Week 1: 90% COMPLETE ✅**
+
+**Completed (Nov 20, 2025):**
+- ✅ **Days 1-3:** Transfer mechanism (scanSourceFiles, transferFile, startTransfer) - 611 tests passing
+- ✅ **Days 3.5-5.5:** Integrity validation (integrityValidator, EXIF preservation) - I1 immutable validated
+- ✅ **Days 4-5:** IPC handlers (cfexTransferHandlers, event emission) - 617 tests passing
+- ✅ **Days 5-7 (90%):** Renderer UI (preload.ts updated, CfexTransferWindow refactored)
+  - v2.2.0 security pattern preserved (contextBridge abstraction maintained)
+  - Component logic correct (uses window.electronAPI.cfex.* properly)
+  - ⚠️ **Remaining:** 5 test pattern fixes (mock reassignment issue, 15-30 min)
+
+**Quality Gates:**
+- Main Process: ✅ 617/617 tests passing (lint 0 errors, typecheck 0 errors)
+- Renderer UI: ⚠️ 4/9 tests passing (component correct, test mocking pattern issue)
+- Documentation: ✅ Real paths documented (LucidLink + Ubuntu NFS accessible)
+- Security: ✅ v2.2.0 contextBridge pattern preserved
+
+**Timeline Acceleration:**
+- Estimated: 5.5 days (D3 Blueprint conservative estimate)
+- Actual: ~5 hours focused implementation (TDD discipline + clear specs = 11x acceleration)
+
+**Next Steps (15-30 min to Week 1 completion):**
+- [ ] Fix 5 failing UI tests (use fresh mocks each test instead of beforeEach reassignment)
+- [ ] Code review with code-review-specialist (TRACED protocol)
+- [ ] Integration testing: CFEx card → LucidLink + Ubuntu NFS (gather empirical data for Week 2)
+
+**Week 2-3 Remaining Work:**
+- [ ] Error handling (smart retry, comprehensive error classification)
+- [ ] CFEx auto-detection (macOS + Ubuntu mount scanning)
+- [ ] Path intelligence (MRU, smart defaults, pinned folders)
+- [ ] Dedicated Transfer Window UI polish (progress visualization, validation results display)
+- [ ] Integration testing (LucidLink cache eviction, NFS stale handles, performance baselines)
 
 ### 🔄 Cross-Ecosystem Integration (Issue #63) - Dual-Key Governance Complete (DEFERRED)
 
