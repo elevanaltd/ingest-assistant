@@ -5,9 +5,13 @@ import { Sidebar } from './components/Sidebar';
 import { CommandPalette, type Command } from './components/CommandPalette';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { BatchOperationsPanel } from './components/BatchOperationsPanel';
+import { CfexTransferWindow } from './components/CfexTransferWindow';
 import './App.css';
 
 function App() {
+  // Tab navigation state
+  const [currentTab, setCurrentTab] = useState<'ingest' | 'cfex'>('ingest');
+
   const [folderPath, setFolderPath] = useState<string>('');
   const [files, setFiles] = useState<FileMetadata[]>([]);
   const [currentFileIndex, setCurrentFileIndex] = useState<number>(0);
@@ -546,30 +550,66 @@ function App() {
       <header className="header">
         <h1>Ingest Assistant</h1>
         <div className="header-buttons">
+          {/* Tab Navigation */}
+          <div style={{ display: 'flex', gap: '8px', marginRight: '12px' }}>
+            <button
+              onClick={() => setCurrentTab('ingest')}
+              style={{
+                padding: '6px 16px',
+                fontSize: '13px',
+                borderRadius: '4px',
+                border: currentTab === 'ingest' ? '2px solid #007bff' : '1px solid #ccc',
+                backgroundColor: currentTab === 'ingest' ? '#007bff' : 'white',
+                color: currentTab === 'ingest' ? 'white' : '#333',
+                fontWeight: currentTab === 'ingest' ? 600 : 400,
+                cursor: 'pointer'
+              }}
+            >
+              File Ingestion
+            </button>
+            <button
+              onClick={() => setCurrentTab('cfex')}
+              style={{
+                padding: '6px 16px',
+                fontSize: '13px',
+                borderRadius: '4px',
+                border: currentTab === 'cfex' ? '2px solid #007bff' : '1px solid #ccc',
+                backgroundColor: currentTab === 'cfex' ? '#007bff' : 'white',
+                color: currentTab === 'cfex' ? 'white' : '#333',
+                fontWeight: currentTab === 'cfex' ? 600 : 400,
+                cursor: 'pointer'
+              }}
+            >
+              CFEx Transfer
+            </button>
+          </div>
           <button onClick={handleOpenSettings} className="settings-icon" title="Settings">
             ⚙️
           </button>
         </div>
       </header>
 
-      {folderPath && (
-        <div className="folder-info">
-          <strong>Folder:</strong> {folderPath} | <strong>Files:</strong> {files.length} |
-          <strong> Current:</strong> {currentFileIndex + 1}
-        </div>
-      )}
+      {/* Conditional rendering based on current tab */}
+      {currentTab === 'ingest' ? (
+        <>
+          {folderPath && (
+            <div className="folder-info">
+              <strong>Folder:</strong> {folderPath} | <strong>Files:</strong> {files.length} |
+              <strong> Current:</strong> {currentFileIndex + 1}
+            </div>
+          )}
 
-      <div className="main-container">
-        <Sidebar
-          files={files}
-          currentFileIndex={currentFileIndex}
-          onSelectFolder={handleSelectFolder}
-          onSelectFile={setCurrentFileIndex}
-          selectedFileIds={selectedFileIds}
-          onToggleSelection={handleToggleSelection}
-        />
+          <div className="main-container">
+            <Sidebar
+              files={files}
+              currentFileIndex={currentFileIndex}
+              onSelectFolder={handleSelectFolder}
+              onSelectFile={setCurrentFileIndex}
+              selectedFileIds={selectedFileIds}
+              onToggleSelection={handleToggleSelection}
+            />
 
-        {currentFile && (
+            {currentFile && (
           <div className="content">
           <div className="viewer">
             {mediaDataUrl ? (
@@ -1003,6 +1043,11 @@ function App() {
           </div>
         )}
       </div>
+        </>
+      ) : (
+        /* CFEx Transfer Tab */
+        <CfexTransferWindow />
+      )}
 
       {showSettings && (
         <SettingsModal
