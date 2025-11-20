@@ -44,6 +44,48 @@ export interface ElectronAPI {
     load: () => Promise<LexiconConfig>;
     save: (config: LexiconConfig) => Promise<boolean>;
   };
+
+  // CFEx transfer operations (Week 1 Days 5-7)
+  cfex: {
+    startTransfer: (config: {
+      source: string;
+      destinations: { photos: string; rawVideos: string };
+    }) => Promise<{
+      success: boolean;
+      filesTransferred: number;
+      filesTotal: number;
+      bytesTransferred: number;
+      duration: number;
+      validationWarnings: Array<{
+        file: string;
+        message: string;
+        severity: 'low' | 'medium' | 'high';
+      }>;
+      errors: Array<{
+        file: string;
+        error: Error;
+        phase: 'scan' | 'transfer' | 'validation';
+      }>;
+    }>;
+    onTransferProgress: (callback: (progress: {
+      currentFile: string;
+      fileIndex: number;
+      filesTotal: number;
+      percentComplete: number;
+      totalBytesTransferred: number;
+      totalBytesExpected: number;
+      estimatedTimeRemaining: number;
+    }) => void) => () => void;
+    getTransferState: () => Promise<{
+      status: 'idle' | 'scanning' | 'transferring' | 'validating' | 'complete' | 'error';
+      filesCompleted: number;
+      filesTotal: number;
+      bytesTransferred: number;
+      bytesTotal: number;
+      currentFile?: string;
+      error?: Error;
+    }>;
+  };
 }
 
 declare global {
