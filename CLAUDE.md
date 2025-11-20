@@ -20,15 +20,20 @@
 - **Fast encoding** (3-4x realtime on M-series Macs)
 
 **Critical Workflow Steps:**
-1. Save photos to `/LucidLink/.../images/`
-2. Save raw footage to `/Ubuntu/.../videos-raw/`
+1. Save photos to `/Volumes/videos-current/2. WORKING PROJECTS/[project]/images/`
+2. Save raw footage to `/Volumes/EAV_Video_RAW/[project]/videos-raw/`
 3. Create 2K ProRes proxies: `ffmpeg -i raw.MOV -vf "scale=2560:1440" -c:v prores_ks -profile:v 0 -vendor apl0 -pix_fmt yuv422p10le -c:a pcm_s16le proxy.MOV`
 4. **MANDATORY:** Preserve DateTimeOriginal: `exiftool -overwrite_original "-QuickTime:DateTimeOriginal=$ORIG_DATE" proxy.MOV`
 5. Analyze proxies and create `.ingest-metadata.json` in proxy folder
 
+**Actual Production Paths:**
+- **LucidLink (Working Projects):** `/Volumes/videos-current/2. WORKING PROJECTS` - Cloud storage with fast access
+- **Ubuntu NFS (Raw Archive):** `/Volumes/EAV_Video_RAW/` - Local NFS mount for raw file archival
+- **Note:** LucidLink path contains spaces - requires proper quoting in shell commands
+
 **JSON Location Rationale:**
 - Proxy folder is where editors work (LucidLink for fast access)
-- Raw files archived on Ubuntu (cheaper storage, offline from editing)
+- Raw files archived on Ubuntu NFS (cheaper storage, offline from editing)
 - Single source of truth for CEP Panel to read
 
 ## EAV Ecosystem Integration

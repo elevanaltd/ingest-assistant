@@ -73,6 +73,38 @@
 - **ADR-009:** `.coord/docs/000002-DOC-ADR-009-REFERENCE-CATALOG-SCHEMA-ARCHITECTURE.md` (reference catalog design)
 - **Supabase Config:** `/Volumes/HestAI-Projects/eav-monorepo/.env` (shared database credentials)
 
+## Testing & Development Paths
+
+### Accessible File System Paths (Week 1 Integration Testing)
+**CRITICAL:** Both destination paths are mounted and accessible for testing
+
+**LucidLink (Cloud Storage - Working Projects):**
+- **Path:** `/Volumes/videos-current/2. WORKING PROJECTS`
+- **Purpose:** Photos + proxy videos (fast cloud access for editors)
+- **Note:** Path contains spaces - validates path escaping logic
+- **Status:** ✅ ACCESSIBLE for integration testing
+
+**Ubuntu NFS (Raw File Storage):**
+- **Path:** `/Volumes/EAV_Video_RAW/`
+- **Purpose:** Raw video archival (cheaper storage, offline from editing)
+- **Status:** ✅ ACCESSIBLE for integration testing
+
+**Testing Implications:**
+- Week 1 integration testing NO LONGER BLOCKED (can validate dual-destination transfers immediately)
+- Real-world network behavior observable (LucidLink cache timeout patterns, NFS performance)
+- Path with spaces validates security validator's handling of complex paths
+
+**Example Test Transfer Configuration:**
+```typescript
+const testConfig: TransferConfig = {
+  source: '/Volumes/NO NAME/',  // CFEx card (when available)
+  destinations: {
+    photos: '/Volumes/videos-current/2. WORKING PROJECTS/EAV014/images/shoot1/',
+    rawVideos: '/Volumes/EAV_Video_RAW/EAV014/videos-raw/shoot1/'
+  }
+}
+```
+
 ## Key Features
 - **Manual Mode:** User-driven metadata creation
 - **AI Assistance:** Intelligent metadata generation via multiple AI providers
@@ -252,12 +284,15 @@
 **Security Test Coverage:** +23 security tests (command injection + media server auth)
 
 ## Current Focus
-CFEX_INTEGRATION::Phase_1a_testing_complete→I1_validated→D3_fixes_next→B0_revalidation_ready→B2_implementation_pending
-EMPIRICAL_TESTING::Day1_100%_EXIF→I1_immutable_validated→Day2/3_deferred_to_B2→conservative_assumptions_acceptable
+CFEX_INTEGRATION::B0_FINAL_GO_received→D3_v1.1_complete→4_blockers_resolved→B2_implementation_ready(3_weeks_CORE)
+EMPIRICAL_TESTING::Day1_100%_EXIF→I1_validated→Day2/3_deferred_to_B2→conservative_assumptions_documented→risk_LOW
+PRORES_PROXY::2K_2560x1440_technical_pivot→intra-frame_codec→professional_color_maintained→Phase_1b_spec_ready
 R1_1_SCHEMA::merged_to_main→584_tests_passing→CFEx_rebased→zero_conflicts→coherence_maintained
 CROSS_ECOSYSTEM::Issue_#63_deferred→guardrails_required_4-6_weeks→after_CFEx_Phase_1_complete
 
 ## Key Decisions
+- [2025-11-19] PROXY_FORMAT→ProRes_Proxy_2K[vs H.264_4K]→intra-frame+smooth_timeline+professional_color⊗175MB_per_24s_acceptable(LucidLink_optimized)
+- [2025-11-19] B0_VALIDATION→FINAL_GO[vs CONDITIONAL]→4_blockers_resolved+empirical_findings_integrated⊗critical-design-validator_HIGH_confidence
 - [2025-11-19] SCHEMA_SEQUENCING→R1.1_first_CFEx_second[vs parallel]→sequential_merge+parallel_prep⊗zero_rework+integration_debt_eliminated
 - [2025-11-19] R1_1_ALIGNMENT→mainName→shotName+lockedFields[vs defer]→CEP_Panel_contract_compliance⊗CFEx_builds_stable_foundation
 - [2025-11-18] VERSION→v2.2.0_checkpoint[vs no_baseline]→git_tag+DMG_release+version_coherence⊗rollback_capability_before_CFEx
@@ -271,22 +306,31 @@ CROSS_ECOSYSTEM::Issue_#63_deferred→guardrails_required_4-6_weeks→after_CFEx
 
 ## Active Work
 
-### CFEx File Transfer Integration (Phase 1a - READY FOR B0 RE-VALIDATION)
+### CFEx File Transfer Integration (Phase 1a - ✅ B0 FINAL GO RECEIVED)
 - [x] v2.2.0 baseline established (rollback capability)
 - [x] edge-optimizer analysis: Value validated (parallel execution, EXIF validation, path intelligence)
 - [x] D1 North Star: Project-level consolidation (7 immutables extracted + APPROVED)
 - [x] D2 Design: 18 alternatives explored, validator reality check, synthesizer breakthrough
-- [x] D3 Blueprint: 18,000-word architecture + 6 UI mockup states (implementation-ready)
-- [x] B0 Decision: CONDITIONAL GO (7 blocking conditions identified)
+- [x] D3 Blueprint v1.0: 18,000-word architecture + 6 UI mockup states (implementation-ready)
+- [x] B0 Decision (Initial): CONDITIONAL GO (7 blocking conditions identified)
 - [x] Schema R1.1 Foundation: Merged to main, CFEx rebased, zero conflicts, 584 tests GREEN
 - [x] **Empirical Testing: Day 1 COMPLETE** (2025-11-19)
   - [x] ✅ Day 1: EXIF field testing (100% coverage - 103/103 files)
   - [x] ⚠️ Day 2/3: LucidLink/NFS testing DEFERRED to B2 implementation
   - [x] ✅ I1 immutable VALIDATED (chronological integrity guaranteed)
   - [x] ✅ Findings summary created (008-CFEX-EMPIRICAL-FINDINGS-SUMMARY.md)
-- [ ] **NEXT:** D3 Blueprint Fixes (1.25 days): 4 blocking conditions
-- [ ] B0 Re-Validation: critical-design-validator FINAL GO (ready for invocation)
-- [ ] B2 Implementation: TDD (implementation-lead) - 3 weeks CORE
+- [x] **D3 Blueprint v1.1: 4 B0 Blockers RESOLVED** (2025-11-19)
+  - [x] ✅ Blocker #1: App quit handler specification + 5 test cases
+  - [x] ✅ Blocker #5: Error sanitization documentation (explicit rules + 3 IPC points)
+  - [x] ✅ Blocker #6: Window lifecycle test specs (integrated with Blocker #1)
+  - [x] ✅ Blocker #7: Enhanced ENOSPC error messages (show bytes needed)
+  - [x] ✅ ProRes Proxy 2K specifications added for Phase 1b
+  - [x] ✅ D3 Blueprint updated: 18,000 → 21,000 words (+3,000 words amendments)
+- [x] **B0 Re-Validation: ✅ FINAL GO** (critical-design-validator, HIGH confidence)
+  - [x] ✅ All immutables validated (I1, I3, I4, I5, I7)
+  - [x] ✅ Network deferral risk: ACCEPTABLE (conservative assumptions, manual fallback)
+  - [x] ✅ 3-week CORE timeline: REALISTIC (validated by validator)
+- [ ] **NEXT: B2 Implementation** (implementation-lead) - 3 weeks CORE phase
 
 ### Cross-Ecosystem Integration (Issue #63 - DEFERRED)
 - [x] Cross-ecosystem coordination protocol documented (both PROJECT-CONTEXT.md files)
@@ -315,10 +359,14 @@ CROSS_ECOSYSTEM::Issue_#63_deferred→guardrails_required_4-6_weeks→after_CFEx
 Guardrails→formalize_contract_spec+compatibility_tests+SLO_alerts+deletion_workflow→principal-engineer_re-validation
 
 ## Last Updated
-2025-11-19 (R1.1 schema merged + CFEx Day 1 empirical testing COMPLETE)
+2025-11-19 (CFEx Phase 1a B0 FINAL GO received - holistic-orchestrator)
 **Latest Release:** v2.2.0 - Sequential shot numbers baseline (production ready)
-**Active Work:** CFEx Phase 1a - Day 1 testing complete, ready for B0 re-validation
+**Active Work:** CFEx Phase 1a - B0 FINAL GO received, ready for B2 implementation (3 weeks CORE)
 **Current Branch:** feat/cfex-work (rebased on R1.1 main, 584 tests GREEN, zero conflicts)
-**Test Results:** 100% EXIF coverage (103/103 files) - I1 immutable VALIDATED
-**Next Steps:** D3 Blueprint fixes (4 blockers) → B0 re-validation → B2 implementation
-**Session Documentation:** `.coord/sessions/2025-11-19-CFEX-TESTING-COMPLETE.md` (to be created in new session)
+**Phase Status:** D0→D1→D2→D3(v1.1)→B0(FINAL GO)→B2(PENDING)
+**Empirical Testing:** Day 1 COMPLETE (100% EXIF), Day 2/3 DEFERRED (conservative assumptions acceptable)
+**Blocker Resolution:** 4/7 blockers resolved (app quit, error sanitization, test specs, error messages)
+**Technical Pivot:** ProRes Proxy 2K specifications added (2560×1440, 10-bit 4:2:2, intra-frame)
+**Validator Decision:** FINAL GO with HIGH confidence (all immutables validated, 3-week timeline realistic)
+**Next Steps:** B2 Implementation (implementation-lead + TDD discipline + 3-week CORE phase)
+**Session Documentation:** `.coord/NEW-SESSION-PROMPT.md` (updated for B2 continuation)

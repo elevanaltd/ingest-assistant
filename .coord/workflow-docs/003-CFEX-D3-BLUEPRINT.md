@@ -1046,6 +1046,130 @@ describe('ErrorHandler', () => {
 
 ---
 
+## INTEGRATION TESTING
+
+### Accessible Test Paths (Week 1 Validation)
+
+**CRITICAL:** Both destination paths are mounted and accessible for immediate testing.
+
+**LucidLink (Cloud Storage - Working Projects):**
+- **Path:** `/Volumes/videos-current/2. WORKING PROJECTS`
+- **Purpose:** Photos + proxy videos (cloud storage with fast editor access)
+- **Test Characteristics:**
+  - Path contains spaces → Validates path escaping and quoting logic
+  - LucidLink cache behavior → May exhibit ENOENT during cache eviction
+  - Network-dependent → Requires internet connectivity for cloud sync
+- **Status:** ✅ ACCESSIBLE for integration testing
+
+**Ubuntu NFS (Raw File Storage):**
+- **Path:** `/Volumes/EAV_Video_RAW/`
+- **Purpose:** Raw video archival (cheaper local storage, offline from editing)
+- **Test Characteristics:**
+  - NFS mount → May exhibit ESTALE/ENETUNREACH during network issues
+  - Local network dependency → Faster than cloud but can timeout
+  - Larger file writes → Better for testing streaming performance
+- **Status:** ✅ ACCESSIBLE for integration testing
+
+**Testing Implications:**
+- ✅ Week 1 integration testing **NO LONGER BLOCKED** by hardware availability
+- ✅ Real-world network behavior observable (cache timeout patterns, NFS stale handles)
+- ✅ Path with spaces validates security validator's complex path handling
+- ✅ Dual-destination routing testable end-to-end (photos vs videos)
+
+### Integration Test Scenarios
+
+**Scenario 1: Basic Dual-Destination Transfer**
+```typescript
+// Test transfer from CFEx card to both destinations
+const config: TransferConfig = {
+  source: '/Volumes/NO NAME/',  // CFEx card (when available)
+  destinations: {
+    photos: '/Volumes/videos-current/2. WORKING PROJECTS/EAV014/images/shoot1/',
+    rawVideos: '/Volumes/EAV_Video_RAW/EAV014/videos-raw/shoot1/'
+  }
+}
+
+// Expected:
+// - Photos (.jpg, .jpeg) routed to LucidLink
+// - Videos (.mov, .mp4) routed to Ubuntu NFS
+// - EXIF DateTimeOriginal preserved on all files
+// - File sizes match source
+```
+
+**Scenario 2: LucidLink Cache Eviction Resilience**
+```typescript
+// Simulate LucidLink cache eviction during transfer
+// 1. Start large file transfer to LucidLink
+// 2. Induce cache eviction (access other large files)
+// 3. Transfer should retry with ENOENT classification as TRANSIENT
+// 4. Validate automatic retry succeeds after cache repopulation
+
+// Expected error codes:
+// - ENOENT (file temporarily unavailable during cache eviction)
+// - Automatic retry with exponential backoff
+// - Successful completion after cache reload
+```
+
+**Scenario 3: NFS Stale Handle Recovery**
+```typescript
+// Test NFS mount resilience
+// 1. Start transfer to Ubuntu NFS
+// 2. Simulate network hiccup (brief cable disconnect or route flap)
+// 3. NFS may return ESTALE (stale file handle)
+// 4. Transfer should retry and recover
+
+// Expected error codes:
+// - ESTALE (stale NFS file handle)
+// - ENETUNREACH (network temporarily unreachable)
+// - Automatic retry with backoff
+// - Successful completion after NFS reconnect
+```
+
+**Scenario 4: Path with Spaces Validation**
+```typescript
+// Test LucidLink path containing spaces
+const path = '/Volumes/videos-current/2. WORKING PROJECTS/test.jpg'
+
+// Validation points:
+// - securityValidator.validateFilePath(path) succeeds
+// - fs.createWriteStream(path) succeeds
+// - No shell metacharacter injection possible
+// - Node.js streams handle spaces correctly
+```
+
+**Scenario 5: Concurrent Transfers (Future Enhancement)**
+```typescript
+// Defer to Phase 1b optimization
+// Test simultaneous transfers to LucidLink + Ubuntu
+// Validate network bandwidth sharing
+// Ensure no deadlocks or resource contention
+```
+
+### Performance Baselines (To Be Measured)
+
+**LucidLink (Cloud Storage):**
+- Target: 5-10 MB/sec sustained write (cloud sync overhead)
+- Cache-resident: 50-100 MB/sec (local cache hit)
+- ENOENT retry latency: 2-5s (cache repopulation time)
+
+**Ubuntu NFS (Local Network):**
+- Target: 40-80 MB/sec sustained write (gigabit ethernet)
+- Stale handle recovery: 1-3s (NFS remount time)
+- Timeout threshold: 30s (conservative for network hiccups)
+
+**Test Validation Checklist:**
+- ✅ Dual routing correctness (photos → LucidLink, videos → Ubuntu)
+- ✅ EXIF DateTimeOriginal preserved (I1 immutable compliance)
+- ✅ File size validation (source == destination)
+- ✅ Path with spaces handled correctly
+- ✅ LucidLink cache eviction recovers automatically
+- ✅ NFS stale handle retries succeed
+- ✅ Progress tracking accurate (bytes transferred, ETA calculation)
+- ✅ Error classification correct (TRANSIENT vs FATAL)
+- ✅ Partial file cleanup on failure
+
+---
+
 ## DATA FLOW DIAGRAMS
 
 ### Flow 1: Transfer Initiation
@@ -2960,9 +3084,531 @@ This D3 blueprint formalizes architectural patterns from D2 synthesizer's design
 
 ---
 
-**DOCUMENT_VERSION:** 1.0
+## B0 RE-VALIDATION UPDATES (2025-11-19)
+
+### Empirical Testing Results - Day 1 COMPLETE ✅
+
+**EXIF Coverage Validation (Blocker #2 from B0 Decision):**
+- **Status:** ✅ RESOLVED (100% coverage achieved)
+- **Testing Date:** 2025-11-19
+- **Test Equipment:** Fujifilm CFEx card (100_FUJI folder structure)
+- **Results:**
+  - Photos: 2/2 files with EXIF DateTimeOriginal (100%)
+  - Videos: 101/101 files with EXIF DateTimeOriginal (100%)
+  - **Total Coverage:** 103/103 files = **100%**
+- **I1 Immutable Status:** ✅ VALIDATED (chronological integrity guaranteed)
+- **D3 Impact:** NONE - EXIF-first strategy confirmed as designed
+
+**Filesystem Fallback Testing:**
+- **Status:** SKIPPED (100% EXIF coverage eliminated need)
+- **Decision:** Fallback logic remains as designed (defensive programming)
+- **Warning UX:** Keep filesystem fallback warnings as specified (future edge cases)
+
+**Recommendation:** EXIF-first extraction strategy **VALIDATED** - proceed with D3 Blueprint as written.
+
+---
+
+### Empirical Testing Results - Day 2/3 DEFERRED ⚠️
+
+**LucidLink Retry Timing (Blocker #3 from B0 Decision):**
+- **Status:** ⚠️ DEFERRED TO B2 IMPLEMENTATION
+- **Rationale:**
+  - Day 1 results sufficient for I1 immutable validation (100% EXIF coverage)
+  - Conservative retry strategy (3 attempts, exponential backoff 1s/2s/4s) provides safety margin
+  - Real-world validation during B2 implementation provides better tuning data than synthetic tests
+  - No blocking risk: Even if retry timing suboptimal, users can manually retry (I4 zero data loss maintained)
+- **D3 Assumptions (Remain Valid):**
+  - Retry count: 3 attempts for TRANSIENT errors
+  - Retry delays: Exponential backoff (1s, 2s, 4s)
+  - Total recovery window: 7 seconds maximum
+  - User experience: Progress UI shows retry status
+- **B2 Validation Plan:**
+  - Monitor LucidLink transfers during development
+  - Adjust retry timing if needed based on observed cache behavior
+  - Add telemetry for retry success rates
+  - Document empirical findings
+
+**Ubuntu NFS Timeout (Blocker #4 from B0 Decision):**
+- **Status:** ⚠️ DEFERRED TO B2 IMPLEMENTATION
+- **Rationale:**
+  - Day 1 EXIF coverage validates core chronological integrity (I1)
+  - Conservative 30s timeout provides ample buffer for network recovery
+  - Platform-specific behavior varies by NFS configuration
+  - Real-world Ubuntu NFS usage during B2 provides better tuning data
+- **D3 Assumptions (Remain Valid):**
+  - Timeout: 30 seconds for NETWORK errors
+  - Progress UI: Show "Waiting for network..." after 10s
+  - Recovery: Automatic resume on network reconnect
+  - User experience: Transparent recovery with status feedback
+- **B2 Validation Plan:**
+  - Monitor Ubuntu NFS transfers during development
+  - Measure actual timeout behavior on target network
+  - Adjust timeout values if needed based on empirical data
+  - Document observed NFS error codes
+
+**Risk Assessment:**
+- **Critical risks:** NONE (I1 validated, conservative assumptions acceptable)
+- **Medium risks:** Retry timing suboptimal (mitigated by B2 validation + manual retry fallback)
+- **Low risks:** NFS timeout suboptimal (mitigated by 30s conservative value + user transparency)
+
+---
+
+### B0 Blocker Resolutions
+
+**Blocker #1: App Quit Handler (0.5 days)**
+
+**Issue:** Cmd+Q (app quit) distinct from Cmd+W (window close) - NOT currently handled in D3 Blueprint
+
+**Risk:** User quits app while transfer in progress → window orphaned → data loss
+
+**Solution:** Add `app.on('before-quit')` handler with confirmation dialog
+
+**Implementation Specification:**
+
+```typescript
+// electron/main.ts - App Quit Handler
+
+let transferWindow: BrowserWindow | null = null
+let transferInProgress = false
+
+app.on('before-quit', (event) => {
+  if (transferWindow && transferInProgress) {
+    event.preventDefault() // Block quit
+
+    // Show confirmation dialog
+    const choice = dialog.showMessageBoxSync({
+      type: 'warning',
+      title: 'Transfer In Progress',
+      message: 'CFEx transfer is still running. Quit anyway?',
+      detail: 'Canceling the transfer may result in incomplete file copies.',
+      buttons: ['Continue Transfer', 'Cancel Transfer and Quit'],
+      defaultId: 0, // Continue (safest default)
+      cancelId: 0   // Esc key = Continue
+    })
+
+    if (choice === 1) {
+      // User chose "Cancel Transfer and Quit"
+      transferInProgress = false
+      transferWindow.webContents.send('cfex:cancel-transfer')
+
+      // Wait for cleanup confirmation before quitting
+      ipcMain.once('cfex:cleanup-complete', () => {
+        app.quit()
+      })
+
+      // Timeout fallback (force quit after 5s if cleanup hangs)
+      setTimeout(() => {
+        app.quit()
+      }, 5000)
+    }
+    // If choice === 0 (Continue Transfer), do nothing - app stays alive
+  }
+})
+
+// Transfer window close behavior (EXISTING - unchanged)
+transferWindow.on('close', (event) => {
+  if (transferInProgress) {
+    // Existing close confirmation logic (Continue/Cancel/Keep Open)
+    // ... (unchanged from D3 Blueprint)
+  }
+})
+```
+
+**Test Specifications:**
+
+```typescript
+// electron/__tests__/windowLifecycle.test.ts
+
+describe('Transfer Window Lifecycle - App Quit', () => {
+  it('should prevent app quit when transfer in progress', async () => {
+    // 1. Create transfer window
+    // 2. Start mock transfer (transferInProgress = true)
+    // 3. Trigger app.emit('before-quit', event)
+    // 4. Assert: event.preventDefault() called
+    // 5. Assert: Dialog shown with correct buttons
+  })
+
+  it('should show confirmation dialog on app quit attempt', async () => {
+    // 1. Start transfer
+    // 2. Simulate app quit (Cmd+Q)
+    // 3. Assert: dialog.showMessageBoxSync called
+    // 4. Assert: Buttons = ['Continue Transfer', 'Cancel Transfer and Quit']
+    // 5. Assert: defaultId = 0 (Continue is default)
+  })
+
+  it('should cancel transfer and quit if user chooses Cancel', async () => {
+    // 1. Start transfer
+    // 2. Trigger app quit
+    // 3. Simulate user clicking "Cancel Transfer and Quit" (choice = 1)
+    // 4. Assert: 'cfex:cancel-transfer' IPC sent
+    // 5. Assert: Cleanup listener registered
+    // 6. Simulate cleanup complete
+    // 7. Assert: app.quit() called
+  })
+
+  it('should keep app alive if user chooses Continue', async () => {
+    // 1. Start transfer
+    // 2. Trigger app quit
+    // 3. Simulate user clicking "Continue Transfer" (choice = 0)
+    // 4. Assert: app.quit() NOT called
+    // 5. Assert: Transfer continues running
+  })
+
+  it('should force quit after 5s timeout if cleanup hangs', async () => {
+    // 1. Start transfer
+    // 2. Trigger app quit with Cancel choice
+    // 3. DO NOT send cleanup-complete event
+    // 4. Fast-forward 5 seconds
+    // 5. Assert: app.quit() called (timeout fallback)
+  })
+})
+```
+
+**Status:** ✅ RESOLVED (specification added to D3 Blueprint)
+
+---
+
+**Blocker #5: Error Sanitization Documentation (0.25 days)**
+
+**Issue:** D3 Blueprint mentions `sanitizeError()` but doesn't specify implementation details
+
+**Risk:** Sensitive paths leaked to UI → security vulnerability
+
+**Solution:** Document explicit sanitization rules
+
+**Security Specification:**
+
+```typescript
+// electron/utils/errorSanitization.ts (EXISTING from v2.2.0)
+
+/**
+ * Sanitize error messages before sending to renderer process
+ *
+ * RULES:
+ * 1. Redact full absolute paths (show last 2 segments only)
+ * 2. Preserve error codes (ENOSPC, EACCES, ENOENT, etc.)
+ * 3. Preserve file counts and byte sizes (non-sensitive)
+ * 4. Redact username from paths (/Users/john → /Users/[redacted])
+ * 5. Preserve volume names (safe to expose: "LucidLink", "CFEx")
+ *
+ * Examples:
+ * - Before: Error copying /Users/john/Documents/sensitive.mov
+ * - After:  Error copying Documents/sensitive.mov
+ *
+ * - Before: ENOSPC: no space left on /Volumes/LucidLink/EAV014/videos/
+ * - After:  ENOSPC: no space left on EAV014/videos/ (show last 2 segments)
+ */
+export function sanitizeError(error: Error | string, context?: { file?: string }): string {
+  const message = typeof error === 'string' ? error : error.message
+
+  // 1. Redact full paths (keep last 2 segments)
+  const pathPattern = /([\/\\][a-zA-Z0-9_\-]+){3,}/g
+  const sanitized = message.replace(pathPattern, (match) => {
+    const segments = match.split(/[\/\\]/).filter(Boolean)
+    return segments.slice(-2).join('/')  // Last 2 segments only
+  })
+
+  // 2. Redact usernames
+  const userPattern = /\/Users\/[^\/]+/g
+  const finalMessage = sanitized.replace(userPattern, '/Users/[redacted]')
+
+  // 3. Preserve error codes (ENOSPC, EACCES, etc.) - no redaction needed
+  // 4. Preserve volume names - safe to expose
+
+  return finalMessage
+}
+```
+
+**IPC Sanitization Points (Explicit Documentation):**
+
+```typescript
+// electron/ipc/cfexHandlers.ts
+
+ipcMain.handle('cfex:start-transfer', async (event, config: TransferConfig) => {
+  try {
+    const result = await cfexTransfer.startTransfer(config)
+    return result // Success - no sanitization needed (no error paths)
+  } catch (error) {
+    // SANITIZATION POINT #1: IPC error responses
+    const sanitized = sanitizeError(error)
+    throw new Error(sanitized) // Sanitized error sent to renderer
+  }
+})
+
+// electron/services/cfexTransfer.ts
+
+async transferFile(task: TransferTask): Promise<FileTransferResult> {
+  try {
+    // ... transfer logic ...
+  } catch (error) {
+    // SANITIZATION POINT #2: Progress callbacks
+    this.config.onFileComplete({
+      file: task.file,
+      success: false,
+      error: sanitizeError(error, { file: task.file }) // Sanitized before callback
+    })
+    throw error // Raw error for internal logging
+  }
+}
+
+// electron/services/integrityValidator.ts
+
+async validateFile(source: string, destination: string): Promise<ValidationResult> {
+  try {
+    // ... validation logic ...
+  } catch (error) {
+    // SANITIZATION POINT #3: Validation warnings
+    return {
+      valid: false,
+      warnings: [sanitizeError(error, { file: destination })] // Sanitized warnings
+    }
+  }
+}
+```
+
+**Test Specifications:**
+
+```typescript
+// electron/utils/errorSanitization.test.ts
+
+describe('Error Sanitization', () => {
+  it('should redact full absolute paths (keep last 2 segments)', () => {
+    const error = new Error('ENOENT: /Users/john/Documents/Projects/media.mov not found')
+    const sanitized = sanitizeError(error)
+    expect(sanitized).toBe('ENOENT: Projects/media.mov not found')
+    expect(sanitized).not.toContain('/Users/john')
+  })
+
+  it('should preserve error codes (ENOSPC, EACCES, etc.)', () => {
+    const error = new Error('ENOSPC: no space left on /Volumes/LucidLink/EAV014/videos/')
+    const sanitized = sanitizeError(error)
+    expect(sanitized).toContain('ENOSPC')
+    expect(sanitized).toBe('ENOSPC: no space left on EAV014/videos/')
+  })
+
+  it('should preserve volume names (safe to expose)', () => {
+    const error = new Error('Error accessing /Volumes/CFEx Card/DCIM/')
+    const sanitized = sanitizeError(error)
+    expect(sanitized).toContain('CFEx Card')
+  })
+
+  it('should redact usernames from paths', () => {
+    const error = new Error('Permission denied: /Users/alice/private.mov')
+    const sanitized = sanitizeError(error)
+    expect(sanitized).toContain('/Users/[redacted]')
+    expect(sanitized).not.toContain('alice')
+  })
+})
+```
+
+**Status:** ✅ RESOLVED (explicit sanitization rules documented)
+
+---
+
+**Blocker #6: Window Lifecycle Test Specs (0.25 days)**
+
+**Issue:** No unit tests for app quit scenario (distinct from window close)
+
+**Risk:** App quit handler implemented but never tested → regression risk
+
+**Solution:** Add TDD test specs for app quit + transfer in progress
+
+**Test Specifications (Added Above in Blocker #1):**
+- See "Transfer Window Lifecycle - App Quit" test suite above
+- 5 test cases covering: prevent quit, confirmation dialog, cancel + quit, continue transfer, timeout fallback
+
+**Status:** ✅ RESOLVED (test specs added above in Blocker #1 section)
+
+---
+
+**Blocker #7: Error Message Clarity (0.25 days)**
+
+**Issue:** ENOSPC error says "disk full" but not "how much space needed"
+
+**Risk:** User guesses how much to free up → wrong guess → retry fails again
+
+**Solution:** Show "Required: X GB | Available: Y GB" in error message
+
+**UX Specification:**
+
+```typescript
+// electron/services/errorHandler.ts
+
+function formatDiskFullError(
+  error: Error,
+  bytesRequired: number,
+  destinationPath: string
+): string {
+  const stats = fs.statfsSync(destinationPath)
+  const bytesAvailable = stats.bavail * stats.bsize
+
+  const requiredGB = (bytesRequired / (1024 ** 3)).toFixed(1)
+  const availableGB = (bytesAvailable / (1024 ** 3)).toFixed(1)
+  const needMoreGB = ((bytesRequired - bytesAvailable) / (1024 ** 3)).toFixed(1)
+
+  return [
+    `Disk full on ${path.basename(destinationPath)}`,
+    `Required: ${requiredGB} GB`,
+    `Available: ${availableGB} GB`,
+    `Please free up ${needMoreGB} GB and try again`
+  ].join('\n')
+}
+
+// Usage in transfer service
+try {
+  await fs.copyFile(source, destination)
+} catch (error) {
+  if (error.code === 'ENOSPC') {
+    const fileSize = (await fs.stat(source)).size
+    const enhancedError = formatDiskFullError(error, fileSize, destination)
+    throw new Error(enhancedError)
+  }
+  throw error
+}
+```
+
+**Error Message Examples:**
+
+**Before (Vague):**
+```
+Error: ENOSPC: no space left on device
+```
+
+**After (Actionable):**
+```
+Disk full on LucidLink
+Required: 2.4 GB
+Available: 1.1 GB
+Please free up 1.3 GB and try again
+```
+
+**Test Specifications:**
+
+```typescript
+// electron/services/errorHandler.test.ts
+
+describe('Error Message Clarity - Disk Full', () => {
+  it('should show required bytes in disk full error', () => {
+    const error = new Error('ENOSPC')
+    error.code = 'ENOSPC'
+
+    const enhanced = formatDiskFullError(error, 2.4 * 1024 ** 3, '/LucidLink/')
+
+    expect(enhanced).toContain('Required: 2.4 GB')
+    expect(enhanced).toContain('Available:')
+    expect(enhanced).toContain('Please free up')
+  })
+
+  it('should calculate bytes needed accurately', () => {
+    const required = 5 * 1024 ** 3 // 5 GB
+    const available = 3 * 1024 ** 3 // 3 GB
+
+    // Mock fs.statfsSync to return controlled available space
+    jest.spyOn(fs, 'statfsSync').mockReturnValue({
+      bavail: available / 4096,
+      bsize: 4096
+    })
+
+    const enhanced = formatDiskFullError(new Error('ENOSPC'), required, '/LucidLink/')
+
+    expect(enhanced).toContain('Please free up 2.0 GB') // 5 - 3 = 2 GB needed
+  })
+
+  it('should preserve destination path context', () => {
+    const enhanced = formatDiskFullError(new Error('ENOSPC'), 1024 ** 3, '/Volumes/LucidLink/EAV014/')
+
+    expect(enhanced).toContain('Disk full on LucidLink')
+  })
+})
+```
+
+**Status:** ✅ RESOLVED (enhanced error message specification added)
+
+---
+
+### Phase 1b Proxy Generation Specifications
+
+**Technical Pivot: ProRes Proxy 2K (2560×1440)**
+
+**Decision Date:** 2025-11-19
+**Authority:** User confirmation (technical assessment complete)
+**Rationale:** ProRes Proxy provides optimal balance of quality, performance, and file size for professional editing workflows
+
+**Proxy Format Specification:**
+
+```bash
+# Phase 1b Transcode Command (Implementation-Ready)
+
+# Step 1: Generate ProRes Proxy at 2K resolution
+ffmpeg -i raw.MOV \
+  -vf "scale=2560:1440" \
+  -c:v prores_ks \
+  -profile:v 0 \
+  -vendor apl0 \
+  -pix_fmt yuv422p10le \
+  -c:a pcm_s16le \
+  proxy.MOV
+
+# Step 2: Preserve DateTimeOriginal (MANDATORY for I1 compliance)
+ORIG_DATE=$(exiftool -s3 -DateTimeOriginal raw.MOV)
+exiftool -overwrite_original "-QuickTime:DateTimeOriginal=$ORIG_DATE" proxy.MOV
+
+# Step 3: Validate timestamps match (HALT if mismatch - I1 violation)
+PROXY_DATE=$(exiftool -s3 -DateTimeOriginal proxy.MOV)
+[[ "$ORIG_DATE" == "$PROXY_DATE" ]] || exit 1
+```
+
+**Technical Characteristics:**
+- **Resolution:** 2560×1440 (2K, 1.78x more pixels than 1080p, 44% of 4K pixels)
+- **Codec:** ProRes Proxy (10-bit 4:2:2 color, intra-frame)
+- **Profile:** prores_ks profile 0 (ProRes Proxy - lowest bandwidth, highest compatibility)
+- **Color:** yuv422p10le (10-bit 4:2:2 - professional grading capability maintained)
+- **Audio:** pcm_s16le (16-bit PCM, uncompressed - preserves audio quality)
+- **File Size:** ~175 MB for 24s video (~6 MB/sec average)
+- **Encoding Speed:** 3-4x realtime on M-series Macs (fast proxy generation)
+- **Timeline Performance:** Smooth playback (intra-frame codec, low CPU decode)
+
+**Why ProRes Proxy 2K (vs Previous H.264 4K):**
+
+| Aspect | ProRes Proxy 2K | H.264 4K @ CRF 23 | Winner |
+|--------|-----------------|-------------------|--------|
+| **Color Depth** | 10-bit 4:2:2 (professional) | 10-bit 4:2:2 (same) | Tie |
+| **Timeline Performance** | Intra-frame (smooth) | Inter-frame (more compressed) | ProRes |
+| **File Size** | 175 MB for 24s | 7.8 MB for 24s | H.264 (22x smaller) |
+| **Encoding Speed** | 3-4x realtime | 2-3x realtime | ProRes (faster) |
+| **Grading Capability** | Professional (10-bit 4:2:2) | Professional (10-bit 4:2:2) | Tie |
+| **Detail/Resolution** | 2K (1.78x better than 1080p) | 4K (2.25x better than 2K) | H.264 (more detail) |
+| **Storage Efficiency** | 6 MB/sec | 0.33 MB/sec | H.264 (18x better) |
+| **Editor Preference** | Intra-frame preferred for playback | Inter-frame requires more CPU | ProRes |
+
+**Decision Rationale:**
+- **Editor Workflow:** ProRes Proxy is industry standard for editing (smooth timeline playback, low CPU)
+- **Quality Maintained:** 10-bit 4:2:2 color preserved (professional grading capability)
+- **Resolution Sweet Spot:** 2K provides better detail than 1080p without 4K storage penalty
+- **LucidLink Bandwidth:** 6 MB/sec sustainable for network storage (vs 0.33 MB/sec H.264 = marginal network benefit)
+- **Storage Trade-off Acceptable:** 175 MB/video acceptable for LucidLink (editors work with proxies, raw archived on Ubuntu)
+
+**I1 Compliance (Critical):**
+- **DateTimeOriginal Preservation:** MANDATORY post-transcode EXIF copy (ffmpeg loses all EXIF metadata during transcode)
+- **Validation:** Timestamps MUST match before proxy accepted (halt if mismatch)
+- **Workflow Impact:** Step 2 (EXIF copy) adds ~1s per video (acceptable overhead for I1 compliance)
+
+**Phase 1b Implementation Notes:**
+- ProRes Proxy generation runs AFTER Phase 1a file transfer complete (sequential phases)
+- Source files: Raw videos from `/Ubuntu/EAV014/videos-raw/shoot1/` (Phase 1a output)
+- Destination: `/LucidLink/EAV014/videos-proxy/shoot1/` (editors work from this location)
+- Integrity validation: File size check + DateTimeOriginal verification (I1 + I4 compliance)
+- Error handling: ENOSPC handled same as Phase 1a (show bytes needed)
+
+**Status:** ✅ SPECIFICATION COMPLETE (ready for Phase 1b D2→D3 cycle)
+
+---
+
+**DOCUMENT_VERSION:** 1.1 (B0 Re-Validation Amendment)
+**UPDATED:** 2025-11-19 (Post-Day 1 empirical testing)
+**CHANGES:** 4 B0 blockers resolved + Day 1 findings integrated + ProRes Proxy specs added
 **CREATED:** 2025-11-19
 **SYNTHESIS_APPROACH:** Formalization of D2 architectural insights into implementation-ready specifications
-**WORD_COUNT:** ~18,000 words
+**WORD_COUNT:** ~18,000 words → ~21,000 words (B0 amendments)
 **IMMUTABLE_COMPLIANCE:** 100% (I1, I3, I4, I5, I7 verified)
-**NEXT_STEP:** critical-design-validator (B0 GO/NO-GO) → implementation-lead (B2 TDD)
+**NEXT_STEP:** critical-design-validator (B0 FINAL GO re-validation) → implementation-lead (B2 TDD)
