@@ -78,15 +78,47 @@
   - [x] Fix unhandled promise rejection (commits cfe086e + 3be3c67)
   - [x] Dual-specialist review (code-review + test-methodology - APPROVED)
   - [x] RED→GREEN commit separation (TDD discipline validated)
-- [ ] Merge feat/cfex-work to main (ready for production - all quality gates GREEN)
-- [ ] Integration testing: CFEx card → LucidLink + Ubuntu NFS (gather empirical data for Week 2)
+- [x] Merge feat/cfex-work to main (PR #78 + #79 MERGED - all quality gates GREEN)
+- [x] D3 Blueprint compression to OCTAVE (65.5% reduction, 100% decision logic preserved)
+- [ ] Integration testing: CFEx card → LucidLink + Ubuntu NFS (deferred to Priority 3)
 
-**Week 2-3 Remaining Work:**
-- [ ] Error handling (smart retry, comprehensive error classification)
-- [ ] CFEx auto-detection (macOS + Ubuntu mount scanning)
-- [ ] Path intelligence (MRU, smart defaults, pinned folders)
-- [ ] Dedicated Transfer Window UI polish (progress visualization, validation results display)
-- [ ] Integration testing (LucidLink cache eviction, NFS stale handles, performance baselines)
+**Phase 1a-CORE Remaining Work (Week 2-3):**
+
+**Priority 1: Error Handling (4 days - BLOCKING for production) - 🔄 ACTIVE**
+**Status:** IN PROGRESS (implementation-lead in Claude Code Web session, started Nov 21)
+**Timeline:** Week 2 Days 1-4
+**Deliverables:** electron/services/errorHandler.ts + retryStrategy.ts + ~30-40 tests
+- [ ] Smart retry logic (network timeout detection, retry intervals, backoff strategy)
+- [ ] Comprehensive error classification (ENOSPC, EPERM, ENOENT, ETIMEDOUT, network errors)
+- [ ] Error recovery strategies (resume partial transfers, cleanup on failure, atomic operations)
+- [ ] User-facing error messages (actionable guidance, next steps, manual recovery instructions)
+- [ ] Enhanced ENOSPC messages (show bytes needed for clear user guidance)
+
+**Priority 2: CFEx Auto-Detection (2.5 days)**
+- [ ] macOS volume scanning (`/Volumes/NO NAME/` mount detection)
+- [ ] Ubuntu mount scanning (CFEx card discovery via `/proc/mounts`)
+- [ ] Single-card priority (auto-populate source path when one card found)
+- [ ] Multi-card handling (user selection UI if multiple cards detected)
+- [ ] Mount state validation (warn if volume disconnected mid-scan)
+
+**Priority 3: Integration Testing (4 days - EMPIRICAL validation)**
+- [ ] LucidLink cache eviction testing (measure actual timeout patterns vs conservative assumptions)
+- [ ] Ubuntu NFS stale handle testing (network resilience, disconnect/reconnect scenarios)
+- [ ] Performance baselines (transfer speeds, retry overhead, memory usage)
+- [ ] Risk scenario testing (disconnected volumes, concurrent transfers, disk full)
+- [ ] Document empirical findings (update error handling specs with real-world data)
+
+**Priority 4: Path Intelligence (Phase 1a-POLISH - 1 week, parallel to Phase 1b)**
+- [ ] MRU paths (remember last-used folders per project, suggest on next launch)
+- [ ] Smart defaults (infer project paths from naming patterns: EAV014 → suggest /LucidLink/.../EAV014/)
+- [ ] Pinned folders (user-saved favorite destinations, quick access dropdown)
+- [ ] Path validation (check writability before transfer, warn about space)
+
+**Priority 5: UI Polish (Phase 1a-POLISH - 1 week, parallel to Phase 1b)**
+- [ ] Enhanced progress visualization (per-file timeline, speed indicators, ETA)
+- [ ] Validation results display (show integrity check details: file count match, EXIF validation status)
+- [ ] Enhanced error log UI (real-time error stream, error history, export capability)
+- [ ] Cancellation improvements (graceful abort, cleanup partial files, resume capability)
 
 ### 🔄 Cross-Ecosystem Integration (Issue #63) - Dual-Key Governance Complete (DEFERRED)
 
