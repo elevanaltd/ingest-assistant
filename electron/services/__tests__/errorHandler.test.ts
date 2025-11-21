@@ -8,7 +8,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { ErrorHandler, ErrorClassification } from '../errorHandler';
+import { ErrorHandler } from '../errorHandler';
 
 describe('ErrorHandler', () => {
   describe('error classification', () => {

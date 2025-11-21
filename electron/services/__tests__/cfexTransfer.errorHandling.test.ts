@@ -8,7 +8,7 @@
  */
 
 import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest';
-import { transferFileWithRetry, FileTransferTask, FileTransferResult } from '../cfexTransfer';
+import { transferFileWithRetry, FileTransferTask } from '../cfexTransfer';
 
 beforeEach(() => {
   vi.useFakeTimers();

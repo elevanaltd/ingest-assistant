@@ -544,7 +544,6 @@ export class CfexTransferService {
 
 import { RetryStrategy } from './retryStrategy';
 import { ErrorHandler, ErrorClassification } from './errorHandler';
-import * as fs from 'fs';
 
 /**
  * Retry options for transferFileWithRetry
