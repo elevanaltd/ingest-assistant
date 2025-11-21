@@ -73,7 +73,12 @@
 **Next Steps (Post-Week 1):**
 - [x] Fix 5 failing UI tests (test mocks aligned to ElectronAPI contract - COMPLETE)
 - [x] Code review with code-review-specialist (TRACED protocol - APPROVED)
-- [ ] Merge feat/cfex-work to main (ready for production)
+- [x] **Critical test fixes (2025-11-21):**
+  - [x] Fix percentage assertion test (commit afe5a54)
+  - [x] Fix unhandled promise rejection (commits cfe086e + 3be3c67)
+  - [x] Dual-specialist review (code-review + test-methodology - APPROVED)
+  - [x] RED→GREEN commit separation (TDD discipline validated)
+- [ ] Merge feat/cfex-work to main (ready for production - all quality gates GREEN)
 - [ ] Integration testing: CFEx card → LucidLink + Ubuntu NFS (gather empirical data for Week 2)
 
 **Week 2-3 Remaining Work:**

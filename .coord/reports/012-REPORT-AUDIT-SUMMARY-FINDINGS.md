@@ -139,7 +139,7 @@ Part of active feature development, safe to rename.
 ## NEXT STEPS
 
 ### For directory-curator agent:
-1. Review full audit at `.coord/AUDIT-6DIGIT-SEQUENCE-MIGRATION.md`
+1. Review full audit at `.coord/reports/011-REPORT-6DIGIT-SEQUENCE-MIGRATION.md`
 2. Confirm naming strategy (011-013 approved)
 3. Execute Phase 2-4 commands in sequence
 4. Run Phase 5 verification checks
