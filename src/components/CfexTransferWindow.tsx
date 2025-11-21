@@ -90,23 +90,55 @@ interface FolderPickerProps {
 }
 
 function FolderPicker({ sourcePath, onSourceChange, destinationPaths, onDestinationChange, disabled }: FolderPickerProps) {
+  const [isBrowsing, setIsBrowsing] = useState(false)
+  const [browseError, setBrowseError] = useState<string | null>(null)
+
+  async function handleBrowseWithTimeout(onSelect: (path: string) => void) {
+    setIsBrowsing(true)
+    setBrowseError(null)
+
+    try {
+      // Race between folder selection and 10-second timeout
+      const path = await Promise.race([
+        window.electronAPI.selectFolder(),
+        new Promise<null>((_, reject) =>
+          setTimeout(() => reject(new Error('Folder picker timeout (10s). Disconnected volumes may cause delays.')), 10000)
+        )
+      ])
+
+      if (path) {
+        onSelect(path)
+        setBrowseError(null)
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Folder picker failed'
+      setBrowseError(message)
+      console.error('[FolderPicker] Browse failed:', error)
+    } finally {
+      setIsBrowsing(false)
+    }
+  }
+
   async function handleBrowseSource() {
-    const path = await window.electronAPI.selectFolder()
-    if (path) onSourceChange(path)
+    await handleBrowseWithTimeout(onSourceChange)
   }
 
   async function handleBrowsePhotos() {
-    const path = await window.electronAPI.selectFolder()
-    if (path) onDestinationChange({ ...destinationPaths, photos: path })
+    await handleBrowseWithTimeout((path) => onDestinationChange({ ...destinationPaths, photos: path }))
   }
 
   async function handleBrowseVideos() {
-    const path = await window.electronAPI.selectFolder()
-    if (path) onDestinationChange({ ...destinationPaths, rawVideos: path })
+    await handleBrowseWithTimeout((path) => onDestinationChange({ ...destinationPaths, rawVideos: path }))
   }
 
   return (
     <div style={{ marginBottom: '20px' }}>
+      {browseError && (
+        <div style={{ marginBottom: '12px', padding: '8px', backgroundColor: '#f8d7da', borderRadius: '4px', fontSize: '13px', color: '#721c24' }}>
+          <strong>Browse failed:</strong> {browseError}<br />
+          <span style={{ fontSize: '12px' }}>Please type the path manually instead.</span>
+        </div>
+      )}
       <div style={{ marginBottom: '12px' }}>
         <label htmlFor="source-folder" style={{ display: 'block', marginBottom: '4px', fontSize: '13px', fontWeight: 500 }}>
           Source Folder (CFEx Card)
@@ -123,17 +155,17 @@ function FolderPicker({ sourcePath, onSourceChange, destinationPaths, onDestinat
           />
           <button
             onClick={handleBrowseSource}
-            disabled={disabled}
+            disabled={disabled || isBrowsing}
             style={{
               padding: '6px 16px',
               fontSize: '13px',
-              backgroundColor: '#f0f0f0',
+              backgroundColor: isBrowsing ? '#ffc107' : '#f0f0f0',
               border: '1px solid #ccc',
               borderRadius: '4px',
-              cursor: disabled ? 'not-allowed' : 'pointer'
+              cursor: (disabled || isBrowsing) ? 'not-allowed' : 'pointer'
             }}
           >
-            Browse...
+            {isBrowsing ? 'Opening...' : 'Browse...'}
           </button>
         </div>
       </div>
@@ -154,17 +186,17 @@ function FolderPicker({ sourcePath, onSourceChange, destinationPaths, onDestinat
           />
           <button
             onClick={handleBrowsePhotos}
-            disabled={disabled}
+            disabled={disabled || isBrowsing}
             style={{
               padding: '6px 16px',
               fontSize: '13px',
-              backgroundColor: '#f0f0f0',
+              backgroundColor: isBrowsing ? '#ffc107' : '#f0f0f0',
               border: '1px solid #ccc',
               borderRadius: '4px',
-              cursor: disabled ? 'not-allowed' : 'pointer'
+              cursor: (disabled || isBrowsing) ? 'not-allowed' : 'pointer'
             }}
           >
-            Browse...
+            {isBrowsing ? 'Opening...' : 'Browse...'}
           </button>
         </div>
       </div>
@@ -185,17 +217,17 @@ function FolderPicker({ sourcePath, onSourceChange, destinationPaths, onDestinat
           />
           <button
             onClick={handleBrowseVideos}
-            disabled={disabled}
+            disabled={disabled || isBrowsing}
             style={{
               padding: '6px 16px',
               fontSize: '13px',
-              backgroundColor: '#f0f0f0',
+              backgroundColor: isBrowsing ? '#ffc107' : '#f0f0f0',
               border: '1px solid #ccc',
               borderRadius: '4px',
-              cursor: disabled ? 'not-allowed' : 'pointer'
+              cursor: (disabled || isBrowsing) ? 'not-allowed' : 'pointer'
             }}
           >
-            Browse...
+            {isBrowsing ? 'Opening...' : 'Browse...'}
           </button>
         </div>
       </div>
