@@ -166,14 +166,8 @@ async function generateTitleWithTimestamp(
   return baseTitle;
 }
 
-// Register transcode cache directory with security validator
-// This allows the media server to serve transcoded files
-// IMPORTANT: Resolve symlinks (macOS /var -> /private/var) to match validation behavior
-(async () => {
-  const cacheDir = videoTranscoder.getCacheDirectory();
-  const resolvedCacheDir = await fs.realpath(cacheDir);
-  await securityValidator.addAllowedPath(resolvedCacheDir);
-})();
+// Cache directory registration moved to app.whenReady() to prevent race condition
+// See lines 365-368 for the awaited registration before createWindow()
 
 // Helper function to get or create metadata store for a specific folder
 function getMetadataStoreForFolder(folderPath: string): MetadataStore {
@@ -363,6 +357,16 @@ app.whenReady().then(async () => {
   } catch (error) {
     console.error('Migration error (non-fatal):', error);
   }
+
+  // Register transcode cache directory with security validator
+  // CRITICAL: Must complete BEFORE createWindow() to prevent PATH_TRAVERSAL errors
+  // during batch processing. Without this, if user triggers batch processing before
+  // registration completes, SecurityValidator rejects cache directory access.
+  // Resolves symlinks (macOS /var -> /private/var) to match validation behavior.
+  const cacheDir = videoTranscoder.getCacheDirectory();
+  const resolvedCacheDir = await fs.realpath(cacheDir);
+  await securityValidator.addAllowedPath(resolvedCacheDir);
+  console.log('[Security] Transcode cache directory registered:', resolvedCacheDir);
 
   await createWindow();
 });
