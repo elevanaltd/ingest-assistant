@@ -363,10 +363,16 @@ app.whenReady().then(async () => {
   // during batch processing. Without this, if user triggers batch processing before
   // registration completes, SecurityValidator rejects cache directory access.
   // Resolves symlinks (macOS /var -> /private/var) to match validation behavior.
-  const cacheDir = videoTranscoder.getCacheDirectory();
-  const resolvedCacheDir = await fs.realpath(cacheDir);
-  await securityValidator.addAllowedPath(resolvedCacheDir);
-  console.log('[Security] Transcode cache directory registered:', resolvedCacheDir);
+  try {
+    const cacheDir = videoTranscoder.getCacheDirectory();
+    const resolvedCacheDir = await fs.realpath(cacheDir);
+    await securityValidator.addAllowedPath(resolvedCacheDir);
+    console.log('[Security] Transcode cache directory registered:', resolvedCacheDir);
+  } catch (error) {
+    console.error('[Security] FATAL: Failed to register transcode cache directory:', error);
+    // Cannot proceed safely - cache directory registration is non-negotiable for batch transcoding
+    app.quit();
+  }
 
   await createWindow();
 });
