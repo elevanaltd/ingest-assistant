@@ -112,9 +112,10 @@ function FolderPicker({ sourcePath, onSourceChange, destinationPaths, onDestinat
       ])
 
       // SUCCESS: Clean up timeout to prevent unhandled rejection
-      if (timeoutId !== null) {
-        clearTimeout(timeoutId)
-      }
+      // TEMPORARILY COMMENTED OUT FOR RED VALIDATION
+      // if (timeoutId !== null) {
+      //   clearTimeout(timeoutId)
+      // }
 
       if (path) {
         onSelect(path)
@@ -122,9 +123,10 @@ function FolderPicker({ sourcePath, onSourceChange, destinationPaths, onDestinat
       }
     } catch (error) {
       // ERROR: Clean up timeout before handling error
-      if (timeoutId !== null) {
-        clearTimeout(timeoutId)
-      }
+      // TEMPORARILY COMMENTED OUT FOR RED VALIDATION
+      // if (timeoutId !== null) {
+      //   clearTimeout(timeoutId)
+      // }
 
       const message = error instanceof Error ? error.message : 'Folder picker failed'
       setBrowseError(message)

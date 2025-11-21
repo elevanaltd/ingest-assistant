@@ -278,94 +278,195 @@ describe('CfexTransferWindow', () => {
   })
 
   describe('Browse Button Timeout Cleanup (Issue #1)', () => {
-    test('RED: timeout is NOT cancelled after successful folder selection (current bug)', async () => {
-      // This test documents the CURRENT buggy behavior:
-      // When folder selection succeeds quickly, the timeout promise still fires 10s later
-      // causing an unhandled rejection (or at minimum, unnecessary error state)
+    beforeEach(() => {
+      vi.useFakeTimers()
+    })
 
-      // ARRANGE: Mock selectFolder to resolve in 1 second
+    afterEach(() => {
+      vi.useRealTimers()
+      vi.restoreAllMocks()
+    })
+
+    test('clears timeout after successful folder selection', async () => {
+      // CRITICAL: This test validates the fix for Issue #1
+      // Without clearTimeout, timeout promise rejects after folder selected
+      // causing unhandled rejection in production
+
+      // Spy on clearTimeout to verify cleanup occurs
+      const clearTimeoutSpy = vi.spyOn(global, 'clearTimeout')
+
+      // Mock successful folder selection (resolves immediately)
       const mockSelectFolder = vi.fn().mockResolvedValue('/Volumes/CFExpress')
-
-      // Add selectFolder to ElectronAPI mock
       ;(window as any).electronAPI = {
         ...((window as any).electronAPI || {}),
         selectFolder: mockSelectFolder
       }
 
       render(<CfexTransferWindow />)
-      const user = userEvent.setup()
+      const user = userEvent.setup({ delay: null }) // Disable delays with fake timers
 
-      // Track console errors (unhandled rejections often log here in tests)
-      const consoleErrors: string[] = []
-      const originalConsoleError = console.error
-      console.error = (...args: unknown[]) => {
-        consoleErrors.push(String(args[0]))
-        originalConsoleError(...args)
-      }
-
-      // ACT: Click Browse button
+      // ACT: Click Browse button for source folder
       const browseButton = screen.getAllByRole('button', { name: /browse/i })[0]
       await user.click(browseButton)
 
-      // Wait for folder selection to complete
-      await waitFor(() => {
-        expect(mockSelectFolder).toHaveBeenCalled()
-      })
+      // Flush all pending promises to ensure selectFolder completes
+      await vi.runAllTimersAsync()
 
-      // CRITICAL: Current code has NO clearTimeout call
-      // Result: timeout promise still pending, will reject in 10 seconds
-      // This test will PASS if bug exists (no cleanup = rejection fires)
-      // This test will FAIL when bug is FIXED (cleanup prevents rejection)
+      // ASSERT: clearTimeout was called exactly once (cleanup occurred)
+      expect(clearTimeoutSpy).toHaveBeenCalledTimes(1)
+      expect(clearTimeoutSpy).toHaveBeenCalledWith(expect.any(Number))
 
-      // Wait for timeout duration (10s)
-      await new Promise(resolve => setTimeout(resolve, 10100))
+      // Advance timers past timeout duration (11s)
+      vi.advanceTimersByTime(11000)
 
-      // ASSERT (RED phase expectation): Bug exists, so we DON'T see cleanup
-      // When fixed (GREEN), this assertion will fail, proving cleanup works
-      // For now, just verify the test completes without hanging
-      expect(mockSelectFolder).toHaveBeenCalled()
+      // ASSERT: No additional clearTimeout calls (timeout was already cleared)
+      expect(clearTimeoutSpy).toHaveBeenCalledTimes(1)
 
-      // Restore console.error
-      console.error = originalConsoleError
+      // ASSERT: Source path updated correctly (no error state)
+      expect(screen.getByDisplayValue('/Volumes/CFExpress')).toBeInTheDocument()
+    })
 
-      // Note: Detecting unhandled rejections in Vitest is tricky
-      // The real validation is: does app crash in production? (YES - user report)
-      // This test documents the reproduction path
-    }, 15000)
+    test('clears timeout when timeout fires', async () => {
+      // Test cleanup in error path: timeout rejection should still clean up
 
-    test('RED: cleans up timeout after timeout error', async () => {
-      // ARRANGE: Mock selectFolder to never resolve (triggers timeout)
-      const mockSelectFolder = vi.fn().mockImplementation(() => {
-        return new Promise<string>(() => {
-          // Never resolves - simulates hung dialog
-        })
-      })
+      const clearTimeoutSpy = vi.spyOn(global, 'clearTimeout')
 
-      // Add selectFolder to ElectronAPI mock
+      // Mock folder selection that never resolves (simulates hung dialog)
+      const mockSelectFolder = vi.fn(() => new Promise<string>(() => {
+        // Never resolves - forces timeout
+      }))
       ;(window as any).electronAPI = {
         ...((window as any).electronAPI || {}),
         selectFolder: mockSelectFolder
       }
 
       render(<CfexTransferWindow />)
-      const user = userEvent.setup()
+      const user = userEvent.setup({ delay: null })
 
       // ACT: Click Browse button
       const browseButton = screen.getAllByRole('button', { name: /browse/i })[0]
       await user.click(browseButton)
 
-      // Wait for timeout to fire
-      await waitFor(() => {
-        expect(screen.getByText(/timeout/i)).toBeInTheDocument()
-      }, { timeout: 11000 })
+      // Advance timers to trigger timeout (10s) and flush all promises
+      vi.advanceTimersByTime(10000)
+      await vi.runAllTimersAsync()
+
+      // ASSERT: clearTimeout was called in error path
+      expect(clearTimeoutSpy).toHaveBeenCalledTimes(1)
 
       // ASSERT: Timeout error message displayed
       expect(screen.getByText(/folder picker timeout/i)).toBeInTheDocument()
 
-      // ASSERT: Browse button returns to normal state (not stuck in "Opening...")
-      await waitFor(() => {
-        expect(screen.getAllByRole('button', { name: /browse/i })[0]).not.toHaveTextContent('Opening...')
-      })
-    }, 15000)
+      // ASSERT: Browse button returns to normal state
+      expect(browseButton).not.toHaveTextContent('Opening...')
+      expect(browseButton).toHaveTextContent('Browse')
+    })
+
+    test('clears timeout when selectFolder rejects immediately', async () => {
+      // Test cleanup when error occurs BEFORE timeout
+      // Example: Permission denied, path invalid, etc.
+
+      const clearTimeoutSpy = vi.spyOn(global, 'clearTimeout')
+
+      // Mock selectFolder that rejects immediately (NOT timeout)
+      const mockSelectFolder = vi.fn().mockRejectedValue(new Error('Permission denied'))
+      ;(window as any).electronAPI = {
+        ...((window as any).electronAPI || {}),
+        selectFolder: mockSelectFolder
+      }
+
+      render(<CfexTransferWindow />)
+      const user = userEvent.setup({ delay: null })
+
+      // ACT: Click Browse button
+      const browseButton = screen.getAllByRole('button', { name: /browse/i })[0]
+      await user.click(browseButton)
+
+      // Flush all pending promises
+      await vi.runAllTimersAsync()
+
+      // ASSERT: clearTimeout was still called (cleanup in error path)
+      expect(clearTimeoutSpy).toHaveBeenCalledTimes(1)
+
+      // ASSERT: Error message displayed
+      expect(screen.getByText(/permission denied/i)).toBeInTheDocument()
+    })
+
+    test('prevents unhandled rejection after successful selection', async () => {
+      // This test validates the PRODUCTION BUG FIX
+      // Without clearTimeout, timeout promise rejects after successful selection
+      // causing unhandled rejection crash
+
+      const unhandledRejections: any[] = []
+
+      // Listen for unhandled rejections (what caused production crash)
+      const handler = (event: PromiseRejectionEvent) => {
+        event.preventDefault() // Prevent test framework from failing
+        unhandledRejections.push(event.reason)
+      }
+      window.addEventListener('unhandledrejection', handler)
+
+      try {
+        // Mock successful folder selection
+        const mockSelectFolder = vi.fn().mockResolvedValue('/Volumes/CFExpress')
+        ;(window as any).electronAPI = {
+          ...((window as any).electronAPI || {}),
+          selectFolder: mockSelectFolder
+        }
+
+        render(<CfexTransferWindow />)
+        const user = userEvent.setup({ delay: null })
+
+        // ACT: Click Browse button
+        const browseButton = screen.getAllByRole('button', { name: /browse/i })[0]
+        await user.click(browseButton)
+
+        // Flush all pending promises
+        await vi.runAllTimersAsync()
+
+        // Advance timers past timeout duration (11s)
+        vi.advanceTimersByTime(11000)
+        await vi.runAllTimersAsync()
+
+        // ASSERT: NO unhandled rejections occurred
+        // This is the CRITICAL fix - timeout was cleaned up before it could reject
+        expect(unhandledRejections).toHaveLength(0)
+
+      } finally {
+        window.removeEventListener('unhandledrejection', handler)
+      }
+    })
+
+    test('REGRESSION GUARD: test fails if clearTimeout removed', async () => {
+      // This test documents that removing clearTimeout will cause test failure
+      // Provides confidence that tests will catch regression
+
+      // Spy on clearTimeout
+      const clearTimeoutSpy = vi.spyOn(global, 'clearTimeout')
+
+      // Mock successful selection
+      const mockSelectFolder = vi.fn().mockResolvedValue('/Volumes/CFExpress')
+      ;(window as any).electronAPI = {
+        ...((window as any).electronAPI || {}),
+        selectFolder: mockSelectFolder
+      }
+
+      render(<CfexTransferWindow />)
+      const user = userEvent.setup({ delay: null })
+
+      // ACT: Click Browse button
+      const browseButton = screen.getAllByRole('button', { name: /browse/i })[0]
+      await user.click(browseButton)
+
+      // Flush all pending promises
+      await vi.runAllTimersAsync()
+
+      // CRITICAL ASSERTION: If clearTimeout is NOT called, this test FAILS
+      // This proves tests will catch regression if someone removes cleanup code
+      expect(clearTimeoutSpy).toHaveBeenCalled()
+
+      // Document: Commenting out clearTimeout in CfexTransferWindow.tsx
+      // lines 115-117 and 125-127 will fail this test
+    })
   })
 })
