@@ -202,7 +202,7 @@ describe('CfexTransferWindow', () => {
       // ASSERT: Progress displayed in UI
       await waitFor(() => {
         expect(screen.getByText(/test-photo\.jpg/i)).toBeInTheDocument()
-        expect(screen.getByText(/50%/i)).toBeInTheDocument()
+        expect(screen.getByText(/50\.00%/i)).toBeInTheDocument()
       })
     })
 
