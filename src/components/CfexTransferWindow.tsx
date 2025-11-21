@@ -97,20 +97,35 @@ function FolderPicker({ sourcePath, onSourceChange, destinationPaths, onDestinat
     setIsBrowsing(true)
     setBrowseError(null)
 
+    // Track timeout ID for cleanup
+    let timeoutId: NodeJS.Timeout | null = null
+
     try {
       // Race between folder selection and 10-second timeout
       const path = await Promise.race([
         window.electronAPI.selectFolder(),
-        new Promise<null>((_, reject) =>
-          setTimeout(() => reject(new Error('Folder picker timeout (10s). Disconnected volumes may cause delays.')), 10000)
-        )
+        new Promise<null>((_, reject) => {
+          timeoutId = setTimeout(() => {
+            reject(new Error('Folder picker timeout (10s). Disconnected volumes may cause delays.'))
+          }, 10000)
+        })
       ])
+
+      // SUCCESS: Clean up timeout to prevent unhandled rejection
+      if (timeoutId !== null) {
+        clearTimeout(timeoutId)
+      }
 
       if (path) {
         onSelect(path)
         setBrowseError(null)
       }
     } catch (error) {
+      // ERROR: Clean up timeout before handling error
+      if (timeoutId !== null) {
+        clearTimeout(timeoutId)
+      }
+
       const message = error instanceof Error ? error.message : 'Folder picker failed'
       setBrowseError(message)
       console.error('[FolderPicker] Browse failed:', error)
