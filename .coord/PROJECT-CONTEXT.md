@@ -161,9 +161,34 @@ const testConfig: TransferConfig = {
 
 **Next Steps:**
 1. ✅ Code review complete (code-review-specialist APPROVED)
-2. Merge feat/cfex-work to main (ready for production)
-3. Integration testing with real CFEx card → LucidLink + Ubuntu NFS (empirical validation)
-4. Gather empirical data for Week 2 error handling design
+2. ✅ UI integration complete (tab navigation + Browse buttons + Cancel)
+3. Merge feat/cfex-work to main (PR #78 pending CI)
+4. Integration testing with real CFEx card → LucidLink + Ubuntu NFS (empirical validation)
+5. Gather empirical data for Week 2 error handling design
+
+**Empirical Findings (Week 1 Testing - 2025-11-20):**
+
+**CRITICAL: Browse Button Hang Issue**
+- **Problem:** Browse buttons hang forever when volumes disconnected (LucidLink/Ubuntu NFS/CFEx not mounted)
+- **Severity:** 🔴 CRITICAL - Infinite freeze, no escape mechanism (Cmd+Period doesn't work)
+- **Impact:** All 3 Browse buttons affected, requires force quit of app
+- **Root Cause:** macOS native dialog.showOpenDialog() waits indefinitely for disconnected volumes
+- **Solution Implemented (commit c26095a):**
+  - Promise.race() with 10-second timeout
+  - Loading state (yellow button + "Opening..." text)
+  - Error message on timeout with manual entry guidance
+  - Graceful fallback to manual path input
+- **Week 2 Enhancements:**
+  - Smart default paths (start at /Volumes or user home)
+  - MRU (Most Recently Used) paths for faster access
+  - Volume detection before opening dialog
+  - Path validation before Browse
+
+**UX Improvements Implemented:**
+- ✅ Folder picker buttons (Browse... for all 3 path inputs)
+- ✅ Percentage formatting (2 decimal places: 25.00% not 25.0000001%)
+- ✅ Cancel button (basic UI-only, full graceful cancellation in Week 2)
+- ✅ Timeout protection (10s limit prevents infinite hang)
 
 **Major Features Completed (v2.2.0 Baseline):**
   - ✅ **PR #77 R1.1 Schema Alignment (Nov 19)** - CEP Panel contract compliance
