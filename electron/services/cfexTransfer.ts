@@ -537,3 +537,104 @@ export class CfexTransferService {
     return calculateETA(bytesTransferred, totalBytes, elapsedMs);
   }
 }
+
+// ============================================================================
+// ERROR HANDLING INTEGRATION - transferFileWithRetry
+// ============================================================================
+
+import { RetryStrategy } from './retryStrategy';
+import { ErrorHandler, ErrorClassification } from './errorHandler';
+import * as fs from 'fs';
+
+/**
+ * Retry options for transferFileWithRetry
+ */
+export interface TransferRetryOptions {
+  onRetry?: (attempt: number, delayMs: number) => void;
+  cfexCardPath?: string;
+  checkCardRemoval?: () => boolean;
+}
+
+/**
+ * Enhanced transfer result with retry metadata and error classification
+ */
+export interface FileTransferResultWithRetry extends FileTransferResult {
+  attempts: number;
+  error?: Error & { code?: string };
+  errorClassification?: ErrorClassification;
+  cardRemoved?: boolean;
+}
+
+/**
+ * Transfer file with automatic retry on transient/network errors
+ *
+ * Features:
+ * - Automatic retry with exponential backoff (1s, 2s, 4s... for transient)
+ * - Extended retry for network paths (5 attempts vs 3 for local)
+ * - Fatal error detection (no retry for ENOSPC, EACCES, EROFS)
+ * - Card removal detection (abort on CFEx card removal)
+ * - Error classification (user-friendly messages and recovery actions)
+ *
+ * @param task - Transfer task with source, destination, size, mediaType
+ * @param mockTransferFile - Optional mock for testing (defaults to transferFile)
+ * @param options - Retry options (onRetry callback, card removal detection)
+ * @returns FileTransferResultWithRetry with success, attempts, error classification
+ *
+ * @example
+ * ```typescript
+ * const result = await transferFileWithRetry(task, undefined, {
+ *   onRetry: (attempt, delay) => console.log(`Retry ${attempt} after ${delay}ms`),
+ *   cfexCardPath: '/Volumes/NO NAME',
+ *   checkCardRemoval: () => fs.existsSync('/Volumes/NO NAME')
+ * });
+ * ```
+ *
+ * Reference: D3 Blueprint lines 859-1044
+ */
+export async function transferFileWithRetry(
+  task: FileTransferTask,
+  mockTransferFile?: (task: FileTransferTask) => Promise<FileTransferResult>,
+  options?: TransferRetryOptions
+): Promise<FileTransferResultWithRetry> {
+  const retryStrategy = new RetryStrategy();
+  const errorHandler = new ErrorHandler();
+
+  // Use provided mock or real transferFile
+  const transferFn = mockTransferFile || ((t: FileTransferTask) => transferFile(t));
+
+  // Execute with retry
+  const result = await retryStrategy.executeWithRetry(
+    () => transferFn(task),
+    {
+      destinationPath: task.destination,
+      sourcePath: task.source,
+      cfexCardPath: options?.cfexCardPath,
+      checkCardRemoval: options?.checkCardRemoval,
+      onRetry: options?.onRetry,
+    }
+  );
+
+  // Build enhanced result
+  if (result.success && result.value) {
+    return {
+      ...result.value,
+      attempts: result.attempts,
+    };
+  }
+
+  // Failed with error
+  const errorClassification = result.error
+    ? errorHandler.classify(result.error)
+    : undefined;
+
+  return {
+    success: false,
+    bytesTransferred: 0,
+    duration: 0,
+    warnings: [],
+    attempts: result.attempts,
+    error: result.error,
+    errorClassification,
+    cardRemoved: result.cardRemoved,
+  };
+}
