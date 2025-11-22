@@ -172,6 +172,45 @@
   - Phase C: UI with COMPLETE/REOPEN buttons (working!)
   - Quality: 575/575 tests passing, 0 errors (lint + typecheck)
 
+### ✅ Cache Directory Registration Race Condition Fix - COMPLETE (Nov 22)
+- [x] **Root Cause Analysis** - Systematic debug investigation (5-step analysis)
+  - Problem: Unawaited IIFE at main.ts:172-176 created race condition
+  - Symptom: Non-deterministic PATH_TRAVERSAL security violations during batch processing
+  - Evidence: `Error: Security violation (PATH_TRAVERSAL): Access denied: Path outside allowed folders`
+  - Timing: User triggered batch processing before cache dir registered in SecurityValidator allowlist
+  - Investigation: debug tool (o3-mini) with 100% confidence - only instance of anti-pattern in codebase
+
+- [x] **Core Fix Implementation** - TDD discipline (RED→GREEN→REFACTOR)
+  - Removed: Lines 172-176 (unawaited IIFE - race condition source)
+  - Added: Cache registration in app.whenReady() before createWindow() (deterministic ordering)
+  - Result: Sequential initialization guarantees cache dir in allowlist before UI available
+  - Tests: 4 baseline tests (regression prevention, symlink resolution, security boundary)
+  - Commits: 0f73fbd (test RED) → 9951743 (fix GREEN)
+
+- [x] **Specialist Validation** - RACI consultations complete
+  - security-specialist: [COMPLIANT] verdict (no new vulnerabilities, positive security impact)
+  - code-review-specialist: 8.5/10 APPROVED (minimal intervention, sound architecture)
+  - Both specialists: 2 optional [LOW] hardening recommendations provided
+
+- [x] **Hardening Improvements** - Defense-in-depth applied
+  - Priority 1: Error boundary with app.quit() on fs.realpath() failure (fail-fast philosophy)
+  - Priority 2: Documentation in session handoff appendix (complete fix details)
+  - Priority 3: Error handling test coverage (+2 tests for failure scenarios)
+  - Commits: 0b18dbf (error boundary) → 127bf46 (docs) → bd4c896 (tests)
+
+- [x] **Quality Gates** - All GREEN
+  - Tests: 543/543 passing (6 cache registration tests: 4 baseline + 2 error handling)
+  - Lint: 0 errors, 105 warnings (acceptable)
+  - Typecheck: 0 errors
+  - Security: IMPROVED (race condition eliminated + fail-fast error handling)
+  - Production: READY FOR MERGE
+
+- [x] **Timeline** - 97 minutes total (investigation to production-ready)
+  - Investigation: 30 minutes (systematic debug with o3-mini)
+  - Core fix: 35 minutes (TDD with quality gates)
+  - Validation: 20 minutes (security + code review)
+  - Hardening: 12 minutes (error boundary + tests + docs)
+
 ## Recent Accomplishments (November 2025)
 
 ### 🔄 Cross-Ecosystem Schema Integration (IN PROGRESS - Nov 16, Issue #63)
