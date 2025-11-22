@@ -110,7 +110,7 @@ Please activate as implementation-lead and proceed with test fixes to complete W
 - PROJECT-CONTEXT.md (Week 1 status update)
 - SHARED-CHECKLIST.md (B2 Week 1 progress)
 - D3 Blueprint (integration testing section with real paths)
-- NEW-SESSION-PROMPT.md (this document - Week 1 completion prompt)
+- sessions/2025-11-20-NEW-SESSION-PROMPT.md (this document - Week 1 completion prompt)
 
 **Git Evidence:**
 - Week 1 commits: scanSourceFiles, transferFile, integrityValidator, startTransfer, IPC handlers, preload.ts

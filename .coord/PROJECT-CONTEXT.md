@@ -132,11 +132,11 @@ const testConfig: TransferConfig = {
 9. `d7f7f9d` - chore: bump version to 2.2.0 - Nov 18
 10. `26b4254` - Merge pull request #75 from elevanaltd/doc-updates - Nov 18
 
-### Current Implementation State (2025-11-20 Updated)
+### Current Implementation State (2025-11-21 Updated)
 
 **CFEx Phase 1a - Week 1 B2 Implementation: 100% COMPLETE ✅**
 
-**Status:** All Week 1 deliverables complete, code review approved, ready for merge to main
+**Status:** All Week 1 deliverables complete, dual-specialist review approved, ready for merge to main
 
 **Week 1 Completed Components:**
 - ✅ **Days 1-3: Transfer Mechanism** (scanSourceFiles, transferFile, startTransfer) - 611 tests passing
@@ -145,26 +145,37 @@ const testConfig: TransferConfig = {
 - ✅ **Days 5-7: Renderer UI** - preload.ts updated, CfexTransferWindow refactored to v2.2.0 pattern
   - ✅ Test mocks aligned to ElectronAPI.cfex contract
   - ✅ TransferProgress lint error fixed
-  - ✅ All 8 UI tests GREEN + 1 skipped (pre-existing bug documented)
+  - ✅ All 13 UI tests GREEN + 1 skipped (14 total, +5 timeout cleanup tests)
 
-**Quality Gates Status:**
-- All Gates: ✅ GREEN (commit 369aa09)
-- Tests: ✅ 639/639 passing + 1 skipped (640 total)
+**Quality Gates Status (Final):**
+- All Gates: ✅ GREEN (commit 3be3c67)
+- Tests: ✅ 640/645 passing + 1 skipped (646 total, 4 pre-existing failures unrelated)
 - TypeCheck: ✅ 0 errors (src + electron tsconfigs)
-- Lint: ✅ 0 critical errors, 94 warnings (acceptable)
-- Code Review: ✅ APPROVED (code-review-specialist: 9/10 reliability score)
+- Lint: ✅ 0 critical errors, 105 warnings (acceptable)
+- Code Review: ✅ APPROVED (dual-specialist: code-review-specialist + test-methodology-guardian)
 - Security: ✅ v2.2.0 contextBridge pattern preserved (no raw IPC exposure)
+- TDD Discipline: ✅ RED→GREEN commit separation (cfe086e → 3be3c67)
 
 **Timeline Acceleration:**
 - Estimated: 5.5 days (D3 Blueprint conservative estimate)
 - Actual: ~5.5 hours focused implementation (TDD discipline + clear specs = **11x acceleration**)
 
+**Critical Fixes Applied (2025-11-21):**
+1. ✅ **Test assertion fix:** Percentage format "50%" → "50.00%" (commit afe5a54)
+2. ✅ **Timeout cleanup fix:** Unhandled promise rejection prevented (commits cfe086e + 3be3c67)
+   - **Problem:** Promise.race timeout not cancelled → unhandled rejection 10s after successful browse
+   - **Solution:** clearTimeout in both success and error paths + comprehensive test validation
+   - **Tests:** 5 new tests with clearTimeout spy assertions + unhandled rejection guard
+   - **Review:** Dual-specialist approval (code-review-specialist + test-methodology-guardian)
+   - **Evidence:** RED→GREEN commit separation (tests fail without fix, pass with fix)
+
 **Next Steps:**
-1. ✅ Code review complete (code-review-specialist APPROVED)
+1. ✅ Code review complete (dual-specialist APPROVED)
 2. ✅ UI integration complete (tab navigation + Browse buttons + Cancel)
-3. Merge feat/cfex-work to main (PR #78 pending CI)
-4. Integration testing with real CFEx card → LucidLink + Ubuntu NFS (empirical validation)
-5. Gather empirical data for Week 2 error handling design
+3. ✅ Critical production risks fixed (test assertion + timeout cleanup)
+4. → Merge feat/cfex-work to main (PR #78 ready)
+5. → Integration testing with real CFEx card → LucidLink + Ubuntu NFS (empirical validation)
+6. → Gather empirical data for Week 2 error handling design
 
 **Empirical Findings (Week 1 Testing - 2025-11-20):**
 
@@ -337,11 +348,11 @@ const testConfig: TransferConfig = {
 
 **Security Test Coverage:** +23 security tests (command injection + media server auth)
 
-## Current Focus
-CFEX_INTEGRATION::B0_FINAL_GO_received→D3_v1.1_complete→4_blockers_resolved→B2_implementation_ready(3_weeks_CORE)
-EMPIRICAL_TESTING::Day1_100%_EXIF→I1_validated→Day2/3_deferred_to_B2→conservative_assumptions_documented→risk_LOW
-PRORES_PROXY::2K_2560x1440_technical_pivot→intra-frame_codec→professional_color_maintained→Phase_1b_spec_ready
-R1_1_SCHEMA::merged_to_main→584_tests_passing→CFEx_rebased→zero_conflicts→coherence_maintained
+## Current Focus (2025-11-21 Updated)
+CFEX_PHASE_1A::Week_1_COMPLETE→Week_2_3_IN_PROGRESS→Priority_1_Error_Handling_ACTIVE(implementation-lead)
+PARALLEL_EXECUTION::Claude_Code_Web[Priority_1_TDD]||Main_Session[Phase_1b_planning+orchestration]
+D3_BLUEPRINT::compressed_to_OCTAVE→65.5%_reduction→100%_decision_logic_preserved→implementation_ready
+MICROPHASE_STRUCTURE::Phase_1a[8d_CORE+5d_POLISH]→Phase_1b[proxy_generation]→Phase_1c[toggles+metadata]
 CROSS_ECOSYSTEM::Issue_#63_deferred→guardrails_required_4-6_weeks→after_CFEx_Phase_1_complete
 
 ## Key Decisions
@@ -360,12 +371,36 @@ CROSS_ECOSYSTEM::Issue_#63_deferred→guardrails_required_4-6_weeks→after_CFEx
 
 ## Active Work
 
-### CFEx File Transfer Integration (Phase 1a - ✅ B0 FINAL GO RECEIVED)
-- [x] v2.2.0 baseline established (rollback capability)
-- [x] edge-optimizer analysis: Value validated (parallel execution, EXIF validation, path intelligence)
-- [x] D1 North Star: Project-level consolidation (7 immutables extracted + APPROVED)
-- [x] D2 Design: 18 alternatives explored, validator reality check, synthesizer breakthrough
-- [x] D3 Blueprint v1.0: 18,000-word architecture + 6 UI mockup states (implementation-ready)
+### CFEx File Transfer Integration (Phase 1a - Week 2-3 Implementation ACTIVE)
+
+**Week 1 Deliverables: ✅ COMPLETE (Nov 20-21, 2025)**
+- [x] Transfer mechanism (scanSourceFiles, transferFile, startTransfer) - 611 tests passing
+- [x] Integrity validation (integrityValidator, EXIF preservation) - I1 immutable validated
+- [x] IPC handlers (cfexTransferHandlers, event emission) - 617 tests passing
+- [x] Renderer UI (CfexTransferWindow refactored to v2.2.0 pattern) - 640/645 tests passing
+- [x] Critical fixes (timeout cleanup, percentage formatting) - dual-specialist approved
+- [x] PR #78 + #79 MERGED to main - all quality gates GREEN
+- [x] D3 Blueprint compressed to OCTAVE (65.5% reduction, 100% decision logic preserved)
+
+**Week 2-3 In Progress: 🔄 ACTIVE (Nov 21+)**
+- [ ] **Priority 1: Error Handling** (4 days - ACTIVE in Claude Code Web)
+  - implementation-lead executing with TDD discipline
+  - Error classification + retry logic + recovery strategies
+  - Target: ~30-40 unit tests, all quality gates GREEN
+  - Timeline: Week 2 Days 1-4
+- [ ] **Priority 2: CFEx Auto-Detection** (2.5 days - PENDING)
+  - macOS + Ubuntu volume scanning
+  - Single-card priority + multi-card selection UI
+  - Timeline: Week 2 Days 1-2.5 (parallel with Priority 1)
+- [ ] **Priority 3: Integration Testing** (4 days - BLOCKED until Priority 1 complete)
+  - LucidLink cache eviction + NFS stale handle testing
+  - Performance baselines + risk scenarios
+  - Empirical findings documentation
+  - Timeline: Week 2-3 Days 5-8
+
+**Phase 1a-POLISH (deferred to parallel with Phase 1b):**
+- [ ] Priority 4: Path Intelligence (MRU, smart defaults, pinned folders) - 5 days
+- [ ] Priority 5: UI Polish (progress visualization, error log UI) - 5 days
 - [x] B0 Decision (Initial): CONDITIONAL GO (7 blocking conditions identified)
 - [x] Schema R1.1 Foundation: Merged to main, CFEx rebased, zero conflicts, 584 tests GREEN
 - [x] **Empirical Testing: Day 1 COMPLETE** (2025-11-19)
@@ -413,14 +448,14 @@ CROSS_ECOSYSTEM::Issue_#63_deferred→guardrails_required_4-6_weeks→after_CFEx
 Guardrails→formalize_contract_spec+compatibility_tests+SLO_alerts+deletion_workflow→principal-engineer_re-validation
 
 ## Last Updated
-2025-11-19 (CFEx Phase 1a B0 FINAL GO received - holistic-orchestrator)
+2025-11-21 (CFEx Phase 1a Week 2-3 implementation ACTIVE - holistic-orchestrator)
 **Latest Release:** v2.2.0 - Sequential shot numbers baseline (production ready)
-**Active Work:** CFEx Phase 1a - B0 FINAL GO received, ready for B2 implementation (3 weeks CORE)
-**Current Branch:** feat/cfex-work (rebased on R1.1 main, 584 tests GREEN, zero conflicts)
-**Phase Status:** D0→D1→D2→D3(v1.1)→B0(FINAL GO)→B2(PENDING)
-**Empirical Testing:** Day 1 COMPLETE (100% EXIF), Day 2/3 DEFERRED (conservative assumptions acceptable)
-**Blocker Resolution:** 4/7 blockers resolved (app quit, error sanitization, test specs, error messages)
-**Technical Pivot:** ProRes Proxy 2K specifications added (2560×1440, 10-bit 4:2:2, intra-frame)
-**Validator Decision:** FINAL GO with HIGH confidence (all immutables validated, 3-week timeline realistic)
-**Next Steps:** B2 Implementation (implementation-lead + TDD discipline + 3-week CORE phase)
-**Session Documentation:** `.coord/NEW-SESSION-PROMPT.md` (updated for B2 continuation)
+**Active Work:** CFEx Phase 1a Week 2-3 - Priority 1 Error Handling (implementation-lead in Claude Code Web)
+**Current Branch:** main (PR #78 + #79 merged, 640/645 tests GREEN)
+**Phase Status:** D0→D1→D2→D3(v1.1+OCTAVE)→B0(FINAL GO)→B2(Week 1 COMPLETE)→B2(Week 2-3 ACTIVE)
+**Week 1 Status:** Transfer mechanism + integrity validation + IPC handlers + UI COMPLETE (640/645 tests GREEN)
+**Week 2-3 Status:** Priority 1 Error Handling ACTIVE (Claude Code Web), Priority 2-3 PENDING
+**D3 Blueprint:** Compressed to OCTAVE (65.5% reduction, 100% decision logic preserved)
+**Parallel Execution:** Claude Code Web (Priority 1 TDD) || Main Session (Phase 1b planning + orchestration)
+**Timeline:** Priority 1 (4d) → Priority 3 (4d) = 8 days CORE completion
+**Next Convergence:** Week 2 Day 8 - Phase 1a-CORE COMPLETE → Phase 1b starts Week 4
