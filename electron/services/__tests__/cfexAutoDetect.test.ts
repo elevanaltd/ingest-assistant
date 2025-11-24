@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import * as fs from 'fs'
+import type { PathLike } from 'fs'
 import * as os from 'os'
 
 /**
@@ -46,7 +47,7 @@ describe('CfexAutoDetect Service', () => {
 
     it('should detect /Volumes/NO NAME/ CFEx card when mounted', async () => {
       // ARRANGE: Mock /Volumes/ directory listing
-      vi.mocked(fs.readdirSync).mockImplementation((path: string) => {
+      vi.mocked(fs.readdirSync).mockImplementation((path: PathLike) => {
         if (path === '/Volumes/') {
           return ['NO NAME', 'LucidLink', 'other-volume'] as any
         }
@@ -63,7 +64,7 @@ describe('CfexAutoDetect Service', () => {
 
     it('should return empty array when no CFEx card mounted', async () => {
       // ARRANGE: Mock /Volumes/ with no "NO NAME"
-      vi.mocked(fs.readdirSync).mockImplementation((path: string) => {
+      vi.mocked(fs.readdirSync).mockImplementation((path: PathLike) => {
         if (path === '/Volumes/') {
           return ['LucidLink', 'other-volume'] as any
         }
@@ -79,7 +80,7 @@ describe('CfexAutoDetect Service', () => {
 
     it('should detect /LucidLink/ destination mount', async () => {
       // ARRANGE: Mock /Volumes/ with LucidLink
-      vi.mocked(fs.readdirSync).mockImplementation((path: string) => {
+      vi.mocked(fs.readdirSync).mockImplementation((path: PathLike) => {
         if (path === '/Volumes/') {
           return ['LucidLink', 'NO NAME'] as any
         }
@@ -95,7 +96,7 @@ describe('CfexAutoDetect Service', () => {
 
     it('should detect /Ubuntu/ destination mount', async () => {
       // ARRANGE: Mock /Volumes/ with Ubuntu
-      vi.mocked(fs.readdirSync).mockImplementation((path: string) => {
+      vi.mocked(fs.readdirSync).mockImplementation((path: PathLike) => {
         if (path === '/Volumes/') {
           return ['NO NAME', 'Ubuntu'] as any
         }
@@ -111,7 +112,7 @@ describe('CfexAutoDetect Service', () => {
 
     it('should use default paths when mounts not found', async () => {
       // ARRANGE: Mock /Volumes/ with nothing
-      vi.mocked(fs.readdirSync).mockImplementation((path: string) => {
+      vi.mocked(fs.readdirSync).mockImplementation((path: PathLike) => {
         if (path === '/Volumes/') {
           return [] as any
         }
@@ -138,7 +139,7 @@ describe('CfexAutoDetect Service', () => {
 
     it('should detect CFEx cards in /media/$USER/', async () => {
       // ARRANGE: Mock /media/testuser/ directory
-      vi.mocked(fs.readdirSync).mockImplementation((path: string) => {
+      vi.mocked(fs.readdirSync).mockImplementation((path: PathLike) => {
         if (path === '/media/testuser/') {
           return ['CFEx', 'other-drive'] as any
         }
@@ -154,7 +155,7 @@ describe('CfexAutoDetect Service', () => {
 
     it('should detect CFEx cards in /run/media/$USER/', async () => {
       // ARRANGE: Mock /run/media/testuser/ directory
-      vi.mocked(fs.readdirSync).mockImplementation((path: string) => {
+      vi.mocked(fs.readdirSync).mockImplementation((path: PathLike) => {
         if (path === '/run/media/testuser/') {
           return ['CFEx'] as any
         }
@@ -174,7 +175,7 @@ describe('CfexAutoDetect Service', () => {
     it('should search both /media and /run/media locations', async () => {
       // ARRANGE: Expect both paths to be scanned
       const readmocks: string[] = []
-      vi.mocked(fs.readdirSync).mockImplementation((path: string) => {
+      vi.mocked(fs.readdirSync).mockImplementation((path: PathLike) => {
         readmocks.push(path.toString())
         if (path === '/media/testuser/') return ['drive1'] as any
         if (path === '/run/media/testuser/') return ['drive2'] as any
@@ -192,7 +193,7 @@ describe('CfexAutoDetect Service', () => {
 
     it('should return empty array when no CFEx cards found', async () => {
       // ARRANGE: Mock both locations empty
-      vi.mocked(fs.readdirSync).mockImplementation((path: string) => {
+      vi.mocked(fs.readdirSync).mockImplementation((path: PathLike) => {
         return [] as any
       })
 
@@ -205,7 +206,7 @@ describe('CfexAutoDetect Service', () => {
 
     it('should handle permission denied error gracefully', async () => {
       // ARRANGE: Mock permission denied error
-      vi.mocked(fs.readdirSync).mockImplementation((path: string) => {
+      vi.mocked(fs.readdirSync).mockImplementation((path: PathLike) => {
         const error = new Error('EACCES: permission denied')
         ;(error as any).code = 'EACCES'
         throw error
@@ -223,7 +224,7 @@ describe('CfexAutoDetect Service', () => {
     it('should identify single card for auto-population', async () => {
       // ARRANGE: Mock single card detection
       vi.mocked(os.platform).mockReturnValue('darwin')
-      vi.mocked(fs.readdirSync).mockImplementation((path: string) => {
+      vi.mocked(fs.readdirSync).mockImplementation((path: PathLike) => {
         if (path === '/Volumes/') {
           return ['NO NAME'] as any
         }
@@ -270,17 +271,18 @@ describe('CfexAutoDetect Service', () => {
         throw new Error('EIO: input/output error')
       })
 
-      // ACT & ASSERT: Should not throw
-      expect(async () => {
-        await autoDetect.detectCfexCards()
-      }).not.toThrow()
+      // ACT: Should not throw, returns empty array on error
+      const result = await autoDetect.detectCfexCards()
+
+      // ASSERT
+      expect(result).toEqual([])
     })
 
     it('should handle missing /media directory on Ubuntu', async () => {
       // ARRANGE: /media doesn't exist
       vi.mocked(os.platform).mockReturnValue('linux')
       vi.mocked(os.homedir).mockReturnValue('/home/testuser')
-      vi.mocked(fs.readdirSync).mockImplementation((path: string) => {
+      vi.mocked(fs.readdirSync).mockImplementation((path: PathLike) => {
         const error = new Error('ENOENT: no such file')
         ;(error as any).code = 'ENOENT'
         throw error
@@ -298,7 +300,7 @@ describe('CfexAutoDetect Service', () => {
     it('should detect if mount became unavailable', async () => {
       // ARRANGE: Mock initial detection
       vi.mocked(os.platform).mockReturnValue('darwin')
-      vi.mocked(fs.readdirSync).mockImplementation((path: string) => {
+      vi.mocked(fs.readdirSync).mockImplementation((path: PathLike) => {
         if (path === '/Volumes/') {
           return ['NO NAME'] as any
         }
@@ -310,7 +312,7 @@ describe('CfexAutoDetect Service', () => {
       expect(initialCards.length).toBe(1)
 
       // Now mock unmount
-      vi.mocked(fs.readdirSync).mockImplementation((path: string) => {
+      vi.mocked(fs.readdirSync).mockImplementation((path: PathLike) => {
         if (path === '/Volumes/') {
           return [] as any // Card unmounted
         }
