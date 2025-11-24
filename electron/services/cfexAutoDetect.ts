@@ -60,7 +60,9 @@ export class CfexAutoDetect {
       const nodeError = error as NodeJS.ErrnoException
 
       if (nodeError?.code === 'EACCES') {
-        throw new Error(`Permission denied accessing volume directories. Check system permissions.`)
+        // Graceful: Log permission error and return empty (let user manually select)
+        console.warn(`Permission denied accessing volume directories. Check system permissions.`)
+        return []
       }
 
       if (error instanceof Error && error.message.includes('timeout')) {
@@ -88,12 +90,24 @@ export class CfexAutoDetect {
     targetNames: string[],
     timeoutMs: number
   ): Promise<string[]> {
-    return Promise.race([
-      this.scanDirectory(dirPath, targetNames),
-      new Promise<string[]>((_, reject) =>
-        setTimeout(() => reject(new Error(`Volume scan timeout: ${dirPath}`)), timeoutMs)
-      )
-    ])
+    return new Promise<string[]>((resolve, reject) => {
+      const timer = setTimeout(() => {
+        reject(Object.assign(
+          new Error(`Volume scan timeout: ${dirPath}`),
+          { code: 'ETIMEDOUT' }
+        ))
+      }, timeoutMs)
+
+      this.scanDirectory(dirPath, targetNames)
+        .then(result => {
+          clearTimeout(timer)
+          resolve(result)
+        })
+        .catch(err => {
+          clearTimeout(timer)
+          reject(err)
+        })
+    })
   }
 
   /**
@@ -222,7 +236,10 @@ export class CfexAutoDetect {
       const nodeError = error as NodeJS.ErrnoException
 
       if (nodeError?.code === 'EACCES') {
-        throw new Error(`Permission denied scanning ${dirPath}. Check volume mount permissions.`)
+        throw Object.assign(
+          new Error(`Permission denied scanning ${dirPath}. Check volume mount permissions.`),
+          { code: 'EACCES' }
+        )
       }
 
       if (nodeError?.code === 'ENOENT') {
