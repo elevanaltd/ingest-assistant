@@ -84,22 +84,33 @@
 
 **Phase 1a-CORE Remaining Work (Week 2-3):**
 
-**Priority 1: Error Handling (4 days - BLOCKING for production) - 🔄 ACTIVE**
-**Status:** IN PROGRESS (implementation-lead in Claude Code Web session, started Nov 21)
-**Timeline:** Week 2 Days 1-4
-**Deliverables:** electron/services/errorHandler.ts + retryStrategy.ts + ~30-40 tests
-- [ ] Smart retry logic (network timeout detection, retry intervals, backoff strategy)
-- [ ] Comprehensive error classification (ENOSPC, EPERM, ENOENT, ETIMEDOUT, network errors)
-- [ ] Error recovery strategies (resume partial transfers, cleanup on failure, atomic operations)
-- [ ] User-facing error messages (actionable guidance, next steps, manual recovery instructions)
-- [ ] Enhanced ENOSPC messages (show bytes needed for clear user guidance)
+**Priority 1: Error Handling (4 days - BLOCKING for production) - ✅ COMPLETE**
+**Status:** MERGED (PR #80 + PR #81 merged Nov 22)
+**Timeline:** Week 2 Days 1-4 (COMPLETE)
+**Deliverables:** ✅ errorHandler.ts + retryStrategy.ts + 47 tests (all passing)
+- [x] Smart retry logic (exponential backoff: 1s→2s→4s→8s)
+- [x] Comprehensive error classification (TRANSIENT, FATAL, NETWORK, USER)
+- [x] Error recovery strategies (cleanup, resume, atomic operations)
+- [x] User-facing error messages (actionable guidance)
+- [x] Quality gates: 707/708 tests passing, lint 0 errors, typecheck 0 errors
+- [x] Code review approved (code-review-specialist + test-methodology-guardian)
 
-**Priority 2: CFEx Auto-Detection (2.5 days)**
-- [ ] macOS volume scanning (`/Volumes/NO NAME/` mount detection)
-- [ ] Ubuntu mount scanning (CFEx card discovery via `/proc/mounts`)
-- [ ] Single-card priority (auto-populate source path when one card found)
-- [ ] Multi-card handling (user selection UI if multiple cards detected)
-- [ ] Mount state validation (warn if volume disconnected mid-scan)
+**Priority 2: CFEx Auto-Detection (2.5 days) - 🔄 IN PROGRESS**
+**Status:** RED Phase COMPLETE (TDD discipline)
+**Timeline:** Week 2 Days 5-7 (2.5 days)
+**Deliverables:**
+- [x] Test specification: 20 comprehensive tests (electron/services/__tests__/cfexAutoDetect.test.ts)
+- [ ] Service implementation (GREEN phase: cfexAutoDetect.ts)
+- [ ] IPC handler integration (GREEN phase: cfex:detect-sources)
+- [ ] UI integration (CfexTransferWindow + multi-card dialog)
+
+**Test Coverage (RED phase):**
+- [x] macOS volume scanning (`/Volumes/NO NAME/` mount detection)
+- [x] Ubuntu mount scanning (CFEx card discovery via `/media/$USER/` and `/run/media/$USER/`)
+- [x] Single-card priority (auto-populate source path when one card found)
+- [x] Multi-card handling (user selection UI if multiple cards detected)
+- [x] Mount state validation (warn if volume disconnected mid-scan)
+- [x] Error handling (EACCES, ENOENT, EIO gracefully handled)
 
 **Priority 3: Integration Testing (4 days - EMPIRICAL validation)**
 - [ ] LucidLink cache eviction testing (measure actual timeout patterns vs conservative assumptions)
