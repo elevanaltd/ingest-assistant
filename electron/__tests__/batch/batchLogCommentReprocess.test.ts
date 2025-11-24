@@ -194,7 +194,7 @@ describe('Batch Processing - LogComment & Reprocess Integration', () => {
           expect(structured?.subject).toBe('oven');
           expect(structured?.action).toBe('cleaning');
           expect(structured?.shotType).toBe('WS');
-          expect(structured?.date).toBe('202511031005'); // yyyymmddhhmm format
+          expect(structured?.date).toBe('202501151005'); // yyyymmddhhmm format
         }),
       };
 
@@ -206,7 +206,7 @@ describe('Batch Processing - LogComment & Reprocess Integration', () => {
           filePath: '/path/to/video.mov',
           extension: '.mov',
           processedByAI: false,
-          shotName: 'kitchen-oven-cleaning-WS-202511031005',
+          shotName: 'kitchen-oven-cleaning-WS-202501151005',
           keywords: ['appliance', 'demo'] as string[],
           fileType: 'video',
           createdAt: new Date(),
@@ -219,7 +219,7 @@ describe('Batch Processing - LogComment & Reprocess Integration', () => {
           action: 'cleaning',
           shotType: 'WS',
           lockedFields: [],
-          creationTimestamp: new Date('2025-11-03T10:05:00Z'), // Has timestamp
+          creationTimestamp: new Date('2025-01-15T10:05:00Z'), // Has timestamp (January, standard time)
         })),
         updateFileMetadata: vi.fn(async (_fileId: string, _metadata: FileMetadata) => true),
       };
@@ -275,14 +275,14 @@ describe('Batch Processing - LogComment & Reprocess Integration', () => {
         // Verify writeMetadataToFile was called with date field
         expect(mockMetadataWriter.writeMetadataToFile).toHaveBeenCalledWith(
           '/path/to/video.mov',
-          'kitchen-oven-cleaning-WS-202511031005',
+          'kitchen-oven-cleaning-WS-202501151005',
           ['appliance', 'demo'],
           {
             location: 'kitchen',
             subject: 'oven',
             action: 'cleaning',
             shotType: 'WS',
-            date: '202511031005', // Validates date format: yyyymmddhhmm
+            date: '202501151005', // Validates date format: yyyymmddhhmm
           }
         );
       }
