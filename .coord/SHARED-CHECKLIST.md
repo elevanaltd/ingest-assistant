@@ -134,7 +134,7 @@
 - [ ] Document empirical findings (update error handling specs with real-world data)
 
 **Priority 4: CFEx Settings Tab + Browse UX (2 days) - ✅ COMPLETE**
-**Status:** COMPLETE (PR #83 ready for merge, 751 tests passing)
+**Status:** COMPLETE (PR #83 merged, 764 tests passing)
 **Timeline:** Week 2 (COMPLETE)
 **Deliverables:**
 - [x] CFEx Transfer Settings Tab (default paths: source, photos, videos)
@@ -142,8 +142,22 @@
 - [x] Browse defaultPath support (dialogs open at current input path)
 - [x] Source path defaults (loads from config or /Volumes/Untitled/DCIM/100_FUJI)
 - [x] Extended timeout (60s vs 10s - allows time for network volume navigation)
-- [x] Quality gates: 751/751 tests passing, lint 0 errors, typecheck 0 errors
+- [x] Quality gates: 764/766 tests passing, lint 0 errors, typecheck 0 errors
 - [x] Code review: APPROVED (code-review-specialist, 10/10 reliability score)
+
+**UX Enhancements (Nov 25) - ✅ COMPLETE**
+**Status:** COMPLETE (764 tests passing)
+**Deliverables:**
+- [x] Destination enable/disable checkboxes (redo only photos or only videos)
+  - Frontend: checkboxes in FolderPicker, state in CfexTransferWindow
+  - Backend: enabledDestinations filtering in scanSourceFiles
+  - Tests: 12 new tests (7 frontend + 5 backend)
+  - TDD: 9a666fe→b1b0142 (UI) | 4037a54→4bdb285 (backend)
+- [x] canStart bugfix (disable Start button during auto-detection)
+  - Problem: Start enabled with default path before CFEx card detected (PR #85 review)
+  - Fix: Added `&& !state.isDetecting` to canStart condition
+  - Tests: 1 new test (8b4b2d9→2f4b20d)
+- [x] Backward compatible (enabledDestinations defaults to both true)
 
 **Path Intelligence (deferred to Phase 1a-POLISH, parallel to Phase 1b)**
 - [ ] MRU paths (remember last-used folders per project, suggest on next launch)
@@ -483,9 +497,10 @@
 ---
 
 ## Last Updated
-2025-11-25 (Priority 4 CFEx Settings Tab + Browse UX complete - holistic-orchestrator)
-**Tests:** 751/751 passing + 2 skipped, CI GREEN
-**Priority 4:** Settings tab + Browse defaultPath + folder creation + 60s timeout ALL COMPLETE
-**Validation:** code-review-specialist APPROVED (10/10 reliability score)
-**PR #83:** Ready for merge (8 commits: RED→GREEN for Settings + defaultPath fixes)
+2025-11-25 (Destination Checkboxes + canStart Bugfix complete - holistic-orchestrator)
+**Tests:** 764/766 passing + 2 skipped, CI GREEN
+**Priority 4:** Settings tab + Browse + UX enhancements ALL COMPLETE
+**UX Enhancements:** Destination enable/disable checkboxes ✅, canStart auto-detection fix ✅
+**TDD Evidence:** 9a666fe→b1b0142→4037a54→4bdb285 (checkboxes) | 8b4b2d9→2f4b20d (canStart)
+**PR #85 Review:** canStart bugfix resolves code review concern (wrong-path transfer prevention)
 **Next:** Priority 3 Integration Testing (LucidLink + NFS empirical validation)
