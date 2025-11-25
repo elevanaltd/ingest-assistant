@@ -56,6 +56,7 @@ export interface ElectronAPI {
     startTransfer: (config: {
       source: string;
       destinations: { photos: string; rawVideos: string };
+      enabledDestinations: { photos: boolean; rawVideos: boolean };
     }) => Promise<{
       success: boolean;
       filesTransferred: number;

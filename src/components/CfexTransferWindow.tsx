@@ -67,6 +67,10 @@ interface TransferState {
     photos: string
     rawVideos: string
   }
+  enabledDestinations: {
+    photos: boolean
+    rawVideos: boolean
+  }
   currentFile: string | null
   filesCompleted: number
   filesTotal: number
@@ -90,10 +94,15 @@ interface FolderPickerProps {
     rawVideos: string
   }
   onDestinationChange: (paths: { photos: string; rawVideos: string }) => void
+  enabledDestinations: {
+    photos: boolean
+    rawVideos: boolean
+  }
+  onEnabledDestinationsChange: (enabled: { photos: boolean; rawVideos: boolean }) => void
   disabled: boolean
 }
 
-function FolderPicker({ sourcePath, onSourceChange, destinationPaths, onDestinationChange, disabled }: FolderPickerProps) {
+function FolderPicker({ sourcePath, onSourceChange, destinationPaths, onDestinationChange, enabledDestinations, onEnabledDestinationsChange, disabled }: FolderPickerProps) {
   const [isBrowsing, setIsBrowsing] = useState(false)
   const [browseError, setBrowseError] = useState<string | null>(null)
 
@@ -190,29 +199,41 @@ function FolderPicker({ sourcePath, onSourceChange, destinationPaths, onDestinat
       </div>
 
       <div style={{ marginBottom: '12px' }}>
-        <label htmlFor="photos-dest" style={{ display: 'block', marginBottom: '4px', fontSize: '13px', fontWeight: 500 }}>
-          Photos Destination (LucidLink)
-        </label>
+        <div style={{ display: 'flex', alignItems: 'center', marginBottom: '4px', gap: '8px' }}>
+          <input
+            id="photos-enabled"
+            type="checkbox"
+            checked={enabledDestinations.photos}
+            onChange={(e) => onEnabledDestinationsChange({ ...enabledDestinations, photos: e.target.checked })}
+            disabled={disabled}
+            aria-label="Photos Destination (LucidLink)"
+            style={{ cursor: disabled ? 'not-allowed' : 'pointer' }}
+          />
+          <label htmlFor="photos-dest" style={{ fontSize: '13px', fontWeight: 500 }}>
+            Photos Destination (LucidLink)
+          </label>
+        </div>
         <div style={{ display: 'flex', gap: '8px' }}>
           <input
             id="photos-dest"
             type="text"
             value={destinationPaths.photos}
             onChange={(e) => onDestinationChange({ ...destinationPaths, photos: e.target.value })}
-            disabled={disabled}
+            disabled={disabled || !enabledDestinations.photos}
             placeholder="/Volumes/LucidLink/photos"
-            style={{ flex: 1, padding: '6px 8px', fontSize: '13px' }}
+            style={{ flex: 1, padding: '6px 8px', fontSize: '13px', opacity: enabledDestinations.photos ? 1 : 0.6 }}
           />
           <button
             onClick={handleBrowsePhotos}
-            disabled={disabled || isBrowsing}
+            disabled={disabled || isBrowsing || !enabledDestinations.photos}
             style={{
               padding: '6px 16px',
               fontSize: '13px',
               backgroundColor: isBrowsing ? '#ffc107' : '#f0f0f0',
               border: '1px solid #ccc',
               borderRadius: '4px',
-              cursor: (disabled || isBrowsing) ? 'not-allowed' : 'pointer'
+              cursor: (disabled || isBrowsing || !enabledDestinations.photos) ? 'not-allowed' : 'pointer',
+              opacity: enabledDestinations.photos ? 1 : 0.6
             }}
           >
             {isBrowsing ? 'Opening...' : 'Browse...'}
@@ -221,29 +242,41 @@ function FolderPicker({ sourcePath, onSourceChange, destinationPaths, onDestinat
       </div>
 
       <div style={{ marginBottom: '12px' }}>
-        <label htmlFor="videos-dest" style={{ display: 'block', marginBottom: '4px', fontSize: '13px', fontWeight: 500 }}>
-          Raw Videos Destination (Ubuntu)
-        </label>
+        <div style={{ display: 'flex', alignItems: 'center', marginBottom: '4px', gap: '8px' }}>
+          <input
+            id="videos-enabled"
+            type="checkbox"
+            checked={enabledDestinations.rawVideos}
+            onChange={(e) => onEnabledDestinationsChange({ ...enabledDestinations, rawVideos: e.target.checked })}
+            disabled={disabled}
+            aria-label="Raw Videos Destination (Ubuntu)"
+            style={{ cursor: disabled ? 'not-allowed' : 'pointer' }}
+          />
+          <label htmlFor="videos-dest" style={{ fontSize: '13px', fontWeight: 500 }}>
+            Raw Videos Destination (Ubuntu)
+          </label>
+        </div>
         <div style={{ display: 'flex', gap: '8px' }}>
           <input
             id="videos-dest"
             type="text"
             value={destinationPaths.rawVideos}
             onChange={(e) => onDestinationChange({ ...destinationPaths, rawVideos: e.target.value })}
-            disabled={disabled}
+            disabled={disabled || !enabledDestinations.rawVideos}
             placeholder="/Volumes/Ubuntu/videos-raw"
-            style={{ flex: 1, padding: '6px 8px', fontSize: '13px' }}
+            style={{ flex: 1, padding: '6px 8px', fontSize: '13px', opacity: enabledDestinations.rawVideos ? 1 : 0.6 }}
           />
           <button
             onClick={handleBrowseVideos}
-            disabled={disabled || isBrowsing}
+            disabled={disabled || isBrowsing || !enabledDestinations.rawVideos}
             style={{
               padding: '6px 16px',
               fontSize: '13px',
               backgroundColor: isBrowsing ? '#ffc107' : '#f0f0f0',
               border: '1px solid #ccc',
               borderRadius: '4px',
-              cursor: (disabled || isBrowsing) ? 'not-allowed' : 'pointer'
+              cursor: (disabled || isBrowsing || !enabledDestinations.rawVideos) ? 'not-allowed' : 'pointer',
+              opacity: enabledDestinations.rawVideos ? 1 : 0.6
             }}
           >
             {isBrowsing ? 'Opening...' : 'Browse...'}
@@ -327,6 +360,10 @@ export function CfexTransferWindow() {
     destinationPaths: {
       photos: '/Volumes/videos-current/2. WORKING PROJECTS/',
       rawVideos: '/Volumes/EAV_Video_RAW/'
+    },
+    enabledDestinations: {
+      photos: true,
+      rawVideos: true
     },
     currentFile: null,
     filesCompleted: 0,
@@ -445,7 +482,8 @@ export function CfexTransferWindow() {
       // Invoke via contextBridge abstraction
       const result: TransferResult = await window.electronAPI.cfex.startTransfer({
         source: state.sourcePath,
-        destinations: state.destinationPaths
+        destinations: state.destinationPaths,
+        enabledDestinations: state.enabledDestinations
       })
 
       // Update final state
@@ -502,6 +540,8 @@ export function CfexTransferWindow() {
         onSourceChange={(path) => setState(prev => ({ ...prev, sourcePath: path }))}
         destinationPaths={state.destinationPaths}
         onDestinationChange={(paths) => setState(prev => ({ ...prev, destinationPaths: paths }))}
+        enabledDestinations={state.enabledDestinations}
+        onEnabledDestinationsChange={(enabled) => setState(prev => ({ ...prev, enabledDestinations: enabled }))}
         disabled={state.isDetecting || state.status !== 'idle'}
       />
 

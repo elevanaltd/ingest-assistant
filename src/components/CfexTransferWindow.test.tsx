@@ -77,10 +77,10 @@ describe('CfexTransferWindow', () => {
       // ARRANGE: Component with no active transfer
       render(<CfexTransferWindow />)
 
-      // ASSERT: Folder picker inputs visible
+      // ASSERT: Folder picker inputs visible (use more specific selectors to avoid checkbox/input ambiguity)
       expect(screen.getByLabelText(/source.*folder/i)).toBeInTheDocument()
-      expect(screen.getByLabelText(/photos.*destination/i)).toBeInTheDocument()
-      expect(screen.getByLabelText(/.*videos.*destination/i)).toBeInTheDocument()
+      expect(screen.getByPlaceholderText(/LucidLink/i)).toBeInTheDocument()
+      expect(screen.getByPlaceholderText(/Ubuntu/i)).toBeInTheDocument()
     })
 
     test('renders start transfer button when idle', () => {
@@ -544,7 +544,7 @@ describe('CfexTransferWindow', () => {
       })
 
       // Wait for inputs to be enabled after detection
-      const photosInput = await screen.findByLabelText(/photos destination/i)
+      const photosInput = await screen.findByDisplayValue(/videos-current/i)
       await waitFor(() => {
         expect(photosInput).not.toBeDisabled()
       })
@@ -570,7 +570,7 @@ describe('CfexTransferWindow', () => {
       })
 
       // Wait for inputs to be enabled after detection
-      const videosInput = await screen.findByLabelText(/raw videos destination/i)
+      const videosInput = await screen.findByDisplayValue(/EAV_Video_RAW/i)
       await waitFor(() => {
         expect(videosInput).not.toBeDisabled()
       })
@@ -808,10 +808,10 @@ describe('CfexTransferWindow', () => {
       // ACT
       render(<CfexTransferWindow />)
 
-      // ASSERT
+      // ASSERT: Use placeholder text to avoid checkbox/input ambiguity
       await waitFor(() => {
-        const photosInput = screen.getByLabelText(/photos destination/i) as HTMLInputElement
-        const videosInput = screen.getByLabelText(/raw videos destination/i) as HTMLInputElement
+        const photosInput = screen.getByPlaceholderText(/LucidLink/i) as HTMLInputElement
+        const videosInput = screen.getByPlaceholderText(/Ubuntu/i) as HTMLInputElement
         expect(photosInput.value).toBe('/Volumes/LucidLink/')
         expect(videosInput.value).toBe('/Volumes/Ubuntu/')
       })
