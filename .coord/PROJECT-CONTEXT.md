@@ -199,7 +199,9 @@ const testConfig: TransferConfig = {
 - ✅ Folder picker buttons (Browse... for all 3 path inputs)
 - ✅ Percentage formatting (2 decimal places: 25.00% not 25.0000001%)
 - ✅ Cancel button (basic UI-only, full graceful cancellation in Week 2)
-- ✅ Timeout protection (10s limit prevents infinite hang)
+- ✅ Timeout protection (60s limit prevents infinite hang - extended from 10s)
+- ✅ Browse defaultPath (dialogs open at current input path, not last known location)
+- ✅ Source path defaults (loads from config or hardcoded /Volumes/Untitled/DCIM/100_FUJI)
 
 **Major Features Completed (v2.2.0 Baseline):**
   - ✅ **PR #77 R1.1 Schema Alignment (Nov 19)** - CEP Panel contract compliance
@@ -348,11 +350,12 @@ const testConfig: TransferConfig = {
 
 **Security Test Coverage:** +23 security tests (command injection + media server auth)
 
-## Current Focus (2025-11-25 Updated - Priority 2 GREEN + REFACTOR Complete)
-CFEX_PHASE_1A::Week_1_COMPLETE(100%)→Week_2_PROGRESS(Priority_1_COMPLETE+Priority_2_SERVICE_COMPLETE)→IPC+UI_Integration_NEXT
-COMPLETION::Priority_2[cfexAutoDetect_GREEN+REFACTOR]→Validation_Chain[APPROVED]→CI_GREEN[726_tests_passing]
-PRIORITY_2::Service_Layer_COMPLETE[async_I/O+timeout+error_handling]→IPC_Handler_NEXT[cfex:detect-sources]→UI_Integration[auto-populate+multi-card]
-ARCHITECTURAL::REFACTOR_Phase_Complete[fs/promises+timeout_protection+explicit_errors]→System_Coherence_9/10→Production_Risk_LOW
+## Current Focus (2025-11-25 Updated - Destination Checkboxes + canStart Bugfix Complete)
+CFEX_PHASE_1A::Week_1_COMPLETE(100%)→Week_2_PROGRESS(Priority_1+2+4_COMPLETE+UX_Enhancements)→Priority_3_Integration_Testing_NEXT
+COMPLETION::Destination_Checkboxes[enable/disable_photos_or_videos]→canStart_Bugfix[disable_during_auto-detection]→CI_GREEN[764_tests_passing]
+FEATURE_DELIVERED::enabledDestinations[photos+rawVideos_toggles]→skip_disabled_destinations_in_transfer→UX_allows_redo_single_type
+BUGFIX_DELIVERED::canStart_disabled_during_isDetecting→prevents_wrong_path_transfer→PR_#85_review_resolved
+ARCHITECTURAL::Frontend_checkboxes→IPC_enabledDestinations→Backend_filtering[scanSourceFiles]→backward_compatible[defaults_true]
 D3_BLUEPRINT::compressed_to_OCTAVE→65.5%_reduction→100%_decision_logic_preserved→implementation_ready
 MICROPHASE_STRUCTURE::Phase_1a[8d_CORE+5d_POLISH]→Phase_1b[proxy_generation]→Phase_1c[toggles+metadata]
 CROSS_ECOSYSTEM::Issue_#63_deferred→guardrails_required_4-6_weeks→after_CFEx_Phase_1_complete
@@ -384,24 +387,29 @@ CROSS_ECOSYSTEM::Issue_#63_deferred→guardrails_required_4-6_weeks→after_CFEx
 - [x] PR #78 + #79 MERGED to main - all quality gates GREEN
 - [x] D3 Blueprint compressed to OCTAVE (65.5% reduction, 100% decision logic preserved)
 
-**Week 2-3 In Progress: 🔄 ACTIVE (Nov 21+)**
-- [ ] **Priority 1: Error Handling** (4 days - ACTIVE in Claude Code Web)
-  - implementation-lead executing with TDD discipline
-  - Error classification + retry logic + recovery strategies
-  - Target: ~30-40 unit tests, all quality gates GREEN
-  - Timeline: Week 2 Days 1-4
-- [ ] **Priority 2: CFEx Auto-Detection** (2.5 days - PENDING)
-  - macOS + Ubuntu volume scanning
-  - Single-card priority + multi-card selection UI
-  - Timeline: Week 2 Days 1-2.5 (parallel with Priority 1)
-- [ ] **Priority 3: Integration Testing** (4 days - BLOCKED until Priority 1 complete)
+**Week 2-3 In Progress: 🔄 ACTIVE (Nov 21-25)**
+- [x] **Priority 1: Error Handling** ✅ COMPLETE (PR #80 + #81 merged)
+  - errorHandler.ts + retryStrategy.ts + 47 tests
+  - Smart retry logic (exponential backoff: 1s→2s→4s→8s)
+  - Comprehensive error classification (TRANSIENT, FATAL, NETWORK, USER)
+- [x] **Priority 2: CFEx Auto-Detection** ✅ SERVICE COMPLETE
+  - cfexAutoDetect.ts with async I/O, timeout protection, error handling
+  - 19 comprehensive tests (macOS + Ubuntu scanning)
+  - IPC + UI integration remaining (~2 days)
+- [ ] **Priority 3: Integration Testing** (4 days - NEXT)
   - LucidLink cache eviction + NFS stale handle testing
   - Performance baselines + risk scenarios
   - Empirical findings documentation
-  - Timeline: Week 2-3 Days 5-8
+- [x] **Priority 4: CFEx Settings Tab** ✅ COMPLETE (PR #83 merged)
+  - Settings tab with default paths (source, photos, videos)
+  - Browse with defaultPath support (60s timeout)
+  - Folder creation in picker dialog
+- [x] **UX Enhancements** ✅ COMPLETE (Nov 25)
+  - Destination enable/disable checkboxes (transfer only photos or only videos)
+  - canStart bugfix (disabled during auto-detection) - PR #85 review resolved
 
 **Phase 1a-POLISH (deferred to parallel with Phase 1b):**
-- [ ] Priority 4: Path Intelligence (MRU, smart defaults, pinned folders) - 5 days
+- [ ] Path Intelligence (MRU, smart defaults, pinned folders) - 5 days
 - [ ] Priority 5: UI Polish (progress visualization, error log UI) - 5 days
 - [x] B0 Decision (Initial): CONDITIONAL GO (7 blocking conditions identified)
 - [x] Schema R1.1 Foundation: Merged to main, CFEx rebased, zero conflicts, 584 tests GREEN
@@ -450,14 +458,14 @@ CROSS_ECOSYSTEM::Issue_#63_deferred→guardrails_required_4-6_weeks→after_CFEx
 Guardrails→formalize_contract_spec+compatibility_tests+SLO_alerts+deletion_workflow→principal-engineer_re-validation
 
 ## Last Updated
-2025-11-25 (Priority 2 cfexAutoDetect GREEN + REFACTOR complete - holistic-orchestrator)
+2025-11-25 (Destination Checkboxes + canStart Bugfix complete - holistic-orchestrator)
 **Latest Release:** v2.2.0 - Sequential shot numbers baseline (production ready)
-**Active Work:** CFEx Phase 1a Week 2 - Priority 2 IPC + UI Integration (next session)
-**Current Branch:** feat/cfex-work (5 commits pushed, 726/726 tests GREEN)
-**Phase Status:** D0→D1→D2→D3(v1.1+OCTAVE)→B0(FINAL GO)→B2(Week 1 COMPLETE)→B2(Week 2 Service Layer COMPLETE)
+**Active Work:** CFEx Phase 1a Week 2 - Priority 3 Integration Testing NEXT
+**Current Branch:** feat/cfex-work (15 commits, 764/766 tests GREEN + 2 skipped)
+**Phase Status:** D0→D1→D2→D3(v1.1+OCTAVE)→B0(FINAL GO)→B2(Week 1 COMPLETE)→B2(Week 2 Priority 1+2+4+UX COMPLETE)
 **Week 1 Status:** Transfer mechanism + integrity validation + IPC handlers + UI COMPLETE
-**Week 2 Status:** Priority 1 Error Handling MERGED, Priority 2 Service Layer COMPLETE, IPC+UI Integration NEXT
+**Week 2 Status:** Priority 1 Error Handling ✅, Priority 2 Auto-Detection (service) ✅, Priority 4 Settings/Browse ✅
+**UX Enhancements:** Destination enable/disable checkboxes ✅, canStart auto-detection fix ✅
 **D3 Blueprint:** Compressed to OCTAVE (65.5% reduction, 100% decision logic preserved)
-**Validation Chain:** code-review + quality-observer + technical-architect ALL APPROVED
-**Timeline:** IPC handler (0.5d) + UI integration (1d) + Quality validation (0.5d) = ~2 days remaining
-**Next Work:** IPC handler (cfex:detect-sources) + CfexTransferWindow UI integration
+**Recent Commits:** 9a666fe→b1b0142 (checkboxes) | 4037a54→4bdb285 (backend) | 8b4b2d9→2f4b20d (canStart fix)
+**Next Work:** Priority 3 Integration Testing (LucidLink + NFS empirical validation)

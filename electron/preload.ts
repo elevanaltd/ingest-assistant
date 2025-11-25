@@ -5,8 +5,8 @@ import type { FileMetadata, AppConfig, AIAnalysisResult, Lexicon, LexiconConfig,
 // the ipcRenderer without exposing the entire object
 contextBridge.exposeInMainWorld('electronAPI', {
   // File operations
-  selectFolder: (): Promise<string | null> =>
-    ipcRenderer.invoke('file:select-folder'),
+  selectFolder: (startPath?: string): Promise<string | null> =>
+    ipcRenderer.invoke('file:select-folder', startPath),
 
   // CRITICAL-1 FIX: Remove folderPath parameter (security boundary enforced in main process)
   loadFiles: (): Promise<FileMetadata[]> =>

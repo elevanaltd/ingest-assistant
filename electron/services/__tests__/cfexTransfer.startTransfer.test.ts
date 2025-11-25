@@ -271,4 +271,127 @@ describe('startTransfer - Full Orchestration', () => {
     expect(lastProgress.totalBytesTransferred).toBeGreaterThan(0);
     expect(lastProgress.totalBytesExpected).toBe(totalExpected);
   });
+
+  test('skips photos when enabledDestinations.photos is false', async () => {
+    // ARRANGE: Mock CFEx card with photos and videos
+    const files = [
+      { name: 'photo1.jpg', size: 100 * 1024, type: 'photo' },
+      { name: 'photo2.jpeg', size: 100 * 1024, type: 'photo' },
+      { name: 'video1.mov', size: 500 * 1024, type: 'video' },
+    ];
+
+    for (const file of files) {
+      const filePath = path.join(SOURCE_DIR, file.name);
+      await fs.writeFile(filePath, Buffer.alloc(file.size, 'x'));
+    }
+
+    const mockConfig: TransferConfig = {
+      source: SOURCE_DIR,
+      destinations: {
+        photos: DEST_PHOTOS_DIR,
+        rawVideos: DEST_VIDEOS_DIR,
+      },
+      enabledDestinations: {
+        photos: false,
+        rawVideos: true,
+      },
+    };
+
+    // ACT: Transfer with photos disabled
+    const service = new CfexTransferService();
+    const result = await service.startTransfer(mockConfig);
+
+    // ASSERT: Only video files transferred (1 video, 0 photos)
+    expect(result.filesTransferred).toBe(1);
+    expect(result.filesTotal).toBe(1);
+    expect(result.success).toBe(true);
+
+    // ASSERT: Photos destination empty, videos destination has file
+    const photosFiles = await fs.readdir(DEST_PHOTOS_DIR);
+    const videosFiles = await fs.readdir(DEST_VIDEOS_DIR);
+    expect(photosFiles.length).toBe(0);
+    expect(videosFiles.length).toBe(1);
+    expect(videosFiles[0]).toBe('video1.mov');
+  });
+
+  test('skips videos when enabledDestinations.rawVideos is false', async () => {
+    // ARRANGE: Mock CFEx card with photos and videos
+    const files = [
+      { name: 'photo1.jpg', size: 100 * 1024, type: 'photo' },
+      { name: 'video1.mov', size: 500 * 1024, type: 'video' },
+      { name: 'video2.mp4', size: 500 * 1024, type: 'video' },
+    ];
+
+    for (const file of files) {
+      const filePath = path.join(SOURCE_DIR, file.name);
+      await fs.writeFile(filePath, Buffer.alloc(file.size, 'x'));
+    }
+
+    const mockConfig: TransferConfig = {
+      source: SOURCE_DIR,
+      destinations: {
+        photos: DEST_PHOTOS_DIR,
+        rawVideos: DEST_VIDEOS_DIR,
+      },
+      enabledDestinations: {
+        photos: true,
+        rawVideos: false,
+      },
+    };
+
+    // ACT: Transfer with videos disabled
+    const service = new CfexTransferService();
+    const result = await service.startTransfer(mockConfig);
+
+    // ASSERT: Only photo files transferred (1 photo, 0 videos)
+    expect(result.filesTransferred).toBe(1);
+    expect(result.filesTotal).toBe(1);
+    expect(result.success).toBe(true);
+
+    // ASSERT: Videos destination empty, photos destination has file
+    const photosFiles = await fs.readdir(DEST_PHOTOS_DIR);
+    const videosFiles = await fs.readdir(DEST_VIDEOS_DIR);
+    expect(photosFiles.length).toBe(1);
+    expect(photosFiles[0]).toBe('photo1.jpg');
+    expect(videosFiles.length).toBe(0);
+  });
+
+  test('transfers both when enabledDestinations not provided (backward compatibility)', async () => {
+    // ARRANGE: Mock CFEx card with photos and videos
+    const files = [
+      { name: 'photo1.jpg', size: 100 * 1024, type: 'photo' },
+      { name: 'video1.mov', size: 500 * 1024, type: 'video' },
+    ];
+
+    for (const file of files) {
+      const filePath = path.join(SOURCE_DIR, file.name);
+      await fs.writeFile(filePath, Buffer.alloc(file.size, 'x'));
+    }
+
+    const mockConfig: TransferConfig = {
+      source: SOURCE_DIR,
+      destinations: {
+        photos: DEST_PHOTOS_DIR,
+        rawVideos: DEST_VIDEOS_DIR,
+      },
+      // enabledDestinations NOT provided - should default to all enabled
+    };
+
+    // ACT: Transfer without enabledDestinations
+    const service = new CfexTransferService();
+    const result = await service.startTransfer(mockConfig);
+
+    // ASSERT: Both files transferred
+    expect(result.filesTransferred).toBe(2);
+    expect(result.filesTotal).toBe(2);
+    expect(result.success).toBe(true);
+
+    // ASSERT: Both destinations have files
+    const photosFiles = await fs.readdir(DEST_PHOTOS_DIR);
+    const videosFiles = await fs.readdir(DEST_VIDEOS_DIR);
+    expect(photosFiles.length).toBe(1);
+    expect(photosFiles[0]).toBe('photo1.jpg');
+    expect(videosFiles.length).toBe(1);
+    expect(videosFiles[0]).toBe('video1.mov');
+  });
 });

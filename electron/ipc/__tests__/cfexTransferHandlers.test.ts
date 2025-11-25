@@ -354,6 +354,88 @@ describe('CFEx Transfer IPC Handlers', () => {
       // ACT & ASSERT
       await expect(handler({}, validConfig)).rejects.toThrow('Transfer failed: disk full')
     })
+
+    test('accepts enabledDestinations parameter and passes to service', async () => {
+      // ARRANGE
+      mockService.startTransfer.mockResolvedValue({
+        success: true,
+        filesTransferred: 5,
+        filesTotal: 5,
+        bytesTransferred: 500000,
+        duration: 1000,
+        validationWarnings: [],
+        errors: []
+      })
+
+      registerCfexTransferHandlers(mockWindow)
+      const handler = (ipcMain.handle as any).mock.calls.find(
+        (call: any) => call[0] === 'cfex:start-transfer'
+      )[1]
+
+      const configWithEnabledDestinations = {
+        source: '/Volumes/NO NAME/',
+        destinations: {
+          photos: '/Volumes/videos-current/2. WORKING PROJECTS/test/',
+          rawVideos: '/Volumes/EAV_Video_RAW/test/'
+        },
+        enabledDestinations: {
+          photos: true,
+          rawVideos: false
+        }
+      }
+
+      // ACT
+      const result = await handler({}, configWithEnabledDestinations)
+
+      // ASSERT
+      expect(mockService.startTransfer).toHaveBeenCalledWith(
+        expect.objectContaining({
+          source: configWithEnabledDestinations.source,
+          destinations: configWithEnabledDestinations.destinations,
+          enabledDestinations: { photos: true, rawVideos: false }
+        })
+      )
+      expect(result.success).toBe(true)
+    })
+
+    test('defaults to both destinations enabled when enabledDestinations not provided', async () => {
+      // ARRANGE
+      mockService.startTransfer.mockResolvedValue({
+        success: true,
+        filesTransferred: 10,
+        filesTotal: 10,
+        bytesTransferred: 1000000,
+        duration: 1000,
+        validationWarnings: [],
+        errors: []
+      })
+
+      registerCfexTransferHandlers(mockWindow)
+      const handler = (ipcMain.handle as any).mock.calls.find(
+        (call: any) => call[0] === 'cfex:start-transfer'
+      )[1]
+
+      const configWithoutEnabledDestinations = {
+        source: '/Volumes/NO NAME/',
+        destinations: {
+          photos: '/Volumes/videos-current/2. WORKING PROJECTS/test/',
+          rawVideos: '/Volumes/EAV_Video_RAW/test/'
+        }
+      }
+
+      // ACT
+      const result = await handler({}, configWithoutEnabledDestinations)
+
+      // ASSERT
+      expect(mockService.startTransfer).toHaveBeenCalledWith(
+        expect.objectContaining({
+          source: configWithoutEnabledDestinations.source,
+          destinations: configWithoutEnabledDestinations.destinations,
+          enabledDestinations: { photos: true, rawVideos: true }
+        })
+      )
+      expect(result.success).toBe(true)
+    })
   })
 
   describe('cfex:get-transfer-state handler', () => {

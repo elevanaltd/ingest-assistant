@@ -1,5 +1,8 @@
 import { useState, useEffect } from 'react'
 
+// Default CFEx paths (same as SettingsModal)
+const DEFAULT_CFEX_SOURCE = '/Volumes/Untitled/DCIM/100_FUJI'
+
 /**
  * CFEx Transfer Window Component
  *
@@ -64,6 +67,10 @@ interface TransferState {
     photos: string
     rawVideos: string
   }
+  enabledDestinations: {
+    photos: boolean
+    rawVideos: boolean
+  }
   currentFile: string | null
   filesCompleted: number
   filesTotal: number
@@ -87,14 +94,19 @@ interface FolderPickerProps {
     rawVideos: string
   }
   onDestinationChange: (paths: { photos: string; rawVideos: string }) => void
+  enabledDestinations: {
+    photos: boolean
+    rawVideos: boolean
+  }
+  onEnabledDestinationsChange: (enabled: { photos: boolean; rawVideos: boolean }) => void
   disabled: boolean
 }
 
-function FolderPicker({ sourcePath, onSourceChange, destinationPaths, onDestinationChange, disabled }: FolderPickerProps) {
+function FolderPicker({ sourcePath, onSourceChange, destinationPaths, onDestinationChange, enabledDestinations, onEnabledDestinationsChange, disabled }: FolderPickerProps) {
   const [isBrowsing, setIsBrowsing] = useState(false)
   const [browseError, setBrowseError] = useState<string | null>(null)
 
-  async function handleBrowseWithTimeout(onSelect: (path: string) => void) {
+  async function handleBrowseWithTimeout(onSelect: (path: string) => void, startPath?: string) {
     setIsBrowsing(true)
     setBrowseError(null)
 
@@ -104,11 +116,11 @@ function FolderPicker({ sourcePath, onSourceChange, destinationPaths, onDestinat
     try {
       // Race between folder selection and 10-second timeout
       const path = await Promise.race([
-        window.electronAPI.selectFolder(),
+        window.electronAPI.selectFolder(startPath), // Pass current path as defaultPath
         new Promise<null>((_, reject) => {
           timeoutId = setTimeout(() => {
-            reject(new Error('Folder picker timeout (10s). Disconnected volumes may cause delays.'))
-          }, 10000)
+            reject(new Error('Folder picker timeout (60s). Disconnected volumes may cause delays.'))
+          }, 60000)
         })
       ])
 
@@ -136,15 +148,15 @@ function FolderPicker({ sourcePath, onSourceChange, destinationPaths, onDestinat
   }
 
   async function handleBrowseSource() {
-    await handleBrowseWithTimeout(onSourceChange)
+    await handleBrowseWithTimeout(onSourceChange, sourcePath)
   }
 
   async function handleBrowsePhotos() {
-    await handleBrowseWithTimeout((path) => onDestinationChange({ ...destinationPaths, photos: path }))
+    await handleBrowseWithTimeout((path) => onDestinationChange({ ...destinationPaths, photos: path }), destinationPaths.photos)
   }
 
   async function handleBrowseVideos() {
-    await handleBrowseWithTimeout((path) => onDestinationChange({ ...destinationPaths, rawVideos: path }))
+    await handleBrowseWithTimeout((path) => onDestinationChange({ ...destinationPaths, rawVideos: path }), destinationPaths.rawVideos)
   }
 
   return (
@@ -187,29 +199,41 @@ function FolderPicker({ sourcePath, onSourceChange, destinationPaths, onDestinat
       </div>
 
       <div style={{ marginBottom: '12px' }}>
-        <label htmlFor="photos-dest" style={{ display: 'block', marginBottom: '4px', fontSize: '13px', fontWeight: 500 }}>
-          Photos Destination (LucidLink)
-        </label>
+        <div style={{ display: 'flex', alignItems: 'center', marginBottom: '4px', gap: '8px' }}>
+          <input
+            id="photos-enabled"
+            type="checkbox"
+            checked={enabledDestinations.photos}
+            onChange={(e) => onEnabledDestinationsChange({ ...enabledDestinations, photos: e.target.checked })}
+            disabled={disabled}
+            aria-label="Photos Destination (LucidLink)"
+            style={{ cursor: disabled ? 'not-allowed' : 'pointer' }}
+          />
+          <label htmlFor="photos-dest" style={{ fontSize: '13px', fontWeight: 500 }}>
+            Photos Destination (LucidLink)
+          </label>
+        </div>
         <div style={{ display: 'flex', gap: '8px' }}>
           <input
             id="photos-dest"
             type="text"
             value={destinationPaths.photos}
             onChange={(e) => onDestinationChange({ ...destinationPaths, photos: e.target.value })}
-            disabled={disabled}
+            disabled={disabled || !enabledDestinations.photos}
             placeholder="/Volumes/LucidLink/photos"
-            style={{ flex: 1, padding: '6px 8px', fontSize: '13px' }}
+            style={{ flex: 1, padding: '6px 8px', fontSize: '13px', opacity: enabledDestinations.photos ? 1 : 0.6 }}
           />
           <button
             onClick={handleBrowsePhotos}
-            disabled={disabled || isBrowsing}
+            disabled={disabled || isBrowsing || !enabledDestinations.photos}
             style={{
               padding: '6px 16px',
               fontSize: '13px',
               backgroundColor: isBrowsing ? '#ffc107' : '#f0f0f0',
               border: '1px solid #ccc',
               borderRadius: '4px',
-              cursor: (disabled || isBrowsing) ? 'not-allowed' : 'pointer'
+              cursor: (disabled || isBrowsing || !enabledDestinations.photos) ? 'not-allowed' : 'pointer',
+              opacity: enabledDestinations.photos ? 1 : 0.6
             }}
           >
             {isBrowsing ? 'Opening...' : 'Browse...'}
@@ -218,29 +242,41 @@ function FolderPicker({ sourcePath, onSourceChange, destinationPaths, onDestinat
       </div>
 
       <div style={{ marginBottom: '12px' }}>
-        <label htmlFor="videos-dest" style={{ display: 'block', marginBottom: '4px', fontSize: '13px', fontWeight: 500 }}>
-          Raw Videos Destination (Ubuntu)
-        </label>
+        <div style={{ display: 'flex', alignItems: 'center', marginBottom: '4px', gap: '8px' }}>
+          <input
+            id="videos-enabled"
+            type="checkbox"
+            checked={enabledDestinations.rawVideos}
+            onChange={(e) => onEnabledDestinationsChange({ ...enabledDestinations, rawVideos: e.target.checked })}
+            disabled={disabled}
+            aria-label="Raw Videos Destination (Ubuntu)"
+            style={{ cursor: disabled ? 'not-allowed' : 'pointer' }}
+          />
+          <label htmlFor="videos-dest" style={{ fontSize: '13px', fontWeight: 500 }}>
+            Raw Videos Destination (Ubuntu)
+          </label>
+        </div>
         <div style={{ display: 'flex', gap: '8px' }}>
           <input
             id="videos-dest"
             type="text"
             value={destinationPaths.rawVideos}
             onChange={(e) => onDestinationChange({ ...destinationPaths, rawVideos: e.target.value })}
-            disabled={disabled}
+            disabled={disabled || !enabledDestinations.rawVideos}
             placeholder="/Volumes/Ubuntu/videos-raw"
-            style={{ flex: 1, padding: '6px 8px', fontSize: '13px' }}
+            style={{ flex: 1, padding: '6px 8px', fontSize: '13px', opacity: enabledDestinations.rawVideos ? 1 : 0.6 }}
           />
           <button
             onClick={handleBrowseVideos}
-            disabled={disabled || isBrowsing}
+            disabled={disabled || isBrowsing || !enabledDestinations.rawVideos}
             style={{
               padding: '6px 16px',
               fontSize: '13px',
               backgroundColor: isBrowsing ? '#ffc107' : '#f0f0f0',
               border: '1px solid #ccc',
               borderRadius: '4px',
-              cursor: (disabled || isBrowsing) ? 'not-allowed' : 'pointer'
+              cursor: (disabled || isBrowsing || !enabledDestinations.rawVideos) ? 'not-allowed' : 'pointer',
+              opacity: enabledDestinations.rawVideos ? 1 : 0.6
             }}
           >
             {isBrowsing ? 'Opening...' : 'Browse...'}
@@ -320,10 +356,14 @@ export function CfexTransferWindow() {
   const [state, setState] = useState<TransferState>({
     status: 'idle',
     isDetecting: false,
-    sourcePath: '',
+    sourcePath: DEFAULT_CFEX_SOURCE, // Start with default, will be overridden by auto-detect or saved config
     destinationPaths: {
       photos: '/Volumes/videos-current/2. WORKING PROJECTS/',
       rawVideos: '/Volumes/EAV_Video_RAW/'
+    },
+    enabledDestinations: {
+      photos: true,
+      rawVideos: true
     },
     currentFile: null,
     filesCompleted: 0,
@@ -335,6 +375,30 @@ export function CfexTransferWindow() {
     warnings: [],
     errors: []
   })
+
+  // Load saved CFEx config on mount (before auto-detect)
+  useEffect(() => {
+    if (!window.electronAPI?.loadConfig) {
+      console.warn('[CfexTransferWindow] loadConfig not available')
+      return
+    }
+
+    window.electronAPI.loadConfig().then(config => {
+      const cfexConfig = config?.cfex
+      if (cfexConfig) {
+        setState(prev => ({
+          ...prev,
+          sourcePath: cfexConfig.defaultSource || prev.sourcePath,
+          destinationPaths: {
+            photos: cfexConfig.defaultPhotos || prev.destinationPaths.photos,
+            rawVideos: cfexConfig.defaultVideos || prev.destinationPaths.rawVideos
+          }
+        }))
+      }
+    }).catch(err => {
+      console.warn('[CfexTransferWindow] Failed to load config:', err)
+    })
+  }, [])
 
   // Listen to progress events from main process
   useEffect(() => {
@@ -418,7 +482,8 @@ export function CfexTransferWindow() {
       // Invoke via contextBridge abstraction
       const result: TransferResult = await window.electronAPI.cfex.startTransfer({
         source: state.sourcePath,
-        destinations: state.destinationPaths
+        destinations: state.destinationPaths,
+        enabledDestinations: state.enabledDestinations
       })
 
       // Update final state
@@ -441,7 +506,7 @@ export function CfexTransferWindow() {
     }
   }
 
-  const canStart = Boolean(state.sourcePath) && state.status === 'idle'
+  const canStart = Boolean(state.sourcePath) && state.status === 'idle' && !state.isDetecting
   const isTransferring = state.status !== 'idle' && state.status !== 'complete' && state.status !== 'error'
 
   // Basic cancel handler (Week 1 - UI only)
@@ -475,6 +540,8 @@ export function CfexTransferWindow() {
         onSourceChange={(path) => setState(prev => ({ ...prev, sourcePath: path }))}
         destinationPaths={state.destinationPaths}
         onDestinationChange={(paths) => setState(prev => ({ ...prev, destinationPaths: paths }))}
+        enabledDestinations={state.enabledDestinations}
+        onEnabledDestinationsChange={(enabled) => setState(prev => ({ ...prev, enabledDestinations: enabled }))}
         disabled={state.isDetecting || state.status !== 'idle'}
       />
 

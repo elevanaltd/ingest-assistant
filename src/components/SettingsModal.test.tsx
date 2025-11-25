@@ -598,4 +598,254 @@ describe('SettingsModal', () => {
       });
     });
   });
+
+  /**
+   * CFEx Transfer Settings Tab Tests
+   *
+   * TDD RED Phase - Tests for configurable default paths
+   * Feature: Priority 4 - CFEx Default Paths + Folder Creation
+   */
+  describe('CFEx Transfer Settings Tab', () => {
+    beforeEach(() => {
+      // Mock window.electronAPI with CFEx config methods
+      window.electronAPI = {
+        getAIConfig: vi.fn().mockResolvedValue({
+          provider: 'openrouter',
+          model: 'anthropic/claude-3.5-sonnet',
+          apiKey: '***masked***'
+        }),
+        isAIConfigured: vi.fn().mockResolvedValue(true),
+        updateAIConfig: vi.fn().mockResolvedValue({ success: true }),
+        testAIConnection: vi.fn().mockResolvedValue({ success: true }),
+        testSavedAIConnection: vi.fn().mockResolvedValue({ success: true }),
+        getAIModels: vi.fn().mockResolvedValue([]),
+        loadConfig: vi.fn().mockResolvedValue({
+          lexicon: {},
+          cfex: {
+            defaultSource: '/Volumes/Untitled/DCIM/100_FUJI',
+            defaultPhotos: '/Volumes/videos-current/2. WORKING PROJECTS/',
+            defaultVideos: '/Volumes/EAV_Video_RAW/'
+          }
+        }),
+        saveConfig: vi.fn().mockResolvedValue(true),
+        selectFolder: vi.fn().mockResolvedValue('/selected/path'),
+        batchStart: vi.fn(async () => 'mock-queue-id'),
+        batchCancel: vi.fn(async () => ({ success: true })),
+        batchGetStatus: vi.fn(async () => ({
+          items: [],
+          status: 'idle',
+          currentFile: null
+        })),
+        onBatchProgress: vi.fn(() => () => {}),
+        onTranscodeProgress: vi.fn(() => () => {}),
+      } as Partial<typeof window.electronAPI> as typeof window.electronAPI;
+    });
+
+    it('should render CFEx Transfer tab alongside Lexicon and AI tabs', () => {
+      render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
+
+      expect(screen.getByText('Lexicon')).toBeInTheDocument();
+      expect(screen.getByText('AI Connection')).toBeInTheDocument();
+      expect(screen.getByText('CFEx Transfer')).toBeInTheDocument();
+    });
+
+    it('should switch to CFEx Transfer tab when clicked', async () => {
+      render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
+
+      const cfexTab = screen.getByText('CFEx Transfer');
+      fireEvent.click(cfexTab);
+
+      // Should show CFEx config form elements
+      await waitFor(() => {
+        expect(screen.getByLabelText(/default source folder/i)).toBeInTheDocument();
+        expect(screen.getByLabelText(/default photos destination/i)).toBeInTheDocument();
+        expect(screen.getByLabelText(/default raw videos destination/i)).toBeInTheDocument();
+      });
+    });
+
+    it('should load saved CFEx config when switching to CFEx tab', async () => {
+      render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
+
+      fireEvent.click(screen.getByText('CFEx Transfer'));
+
+      await waitFor(() => {
+        expect(window.electronAPI.loadConfig).toHaveBeenCalled();
+      });
+
+      // Should populate inputs with saved values
+      await waitFor(() => {
+        expect(screen.getByDisplayValue('/Volumes/Untitled/DCIM/100_FUJI')).toBeInTheDocument();
+        expect(screen.getByDisplayValue('/Volumes/videos-current/2. WORKING PROJECTS/')).toBeInTheDocument();
+        expect(screen.getByDisplayValue('/Volumes/EAV_Video_RAW/')).toBeInTheDocument();
+      });
+    });
+
+    it('should have Browse buttons for each path field', async () => {
+      render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
+
+      fireEvent.click(screen.getByText('CFEx Transfer'));
+
+      await waitFor(() => {
+        expect(window.electronAPI.loadConfig).toHaveBeenCalled();
+      });
+
+      // Should have 3 Browse buttons (one for each path field)
+      const browseButtons = screen.getAllByRole('button', { name: /browse/i });
+      expect(browseButtons.length).toBe(3);
+    });
+
+    it('should open folder picker when Browse button clicked', async () => {
+      render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
+
+      fireEvent.click(screen.getByText('CFEx Transfer'));
+
+      await waitFor(() => {
+        expect(window.electronAPI.loadConfig).toHaveBeenCalled();
+      });
+
+      const browseButtons = screen.getAllByRole('button', { name: /browse/i });
+      fireEvent.click(browseButtons[0]); // Click first Browse button (source)
+
+      await waitFor(() => {
+        expect(window.electronAPI.selectFolder).toHaveBeenCalled();
+      });
+    });
+
+    it('should update input when folder selected via Browse', async () => {
+      window.electronAPI.selectFolder = vi.fn().mockResolvedValue('/Volumes/NewCard/DCIM');
+
+      render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
+
+      fireEvent.click(screen.getByText('CFEx Transfer'));
+
+      await waitFor(() => {
+        expect(window.electronAPI.loadConfig).toHaveBeenCalled();
+      });
+
+      const browseButtons = screen.getAllByRole('button', { name: /browse/i });
+      fireEvent.click(browseButtons[0]); // Click first Browse button (source)
+
+      await waitFor(() => {
+        expect(screen.getByDisplayValue('/Volumes/NewCard/DCIM')).toBeInTheDocument();
+      });
+    });
+
+    it('should save CFEx configuration when Save button clicked', async () => {
+      render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
+
+      fireEvent.click(screen.getByText('CFEx Transfer'));
+
+      await waitFor(() => {
+        expect(window.electronAPI.loadConfig).toHaveBeenCalled();
+      });
+
+      // Modify a field
+      const sourceInput = screen.getByLabelText(/default source folder/i);
+      fireEvent.change(sourceInput, { target: { value: '/Volumes/NewSource/' } });
+
+      const saveButton = screen.getByText('Save CFEx Settings');
+      fireEvent.click(saveButton);
+
+      await waitFor(() => {
+        expect(window.electronAPI.saveConfig).toHaveBeenCalledWith(
+          expect.objectContaining({
+            cfex: expect.objectContaining({
+              defaultSource: '/Volumes/NewSource/',
+              defaultPhotos: '/Volumes/videos-current/2. WORKING PROJECTS/',
+              defaultVideos: '/Volumes/EAV_Video_RAW/'
+            })
+          })
+        );
+      });
+    });
+
+    it('should show success message after saving CFEx config', async () => {
+      render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
+
+      fireEvent.click(screen.getByText('CFEx Transfer'));
+
+      await waitFor(() => {
+        expect(window.electronAPI.loadConfig).toHaveBeenCalled();
+      });
+
+      const saveButton = screen.getByText('Save CFEx Settings');
+      fireEvent.click(saveButton);
+
+      await waitFor(() => {
+        expect(screen.getByText(/CFEx settings saved successfully/i)).toBeInTheDocument();
+      });
+    });
+
+    it('should show error message when save fails', async () => {
+      window.electronAPI.saveConfig = vi.fn().mockResolvedValue(false);
+
+      render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
+
+      fireEvent.click(screen.getByText('CFEx Transfer'));
+
+      await waitFor(() => {
+        expect(window.electronAPI.loadConfig).toHaveBeenCalled();
+      });
+
+      const saveButton = screen.getByText('Save CFEx Settings');
+      fireEvent.click(saveButton);
+
+      await waitFor(() => {
+        expect(screen.getByText(/failed to save cfex settings/i)).toBeInTheDocument();
+      });
+    });
+
+    it('should use default values when no config exists', async () => {
+      window.electronAPI.loadConfig = vi.fn().mockResolvedValue({
+        lexicon: {}
+        // No cfex property - should use defaults
+      });
+
+      render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
+
+      fireEvent.click(screen.getByText('CFEx Transfer'));
+
+      await waitFor(() => {
+        expect(window.electronAPI.loadConfig).toHaveBeenCalled();
+      });
+
+      // Should show default values
+      await waitFor(() => {
+        expect(screen.getByDisplayValue('/Volumes/Untitled/DCIM/100_FUJI')).toBeInTheDocument();
+        expect(screen.getByDisplayValue('/Volumes/videos-current/2. WORKING PROJECTS/')).toBeInTheDocument();
+        expect(screen.getByDisplayValue('/Volumes/EAV_Video_RAW/')).toBeInTheDocument();
+      });
+    });
+
+    it('should prevent saving empty CFEx paths', async () => {
+      render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
+
+      fireEvent.click(screen.getByText('CFEx Transfer'));
+
+      await waitFor(() => {
+        expect(window.electronAPI.loadConfig).toHaveBeenCalled();
+      });
+
+      // Clear all path inputs
+      const sourceInput = screen.getByLabelText(/default source folder/i);
+      const photosInput = screen.getByLabelText(/default photos destination/i);
+      const videosInput = screen.getByLabelText(/default raw videos destination/i);
+
+      fireEvent.change(sourceInput, { target: { value: '' } });
+      fireEvent.change(photosInput, { target: { value: '' } });
+      fireEvent.change(videosInput, { target: { value: '' } });
+
+      // Try to save
+      const saveButton = screen.getByText('Save CFEx Settings');
+      fireEvent.click(saveButton);
+
+      // Should show validation error
+      await waitFor(() => {
+        expect(screen.getByText(/source path cannot be empty/i)).toBeInTheDocument();
+      });
+
+      // Should NOT have called saveConfig
+      expect(window.electronAPI.saveConfig).not.toHaveBeenCalled();
+    });
+  });
 });

@@ -150,8 +150,22 @@ export interface LexiconConfig {
   badExamples: string;
 }
 
+/**
+ * CFEx Transfer default paths configuration
+ * Configurable in Settings > CFEx Transfer tab
+ */
+export interface CfexConfig {
+  /** Default source folder for CFEx card (e.g., /Volumes/Untitled/DCIM/100_FUJI) */
+  defaultSource: string;
+  /** Default destination for photos (e.g., /Volumes/videos-current/2. WORKING PROJECTS/) */
+  defaultPhotos: string;
+  /** Default destination for raw videos (e.g., /Volumes/EAV_Video_RAW/) */
+  defaultVideos: string;
+}
+
 export interface AppConfig {
   lexicon: Lexicon;
+  cfex?: CfexConfig;
 }
 
 export interface AIConfig {
