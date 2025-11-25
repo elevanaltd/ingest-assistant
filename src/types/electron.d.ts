@@ -2,7 +2,7 @@ import type { FileMetadata, AppConfig, AIAnalysisResult, Lexicon, LexiconConfig,
 
 export interface ElectronAPI {
   // File operations
-  selectFolder: () => Promise<string | null>;
+  selectFolder: (startPath?: string) => Promise<string | null>;
   // CRITICAL-1 FIX: Removed folderPath parameter (security boundary enforced in main process)
   loadFiles: () => Promise<FileMetadata[]>;
   readFileAsDataUrl: (filePath: string) => Promise<string>;

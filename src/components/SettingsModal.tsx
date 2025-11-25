@@ -307,7 +307,9 @@ export function SettingsModal({ onClose, onSave, initialConfig }: SettingsModalP
     if (!window.electronAPI?.selectFolder) return;
 
     try {
-      const selectedPath = await window.electronAPI.selectFolder();
+      // Get current path from field to use as defaultPath
+      const currentPath = field === 'source' ? cfexSource : field === 'photos' ? cfexPhotos : cfexVideos;
+      const selectedPath = await window.electronAPI.selectFolder(currentPath);
       if (selectedPath) {
         switch (field) {
           case 'source':

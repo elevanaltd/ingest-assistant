@@ -94,7 +94,7 @@ function FolderPicker({ sourcePath, onSourceChange, destinationPaths, onDestinat
   const [isBrowsing, setIsBrowsing] = useState(false)
   const [browseError, setBrowseError] = useState<string | null>(null)
 
-  async function handleBrowseWithTimeout(onSelect: (path: string) => void) {
+  async function handleBrowseWithTimeout(onSelect: (path: string) => void, startPath?: string) {
     setIsBrowsing(true)
     setBrowseError(null)
 
@@ -104,7 +104,7 @@ function FolderPicker({ sourcePath, onSourceChange, destinationPaths, onDestinat
     try {
       // Race between folder selection and 10-second timeout
       const path = await Promise.race([
-        window.electronAPI.selectFolder(),
+        window.electronAPI.selectFolder(startPath), // Pass current path as defaultPath
         new Promise<null>((_, reject) => {
           timeoutId = setTimeout(() => {
             reject(new Error('Folder picker timeout (10s). Disconnected volumes may cause delays.'))
@@ -136,15 +136,15 @@ function FolderPicker({ sourcePath, onSourceChange, destinationPaths, onDestinat
   }
 
   async function handleBrowseSource() {
-    await handleBrowseWithTimeout(onSourceChange)
+    await handleBrowseWithTimeout(onSourceChange, sourcePath)
   }
 
   async function handleBrowsePhotos() {
-    await handleBrowseWithTimeout((path) => onDestinationChange({ ...destinationPaths, photos: path }))
+    await handleBrowseWithTimeout((path) => onDestinationChange({ ...destinationPaths, photos: path }), destinationPaths.photos)
   }
 
   async function handleBrowseVideos() {
-    await handleBrowseWithTimeout((path) => onDestinationChange({ ...destinationPaths, rawVideos: path }))
+    await handleBrowseWithTimeout((path) => onDestinationChange({ ...destinationPaths, rawVideos: path }), destinationPaths.rawVideos)
   }
 
   return (
