@@ -1,5 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
-import type { LexiconConfig } from '../types';
+import type { LexiconConfig, CfexConfig } from '../types';
+
+// Default CFEx paths
+const DEFAULT_CFEX_CONFIG: CfexConfig = {
+  defaultSource: '/Volumes/Untitled/DCIM/100_FUJI',
+  defaultPhotos: '/Volumes/videos-current/2. WORKING PROJECTS/',
+  defaultVideos: '/Volumes/EAV_Video_RAW/'
+};
 
 interface SettingsModalProps {
   onClose: () => void;
@@ -9,7 +16,7 @@ interface SettingsModalProps {
 
 export function SettingsModal({ onClose, onSave, initialConfig }: SettingsModalProps) {
   // Tab state
-  const [activeTab, setActiveTab] = useState<'lexicon' | 'ai'>('lexicon');
+  const [activeTab, setActiveTab] = useState<'lexicon' | 'ai' | 'cfex'>('lexicon');
 
   // Lexicon state - simple text fields
   const [pattern, setPattern] = useState('{location}-{subject}-{shotType}');
@@ -38,9 +45,18 @@ export function SettingsModal({ onClose, onSave, initialConfig }: SettingsModalP
   const [lexiconSaveSuccess, setLexiconSaveSuccess] = useState(false);
   const [aiSaveSuccess, setAiSaveSuccess] = useState(false);
 
+  // CFEx config state
+  const [cfexSource, setCfexSource] = useState(DEFAULT_CFEX_CONFIG.defaultSource);
+  const [cfexPhotos, setCfexPhotos] = useState(DEFAULT_CFEX_CONFIG.defaultPhotos);
+  const [cfexVideos, setCfexVideos] = useState(DEFAULT_CFEX_CONFIG.defaultVideos);
+  const [isSavingCfex, setIsSavingCfex] = useState(false);
+  const [cfexSaveSuccess, setCfexSaveSuccess] = useState(false);
+  const [cfexError, setCfexError] = useState<string>('');
+
   // Refs for cleanup
   const lexiconCloseTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const aiCloseTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const cfexCloseTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Handle Escape key to close modal
   useEffect(() => {
@@ -66,6 +82,9 @@ export function SettingsModal({ onClose, onSave, initialConfig }: SettingsModalP
       }
       if (aiCloseTimeoutRef.current) {
         clearTimeout(aiCloseTimeoutRef.current);
+      }
+      if (cfexCloseTimeoutRef.current) {
+        clearTimeout(cfexCloseTimeoutRef.current);
       }
     };
   }, []);
@@ -129,6 +148,29 @@ export function SettingsModal({ onClose, onSave, initialConfig }: SettingsModalP
       return () => { isCurrent = false; }; // Cleanup: mark stale
     }
   }, [aiProvider, activeTab]);
+
+  // Load CFEx config when switching to CFEx tab
+  useEffect(() => {
+    if (activeTab === 'cfex' && window.electronAPI?.loadConfig) {
+      window.electronAPI.loadConfig()
+        .then(config => {
+          if (config.cfex) {
+            setCfexSource(config.cfex.defaultSource || DEFAULT_CFEX_CONFIG.defaultSource);
+            setCfexPhotos(config.cfex.defaultPhotos || DEFAULT_CFEX_CONFIG.defaultPhotos);
+            setCfexVideos(config.cfex.defaultVideos || DEFAULT_CFEX_CONFIG.defaultVideos);
+          } else {
+            // Use defaults if no cfex config exists
+            setCfexSource(DEFAULT_CFEX_CONFIG.defaultSource);
+            setCfexPhotos(DEFAULT_CFEX_CONFIG.defaultPhotos);
+            setCfexVideos(DEFAULT_CFEX_CONFIG.defaultVideos);
+          }
+        })
+        .catch(err => {
+          console.error('Failed to load CFEx config:', err);
+          setCfexError(`Failed to load configuration: ${err.message}`);
+        });
+    }
+  }, [activeTab]);
 
   const handleSaveLexicon = async () => {
     try {
@@ -261,6 +303,76 @@ export function SettingsModal({ onClose, onSave, initialConfig }: SettingsModalP
     }
   };
 
+  const handleBrowseCfexPath = async (field: 'source' | 'photos' | 'videos') => {
+    if (!window.electronAPI?.selectFolder) return;
+
+    try {
+      const selectedPath = await window.electronAPI.selectFolder();
+      if (selectedPath) {
+        switch (field) {
+          case 'source':
+            setCfexSource(selectedPath);
+            break;
+          case 'photos':
+            setCfexPhotos(selectedPath);
+            break;
+          case 'videos':
+            setCfexVideos(selectedPath);
+            break;
+        }
+      }
+    } catch (err) {
+      setCfexError(err instanceof Error ? err.message : 'Failed to select folder');
+    }
+  };
+
+  const handleSaveCfex = async () => {
+    if (!window.electronAPI?.loadConfig || !window.electronAPI?.saveConfig) {
+      setCfexError('Configuration API not available');
+      return;
+    }
+
+    setIsSavingCfex(true);
+    setCfexError('');
+    setCfexSaveSuccess(false);
+
+    try {
+      // Load existing config first to preserve other settings
+      const existingConfig = await window.electronAPI.loadConfig();
+
+      const updatedConfig = {
+        ...existingConfig,
+        cfex: {
+          defaultSource: cfexSource,
+          defaultPhotos: cfexPhotos,
+          defaultVideos: cfexVideos
+        }
+      };
+
+      const result = await window.electronAPI.saveConfig(updatedConfig);
+
+      if (result) {
+        setCfexSaveSuccess(true);
+
+        // Clear any existing timeout
+        if (cfexCloseTimeoutRef.current) {
+          clearTimeout(cfexCloseTimeoutRef.current);
+        }
+
+        // Auto-close modal after brief delay to show success message
+        cfexCloseTimeoutRef.current = setTimeout(() => {
+          onClose();
+        }, 1500);
+      } else {
+        setCfexError('Failed to save CFEx settings');
+      }
+    } catch (err) {
+      setCfexError(err instanceof Error ? err.message : 'Failed to save CFEx settings');
+    } finally {
+      setIsSavingCfex(false);
+    }
+  };
+
   return (
     <div
       className="modal-backdrop"
@@ -339,6 +451,19 @@ export function SettingsModal({ onClose, onSave, initialConfig }: SettingsModalP
             }}
           >
             AI Connection
+          </button>
+          <button
+            onClick={() => setActiveTab('cfex')}
+            style={{
+              padding: '8px 16px',
+              background: 'none',
+              border: 'none',
+              borderBottom: activeTab === 'cfex' ? '2px solid #007bff' : '2px solid transparent',
+              cursor: 'pointer',
+              fontWeight: activeTab === 'cfex' ? 'bold' : 'normal',
+            }}
+          >
+            CFEx Transfer
           </button>
         </div>
 
@@ -599,6 +724,128 @@ export function SettingsModal({ onClose, onSave, initialConfig }: SettingsModalP
                 }}
               >
                 {isSavingAI ? 'Saving...' : 'Save AI Config'}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* CFEx Transfer Tab */}
+        {activeTab === 'cfex' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <p style={{ color: '#666', marginTop: 0 }}>
+              Configure default paths for CFEx card file transfers.
+            </p>
+
+            <div>
+              <label htmlFor="cfexSource" style={{ display: 'block', marginBottom: '4px', fontWeight: 'bold' }}>
+                Default Source Folder
+              </label>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <input
+                  id="cfexSource"
+                  type="text"
+                  value={cfexSource}
+                  onChange={(e) => setCfexSource(e.target.value)}
+                  placeholder="/Volumes/Untitled/DCIM/100_FUJI"
+                  style={{ flex: 1, padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
+                />
+                <button
+                  onClick={() => handleBrowseCfexPath('source')}
+                  style={{
+                    padding: '8px 16px',
+                    backgroundColor: '#6c757d',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                  }}
+                >
+                  Browse
+                </button>
+              </div>
+              <small style={{ color: '#666' }}>CFEx card mount location (e.g., /Volumes/Untitled/DCIM/100_FUJI)</small>
+            </div>
+
+            <div>
+              <label htmlFor="cfexPhotos" style={{ display: 'block', marginBottom: '4px', fontWeight: 'bold' }}>
+                Default Photos Destination
+              </label>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <input
+                  id="cfexPhotos"
+                  type="text"
+                  value={cfexPhotos}
+                  onChange={(e) => setCfexPhotos(e.target.value)}
+                  placeholder="/Volumes/videos-current/2. WORKING PROJECTS/"
+                  style={{ flex: 1, padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
+                />
+                <button
+                  onClick={() => handleBrowseCfexPath('photos')}
+                  style={{
+                    padding: '8px 16px',
+                    backgroundColor: '#6c757d',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                  }}
+                >
+                  Browse
+                </button>
+              </div>
+              <small style={{ color: '#666' }}>LucidLink folder for photos (subfolders created per project)</small>
+            </div>
+
+            <div>
+              <label htmlFor="cfexVideos" style={{ display: 'block', marginBottom: '4px', fontWeight: 'bold' }}>
+                Default Raw Videos Destination
+              </label>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <input
+                  id="cfexVideos"
+                  type="text"
+                  value={cfexVideos}
+                  onChange={(e) => setCfexVideos(e.target.value)}
+                  placeholder="/Volumes/EAV_Video_RAW/"
+                  style={{ flex: 1, padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
+                />
+                <button
+                  onClick={() => handleBrowseCfexPath('videos')}
+                  style={{
+                    padding: '8px 16px',
+                    backgroundColor: '#6c757d',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                  }}
+                >
+                  Browse
+                </button>
+              </div>
+              <small style={{ color: '#666' }}>Ubuntu NFS mount for raw video archival</small>
+            </div>
+
+            {cfexError && <div style={{ color: 'red' }}>{cfexError}</div>}
+            {cfexSaveSuccess && <div style={{ color: 'green' }}>✓ CFEx settings saved successfully!</div>}
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '16px' }}>
+              <button onClick={onClose} style={{ padding: '8px 16px' }}>
+                Close
+              </button>
+              <button
+                onClick={handleSaveCfex}
+                disabled={isSavingCfex}
+                style={{
+                  padding: '8px 16px',
+                  backgroundColor: '#007bff',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: isSavingCfex ? 'not-allowed' : 'pointer',
+                }}
+              >
+                {isSavingCfex ? 'Saving...' : 'Save CFEx Settings'}
               </button>
             </div>
           </div>
