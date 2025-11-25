@@ -30,6 +30,7 @@ import {
   TransferProgress,
   FileTransferResult
 } from '../services/cfexTransfer'
+import { CfexAutoDetect } from '../services/cfexAutoDetect'
 import { FileValidationResult } from '../services/integrityValidator'
 
 // Transfer state for getTransferState() handler
@@ -43,8 +44,9 @@ export interface TransferState {
   error?: Error
 }
 
-// Singleton service instance
+// Singleton service instances
 let transferService: CfexTransferService | null = null
+let autoDetectService: CfexAutoDetect | null = null
 let transferState: TransferState = {
   status: 'idle',
   filesCompleted: 0,
@@ -83,6 +85,18 @@ function getTransferService(): CfexTransferService {
     transferService = new CfexTransferService()
   }
   return transferService
+}
+
+/**
+ * Get or create auto-detect service instance
+ *
+ * Singleton pattern ensures shared state across IPC calls.
+ */
+function getAutoDetectService(): CfexAutoDetect {
+  if (!autoDetectService) {
+    autoDetectService = new CfexAutoDetect()
+  }
+  return autoDetectService
 }
 
 /**
@@ -250,6 +264,53 @@ export function registerCfexTransferHandlers(mainWindow: BrowserWindow) {
     return transferState
   })
 
+  /**
+   * Handler: cfex:detect-sources
+   *
+   * Auto-detect CFEx cards and destination mount points.
+   *
+   * RESPONSE:
+   * {
+   *   cards: string[],
+   *   destinations: { photos: string, rawVideos: string },
+   *   shouldAutoPopulate: boolean,
+   *   selectedCard: string | undefined
+   * }
+   */
+  ipcMain.handle('cfex:detect-sources', async (event) => {
+    const service = getAutoDetectService()
+
+    try {
+      // Detect CFEx cards and destinations in parallel
+      const [cards, destinations] = await Promise.all([
+        service.detectCfexCards(),
+        service.detectDestinations()
+      ])
+
+      const shouldAutoPopulate = service.shouldAutoPopulate(cards)
+      const selectedCard = shouldAutoPopulate ? service.getSelectedCard(cards) : undefined
+
+      return {
+        cards,
+        destinations,
+        shouldAutoPopulate,
+        selectedCard
+      }
+    } catch (error) {
+      // Graceful error handling - return empty result
+      console.warn('[cfex:detect-sources] Detection failed:', error)
+      return {
+        cards: [],
+        destinations: {
+          photos: '/default/photos',
+          rawVideos: '/default/rawVideos'
+        },
+        shouldAutoPopulate: false,
+        selectedCard: undefined
+      }
+    }
+  })
+
   // Note: Pause/resume/cancel handlers deferred to Week 2 (error handling phase)
 }
 
@@ -261,7 +322,7 @@ export function registerCfexTransferHandlers(mainWindow: BrowserWindow) {
 export function unregisterCfexTransferHandlers() {
   ipcMain.removeHandler('cfex:start-transfer')
   ipcMain.removeHandler('cfex:get-transfer-state')
-  // ... remove other handlers when implemented
+  ipcMain.removeHandler('cfex:detect-sources')
 }
 
 /**
@@ -272,6 +333,7 @@ export function unregisterCfexTransferHandlers() {
  */
 export function __resetForTesting() {
   transferService = null
+  autoDetectService = null
   transferState = {
     status: 'idle',
     filesCompleted: 0,

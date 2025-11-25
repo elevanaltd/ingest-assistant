@@ -47,6 +47,12 @@ export interface ElectronAPI {
 
   // CFEx transfer operations (Week 1 Days 5-7)
   cfex: {
+    detectSources: () => Promise<{
+      cards: string[];
+      destinations: { photos: string; rawVideos: string };
+      shouldAutoPopulate: boolean;
+      selectedCard: string | undefined;
+    }>;
     startTransfer: (config: {
       source: string;
       destinations: { photos: string; rawVideos: string };

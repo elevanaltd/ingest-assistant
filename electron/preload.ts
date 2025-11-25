@@ -107,6 +107,14 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // CFEx transfer operations (v2.2.0 contextBridge pattern)
   cfex: {
+    detectSources: (): Promise<{
+      cards: string[];
+      destinations: { photos: string; rawVideos: string };
+      shouldAutoPopulate: boolean;
+      selectedCard: string | undefined;
+    }> =>
+      ipcRenderer.invoke('cfex:detect-sources'),
+
     startTransfer: (config: { source: string; destinations: { photos: string; rawVideos: string } }): Promise<{
       success: boolean;
       filesTransferred: number;

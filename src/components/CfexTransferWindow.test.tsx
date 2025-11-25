@@ -26,6 +26,7 @@ describe('CfexTransferWindow', () => {
   let mockStartTransfer: ReturnType<typeof vi.fn>
   let mockGetTransferState: ReturnType<typeof vi.fn>
   let mockOnTransferProgress: ReturnType<typeof vi.fn>
+  let mockDetectSources: ReturnType<typeof vi.fn>
 
   beforeEach(() => {
     // Create mocks first
@@ -40,11 +41,19 @@ describe('CfexTransferWindow', () => {
     })
     mockGetTransferState = vi.fn()
     mockOnTransferProgress = vi.fn().mockReturnValue(() => {})
+    mockDetectSources = vi.fn().mockResolvedValue({
+      cards: [],
+      destinations: { photos: '/default/photos', rawVideos: '/default/rawVideos' },
+      shouldAutoPopulate: false,
+      selectedCard: undefined
+    })
 
     // Mock window.electronAPI.cfex (v2.2.0 contextBridge pattern)
     // Type mock structure against ElectronAPI['cfex'] contract for type safety
     // Use 'as any' for individual mocks to allow Vitest flexibility
     const cfexMock: ElectronAPI['cfex'] = {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      detectSources: mockDetectSources as any,
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       startTransfer: mockStartTransfer as any,
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -103,8 +112,18 @@ describe('CfexTransferWindow', () => {
 
       const user = userEvent.setup()
 
+      // Wait for auto-detection to complete before interacting
+      await waitFor(() => {
+        expect(mockDetectSources).toHaveBeenCalled()
+      })
+
+      // Wait for input to be enabled after detection
+      const sourceInput = await screen.findByLabelText(/source.*folder/i)
+      await waitFor(() => {
+        expect(sourceInput).not.toBeDisabled()
+      })
+
       // ACT: Fill source path and click start
-      const sourceInput = screen.getByLabelText(/source.*folder/i)
       await user.type(sourceInput, '/Volumes/CFExpress')
 
       const startButton = screen.getByRole('button', { name: /start transfer/i })
@@ -228,8 +247,19 @@ describe('CfexTransferWindow', () => {
 
       const user = userEvent.setup()
 
+      // Wait for auto-detection to complete before interacting
+      await waitFor(() => {
+        expect(mockDetectSources).toHaveBeenCalled()
+      })
+
+      // Wait for input to be enabled after detection
+      const sourceInput = await screen.findByLabelText(/source.*folder/i)
+      await waitFor(() => {
+        expect(sourceInput).not.toBeDisabled()
+      })
+
       // ACT: Start transfer and wait for completion
-      await user.type(screen.getByLabelText(/source.*folder/i), '/Volumes/CFExpress')
+      await user.type(sourceInput, '/Volumes/CFExpress')
       await user.click(screen.getByRole('button', { name: /start transfer/i }))
 
       // ASSERT: Validation warnings displayed
@@ -249,8 +279,19 @@ describe('CfexTransferWindow', () => {
 
       const user = userEvent.setup()
 
+      // Wait for auto-detection to complete before interacting
+      await waitFor(() => {
+        expect(mockDetectSources).toHaveBeenCalled()
+      })
+
+      // Wait for input to be enabled after detection
+      const sourceInput = await screen.findByLabelText(/source.*folder/i)
+      await waitFor(() => {
+        expect(sourceInput).not.toBeDisabled()
+      })
+
       // ACT: Start transfer and wait for error
-      await user.type(screen.getByLabelText(/source.*folder/i), '/Volumes/InvalidPath')
+      await user.type(sourceInput, '/Volumes/InvalidPath')
       await user.click(screen.getByRole('button', { name: /start transfer/i }))
 
       // ASSERT: Error displayed in UI
@@ -460,6 +501,161 @@ describe('CfexTransferWindow', () => {
 
       // Document: Commenting out clearTimeout in CfexTransferWindow.tsx
       // lines 115-117 and 125-127 will fail this test
+    })
+  })
+
+  /**
+   * Auto-Detection Integration Tests
+   *
+   * TDD RED Phase - Tests for automatic CFEx card detection on mount
+   * Tests verify that detectSources is called and UI responds appropriately
+   */
+  describe('Auto-Detection Integration', () => {
+    test('calls detectSources on component mount', async () => {
+      // ARRANGE - Mock already set up in beforeEach
+
+      // ACT
+      render(<CfexTransferWindow />)
+
+      // ASSERT
+      await waitFor(() => {
+        expect(mockDetectSources).toHaveBeenCalledTimes(1)
+      })
+    })
+
+    test('shows "Detecting CFEx cards..." during detection', async () => {
+      // ARRANGE - Make detection slow to capture loading state
+      mockDetectSources.mockImplementation(() =>
+        new Promise(resolve =>
+          setTimeout(() => resolve({
+            cards: [],
+            destinations: { photos: '/default/photos', rawVideos: '/default/rawVideos' },
+            shouldAutoPopulate: false,
+            selectedCard: undefined
+          }), 100)
+        )
+      )
+
+      // ACT
+      render(<CfexTransferWindow />)
+
+      // ASSERT - Should show loading indicator
+      expect(screen.getByText(/detecting cfex cards/i)).toBeInTheDocument()
+    })
+
+    test('disables source input during detection', async () => {
+      // ARRANGE - Make detection slow
+      mockDetectSources.mockImplementation(() =>
+        new Promise(resolve =>
+          setTimeout(() => resolve({
+            cards: [],
+            destinations: { photos: '/default/photos', rawVideos: '/default/rawVideos' },
+            shouldAutoPopulate: false,
+            selectedCard: undefined
+          }), 100)
+        )
+      )
+
+      // ACT
+      render(<CfexTransferWindow />)
+
+      // ASSERT - Source input should be disabled during detection
+      const sourceInput = screen.getByLabelText(/source folder/i)
+      expect(sourceInput).toBeDisabled()
+    })
+
+    test('auto-populates source path when single card detected', async () => {
+      // ARRANGE
+      mockDetectSources.mockResolvedValue({
+        cards: ['/Volumes/NO NAME/'],
+        destinations: { photos: '/Volumes/LucidLink/', rawVideos: '/Volumes/Ubuntu/' },
+        shouldAutoPopulate: true,
+        selectedCard: '/Volumes/NO NAME/'
+      })
+
+      // ACT
+      render(<CfexTransferWindow />)
+
+      // ASSERT
+      await waitFor(() => {
+        const sourceInput = screen.getByLabelText(/source folder/i) as HTMLInputElement
+        expect(sourceInput.value).toBe('/Volumes/NO NAME/')
+      })
+    })
+
+    test('auto-populates destination paths from detected mounts', async () => {
+      // ARRANGE
+      mockDetectSources.mockResolvedValue({
+        cards: ['/Volumes/NO NAME/'],
+        destinations: { photos: '/Volumes/LucidLink/', rawVideos: '/Volumes/Ubuntu/' },
+        shouldAutoPopulate: true,
+        selectedCard: '/Volumes/NO NAME/'
+      })
+
+      // ACT
+      render(<CfexTransferWindow />)
+
+      // ASSERT
+      await waitFor(() => {
+        const photosInput = screen.getByLabelText(/photos destination/i) as HTMLInputElement
+        const videosInput = screen.getByLabelText(/raw videos destination/i) as HTMLInputElement
+        expect(photosInput.value).toBe('/Volumes/LucidLink/')
+        expect(videosInput.value).toBe('/Volumes/Ubuntu/')
+      })
+    })
+
+    test('does NOT auto-populate source when multiple cards detected', async () => {
+      // ARRANGE
+      mockDetectSources.mockResolvedValue({
+        cards: ['/Volumes/NO NAME/', '/Volumes/NO NAME 2/'],
+        destinations: { photos: '/Volumes/LucidLink/', rawVideos: '/Volumes/Ubuntu/' },
+        shouldAutoPopulate: false,
+        selectedCard: undefined
+      })
+
+      // ACT
+      render(<CfexTransferWindow />)
+
+      // Wait for detection to complete
+      await waitFor(() => {
+        expect(mockDetectSources).toHaveBeenCalled()
+      })
+
+      // ASSERT - Source should remain empty (not auto-populated)
+      const sourceInput = screen.getByLabelText(/source folder/i) as HTMLInputElement
+      expect(sourceInput.value).toBe('')
+    })
+
+    test('handles detectSources error gracefully', async () => {
+      // ARRANGE
+      mockDetectSources.mockRejectedValue(new Error('Detection failed'))
+
+      // ACT
+      render(<CfexTransferWindow />)
+
+      // ASSERT - Should not crash, should clear detecting state
+      await waitFor(() => {
+        // Component should render without crashing
+        expect(screen.getByText(/cfex file transfer/i)).toBeInTheDocument()
+      })
+    })
+
+    test('clears detecting state after completion or error', async () => {
+      // ARRANGE - Fast detection
+      mockDetectSources.mockResolvedValue({
+        cards: [],
+        destinations: { photos: '/default/photos', rawVideos: '/default/rawVideos' },
+        shouldAutoPopulate: false,
+        selectedCard: undefined
+      })
+
+      // ACT
+      render(<CfexTransferWindow />)
+
+      // ASSERT - After detection completes, loading indicator should be gone
+      await waitFor(() => {
+        expect(screen.queryByText(/detecting cfex cards/i)).not.toBeInTheDocument()
+      })
     })
   })
 })

@@ -58,6 +58,7 @@ interface TransferResult {
 
 interface TransferState {
   status: 'idle' | 'scanning' | 'transferring' | 'validating' | 'complete' | 'error'
+  isDetecting: boolean  // true during auto-detection
   sourcePath: string
   destinationPaths: {
     photos: string
@@ -318,6 +319,7 @@ function ValidationResults({ warnings, errors }: ValidationResultsProps) {
 export function CfexTransferWindow() {
   const [state, setState] = useState<TransferState>({
     status: 'idle',
+    isDetecting: false,
     sourcePath: '',
     destinationPaths: {
       photos: '/Volumes/videos-current/2. WORKING PROJECTS/',
@@ -361,6 +363,39 @@ export function CfexTransferWindow() {
 
     // Cleanup on unmount
     return cleanup
+  }, [])
+
+  // Auto-detect CFEx cards and destinations on mount
+  useEffect(() => {
+    // Verify electronAPI.cfex.detectSources exists (contextBridge abstraction)
+    if (!window.electronAPI?.cfex?.detectSources) {
+      console.warn('[CfexTransferWindow] electronAPI.cfex.detectSources not available')
+      return
+    }
+
+    async function runAutoDetection() {
+      setState(prev => ({ ...prev, isDetecting: true }))
+
+      try {
+        const result = await window.electronAPI.cfex.detectSources()
+        setState(prev => ({
+          ...prev,
+          isDetecting: false,
+          sourcePath: result.shouldAutoPopulate ? result.selectedCard ?? '' : prev.sourcePath,
+          destinationPaths: {
+            photos: result.destinations.photos !== '/default/photos'
+              ? result.destinations.photos : prev.destinationPaths.photos,
+            rawVideos: result.destinations.rawVideos !== '/default/rawVideos'
+              ? result.destinations.rawVideos : prev.destinationPaths.rawVideos
+          }
+        }))
+      } catch (error) {
+        console.warn('[CfexTransferWindow] Auto-detection failed:', error)
+        setState(prev => ({ ...prev, isDetecting: false }))
+      }
+    }
+
+    runAutoDetection()
   }, [])
 
   // Start transfer handler
@@ -429,12 +464,18 @@ export function CfexTransferWindow() {
     <div style={{ padding: '20px', maxWidth: '800px', margin: '0 auto' }}>
       <h1 style={{ marginBottom: '20px', fontSize: '24px' }}>CFEx File Transfer</h1>
 
+      {state.isDetecting && (
+        <div style={{ marginBottom: '12px', padding: '8px', backgroundColor: '#e3f2fd', borderRadius: '4px', fontSize: '13px', color: '#1976d2' }}>
+          Detecting CFEx cards...
+        </div>
+      )}
+
       <FolderPicker
         sourcePath={state.sourcePath}
         onSourceChange={(path) => setState(prev => ({ ...prev, sourcePath: path }))}
         destinationPaths={state.destinationPaths}
         onDestinationChange={(paths) => setState(prev => ({ ...prev, destinationPaths: paths }))}
-        disabled={state.status !== 'idle'}
+        disabled={state.isDetecting || state.status !== 'idle'}
       />
 
       {state.status !== 'idle' && (

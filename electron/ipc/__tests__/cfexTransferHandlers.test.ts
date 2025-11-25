@@ -2,6 +2,7 @@ import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest'
 import { ipcMain, BrowserWindow } from 'electron'
 import { registerCfexTransferHandlers, unregisterCfexTransferHandlers, __resetForTesting } from '../cfexTransferHandlers'
 import { CfexTransferService } from '../../services/cfexTransfer'
+import { CfexAutoDetect } from '../../services/cfexAutoDetect'
 
 // Mock Electron IPC
 vi.mock('electron', () => ({
@@ -15,6 +16,11 @@ vi.mock('electron', () => ({
 // Mock CfexTransferService
 vi.mock('../../services/cfexTransfer', () => ({
   CfexTransferService: vi.fn()
+}))
+
+// Mock CfexAutoDetect
+vi.mock('../../services/cfexAutoDetect', () => ({
+  CfexAutoDetect: vi.fn()
 }))
 
 describe('CFEx Transfer IPC Handlers', () => {
@@ -449,6 +455,103 @@ describe('CFEx Transfer IPC Handlers', () => {
       // CfexTransferService constructor should only be called once (singleton pattern)
       // Even though startTransfer was called twice
       expect(CfexTransferService).toHaveBeenCalledTimes(1)
+    })
+  })
+
+  describe('cfex:detect-sources handler', () => {
+    let mockAutoDetect: any
+
+    beforeEach(() => {
+      // Setup mock for CfexAutoDetect
+      mockAutoDetect = {
+        detectCfexCards: vi.fn(),
+        detectDestinations: vi.fn(),
+        shouldAutoPopulate: vi.fn(),
+        getSelectedCard: vi.fn()
+      }
+      ;(CfexAutoDetect as any).mockImplementation(() => mockAutoDetect)
+    })
+
+    test('registers cfex:detect-sources handler on initialization', () => {
+      // ACT
+      registerCfexTransferHandlers(mockWindow)
+
+      // ASSERT
+      expect(ipcMain.handle).toHaveBeenCalledWith(
+        'cfex:detect-sources',
+        expect.any(Function)
+      )
+    })
+
+    test('returns detected cards and destinations when single card found', async () => {
+      // ARRANGE
+      mockAutoDetect.detectCfexCards.mockResolvedValue(['/Volumes/NO NAME/'])
+      mockAutoDetect.detectDestinations.mockResolvedValue({
+        photos: '/Volumes/LucidLink/',
+        rawVideos: '/Volumes/Ubuntu/'
+      })
+      mockAutoDetect.shouldAutoPopulate.mockReturnValue(true)
+      mockAutoDetect.getSelectedCard.mockReturnValue('/Volumes/NO NAME/')
+
+      registerCfexTransferHandlers(mockWindow)
+      const handler = (ipcMain.handle as any).mock.calls.find(
+        (call: any) => call[0] === 'cfex:detect-sources'
+      )[1]
+
+      // ACT
+      const result = await handler({})
+
+      // ASSERT
+      expect(result.cards).toEqual(['/Volumes/NO NAME/'])
+      expect(result.destinations).toEqual({
+        photos: '/Volumes/LucidLink/',
+        rawVideos: '/Volumes/Ubuntu/'
+      })
+      expect(result.shouldAutoPopulate).toBe(true)
+      expect(result.selectedCard).toBe('/Volumes/NO NAME/')
+    })
+
+    test('returns empty cards array when no cards detected', async () => {
+      // ARRANGE
+      mockAutoDetect.detectCfexCards.mockResolvedValue([])
+      mockAutoDetect.detectDestinations.mockResolvedValue({
+        photos: '/default/photos',
+        rawVideos: '/default/rawVideos'
+      })
+      mockAutoDetect.shouldAutoPopulate.mockReturnValue(false)
+
+      registerCfexTransferHandlers(mockWindow)
+      const handler = (ipcMain.handle as any).mock.calls.find(
+        (call: any) => call[0] === 'cfex:detect-sources'
+      )[1]
+
+      // ACT
+      const result = await handler({})
+
+      // ASSERT
+      expect(result.cards).toEqual([])
+      expect(result.shouldAutoPopulate).toBe(false)
+      expect(result.selectedCard).toBeUndefined()
+    })
+
+    test('handles detection error gracefully', async () => {
+      // ARRANGE
+      mockAutoDetect.detectCfexCards.mockRejectedValue(new Error('Permission denied'))
+      mockAutoDetect.detectDestinations.mockResolvedValue({
+        photos: '/default/photos',
+        rawVideos: '/default/rawVideos'
+      })
+
+      registerCfexTransferHandlers(mockWindow)
+      const handler = (ipcMain.handle as any).mock.calls.find(
+        (call: any) => call[0] === 'cfex:detect-sources'
+      )[1]
+
+      // ACT & ASSERT
+      // Should not throw - graceful error handling expected
+      const result = await handler({})
+      expect(result.cards).toEqual([])
+      expect(result.shouldAutoPopulate).toBe(false)
     })
   })
 })
