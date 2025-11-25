@@ -1,5 +1,8 @@
 import { useState, useEffect } from 'react'
 
+// Default CFEx paths (same as SettingsModal)
+const DEFAULT_CFEX_SOURCE = '/Volumes/Untitled/DCIM/100_FUJI'
+
 /**
  * CFEx Transfer Window Component
  *
@@ -107,8 +110,8 @@ function FolderPicker({ sourcePath, onSourceChange, destinationPaths, onDestinat
         window.electronAPI.selectFolder(startPath), // Pass current path as defaultPath
         new Promise<null>((_, reject) => {
           timeoutId = setTimeout(() => {
-            reject(new Error('Folder picker timeout (10s). Disconnected volumes may cause delays.'))
-          }, 10000)
+            reject(new Error('Folder picker timeout (60s). Disconnected volumes may cause delays.'))
+          }, 60000)
         })
       ])
 
@@ -320,7 +323,7 @@ export function CfexTransferWindow() {
   const [state, setState] = useState<TransferState>({
     status: 'idle',
     isDetecting: false,
-    sourcePath: '',
+    sourcePath: DEFAULT_CFEX_SOURCE, // Start with default, will be overridden by auto-detect or saved config
     destinationPaths: {
       photos: '/Volumes/videos-current/2. WORKING PROJECTS/',
       rawVideos: '/Volumes/EAV_Video_RAW/'
@@ -335,6 +338,30 @@ export function CfexTransferWindow() {
     warnings: [],
     errors: []
   })
+
+  // Load saved CFEx config on mount (before auto-detect)
+  useEffect(() => {
+    if (!window.electronAPI?.loadConfig) {
+      console.warn('[CfexTransferWindow] loadConfig not available')
+      return
+    }
+
+    window.electronAPI.loadConfig().then(config => {
+      const cfexConfig = config?.cfex
+      if (cfexConfig) {
+        setState(prev => ({
+          ...prev,
+          sourcePath: cfexConfig.defaultSource || prev.sourcePath,
+          destinationPaths: {
+            photos: cfexConfig.defaultPhotos || prev.destinationPaths.photos,
+            rawVideos: cfexConfig.defaultVideos || prev.destinationPaths.rawVideos
+          }
+        }))
+      }
+    }).catch(err => {
+      console.warn('[CfexTransferWindow] Failed to load config:', err)
+    })
+  }, [])
 
   // Listen to progress events from main process
   useEffect(() => {
