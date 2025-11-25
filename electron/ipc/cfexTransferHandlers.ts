@@ -62,6 +62,7 @@ let transferState: TransferState = {
  * - source: string (CFEx card mount path)
  * - destinations.photos: string (LucidLink path)
  * - destinations.rawVideos: string (Ubuntu path)
+ * - enabledDestinations: optional flags to skip photo or video transfer
  * - options.skipValidation: boolean (optional, deferred to Week 2)
  */
 const TransferConfigSchema = z.object({
@@ -70,6 +71,10 @@ const TransferConfigSchema = z.object({
     photos: z.string().min(1, 'Photos destination required'),
     rawVideos: z.string().min(1, 'Raw videos destination required')
   }),
+  enabledDestinations: z.object({
+    photos: z.boolean(),
+    rawVideos: z.boolean()
+  }).optional(),
   options: z.object({
     skipValidation: z.boolean().optional()
   }).optional()
@@ -211,6 +216,7 @@ export function registerCfexTransferHandlers(mainWindow: BrowserWindow) {
       const result = await service.startTransfer({
         source: validated.source,
         destinations: validated.destinations,
+        enabledDestinations: validated.enabledDestinations || { photos: true, rawVideos: true },
         onProgress: (progress) => {
           sendProgressUpdate(mainWindow, progress)
         },

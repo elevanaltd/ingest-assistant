@@ -119,6 +119,7 @@ function getDestinationPath(
  *
  * @param sourcePath - Path to CFEx card root (e.g., '/Volumes/NO NAME/')
  * @param destinations - Destination paths for photos and videos
+ * @param enabledDestinations - Optional flags to filter file types (default: all enabled)
  * @returns Array of transfer tasks
  *
  * @example
@@ -126,19 +127,22 @@ function getDestinationPath(
  * const tasks = await scanSourceFiles('/Volumes/NO NAME/', {
  *   photos: '/LucidLink/EAV014/images/shoot1/',
  *   rawVideos: '/Ubuntu/EAV014/videos-raw/shoot1/'
- * });
- * // Returns: [
- * //   { source: '/Volumes/NO NAME/DCIM/EA001621.JPG', destination: '/LucidLink/.../EA001621.JPG', ... },
- * //   { source: '/Volumes/NO NAME/PRIVATE/M4ROOT/CLIP/C0001.MOV', destination: '/Ubuntu/.../C0001.MOV', ... }
+ * }, { photos: true, rawVideos: false });
+ * // Returns only photo tasks: [
+ * //   { source: '/Volumes/NO NAME/DCIM/EA001621.JPG', destination: '/LucidLink/.../EA001621.JPG', ... }
  * // ]
  * ```
  */
 export async function scanSourceFiles(
   sourcePath: string,
-  destinations: TransferDestinations
+  destinations: TransferDestinations,
+  enabledDestinations?: { photos: boolean; rawVideos: boolean }
 ): Promise<FileTransferTask[]> {
   const files = await fs.readdir(sourcePath, { recursive: true });
   const tasks: FileTransferTask[] = [];
+
+  // Default to all enabled if not specified (backward compatibility)
+  const enabled = enabledDestinations || { photos: true, rawVideos: true };
 
   for (const file of files) {
     const fullPath = path.join(sourcePath, file);
@@ -161,6 +165,14 @@ export async function scanSourceFiles(
 
     // Skip non-media files
     if (!mediaType) {
+      continue;
+    }
+
+    // Filter based on enabledDestinations
+    if (mediaType === 'photo' && !enabled.photos) {
+      continue;
+    }
+    if (mediaType === 'video' && !enabled.rawVideos) {
       continue;
     }
 
@@ -332,6 +344,10 @@ import { IntegrityValidator, FileValidationResult, IntegrityError } from './inte
 export interface TransferConfig {
   source: string;
   destinations: TransferDestinations;
+  enabledDestinations?: {
+    photos: boolean;
+    rawVideos: boolean;
+  };
   onProgress?: (progress: TransferProgress) => void;
   onFileComplete?: (result: FileTransferResult) => void;
   onValidation?: (result: FileValidationResult) => void;
@@ -425,7 +441,11 @@ export class CfexTransferService {
     const startTime = Date.now();
 
     // PHASE 1: Scan source files
-    const tasks = await scanSourceFiles(config.source, config.destinations);
+    const tasks = await scanSourceFiles(
+      config.source,
+      config.destinations,
+      config.enabledDestinations
+    );
 
     const bytesTotal = tasks.reduce((sum, task) => sum + task.size, 0);
 
