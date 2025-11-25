@@ -84,22 +84,47 @@
 
 **Phase 1a-CORE Remaining Work (Week 2-3):**
 
-**Priority 1: Error Handling (4 days - BLOCKING for production) - 🔄 ACTIVE**
-**Status:** IN PROGRESS (implementation-lead in Claude Code Web session, started Nov 21)
-**Timeline:** Week 2 Days 1-4
-**Deliverables:** electron/services/errorHandler.ts + retryStrategy.ts + ~30-40 tests
-- [ ] Smart retry logic (network timeout detection, retry intervals, backoff strategy)
-- [ ] Comprehensive error classification (ENOSPC, EPERM, ENOENT, ETIMEDOUT, network errors)
-- [ ] Error recovery strategies (resume partial transfers, cleanup on failure, atomic operations)
-- [ ] User-facing error messages (actionable guidance, next steps, manual recovery instructions)
-- [ ] Enhanced ENOSPC messages (show bytes needed for clear user guidance)
+**Priority 1: Error Handling (4 days - BLOCKING for production) - ✅ COMPLETE**
+**Status:** MERGED (PR #80 + PR #81 merged Nov 22)
+**Timeline:** Week 2 Days 1-4 (COMPLETE)
+**Deliverables:** ✅ errorHandler.ts + retryStrategy.ts + 47 tests (all passing)
+- [x] Smart retry logic (exponential backoff: 1s→2s→4s→8s)
+- [x] Comprehensive error classification (TRANSIENT, FATAL, NETWORK, USER)
+- [x] Error recovery strategies (cleanup, resume, atomic operations)
+- [x] User-facing error messages (actionable guidance)
+- [x] Quality gates: 707/708 tests passing, lint 0 errors, typecheck 0 errors
+- [x] Code review approved (code-review-specialist + test-methodology-guardian)
 
-**Priority 2: CFEx Auto-Detection (2.5 days)**
-- [ ] macOS volume scanning (`/Volumes/NO NAME/` mount detection)
-- [ ] Ubuntu mount scanning (CFEx card discovery via `/proc/mounts`)
-- [ ] Single-card priority (auto-populate source path when one card found)
-- [ ] Multi-card handling (user selection UI if multiple cards detected)
-- [ ] Mount state validation (warn if volume disconnected mid-scan)
+**Priority 2: CFEx Auto-Detection (2.5 days) - 🔄 SERVICE LAYER COMPLETE**
+**Status:** GREEN + REFACTOR Complete, IPC + UI Integration NEXT
+**Timeline:** Week 2 Days 5-7 (Service: COMPLETE, IPC+UI: ~2 days remaining)
+**Deliverables:**
+- [x] Test specification: 19 comprehensive tests (electron/services/__tests__/cfexAutoDetect.test.ts)
+- [x] Service implementation (GREEN phase: cfexAutoDetect.ts) - COMPLETE
+- [x] Architectural refactor (REFACTOR phase: async I/O + timeout + error handling) - COMPLETE
+- [x] Validation chain (code-review + quality-observer + technical-architect) - ALL APPROVED
+- [ ] IPC handler integration (cfex:detect-sources)
+- [ ] UI integration (CfexTransferWindow + multi-card dialog)
+
+**Service Layer Complete (2025-11-25):**
+- [x] Async I/O conversion: fs → fs/promises (architectural compliance)
+- [x] Timeout protection: 10s cancellable timeout with clearTimeout() cleanup
+- [x] Explicit error handling: EACCES → throw, ENOENT → [], EIO → [], ETIMEDOUT → []
+- [x] Unhandled rejection fix: clearTimeout in both resolve/reject paths
+- [x] Error code preservation: Object.assign() pattern for EACCES
+- [x] System Coherence: 9/10 (up from 5/10), IPC Readiness: EXCELLENT
+- [x] Tests: 726/726 passing (+19 cfexAutoDetect, +2 reliability)
+- [x] CI: GREEN (all jobs passing)
+
+**Test Coverage (GREEN phase):**
+- [x] macOS volume scanning (`/Volumes/NO NAME/` mount detection)
+- [x] Ubuntu mount scanning (CFEx card discovery via `/media/$USER/` and `/run/media/$USER/`)
+- [x] Single-card priority (auto-populate source path when one card found)
+- [x] Multi-card handling (user selection UI if multiple cards detected)
+- [x] Mount state validation (warn if volume disconnected mid-scan)
+- [x] Error handling (EACCES, ENOENT, EIO, ETIMEDOUT gracefully handled)
+- [x] Timeout protection (unhandled rejection prevention)
+- [x] Error code preservation (EACCES throw with code)
 
 **Priority 3: Integration Testing (4 days - EMPIRICAL validation)**
 - [ ] LucidLink cache eviction testing (measure actual timeout patterns vs conservative assumptions)
@@ -446,4 +471,7 @@
 ---
 
 ## Last Updated
-2025-11-18 (v2.2.0 released + CFEx Phase 1 D1 North Star created - holistic-orchestrator)
+2025-11-25 (Priority 2 cfexAutoDetect GREEN + REFACTOR complete - holistic-orchestrator)
+**Tests:** 726/726 passing, CI GREEN
+**Priority 2:** Service layer COMPLETE, IPC + UI integration NEXT (~2 days remaining)
+**Validation:** code-review + quality-observer + technical-architect ALL APPROVED

@@ -348,9 +348,11 @@ const testConfig: TransferConfig = {
 
 **Security Test Coverage:** +23 security tests (command injection + media server auth)
 
-## Current Focus (2025-11-21 Updated)
-CFEX_PHASE_1A::Week_1_COMPLETE→Week_2_3_IN_PROGRESS→Priority_1_Error_Handling_ACTIVE(implementation-lead)
-PARALLEL_EXECUTION::Claude_Code_Web[Priority_1_TDD]||Main_Session[Phase_1b_planning+orchestration]
+## Current Focus (2025-11-25 Updated - Priority 2 GREEN + REFACTOR Complete)
+CFEX_PHASE_1A::Week_1_COMPLETE(100%)→Week_2_PROGRESS(Priority_1_COMPLETE+Priority_2_SERVICE_COMPLETE)→IPC+UI_Integration_NEXT
+COMPLETION::Priority_2[cfexAutoDetect_GREEN+REFACTOR]→Validation_Chain[APPROVED]→CI_GREEN[726_tests_passing]
+PRIORITY_2::Service_Layer_COMPLETE[async_I/O+timeout+error_handling]→IPC_Handler_NEXT[cfex:detect-sources]→UI_Integration[auto-populate+multi-card]
+ARCHITECTURAL::REFACTOR_Phase_Complete[fs/promises+timeout_protection+explicit_errors]→System_Coherence_9/10→Production_Risk_LOW
 D3_BLUEPRINT::compressed_to_OCTAVE→65.5%_reduction→100%_decision_logic_preserved→implementation_ready
 MICROPHASE_STRUCTURE::Phase_1a[8d_CORE+5d_POLISH]→Phase_1b[proxy_generation]→Phase_1c[toggles+metadata]
 CROSS_ECOSYSTEM::Issue_#63_deferred→guardrails_required_4-6_weeks→after_CFEx_Phase_1_complete
@@ -448,14 +450,14 @@ CROSS_ECOSYSTEM::Issue_#63_deferred→guardrails_required_4-6_weeks→after_CFEx
 Guardrails→formalize_contract_spec+compatibility_tests+SLO_alerts+deletion_workflow→principal-engineer_re-validation
 
 ## Last Updated
-2025-11-21 (CFEx Phase 1a Week 2-3 implementation ACTIVE - holistic-orchestrator)
+2025-11-25 (Priority 2 cfexAutoDetect GREEN + REFACTOR complete - holistic-orchestrator)
 **Latest Release:** v2.2.0 - Sequential shot numbers baseline (production ready)
-**Active Work:** CFEx Phase 1a Week 2-3 - Priority 1 Error Handling (implementation-lead in Claude Code Web)
-**Current Branch:** main (PR #78 + #79 merged, 640/645 tests GREEN)
-**Phase Status:** D0→D1→D2→D3(v1.1+OCTAVE)→B0(FINAL GO)→B2(Week 1 COMPLETE)→B2(Week 2-3 ACTIVE)
-**Week 1 Status:** Transfer mechanism + integrity validation + IPC handlers + UI COMPLETE (640/645 tests GREEN)
-**Week 2-3 Status:** Priority 1 Error Handling ACTIVE (Claude Code Web), Priority 2-3 PENDING
+**Active Work:** CFEx Phase 1a Week 2 - Priority 2 IPC + UI Integration (next session)
+**Current Branch:** feat/cfex-work (5 commits pushed, 726/726 tests GREEN)
+**Phase Status:** D0→D1→D2→D3(v1.1+OCTAVE)→B0(FINAL GO)→B2(Week 1 COMPLETE)→B2(Week 2 Service Layer COMPLETE)
+**Week 1 Status:** Transfer mechanism + integrity validation + IPC handlers + UI COMPLETE
+**Week 2 Status:** Priority 1 Error Handling MERGED, Priority 2 Service Layer COMPLETE, IPC+UI Integration NEXT
 **D3 Blueprint:** Compressed to OCTAVE (65.5% reduction, 100% decision logic preserved)
-**Parallel Execution:** Claude Code Web (Priority 1 TDD) || Main Session (Phase 1b planning + orchestration)
-**Timeline:** Priority 1 (4d) → Priority 3 (4d) = 8 days CORE completion
-**Next Convergence:** Week 2 Day 8 - Phase 1a-CORE COMPLETE → Phase 1b starts Week 4
+**Validation Chain:** code-review + quality-observer + technical-architect ALL APPROVED
+**Timeline:** IPC handler (0.5d) + UI integration (1d) + Quality validation (0.5d) = ~2 days remaining
+**Next Work:** IPC handler (cfex:detect-sources) + CfexTransferWindow UI integration
