@@ -870,5 +870,33 @@ describe('CfexTransferWindow', () => {
         expect(screen.queryByText(/detecting cfex cards/i)).not.toBeInTheDocument()
       })
     })
+
+    test('disables start button while auto-detection is in progress', async () => {
+      // ARRANGE: Make detectSources hang (don't resolve immediately)
+      let resolveDetection: (value: any) => void
+      mockDetectSources.mockImplementation(() => new Promise(resolve => {
+        resolveDetection = resolve
+      }))
+
+      // ACT
+      render(<CfexTransferWindow />)
+
+      // ASSERT: Button disabled during detection
+      const startButton = screen.getByRole('button', { name: /start transfer/i })
+      expect(startButton).toBeDisabled()
+
+      // Cleanup: resolve the promise
+      resolveDetection!({
+        cards: [],
+        destinations: { photos: '/default/photos', rawVideos: '/default/rawVideos' },
+        shouldAutoPopulate: false,
+        selectedCard: undefined
+      })
+
+      // Wait for detection to complete
+      await waitFor(() => {
+        expect(mockDetectSources).toHaveBeenCalled()
+      })
+    })
   })
 })
