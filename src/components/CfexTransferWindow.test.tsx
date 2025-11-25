@@ -112,8 +112,18 @@ describe('CfexTransferWindow', () => {
 
       const user = userEvent.setup()
 
+      // Wait for auto-detection to complete before interacting
+      await waitFor(() => {
+        expect(mockDetectSources).toHaveBeenCalled()
+      })
+
+      // Wait for input to be enabled after detection
+      const sourceInput = await screen.findByLabelText(/source.*folder/i)
+      await waitFor(() => {
+        expect(sourceInput).not.toBeDisabled()
+      })
+
       // ACT: Fill source path and click start
-      const sourceInput = screen.getByLabelText(/source.*folder/i)
       await user.type(sourceInput, '/Volumes/CFExpress')
 
       const startButton = screen.getByRole('button', { name: /start transfer/i })
@@ -237,8 +247,19 @@ describe('CfexTransferWindow', () => {
 
       const user = userEvent.setup()
 
+      // Wait for auto-detection to complete before interacting
+      await waitFor(() => {
+        expect(mockDetectSources).toHaveBeenCalled()
+      })
+
+      // Wait for input to be enabled after detection
+      const sourceInput = await screen.findByLabelText(/source.*folder/i)
+      await waitFor(() => {
+        expect(sourceInput).not.toBeDisabled()
+      })
+
       // ACT: Start transfer and wait for completion
-      await user.type(screen.getByLabelText(/source.*folder/i), '/Volumes/CFExpress')
+      await user.type(sourceInput, '/Volumes/CFExpress')
       await user.click(screen.getByRole('button', { name: /start transfer/i }))
 
       // ASSERT: Validation warnings displayed
@@ -258,8 +279,19 @@ describe('CfexTransferWindow', () => {
 
       const user = userEvent.setup()
 
+      // Wait for auto-detection to complete before interacting
+      await waitFor(() => {
+        expect(mockDetectSources).toHaveBeenCalled()
+      })
+
+      // Wait for input to be enabled after detection
+      const sourceInput = await screen.findByLabelText(/source.*folder/i)
+      await waitFor(() => {
+        expect(sourceInput).not.toBeDisabled()
+      })
+
       // ACT: Start transfer and wait for error
-      await user.type(screen.getByLabelText(/source.*folder/i), '/Volumes/InvalidPath')
+      await user.type(sourceInput, '/Volumes/InvalidPath')
       await user.click(screen.getByRole('button', { name: /start transfer/i }))
 
       // ASSERT: Error displayed in UI
