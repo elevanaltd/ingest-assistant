@@ -91,13 +91,20 @@ describe('CfexTransferWindow', () => {
       expect(screen.getByRole('button', { name: /start transfer/i })).toBeInTheDocument()
     })
 
-    test('start button enabled when default source path set', () => {
+    test('start button enabled when default source path set', async () => {
       // ARRANGE
       render(<CfexTransferWindow />)
 
-      // ASSERT: Button enabled with default source path
+      // Wait for auto-detection to complete
+      await waitFor(() => {
+        expect(mockDetectSources).toHaveBeenCalled()
+      })
+
+      // ASSERT: Button enabled with default source path after detection completes
       const startButton = screen.getByRole('button', { name: /start transfer/i })
-      expect(startButton).toBeEnabled()
+      await waitFor(() => {
+        expect(startButton).toBeEnabled()
+      })
     })
   })
 

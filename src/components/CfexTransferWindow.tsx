@@ -506,7 +506,7 @@ export function CfexTransferWindow() {
     }
   }
 
-  const canStart = Boolean(state.sourcePath) && state.status === 'idle'
+  const canStart = Boolean(state.sourcePath) && state.status === 'idle' && !state.isDetecting
   const isTransferring = state.status !== 'idle' && state.status !== 'complete' && state.status !== 'error'
 
   // Basic cancel handler (Week 1 - UI only)
