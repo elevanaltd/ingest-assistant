@@ -199,7 +199,9 @@ const testConfig: TransferConfig = {
 - ✅ Folder picker buttons (Browse... for all 3 path inputs)
 - ✅ Percentage formatting (2 decimal places: 25.00% not 25.0000001%)
 - ✅ Cancel button (basic UI-only, full graceful cancellation in Week 2)
-- ✅ Timeout protection (10s limit prevents infinite hang)
+- ✅ Timeout protection (60s limit prevents infinite hang - extended from 10s)
+- ✅ Browse defaultPath (dialogs open at current input path, not last known location)
+- ✅ Source path defaults (loads from config or hardcoded /Volumes/Untitled/DCIM/100_FUJI)
 
 **Major Features Completed (v2.2.0 Baseline):**
   - ✅ **PR #77 R1.1 Schema Alignment (Nov 19)** - CEP Panel contract compliance
@@ -348,11 +350,11 @@ const testConfig: TransferConfig = {
 
 **Security Test Coverage:** +23 security tests (command injection + media server auth)
 
-## Current Focus (2025-11-25 Updated - Priority 2 GREEN + REFACTOR Complete)
-CFEX_PHASE_1A::Week_1_COMPLETE(100%)→Week_2_PROGRESS(Priority_1_COMPLETE+Priority_2_SERVICE_COMPLETE)→IPC+UI_Integration_NEXT
-COMPLETION::Priority_2[cfexAutoDetect_GREEN+REFACTOR]→Validation_Chain[APPROVED]→CI_GREEN[726_tests_passing]
-PRIORITY_2::Service_Layer_COMPLETE[async_I/O+timeout+error_handling]→IPC_Handler_NEXT[cfex:detect-sources]→UI_Integration[auto-populate+multi-card]
-ARCHITECTURAL::REFACTOR_Phase_Complete[fs/promises+timeout_protection+explicit_errors]→System_Coherence_9/10→Production_Risk_LOW
+## Current Focus (2025-11-25 Updated - Priority 4 Settings Tab + Browse UX Complete)
+CFEX_PHASE_1A::Week_1_COMPLETE(100%)→Week_2_PROGRESS(Priority_1+2+4_COMPLETE)→Priority_3_Integration_Testing_NEXT
+COMPLETION::Priority_4[Settings_Tab+Browse_DefaultPath+Folder_Creation]→code-review-specialist[APPROVED_10/10]→CI_GREEN[751_tests_passing]
+PRIORITY_4_DELIVERED::selectFolder(startPath)→Browse_opens_at_current_path[vs_last_known]→60s_timeout[vs_10s]→UX_significantly_improved
+ARCHITECTURAL::IPC_chain_extended[main→preload→types→UI]→backward_compatible[optional_param]→security_acceptable[OS_dialog_human_gate]
 D3_BLUEPRINT::compressed_to_OCTAVE→65.5%_reduction→100%_decision_logic_preserved→implementation_ready
 MICROPHASE_STRUCTURE::Phase_1a[8d_CORE+5d_POLISH]→Phase_1b[proxy_generation]→Phase_1c[toggles+metadata]
 CROSS_ECOSYSTEM::Issue_#63_deferred→guardrails_required_4-6_weeks→after_CFEx_Phase_1_complete
@@ -450,14 +452,14 @@ CROSS_ECOSYSTEM::Issue_#63_deferred→guardrails_required_4-6_weeks→after_CFEx
 Guardrails→formalize_contract_spec+compatibility_tests+SLO_alerts+deletion_workflow→principal-engineer_re-validation
 
 ## Last Updated
-2025-11-25 (Priority 2 cfexAutoDetect GREEN + REFACTOR complete - holistic-orchestrator)
+2025-11-25 (Priority 4 CFEx Settings Tab + Browse UX fixes complete - holistic-orchestrator)
 **Latest Release:** v2.2.0 - Sequential shot numbers baseline (production ready)
-**Active Work:** CFEx Phase 1a Week 2 - Priority 2 IPC + UI Integration (next session)
-**Current Branch:** feat/cfex-work (5 commits pushed, 726/726 tests GREEN)
-**Phase Status:** D0→D1→D2→D3(v1.1+OCTAVE)→B0(FINAL GO)→B2(Week 1 COMPLETE)→B2(Week 2 Service Layer COMPLETE)
+**Active Work:** CFEx Phase 1a Week 2 - Priority 3 Integration Testing NEXT
+**Current Branch:** feat/cfex-work (8 commits pushed, 751/751 tests GREEN + 2 skipped)
+**Phase Status:** D0→D1→D2→D3(v1.1+OCTAVE)→B0(FINAL GO)→B2(Week 1 COMPLETE)→B2(Week 2 Priority 1+2+4 COMPLETE)
 **Week 1 Status:** Transfer mechanism + integrity validation + IPC handlers + UI COMPLETE
-**Week 2 Status:** Priority 1 Error Handling MERGED, Priority 2 Service Layer COMPLETE, IPC+UI Integration NEXT
+**Week 2 Status:** Priority 1 Error Handling ✅, Priority 2 Auto-Detection ✅, Priority 4 Settings/Browse ✅
 **D3 Blueprint:** Compressed to OCTAVE (65.5% reduction, 100% decision logic preserved)
-**Validation Chain:** code-review + quality-observer + technical-architect ALL APPROVED
-**Timeline:** IPC handler (0.5d) + UI integration (1d) + Quality validation (0.5d) = ~2 days remaining
-**Next Work:** IPC handler (cfex:detect-sources) + CfexTransferWindow UI integration
+**Validation Chain:** code-review-specialist APPROVED (10/10 reliability score)
+**PR #83:** Settings tab + folder creation + defaultPath fix ready for merge
+**Next Work:** Priority 3 Integration Testing (LucidLink + NFS empirical validation)

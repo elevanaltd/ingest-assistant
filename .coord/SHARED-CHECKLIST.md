@@ -133,7 +133,19 @@
 - [ ] Risk scenario testing (disconnected volumes, concurrent transfers, disk full)
 - [ ] Document empirical findings (update error handling specs with real-world data)
 
-**Priority 4: Path Intelligence (Phase 1a-POLISH - 1 week, parallel to Phase 1b)**
+**Priority 4: CFEx Settings Tab + Browse UX (2 days) - ✅ COMPLETE**
+**Status:** COMPLETE (PR #83 ready for merge, 751 tests passing)
+**Timeline:** Week 2 (COMPLETE)
+**Deliverables:**
+- [x] CFEx Transfer Settings Tab (default paths: source, photos, videos)
+- [x] Folder creation in picker dialog (createDirectory option)
+- [x] Browse defaultPath support (dialogs open at current input path)
+- [x] Source path defaults (loads from config or /Volumes/Untitled/DCIM/100_FUJI)
+- [x] Extended timeout (60s vs 10s - allows time for network volume navigation)
+- [x] Quality gates: 751/751 tests passing, lint 0 errors, typecheck 0 errors
+- [x] Code review: APPROVED (code-review-specialist, 10/10 reliability score)
+
+**Path Intelligence (deferred to Phase 1a-POLISH, parallel to Phase 1b)**
 - [ ] MRU paths (remember last-used folders per project, suggest on next launch)
 - [ ] Smart defaults (infer project paths from naming patterns: EAV014 → suggest /LucidLink/.../EAV014/)
 - [ ] Pinned folders (user-saved favorite destinations, quick access dropdown)
@@ -471,7 +483,9 @@
 ---
 
 ## Last Updated
-2025-11-25 (Priority 2 cfexAutoDetect GREEN + REFACTOR complete - holistic-orchestrator)
-**Tests:** 726/726 passing, CI GREEN
-**Priority 2:** Service layer COMPLETE, IPC + UI integration NEXT (~2 days remaining)
-**Validation:** code-review + quality-observer + technical-architect ALL APPROVED
+2025-11-25 (Priority 4 CFEx Settings Tab + Browse UX complete - holistic-orchestrator)
+**Tests:** 751/751 passing + 2 skipped, CI GREEN
+**Priority 4:** Settings tab + Browse defaultPath + folder creation + 60s timeout ALL COMPLETE
+**Validation:** code-review-specialist APPROVED (10/10 reliability score)
+**PR #83:** Ready for merge (8 commits: RED→GREEN for Settings + defaultPath fixes)
+**Next:** Priority 3 Integration Testing (LucidLink + NFS empirical validation)
