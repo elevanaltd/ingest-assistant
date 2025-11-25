@@ -507,6 +507,217 @@ describe('CfexTransferWindow', () => {
   })
 
   /**
+   * Destination Enable/Disable Checkboxes Tests (RED Phase)
+   *
+   * Tests for checkboxes that allow users to enable/disable specific destinations
+   * Use case: Redo only photos (or only videos) without re-transferring everything
+   */
+  describe('Destination Enable/Disable Checkboxes', () => {
+    test('renders checkbox for photos destination', () => {
+      // ARRANGE
+      render(<CfexTransferWindow />)
+
+      // ASSERT: Photos checkbox exists and is checked by default
+      const photosCheckbox = screen.getByRole('checkbox', { name: /photos destination/i })
+      expect(photosCheckbox).toBeInTheDocument()
+      expect(photosCheckbox).toBeChecked()
+    })
+
+    test('renders checkbox for raw videos destination', () => {
+      // ARRANGE
+      render(<CfexTransferWindow />)
+
+      // ASSERT: Videos checkbox exists and is checked by default
+      const videosCheckbox = screen.getByRole('checkbox', { name: /raw videos destination/i })
+      expect(videosCheckbox).toBeInTheDocument()
+      expect(videosCheckbox).toBeChecked()
+    })
+
+    test('disables photos input when photos checkbox unchecked', async () => {
+      // ARRANGE
+      render(<CfexTransferWindow />)
+      const user = userEvent.setup()
+
+      // Wait for auto-detection to complete
+      await waitFor(() => {
+        expect(mockDetectSources).toHaveBeenCalled()
+      })
+
+      // Wait for inputs to be enabled after detection
+      const photosInput = await screen.findByLabelText(/photos destination/i)
+      await waitFor(() => {
+        expect(photosInput).not.toBeDisabled()
+      })
+
+      // ACT: Uncheck photos checkbox
+      const photosCheckbox = screen.getByRole('checkbox', { name: /photos destination/i })
+      await user.click(photosCheckbox)
+
+      // ASSERT: Photos input and browse button disabled
+      expect(photosInput).toBeDisabled()
+      const photoBrowseButton = screen.getAllByRole('button', { name: /browse/i })[1]
+      expect(photoBrowseButton).toBeDisabled()
+    })
+
+    test('disables raw videos input when videos checkbox unchecked', async () => {
+      // ARRANGE
+      render(<CfexTransferWindow />)
+      const user = userEvent.setup()
+
+      // Wait for auto-detection to complete
+      await waitFor(() => {
+        expect(mockDetectSources).toHaveBeenCalled()
+      })
+
+      // Wait for inputs to be enabled after detection
+      const videosInput = await screen.findByLabelText(/raw videos destination/i)
+      await waitFor(() => {
+        expect(videosInput).not.toBeDisabled()
+      })
+
+      // ACT: Uncheck videos checkbox
+      const videosCheckbox = screen.getByRole('checkbox', { name: /raw videos destination/i })
+      await user.click(videosCheckbox)
+
+      // ASSERT: Videos input and browse button disabled
+      expect(videosInput).toBeDisabled()
+      const videoBrowseButton = screen.getAllByRole('button', { name: /browse/i })[2]
+      expect(videoBrowseButton).toBeDisabled()
+    })
+
+    test('passes enabledDestinations to startTransfer when both checked', async () => {
+      // ARRANGE
+      mockStartTransfer.mockResolvedValue({
+        success: true,
+        filesTransferred: 10,
+        filesTotal: 10,
+        bytesTransferred: 1000000,
+        duration: 5000,
+        validationWarnings: [],
+        errors: []
+      })
+
+      render(<CfexTransferWindow />)
+      const user = userEvent.setup()
+
+      // Wait for auto-detection to complete
+      await waitFor(() => {
+        expect(mockDetectSources).toHaveBeenCalled()
+      })
+
+      const sourceInput = await screen.findByLabelText(/source folder/i)
+      await waitFor(() => {
+        expect(sourceInput).not.toBeDisabled()
+      })
+
+      // ACT: Start transfer with both checkboxes checked (default)
+      await user.click(screen.getByRole('button', { name: /start transfer/i }))
+
+      // ASSERT: enabledDestinations passed with both true
+      await waitFor(() => {
+        expect(mockStartTransfer).toHaveBeenCalledWith(
+          expect.objectContaining({
+            enabledDestinations: {
+              photos: true,
+              rawVideos: true
+            }
+          })
+        )
+      })
+    })
+
+    test('passes enabledDestinations with photos disabled', async () => {
+      // ARRANGE
+      mockStartTransfer.mockResolvedValue({
+        success: true,
+        filesTransferred: 5,
+        filesTotal: 5,
+        bytesTransferred: 500000,
+        duration: 2500,
+        validationWarnings: [],
+        errors: []
+      })
+
+      render(<CfexTransferWindow />)
+      const user = userEvent.setup()
+
+      // Wait for auto-detection to complete
+      await waitFor(() => {
+        expect(mockDetectSources).toHaveBeenCalled()
+      })
+
+      const sourceInput = await screen.findByLabelText(/source folder/i)
+      await waitFor(() => {
+        expect(sourceInput).not.toBeDisabled()
+      })
+
+      // ACT: Uncheck photos checkbox
+      const photosCheckbox = screen.getByRole('checkbox', { name: /photos destination/i })
+      await user.click(photosCheckbox)
+
+      // ACT: Start transfer
+      await user.click(screen.getByRole('button', { name: /start transfer/i }))
+
+      // ASSERT: enabledDestinations passed with photos=false
+      await waitFor(() => {
+        expect(mockStartTransfer).toHaveBeenCalledWith(
+          expect.objectContaining({
+            enabledDestinations: {
+              photos: false,
+              rawVideos: true
+            }
+          })
+        )
+      })
+    })
+
+    test('passes enabledDestinations with rawVideos disabled', async () => {
+      // ARRANGE
+      mockStartTransfer.mockResolvedValue({
+        success: true,
+        filesTransferred: 5,
+        filesTotal: 5,
+        bytesTransferred: 500000,
+        duration: 2500,
+        validationWarnings: [],
+        errors: []
+      })
+
+      render(<CfexTransferWindow />)
+      const user = userEvent.setup()
+
+      // Wait for auto-detection to complete
+      await waitFor(() => {
+        expect(mockDetectSources).toHaveBeenCalled()
+      })
+
+      const sourceInput = await screen.findByLabelText(/source folder/i)
+      await waitFor(() => {
+        expect(sourceInput).not.toBeDisabled()
+      })
+
+      // ACT: Uncheck videos checkbox
+      const videosCheckbox = screen.getByRole('checkbox', { name: /raw videos destination/i })
+      await user.click(videosCheckbox)
+
+      // ACT: Start transfer
+      await user.click(screen.getByRole('button', { name: /start transfer/i }))
+
+      // ASSERT: enabledDestinations passed with rawVideos=false
+      await waitFor(() => {
+        expect(mockStartTransfer).toHaveBeenCalledWith(
+          expect.objectContaining({
+            enabledDestinations: {
+              photos: true,
+              rawVideos: false
+            }
+          })
+        )
+      })
+    })
+  })
+
+  /**
    * Auto-Detection Integration Tests
    *
    * TDD RED Phase - Tests for automatic CFEx card detection on mount
