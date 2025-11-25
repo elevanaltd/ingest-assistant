@@ -26,6 +26,7 @@ describe('CfexTransferWindow', () => {
   let mockStartTransfer: ReturnType<typeof vi.fn>
   let mockGetTransferState: ReturnType<typeof vi.fn>
   let mockOnTransferProgress: ReturnType<typeof vi.fn>
+  let mockDetectSources: ReturnType<typeof vi.fn>
 
   beforeEach(() => {
     // Create mocks first
@@ -40,11 +41,19 @@ describe('CfexTransferWindow', () => {
     })
     mockGetTransferState = vi.fn()
     mockOnTransferProgress = vi.fn().mockReturnValue(() => {})
+    mockDetectSources = vi.fn().mockResolvedValue({
+      cards: [],
+      destinations: { photos: '/default/photos', rawVideos: '/default/rawVideos' },
+      shouldAutoPopulate: false,
+      selectedCard: undefined
+    })
 
     // Mock window.electronAPI.cfex (v2.2.0 contextBridge pattern)
     // Type mock structure against ElectronAPI['cfex'] contract for type safety
     // Use 'as any' for individual mocks to allow Vitest flexibility
     const cfexMock: ElectronAPI['cfex'] = {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      detectSources: mockDetectSources as any,
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       startTransfer: mockStartTransfer as any,
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
