@@ -816,5 +816,36 @@ describe('SettingsModal', () => {
         expect(screen.getByDisplayValue('/Volumes/EAV_Video_RAW/')).toBeInTheDocument();
       });
     });
+
+    it('should prevent saving empty CFEx paths', async () => {
+      render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
+
+      fireEvent.click(screen.getByText('CFEx Transfer'));
+
+      await waitFor(() => {
+        expect(window.electronAPI.loadConfig).toHaveBeenCalled();
+      });
+
+      // Clear all path inputs
+      const sourceInput = screen.getByLabelText(/default source folder/i);
+      const photosInput = screen.getByLabelText(/default photos destination/i);
+      const videosInput = screen.getByLabelText(/default raw videos destination/i);
+
+      fireEvent.change(sourceInput, { target: { value: '' } });
+      fireEvent.change(photosInput, { target: { value: '' } });
+      fireEvent.change(videosInput, { target: { value: '' } });
+
+      // Try to save
+      const saveButton = screen.getByText('Save CFEx Settings');
+      fireEvent.click(saveButton);
+
+      // Should show validation error
+      await waitFor(() => {
+        expect(screen.getByText(/source path cannot be empty/i)).toBeInTheDocument();
+      });
+
+      // Should NOT have called saveConfig
+      expect(window.electronAPI.saveConfig).not.toHaveBeenCalled();
+    });
   });
 });

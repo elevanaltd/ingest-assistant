@@ -332,6 +332,17 @@ export function SettingsModal({ onClose, onSave, initialConfig }: SettingsModalP
       return;
     }
 
+    // Validate paths before save (empty string check)
+    const validationErrors: string[] = [];
+    if (!cfexSource.trim()) validationErrors.push('Source path cannot be empty');
+    if (!cfexPhotos.trim()) validationErrors.push('Photos path cannot be empty');
+    if (!cfexVideos.trim()) validationErrors.push('Videos path cannot be empty');
+
+    if (validationErrors.length > 0) {
+      setCfexError(validationErrors.join('. '));
+      return;
+    }
+
     setIsSavingCfex(true);
     setCfexError('');
     setCfexSaveSuccess(false);
