@@ -549,3 +549,43 @@
 - ✅ Security Fix + Code Review: Template validation + optional fields (20 tests)
 
 **Next Phase:** Phase 1b: Proxy Generation (ffmpeg + exiftool integration)
+
+---
+
+## 🐛 Known Issues (For Next Session)
+
+### BUG: Filename Rewrite Toggle Not Working in Batch Operations
+**Status:** REPORTED (2025-11-26) - NOT FIXED
+**Reporter:** User testing
+**Severity:** MEDIUM (toggle present but non-functional)
+
+**Symptoms:**
+- User enables "Rename files using template" toggle in Settings → File Ingestion
+- Template input appears and can be configured
+- Toggle state persists correctly (saves to config)
+- **BUG:** Batch operations do NOT rename files when processing
+
+**Root Cause (suspected):**
+- The FilenameTemplateParser and MetadataToggleService exist (Phase 1c implementation)
+- Likely missing: Integration between batch processor and the toggle/template logic
+- Need to check: Does `batchQueueManager.ts` or related batch code read the `filenameRewrite` toggle?
+- Need to check: Is `filenameTemplate` being passed to the rename logic?
+
+**Investigation Required:**
+1. Check batchQueueManager.ts for toggle consumption
+2. Check file:rename-file IPC handler for template integration
+3. Check metadataWriter.ts for template-based rename capability
+4. Trace the flow: Toggle state → Batch process → Actual rename operation
+
+**Files to Review:**
+- `electron/services/batchQueueManager.ts` - batch processing logic
+- `electron/services/metadataWriter.ts` - file operations
+- `electron/services/metadataToggle.ts` - toggle service (exists, tested)
+- `electron/services/filenameTemplate.ts` - template parser (exists, 54 tests)
+- `electron/main.ts` - IPC handlers for batch/rename
+
+**Acceptance Criteria (when fixed):**
+- [ ] Batch process reads `filenameRewrite` toggle from config
+- [ ] When enabled, files are renamed using template after AI analysis
+- [ ] Original filename preserved in TapeName metadata (I3 compliance)
+- [ ] Test coverage for batch + template integration
