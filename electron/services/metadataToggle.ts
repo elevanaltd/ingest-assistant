@@ -97,7 +97,7 @@ export class MetadataToggleService {
     await this.writer.writeMetadataToFile(
       filePath,
       shotName,
-      metadata.keywords || [],
+      jsonMetadata.keywords || [],
       {
         location: metadata.location,
         subject: metadata.subject,
