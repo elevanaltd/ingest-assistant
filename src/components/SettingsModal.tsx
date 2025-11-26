@@ -16,7 +16,7 @@ interface SettingsModalProps {
 
 export function SettingsModal({ onClose, onSave, initialConfig }: SettingsModalProps) {
   // Tab state
-  const [activeTab, setActiveTab] = useState<'lexicon' | 'ai' | 'cfex'>('lexicon');
+  const [activeTab, setActiveTab] = useState<'lexicon' | 'ai' | 'cfex' | 'ingestion'>('lexicon');
 
   // Lexicon state - simple text fields
   const [pattern, setPattern] = useState('{location}-{subject}-{shotType}');
@@ -59,10 +59,16 @@ export function SettingsModal({ onClose, onSave, initialConfig }: SettingsModalP
   const [filenameRewrite, setFilenameRewrite] = useState(false);
   const [filenameTemplate, setFilenameTemplate] = useState('{location}-{subject}-{action}-{shotType}');
 
+  // Ingestion settings save state
+  const [isSavingIngestion, setIsSavingIngestion] = useState(false);
+  const [ingestionSaveSuccess, setIngestionSaveSuccess] = useState(false);
+  const [ingestionError, setIngestionError] = useState<string>('');
+
   // Refs for cleanup
   const lexiconCloseTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const aiCloseTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const cfexCloseTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const ingestionCloseTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Handle Escape key to close modal
   useEffect(() => {
@@ -91,6 +97,9 @@ export function SettingsModal({ onClose, onSave, initialConfig }: SettingsModalP
       }
       if (cfexCloseTimeoutRef.current) {
         clearTimeout(cfexCloseTimeoutRef.current);
+      }
+      if (ingestionCloseTimeoutRef.current) {
+        clearTimeout(ingestionCloseTimeoutRef.current);
       }
     };
   }, []);
@@ -155,9 +164,9 @@ export function SettingsModal({ onClose, onSave, initialConfig }: SettingsModalP
     }
   }, [aiProvider, activeTab]);
 
-  // Load CFEx config when switching to CFEx tab
+  // Load CFEx config when switching to CFEx or Ingestion tab
   useEffect(() => {
-    if (activeTab === 'cfex' && window.electronAPI?.loadConfig) {
+    if ((activeTab === 'cfex' || activeTab === 'ingestion') && window.electronAPI?.loadConfig) {
       window.electronAPI.loadConfig()
         .then(config => {
           if (config.cfex) {
@@ -181,8 +190,14 @@ export function SettingsModal({ onClose, onSave, initialConfig }: SettingsModalP
           }
         })
         .catch(err => {
-          console.error('Failed to load CFEx config:', err);
-          setCfexError(`Failed to load configuration: ${err.message}`);
+          console.error('Failed to load config:', err);
+          const errorMsg = `Failed to load configuration: ${err.message}`;
+          // Set error on the appropriate tab
+          if (activeTab === 'cfex') {
+            setCfexError(errorMsg);
+          } else if (activeTab === 'ingestion') {
+            setIngestionError(errorMsg);
+          }
         });
     }
   }, [activeTab]);
@@ -405,6 +420,59 @@ export function SettingsModal({ onClose, onSave, initialConfig }: SettingsModalP
     }
   };
 
+  const handleSaveIngestion = async () => {
+    if (!window.electronAPI?.loadConfig || !window.electronAPI?.saveConfig) {
+      setIngestionError('Configuration API not available');
+      return;
+    }
+
+    setIsSavingIngestion(true);
+    setIngestionError('');
+    setIngestionSaveSuccess(false);
+
+    try {
+      // Load existing config first to preserve other settings
+      const existingConfig = await window.electronAPI.loadConfig();
+
+      const updatedConfig = {
+        ...existingConfig,
+        cfex: {
+          // Preserve existing path config (or defaults)
+          defaultSource: existingConfig.cfex?.defaultSource || DEFAULT_CFEX_CONFIG.defaultSource,
+          defaultPhotos: existingConfig.cfex?.defaultPhotos || DEFAULT_CFEX_CONFIG.defaultPhotos,
+          defaultVideos: existingConfig.cfex?.defaultVideos || DEFAULT_CFEX_CONFIG.defaultVideos,
+          // Update toggle states
+          aiAutoAnalyze,
+          metadataWrite,
+          filenameRewrite,
+          filenameTemplate
+        }
+      };
+
+      const result = await window.electronAPI.saveConfig(updatedConfig);
+
+      if (result) {
+        setIngestionSaveSuccess(true);
+
+        // Clear any existing timeout
+        if (ingestionCloseTimeoutRef.current) {
+          clearTimeout(ingestionCloseTimeoutRef.current);
+        }
+
+        // Auto-close modal after brief delay to show success message
+        ingestionCloseTimeoutRef.current = setTimeout(() => {
+          onClose();
+        }, 1500);
+      } else {
+        setIngestionError('Failed to save ingestion settings');
+      }
+    } catch (err) {
+      setIngestionError(err instanceof Error ? err.message : 'Failed to save ingestion settings');
+    } finally {
+      setIsSavingIngestion(false);
+    }
+  };
+
   return (
     <div
       className="modal-backdrop"
@@ -496,6 +564,19 @@ export function SettingsModal({ onClose, onSave, initialConfig }: SettingsModalP
             }}
           >
             CFEx Transfer
+          </button>
+          <button
+            onClick={() => setActiveTab('ingestion')}
+            style={{
+              padding: '8px 16px',
+              background: 'none',
+              border: 'none',
+              borderBottom: activeTab === 'ingestion' ? '2px solid #007bff' : '2px solid transparent',
+              cursor: 'pointer',
+              fontWeight: activeTab === 'ingestion' ? 'bold' : 'normal',
+            }}
+          >
+            File Ingestion
           </button>
         </div>
 
@@ -858,14 +939,43 @@ export function SettingsModal({ onClose, onSave, initialConfig }: SettingsModalP
               <small style={{ color: '#666' }}>Ubuntu NFS mount for raw video archival</small>
             </div>
 
-            {/* Divider */}
-            <hr style={{ margin: '24px 0', border: 'none', borderTop: '1px solid #ddd' }} />
+            {cfexError && <div style={{ color: 'red' }}>{cfexError}</div>}
+            {cfexSaveSuccess && <div style={{ color: 'green' }}>✓ CFEx settings saved successfully!</div>}
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '16px' }}>
+              <button onClick={onClose} style={{ padding: '8px 16px' }}>
+                Close
+              </button>
+              <button
+                onClick={handleSaveCfex}
+                disabled={isSavingCfex}
+                style={{
+                  padding: '8px 16px',
+                  backgroundColor: '#007bff',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: isSavingCfex ? 'not-allowed' : 'pointer',
+                }}
+              >
+                {isSavingCfex ? 'Saving...' : 'Save CFEx Settings'}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* File Ingestion Tab */}
+        {activeTab === 'ingestion' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <p style={{ color: '#666', marginTop: 0 }}>
+              Configure automation for file ingestion operations. These settings apply to all ingestion workflows.
+            </p>
 
             {/* Power Features - Toggles */}
             <div>
               <h3 style={{ marginTop: 0, marginBottom: '16px', fontSize: '16px' }}>Power Features</h3>
               <p style={{ color: '#666', fontSize: '14px', marginBottom: '16px' }}>
-                Configure automation for post-transfer operations. All features default to OFF (I7 Human Primacy).
+                All features default to OFF (I7 Human Primacy - human judgment has final authority).
               </p>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
@@ -914,11 +1024,11 @@ export function SettingsModal({ onClose, onSave, initialConfig }: SettingsModalP
                 {/* Filename Template Input (conditional) */}
                 {filenameRewrite && (
                   <div style={{ marginLeft: '24px', marginTop: '8px' }}>
-                    <label htmlFor="filenameTemplate" style={{ display: 'block', marginBottom: '4px', fontSize: '14px', fontWeight: 'bold' }}>
+                    <label htmlFor="filenameTemplateIngestion" style={{ display: 'block', marginBottom: '4px', fontSize: '14px', fontWeight: 'bold' }}>
                       Filename Template
                     </label>
                     <input
-                      id="filenameTemplate"
+                      id="filenameTemplateIngestion"
                       type="text"
                       value={filenameTemplate}
                       onChange={(e) => setFilenameTemplate(e.target.value)}
@@ -933,26 +1043,26 @@ export function SettingsModal({ onClose, onSave, initialConfig }: SettingsModalP
               </div>
             </div>
 
-            {cfexError && <div style={{ color: 'red' }}>{cfexError}</div>}
-            {cfexSaveSuccess && <div style={{ color: 'green' }}>✓ CFEx settings saved successfully!</div>}
+            {ingestionError && <div style={{ color: 'red' }}>{ingestionError}</div>}
+            {ingestionSaveSuccess && <div style={{ color: 'green' }}>✓ Ingestion settings saved successfully!</div>}
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '16px' }}>
               <button onClick={onClose} style={{ padding: '8px 16px' }}>
                 Close
               </button>
               <button
-                onClick={handleSaveCfex}
-                disabled={isSavingCfex}
+                onClick={handleSaveIngestion}
+                disabled={isSavingIngestion}
                 style={{
                   padding: '8px 16px',
                   backgroundColor: '#007bff',
                   color: 'white',
                   border: 'none',
                   borderRadius: '4px',
-                  cursor: isSavingCfex ? 'not-allowed' : 'pointer',
+                  cursor: isSavingIngestion ? 'not-allowed' : 'pointer',
                 }}
               >
-                {isSavingCfex ? 'Saving...' : 'Save CFEx Settings'}
+                {isSavingIngestion ? 'Saving...' : 'Save Ingestion Settings'}
               </button>
             </div>
           </div>

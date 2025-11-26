@@ -898,7 +898,7 @@ describe('SettingsModal', () => {
     it('should render AI Auto-Analyze toggle checkbox', async () => {
       render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
 
-      fireEvent.click(screen.getByText('CFEx Transfer'));
+      fireEvent.click(screen.getByText('File Ingestion'));
 
       await waitFor(() => {
         expect(window.electronAPI.loadConfig).toHaveBeenCalled();
@@ -911,7 +911,7 @@ describe('SettingsModal', () => {
     it('should render Metadata Write toggle checkbox', async () => {
       render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
 
-      fireEvent.click(screen.getByText('CFEx Transfer'));
+      fireEvent.click(screen.getByText('File Ingestion'));
 
       await waitFor(() => {
         expect(window.electronAPI.loadConfig).toHaveBeenCalled();
@@ -924,7 +924,7 @@ describe('SettingsModal', () => {
     it('should render Filename Rewrite toggle checkbox', async () => {
       render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
 
-      fireEvent.click(screen.getByText('CFEx Transfer'));
+      fireEvent.click(screen.getByText('File Ingestion'));
 
       await waitFor(() => {
         expect(window.electronAPI.loadConfig).toHaveBeenCalled();
@@ -937,7 +937,7 @@ describe('SettingsModal', () => {
     it('should show filename template input only when filenameRewrite is enabled', async () => {
       render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
 
-      fireEvent.click(screen.getByText('CFEx Transfer'));
+      fireEvent.click(screen.getByText('File Ingestion'));
 
       await waitFor(() => {
         expect(window.electronAPI.loadConfig).toHaveBeenCalled();
@@ -959,7 +959,7 @@ describe('SettingsModal', () => {
     it('should load toggle state from config (all OFF by default per I7)', async () => {
       render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
 
-      fireEvent.click(screen.getByText('CFEx Transfer'));
+      fireEvent.click(screen.getByText('File Ingestion'));
 
       await waitFor(() => {
         expect(window.electronAPI.loadConfig).toHaveBeenCalled();
@@ -978,7 +978,7 @@ describe('SettingsModal', () => {
     it('should update toggle state when checkboxes clicked', async () => {
       render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
 
-      fireEvent.click(screen.getByText('CFEx Transfer'));
+      fireEvent.click(screen.getByText('File Ingestion'));
 
       await waitFor(() => {
         expect(window.electronAPI.loadConfig).toHaveBeenCalled();
@@ -1000,10 +1000,10 @@ describe('SettingsModal', () => {
       expect(metadataWriteCheckbox.checked).toBe(true);
     });
 
-    it('should save toggle state when Save CFEx Settings clicked', async () => {
+    it('should save toggle state when Save Ingestion Settings clicked', async () => {
       render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
 
-      fireEvent.click(screen.getByText('CFEx Transfer'));
+      fireEvent.click(screen.getByText('File Ingestion'));
 
       await waitFor(() => {
         expect(window.electronAPI.loadConfig).toHaveBeenCalled();
@@ -1018,7 +1018,7 @@ describe('SettingsModal', () => {
       fireEvent.click(metadataWriteCheckbox);
 
       // Save
-      const saveButton = screen.getByText('Save CFEx Settings');
+      const saveButton = screen.getByText('Save Ingestion Settings');
       fireEvent.click(saveButton);
 
       await waitFor(() => {
@@ -1037,7 +1037,7 @@ describe('SettingsModal', () => {
     it('should save filename template when filenameRewrite enabled', async () => {
       render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
 
-      fireEvent.click(screen.getByText('CFEx Transfer'));
+      fireEvent.click(screen.getByText('File Ingestion'));
 
       await waitFor(() => {
         expect(window.electronAPI.loadConfig).toHaveBeenCalled();
@@ -1057,7 +1057,7 @@ describe('SettingsModal', () => {
       fireEvent.change(templateInput, { target: { value: '{subject}-{shotType}' } });
 
       // Save
-      const saveButton = screen.getByText('Save CFEx Settings');
+      const saveButton = screen.getByText('Save Ingestion Settings');
       fireEvent.click(saveButton);
 
       await waitFor(() => {
@@ -1089,7 +1089,7 @@ describe('SettingsModal', () => {
 
       render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
 
-      fireEvent.click(screen.getByText('CFEx Transfer'));
+      fireEvent.click(screen.getByText('File Ingestion'));
 
       await waitFor(() => {
         expect(window.electronAPI.loadConfig).toHaveBeenCalled();
@@ -1108,6 +1108,121 @@ describe('SettingsModal', () => {
 
       // Filename template input should be visible
       expect(screen.getByDisplayValue('{location}-{subject}-{shotType}')).toBeInTheDocument();
+    });
+  });
+
+  /**
+   * File Ingestion Tab Tests
+   *
+   * TDD RED Phase - Tests for separate File Ingestion tab containing power feature toggles
+   * Feature: Separate ingestion settings from CFEx transfer configuration
+   * Rationale: Toggles apply to all file ingestion workflows, not just CFEx transfer
+   */
+  describe('File Ingestion Settings Tab', () => {
+    beforeEach(() => {
+      // Mock window.electronAPI with CFEx toggle methods
+      window.electronAPI = {
+        getAIConfig: vi.fn().mockResolvedValue({
+          provider: 'openrouter',
+          model: 'anthropic/claude-3.5-sonnet',
+          apiKey: '***masked***'
+        }),
+        isAIConfigured: vi.fn().mockResolvedValue(true),
+        updateAIConfig: vi.fn().mockResolvedValue({ success: true }),
+        testAIConnection: vi.fn().mockResolvedValue({ success: true }),
+        testSavedAIConnection: vi.fn().mockResolvedValue({ success: true }),
+        getAIModels: vi.fn().mockResolvedValue([]),
+        loadConfig: vi.fn().mockResolvedValue({
+          lexicon: {},
+          cfex: {
+            defaultSource: '/Volumes/Untitled/DCIM/100_FUJI',
+            defaultPhotos: '/Volumes/videos-current/2. WORKING PROJECTS/',
+            defaultVideos: '/Volumes/EAV_Video_RAW/',
+            aiAutoAnalyze: false,
+            metadataWrite: false,
+            filenameRewrite: false,
+            filenameTemplate: '{location}-{subject}-{action}-{shotType}'
+          }
+        }),
+        saveConfig: vi.fn().mockResolvedValue(true),
+        selectFolder: vi.fn().mockResolvedValue('/selected/path'),
+        batchStart: vi.fn(async () => 'mock-queue-id'),
+        batchCancel: vi.fn(async () => ({ success: true })),
+        batchGetStatus: vi.fn(async () => ({
+          items: [],
+          status: 'idle',
+          currentFile: null
+        })),
+        onBatchProgress: vi.fn(() => () => {}),
+        onTranscodeProgress: vi.fn(() => () => {}),
+      } as Partial<typeof window.electronAPI> as typeof window.electronAPI;
+    });
+
+    it('should render File Ingestion tab alongside other tabs', () => {
+      render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
+
+      expect(screen.getByText('Lexicon')).toBeInTheDocument();
+      expect(screen.getByText('AI Connection')).toBeInTheDocument();
+      expect(screen.getByText('CFEx Transfer')).toBeInTheDocument();
+      expect(screen.getByText('File Ingestion')).toBeInTheDocument();
+    });
+
+    it('should show power feature toggles when File Ingestion tab is clicked', async () => {
+      render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
+
+      fireEvent.click(screen.getByText('File Ingestion'));
+
+      await waitFor(() => {
+        expect(window.electronAPI.loadConfig).toHaveBeenCalled();
+      });
+
+      // Should have all 3 power feature toggles
+      expect(screen.getByLabelText(/AI Auto-Analyze after transfer/i)).toBeInTheDocument();
+      expect(screen.getByLabelText(/Write metadata to files/i)).toBeInTheDocument();
+      expect(screen.getByLabelText(/Rename files using template/i)).toBeInTheDocument();
+    });
+
+    it('should NOT show power feature toggles in CFEx Transfer tab', async () => {
+      render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
+
+      fireEvent.click(screen.getByText('CFEx Transfer'));
+
+      await waitFor(() => {
+        expect(window.electronAPI.loadConfig).toHaveBeenCalled();
+      });
+
+      // Power feature toggles should NOT be in CFEx Transfer tab
+      expect(screen.queryByLabelText(/AI Auto-Analyze after transfer/i)).not.toBeInTheDocument();
+      expect(screen.queryByLabelText(/Write metadata to files/i)).not.toBeInTheDocument();
+      expect(screen.queryByLabelText(/Rename files using template/i)).not.toBeInTheDocument();
+    });
+
+    it('should save toggle state when Save Ingestion Settings clicked', async () => {
+      render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
+
+      fireEvent.click(screen.getByText('File Ingestion'));
+
+      await waitFor(() => {
+        expect(window.electronAPI.loadConfig).toHaveBeenCalled();
+      });
+
+      // Enable AI Auto-Analyze toggle
+      const aiToggle = screen.getByLabelText(/AI Auto-Analyze after transfer/i);
+      fireEvent.click(aiToggle);
+
+      // Save
+      const saveButton = screen.getByText('Save Ingestion Settings');
+      fireEvent.click(saveButton);
+
+      await waitFor(() => {
+        expect(window.electronAPI.saveConfig).toHaveBeenCalledWith(
+          expect.objectContaining({
+            cfex: expect.objectContaining({
+              aiAutoAnalyze: true
+            })
+          })
+        );
+      });
     });
   });
 });
