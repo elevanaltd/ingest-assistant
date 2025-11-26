@@ -1,6 +1,6 @@
 # Ingest Assistant - Project Roadmap
 
-**Last Updated:** 2025-11-26 | **Current Phase:** CFEx Phase 1c (Power Features) ACTIVE - Resequenced
+**Last Updated:** 2025-11-26 | **Current Phase:** CFEx Phase 1b (Proxy Generation) - NEXT
 
 ---
 
@@ -13,6 +13,8 @@
 | B1 | Workspace Setup | Oct 2025 |
 | B2/B3 | Video Transcoding + Integration | Nov 2025 |
 | B4 | Production Readiness (v2.2.0) | Nov 18, 2025 |
+| Phase 1a | CFEx Transfer + Integrity | Nov 26, 2025 |
+| Phase 1c | CFEx Power Features (+104 tests) | Nov 26, 2025 |
 
 **Full history:** [`PROJECT-HISTORY.md`](PROJECT-HISTORY.md)
 
@@ -46,9 +48,9 @@
 
 ---
 
-### Phase 1b: Proxy Generation - ⏳ NEXT (after Phase 1c)
+### Phase 1b: Proxy Generation - 🚀 IMMEDIATE (Phase 1c complete)
 
-**Timeline:** 2 weeks | **Blocked by:** Phase 1c (resequenced - user needs toggles first)
+**Timeline:** 2 weeks | **Unblocked:** Phase 1c complete, ready for D2 design
 
 **Scope:**
 1. [ ] D2 Design: ffmpeg + exiftool integration architecture
@@ -79,25 +81,25 @@ exiftool -overwrite_original "-QuickTime:DateTimeOriginal=$ORIG_DATE" proxy.MOV
 
 ---
 
-### Phase 1c: Power Features - 🚀 ACTIVE (Resequenced)
+### Phase 1c: Power Features - ✅ COMPLETE (PR #88 merged Nov 26, 2025)
 
-**Timeline:** 2-3 weeks | **Unblocked:** Phase 1a complete, user priority override
-**Reason:** User needs toggles for current workflow before proxy generation
+**Timeline:** Completed Nov 26, 2025 | **Tests:** +104 new tests (871 total)
 
-**Scope:**
-1. [ ] D2 Design: Toggle architecture, template parser
-2. [ ] D3 Blueprint: Settings panel UI, filename preview
-3. [ ] B0 Validation: Toggle defaults (all OFF = I7 compliance)
-4. [ ] B2 Implementation:
-   - [ ] AI Auto-Analyze Toggle (default: OFF)
-   - [ ] Metadata Write Toggle (shotName, LogComment, TapeName)
-   - [ ] Filename Rewrite Toggle + Template parser
-   - [ ] Settings persistence
-   - [ ] +50 tests (toggles, template, TapeName logic)
+**Deliverables:**
+- [x] FilenameTemplateParser with security hardening (54 tests)
+- [x] MetadataToggleService for conditional TapeName writing (10 tests)
+- [x] CfexConfig extension with toggle persistence (6 tests)
+- [x] SettingsModal UI with 3 toggle checkboxes (9 tests)
+- [x] AI Auto-Analyze event emission integration (5 tests)
+- [x] Security fix: template static text validation (10 tests)
+- [x] Edge case: optional action field handling (10 tests)
 
-**TapeName Logic:**
-- Written when: metadata write toggle ON OR filename rewrite toggle ON
-- NOT written when: Both toggles OFF (JSON-only workflow)
+**3 Toggles (all default OFF per I7):**
+- AI Auto-Analyze Toggle - triggers batch AI after transfer
+- Metadata Write Toggle (shotName, LogComment, TapeName)
+- Filename Rewrite Toggle + Template parser
+
+**Code Review:** GO verdict (code-review-specialist via Codex)
 
 ---
 
@@ -177,13 +179,13 @@ exiftool -overwrite_original "-QuickTime:DateTimeOriginal=$ORIG_DATE" proxy.MOV
 
 ```
 Phase 1a CORE:    ✅ COMPLETE (risk-accepted skip of integration testing)
-Phase 1c:         ~2-3 weeks (ACTIVE - resequenced, user priority)
-Phase 1b:         ~2 weeks (NEXT - after Phase 1c)
-Phase 1a POLISH:  5-10 days (parallel to 1b/1c, includes auto-detection IPC+UI if needed)
+Phase 1c:         ✅ COMPLETE (Nov 26, 2025 - +104 tests)
+Phase 1b:         ~2 weeks (IMMEDIATE - ready for D2 design)
+Phase 1a POLISH:  5-10 days (parallel to 1b, includes auto-detection IPC+UI if needed)
 Issue #63:        3-6 months (after CFEx complete + guardrails)
 ```
 
-**Total CFEx Integration:** ~5-6 weeks (resequenced: 1c→1b)
+**CFEx Integration Progress:** Phase 1a ✅ + Phase 1c ✅ → Phase 1b NEXT
 
 ---
 

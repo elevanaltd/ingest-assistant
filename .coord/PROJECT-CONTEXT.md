@@ -1,6 +1,6 @@
 # Ingest Assistant - Project Context
 
-**Last Updated:** 2025-11-26 | **Version:** v2.2.0 baseline | **Branch:** main (includes PR #87)
+**Last Updated:** 2025-11-26 | **Version:** v2.2.0 baseline | **Branch:** main (includes PR #88 Phase 1c)
 
 ---
 
@@ -24,7 +24,7 @@
 - **Runtime:** Electron (main + renderer)
 - **Frontend:** React 18, TypeScript
 - **Build:** Vite
-- **Testing:** Vitest (828 tests, 56 files)
+- **Testing:** Vitest (871 tests, 56 files)
 - **AI:** OpenRouter, Anthropic Claude, OpenAI APIs
 - **Database:** Supabase (shared with EAV Monorepo)
 
@@ -34,15 +34,15 @@
 
 ### Branch Status
 ```
-Branch: main (rebased, includes PR #87 ubuntu-changes + Phase 1c work)
-Tests:  828/830 passing + 2 skipped (+64 new Phase 1c tests)
-Lint:   0 errors, 143 warnings
+Branch: main (includes PR #88 Phase 1c Power Features)
+Tests:  871/873 passing + 2 skipped (+104 new Phase 1c tests)
+Lint:   0 errors, 153 warnings
 Types:  0 errors
 ```
 
 ### Phase Progression
 ```
-D0→D1→D2→D3(v1.1+OCTAVE)→B0(FINAL GO)→B2(Phase 1a COMPLETE)→Phase 1c ACTIVE (resequenced)
+D0→D1→D2→D3(v1.1+OCTAVE)→B0(FINAL GO)→B2(Phase 1a COMPLETE)→Phase 1c COMPLETE→Phase 1b NEXT
 ```
 
 ### CFEx Phase 1a Implementation
@@ -74,7 +74,7 @@ D0→D1→D2→D3(v1.1+OCTAVE)→B0(FINAL GO)→B2(Phase 1a COMPLETE)→Phase 1c
 |------|--------|---------|
 | Lint | PASS (0 errors) | `npm run lint` |
 | Typecheck | PASS (0 errors) | `npm run typecheck` |
-| Tests | PASS (828/830) | `npm test` |
+| Tests | PASS (871/873) | `npm test` |
 
 ---
 
@@ -107,28 +107,30 @@ D0→D1→D2→D3(v1.1+OCTAVE)→B0(FINAL GO)→B2(Phase 1a COMPLETE)→Phase 1c
 
 ## Active Work
 
-### Immediate (Phase 1c: Power Features) - B2 IN PROGRESS
-**Reason:** User needs toggles for current workflow before proxy generation
-**B0 Validation:** ✅ CONDITIONAL GO (critical-design-validator, 85% confidence)
+### ✅ Phase 1c: Power Features - COMPLETE (PR #88 merged 2025-11-26)
 
-**B2 Implementation Progress (2 of 6 phases complete):**
+**B2 Implementation Complete (6 of 6 phases):**
 - ✅ **Phase 1:** Security Foundation - FilenameTemplateParser (54 tests)
   - Command injection prevention, path traversal blocking, whitelist sanitization
-  - Commits: `3f877d8` (RED) → `e1bd562` (GREEN)
 - ✅ **Phase 2:** TapeName Logic - MetadataToggleService (10 tests)
   - Conditional metadata writing (I3 compliance)
-  - Commits: `9b053ea` (RED) → `1f0b789` (GREEN) → `d77eeea` (fix)
-- ⏳ **Phase 3:** Settings Persistence (CfexConfig extension)
-- ⏳ **Phase 4:** UI Implementation (SettingsModal toggles)
-- ⏳ **Phase 5:** AI Auto-Analyze Integration (batchQueueManager)
-- ⏳ **Phase 6:** Integration Testing + Code Review
+- ✅ **Phase 3:** Settings Persistence - CfexConfig extension (6 tests)
+  - getCfexToggles/setCfexToggles methods
+- ✅ **Phase 4:** UI Implementation - SettingsModal toggles (9 tests)
+  - 3 toggle checkboxes + conditional filename template input
+- ✅ **Phase 5:** AI Auto-Analyze Integration (5 tests)
+  - Event emission: `cfex:trigger-ai-analysis`
+- ✅ **Phase 6:** Security Fix + Code Review (10 tests + 10 tests)
+  - Template static text validation (BLOCKING issue resolved)
+  - Optional field handling (photos without action field)
+  - code-review-specialist: GO verdict
 
-**3 Toggles (all default OFF per I7):**
-- AI Auto-Analyze Toggle
+**3 Toggles Delivered (all default OFF per I7):**
+- AI Auto-Analyze Toggle - triggers after transfer if enabled
 - Metadata Write Toggle (shotName, LogComment, TapeName)
-- Filename Rewrite Toggle + Template parser
+- Filename Rewrite Toggle + Template parser with security hardening
 
-### Next (Phase 1b: Proxy Generation)
+### Immediate (Phase 1b: Proxy Generation) - NEXT
 1. **D2 Design:** ffmpeg + exiftool integration architecture
 2. **D3 Blueprint:** Progress UI, EXIF validation dialogs
 3. **B0 Validation:** DateTimeOriginal preservation protocol
@@ -180,9 +182,9 @@ D0→D1→D2→D3(v1.1+OCTAVE)→B0(FINAL GO)→B2(Phase 1a COMPLETE)→Phase 1c
 ## Recent Commits (Last 5)
 
 ```
-7817d01 docs: update coordination docs for destination checkboxes + canStart fix
-d3de99f Merge branch 'main' into feat/cfex-work
-2f4b20d fix: disable Start button during auto-detection (GREEN)
-8b4b2d9 test: add failing test for Start button disabled during auto-detection (RED)
-4bdb285 feat: implement enabledDestinations filtering for CFEx transfer (GREEN)
+da92ab5 Merge pull request #88 from elevanaltd/feat/phase-1c-power-features
+b5cb698 feat: implement optional field handling in filename template parser (GREEN)
+1e9a512 test: add failing tests for optional field handling in filename templates (RED)
+01e659c fix: validate template static text for security vulnerabilities (GREEN)
+e130e91 test: add template string security validation tests (RED)
 ```

@@ -1,6 +1,6 @@
 # Ingest Assistant - Shared Checklist
 
-## Current Status (2025-11-19 Updated)
+## Current Status (2025-11-26 Updated)
 
 ### ✅ v2.2.0 Release Complete (Nov 18, 2025)
 
@@ -178,6 +178,37 @@
 - [ ] Validation results display (show integrity check details: file count match, EXIF validation status)
 - [ ] Enhanced error log UI (real-time error stream, error history, export capability)
 - [ ] Cancellation improvements (graceful abort, cleanup partial files, resume capability)
+
+### ✅ Phase 1c: Power Features - COMPLETE (PR #88 merged Nov 26, 2025)
+
+**B2 Implementation Complete (6 of 6 phases, +104 tests):**
+- [x] **Phase 1:** Security Foundation - FilenameTemplateParser (54 tests)
+  - Command injection prevention, path traversal blocking, whitelist sanitization
+  - Security hardening for template static text validation
+- [x] **Phase 2:** TapeName Logic - MetadataToggleService (10 tests)
+  - Conditional metadata writing (I3 compliance)
+- [x] **Phase 3:** Settings Persistence - CfexConfig extension (6 tests)
+  - getCfexToggles/setCfexToggles methods
+- [x] **Phase 4:** UI Implementation - SettingsModal toggles (9 tests)
+  - 3 toggle checkboxes + conditional filename template input
+- [x] **Phase 5:** AI Auto-Analyze Integration (5 tests)
+  - Event emission: `cfex:trigger-ai-analysis` after transfer
+- [x] **Phase 6:** Security Fix + Code Review (20 tests)
+  - Template static text validation (BLOCKING issue resolved)
+  - Optional field handling (photos without action field work)
+  - code-review-specialist: GO verdict
+  - quality-observer: 9.5/10 score
+
+**3 Toggles Delivered (all default OFF per I7 Human Primacy):**
+- AI Auto-Analyze Toggle - triggers batch AI after transfer if enabled
+- Metadata Write Toggle (shotName, LogComment, TapeName)
+- Filename Rewrite Toggle + Template parser with security hardening
+
+**Quality Gates:**
+- Tests: 871/873 passing (from 764 → +107 new tests)
+- Lint: 0 errors, 153 warnings
+- Typecheck: 0 errors
+- Code Review: GO (code-review-specialist via Codex)
 
 ### 🔄 Cross-Ecosystem Integration (Issue #63) - Dual-Key Governance Complete (DEFERRED)
 
@@ -505,13 +536,16 @@
 ---
 
 ## Last Updated
-2025-11-26 (Phase 1c B2 IN PROGRESS - holistic-orchestrator)
-**Tests:** 828/830 passing + 2 skipped (+64 new Phase 1c tests)
-**Branch:** main (rebased, includes PR #87 ubuntu-changes)
+2025-11-26 (Phase 1c COMPLETE - holistic-orchestrator)
+**Tests:** 871/873 passing + 2 skipped (+104 new Phase 1c tests)
+**Branch:** main (includes PR #88 Phase 1c Power Features)
 
-**Phase 1c Progress (2 of 6 phases complete):**
-- ✅ Security Foundation: FilenameTemplateParser (54 tests) - command injection + path traversal prevention
-- ✅ TapeName Logic: MetadataToggleService (10 tests) - I3 compliant conditional metadata writing
-- ⏳ Remaining: Settings Persistence → UI → AI Auto-Analyze → Integration Testing
+**Phase 1c Complete (6 of 6 phases):**
+- ✅ Security Foundation: FilenameTemplateParser (54 tests)
+- ✅ TapeName Logic: MetadataToggleService (10 tests)
+- ✅ Settings Persistence: CfexConfig extension (6 tests)
+- ✅ UI Implementation: SettingsModal toggles (9 tests)
+- ✅ AI Auto-Analyze Integration: Event emission (5 tests)
+- ✅ Security Fix + Code Review: Template validation + optional fields (20 tests)
 
-**Next Session:** Continue Phase 1c implementation (Phase 3: Settings Persistence)
+**Next Phase:** Phase 1b: Proxy Generation (ffmpeg + exiftool integration)
