@@ -1,6 +1,6 @@
 # Ingest Assistant - Project Context
 
-**Last Updated:** 2025-11-26 | **Version:** v2.2.0 baseline | **Branch:** feat/cfex-work
+**Last Updated:** 2025-11-26 | **Version:** v2.2.0 baseline | **Branch:** main (includes PR #87)
 
 ---
 
@@ -24,7 +24,7 @@
 - **Runtime:** Electron (main + renderer)
 - **Frontend:** React 18, TypeScript
 - **Build:** Vite
-- **Testing:** Vitest (764 tests, 40 files)
+- **Testing:** Vitest (828 tests, 56 files)
 - **AI:** OpenRouter, Anthropic Claude, OpenAI APIs
 - **Database:** Supabase (shared with EAV Monorepo)
 
@@ -34,9 +34,9 @@
 
 ### Branch Status
 ```
-Branch: feat/cfex-work (clean, up-to-date)
-Tests:  764/766 passing + 2 skipped
-Lint:   0 errors, 105 warnings
+Branch: main (rebased, includes PR #87 ubuntu-changes + Phase 1c work)
+Tests:  828/830 passing + 2 skipped (+64 new Phase 1c tests)
+Lint:   0 errors, 143 warnings
 Types:  0 errors
 ```
 
@@ -72,9 +72,9 @@ D0→D1→D2→D3(v1.1+OCTAVE)→B0(FINAL GO)→B2(Phase 1a COMPLETE)→Phase 1c
 
 | Gate | Status | Command |
 |------|--------|---------|
-| Lint | PASS | `npm run lint` |
-| Typecheck | PASS | `npm run typecheck` |
-| Tests | PASS (764/766) | `npm test` |
+| Lint | PASS (0 errors) | `npm run lint` |
+| Typecheck | PASS (0 errors) | `npm run typecheck` |
+| Tests | PASS (828/830) | `npm test` |
 
 ---
 
@@ -107,13 +107,26 @@ D0→D1→D2→D3(v1.1+OCTAVE)→B0(FINAL GO)→B2(Phase 1a COMPLETE)→Phase 1c
 
 ## Active Work
 
-### Immediate (Phase 1c: Power Features) - RESEQUENCED
+### Immediate (Phase 1c: Power Features) - B2 IN PROGRESS
 **Reason:** User needs toggles for current workflow before proxy generation
-1. **B0 Validation:** Toggle logic, template parser security, North Star alignment
-2. **B2 Implementation:** 3 toggles + ~50 tests (TDD/TRACED)
-   - AI Auto-Analyze Toggle (default: OFF)
-   - Metadata Write Toggle (shotName, LogComment, TapeName)
-   - Filename Rewrite Toggle + Template parser
+**B0 Validation:** ✅ CONDITIONAL GO (critical-design-validator, 85% confidence)
+
+**B2 Implementation Progress (2 of 6 phases complete):**
+- ✅ **Phase 1:** Security Foundation - FilenameTemplateParser (54 tests)
+  - Command injection prevention, path traversal blocking, whitelist sanitization
+  - Commits: `3f877d8` (RED) → `e1bd562` (GREEN)
+- ✅ **Phase 2:** TapeName Logic - MetadataToggleService (10 tests)
+  - Conditional metadata writing (I3 compliance)
+  - Commits: `9b053ea` (RED) → `1f0b789` (GREEN) → `d77eeea` (fix)
+- ⏳ **Phase 3:** Settings Persistence (CfexConfig extension)
+- ⏳ **Phase 4:** UI Implementation (SettingsModal toggles)
+- ⏳ **Phase 5:** AI Auto-Analyze Integration (batchQueueManager)
+- ⏳ **Phase 6:** Integration Testing + Code Review
+
+**3 Toggles (all default OFF per I7):**
+- AI Auto-Analyze Toggle
+- Metadata Write Toggle (shotName, LogComment, TapeName)
+- Filename Rewrite Toggle + Template parser
 
 ### Next (Phase 1b: Proxy Generation)
 1. **D2 Design:** ffmpeg + exiftool integration architecture
