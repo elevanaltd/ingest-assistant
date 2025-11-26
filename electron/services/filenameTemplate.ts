@@ -199,11 +199,17 @@ export class FilenameTemplateParser {
    * Example: "{location}-{subject}-{shotType}" with fields {location: "kitchen", subject: "oven", shotType: "CU"}
    * Result: "kitchen-oven-CU"
    *
+   * OPTIONAL FIELDS: Fields with undefined or empty string values are handled gracefully:
+   * - Placeholder is removed from template
+   * - Adjacent separators are cleaned up (no double hyphens/underscores)
+   * - Example: "{location}-{subject}-{action}-{shotType}" with action=undefined
+   *   → "kitchen-oven-CU" (not "kitchen-oven--CU")
+   *
    * @param template Template string with placeholders
    * @param fields Field values to substitute
    * @returns Generated filename (without extension)
    * @throws SecurityViolationError if any field value contains unsafe characters
-   * @throws Error if template is invalid or field is missing
+   * @throws Error if template is invalid
    */
   parse(template: string, fields: TemplateFields): string {
     // Validate template not empty
@@ -235,17 +241,33 @@ export class FilenameTemplateParser {
 
       const fieldValue = fields[fieldKey];
 
-      // Check field value exists and is not null/undefined
-      if (fieldValue === null || fieldValue === undefined) {
-        throw new Error(`Field value cannot be null or undefined: ${fieldKey}`);
+      // OPTIONAL FIELD HANDLING: Allow undefined/empty values
+      // These will be removed from the template along with adjacent separators
+      if (fieldValue === null || fieldValue === undefined || fieldValue === '') {
+        // Remove placeholder (cleanup happens after all substitutions)
+        result = result.replace(fieldName, '');
+      } else {
+        // Sanitize field value (security validation)
+        const sanitized = this.sanitizeFieldValue(fieldValue, fieldKey);
+
+        // Replace placeholder with sanitized value
+        result = result.replace(fieldName, sanitized);
       }
-
-      // Sanitize field value (security validation)
-      const sanitized = this.sanitizeFieldValue(fieldValue, fieldKey);
-
-      // Replace placeholder with sanitized value
-      result = result.replace(fieldName, sanitized);
     }
+
+    // CLEANUP PHASE: Remove duplicate separators and trim edges
+    // This handles cases where optional fields create double separators
+    // Examples:
+    // - "kitchen--oven" → "kitchen-oven"
+    // - "kitchen__oven" → "kitchen_oven"
+    // - "-kitchen-oven" → "kitchen-oven"
+    // - "kitchen-oven-" → "kitchen-oven"
+
+    // Replace multiple consecutive separators with single separator
+    result = result.replace(/[-_]+/g, (match) => match[0]);
+
+    // Remove leading/trailing separators
+    result = result.replace(/^[-_]+|[-_]+$/g, '');
 
     return result;
   }
