@@ -161,6 +161,14 @@ export interface CfexConfig {
   defaultPhotos: string;
   /** Default destination for raw videos (e.g., /Volumes/EAV_Video_RAW/) */
   defaultVideos: string;
+  /** Enable AI auto-analysis after transfer (default: false per I7 Human Primacy) */
+  aiAutoAnalyze?: boolean;
+  /** Enable metadata write to files (default: false per I7 Human Primacy) */
+  metadataWrite?: boolean;
+  /** Enable filename rewrite using template (default: false per I7 Human Primacy) */
+  filenameRewrite?: boolean;
+  /** Filename template for rewriting (default: '{location}-{subject}-{action}-{shotType}') */
+  filenameTemplate?: string;
 }
 
 export interface AppConfig {

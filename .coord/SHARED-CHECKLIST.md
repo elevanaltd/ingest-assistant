@@ -82,7 +82,7 @@
 - [x] D3 Blueprint compression to OCTAVE (65.5% reduction, 100% decision logic preserved)
 - [ ] Integration testing: CFEx card → LucidLink + Ubuntu NFS (deferred to Priority 3)
 
-**Phase 1a-CORE Remaining Work (Week 2-3):**
+**Phase 1a-CORE Work (Week 2-3) - ✅ COMPLETE:**
 
 **Priority 1: Error Handling (4 days - BLOCKING for production) - ✅ COMPLETE**
 **Status:** MERGED (PR #80 + PR #81 merged Nov 22)
@@ -126,12 +126,16 @@
 - [x] Timeout protection (unhandled rejection prevention)
 - [x] Error code preservation (EACCES throw with code)
 
-**Priority 3: Integration Testing (4 days - EMPIRICAL validation)**
-- [ ] LucidLink cache eviction testing (measure actual timeout patterns vs conservative assumptions)
-- [ ] Ubuntu NFS stale handle testing (network resilience, disconnect/reconnect scenarios)
-- [ ] Performance baselines (transfer speeds, retry overhead, memory usage)
-- [ ] Risk scenario testing (disconnected volumes, concurrent transfers, disk full)
-- [ ] Document empirical findings (update error handling specs with real-world data)
+**Priority 3: Integration Testing - ⚠️ SKIPPED (Risk-Accepted 2025-11-26)**
+**Decision:** Skip empirical testing, fix issues in production
+**Rationale:** Error handling comprehensive (47 tests, exponential backoff), real-world feedback faster than controlled testing
+**Risk:** I4 (Zero Data Loss) remains 🟡 Partial until production validation
+**Commitment:** First LucidLink/NFS failure = BLOCKING priority fix
+- [~] LucidLink cache eviction testing → DEFERRED (fix-in-production)
+- [~] Ubuntu NFS stale handle testing → DEFERRED (fix-in-production)
+- [~] Performance baselines → DEFERRED (gather from production)
+- [~] Risk scenario testing → DEFERRED (address as encountered)
+- [~] Document empirical findings → UPDATE when production issues found
 
 **Priority 4: CFEx Settings Tab + Browse UX (2 days) - ✅ COMPLETE**
 **Status:** COMPLETE (PR #83 merged, 764 tests passing)
@@ -501,8 +505,13 @@
 ---
 
 ## Last Updated
-2025-11-26 (Auto-detection IPC+UI deferred - holistic-orchestrator)
-**Tests:** 764/766 passing + 2 skipped, CI GREEN
-**Priority 2:** Service layer COMPLETE, IPC+UI DEFERRED (single-card workflow sufficient)
-**Decision:** Auto-detection multi-card dialog not needed for current working environment
-**Next:** Priority 3 Integration Testing (LucidLink + NFS empirical validation)
+2025-11-26 (Phase 1c B2 IN PROGRESS - holistic-orchestrator)
+**Tests:** 828/830 passing + 2 skipped (+64 new Phase 1c tests)
+**Branch:** main (rebased, includes PR #87 ubuntu-changes)
+
+**Phase 1c Progress (2 of 6 phases complete):**
+- ✅ Security Foundation: FilenameTemplateParser (54 tests) - command injection + path traversal prevention
+- ✅ TapeName Logic: MetadataToggleService (10 tests) - I3 compliant conditional metadata writing
+- ⏳ Remaining: Settings Persistence → UI → AI Auto-Analyze → Integration Testing
+
+**Next Session:** Continue Phase 1c implementation (Phase 3: Settings Persistence)

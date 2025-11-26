@@ -64,6 +64,7 @@ let transferState: TransferState = {
  * - destinations.rawVideos: string (Ubuntu path)
  * - enabledDestinations: optional flags to skip photo or video transfer
  * - options.skipValidation: boolean (optional, deferred to Week 2)
+ * - aiAutoAnalyze: boolean (Phase 1c-5: trigger AI analysis after transfer)
  */
 const TransferConfigSchema = z.object({
   source: z.string().min(1, 'Source path required'),
@@ -77,7 +78,8 @@ const TransferConfigSchema = z.object({
   }).optional(),
   options: z.object({
     skipValidation: z.boolean().optional()
-  }).optional()
+  }).optional(),
+  aiAutoAnalyze: z.boolean().optional()
 })
 
 /**
@@ -235,6 +237,21 @@ export function registerCfexTransferHandlers(mainWindow: BrowserWindow) {
         filesTotal: result.filesTotal,
         bytesTransferred: result.bytesTransferred
       })
+
+      // Phase 1c-5: Trigger AI auto-analyze if enabled and integrity passes
+      if (validated.aiAutoAnalyze && result.success) {
+        // Determine which destination to analyze based on enabled destinations
+        const enabledDests = validated.enabledDestinations || { photos: true, rawVideos: true }
+
+        // Priority: photos > videos (photos are more commonly analyzed)
+        const destinationToAnalyze = enabledDests.photos
+          ? validated.destinations.photos
+          : validated.destinations.rawVideos
+
+        mainWindow.webContents.send('cfex:trigger-ai-analysis', {
+          destination: destinationToAnalyze
+        })
+      }
 
       return result
 

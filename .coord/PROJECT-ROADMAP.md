@@ -1,6 +1,6 @@
 # Ingest Assistant - Project Roadmap
 
-**Last Updated:** 2025-11-26 | **Current Phase:** CFEx Phase 1a B2 (Week 2)
+**Last Updated:** 2025-11-26 | **Current Phase:** CFEx Phase 1c (Power Features) ACTIVE - Resequenced
 
 ---
 
@@ -20,34 +20,35 @@
 
 ## Current Phase: CFEx Integration
 
-### Phase 1a: Transfer + Integrity (Week 2 Active)
+### Phase 1a: Transfer + Integrity - ✅ COMPLETE (Risk-Accepted)
 
-**Timeline:** 2 weeks (started Nov 20)
+**Timeline:** 2 weeks (Nov 20 - Nov 26)
 
 | Priority | Status | Description |
 |----------|--------|-------------|
-| P1 | COMPLETE | Error Handling (errorHandler.ts, retryStrategy.ts, 47 tests) |
-| P2 | COMPLETE | Auto-Detection service (IPC+UI deferred - single-card workflow) |
-| P3 | NEXT | Integration Testing (4 days - LucidLink + NFS empirical) |
-| P4 | COMPLETE | Settings Tab + Browse (60s timeout, defaultPath) |
-| UX | COMPLETE | Destination checkboxes, canStart bugfix |
+| P1 | ✅ COMPLETE | Error Handling (errorHandler.ts, retryStrategy.ts, 47 tests) |
+| P2 | ✅ COMPLETE | Auto-Detection service (IPC+UI deferred - single-card workflow) |
+| P3 | ⚠️ SKIPPED | Integration Testing (risk-accepted: fix-in-production) |
+| P4 | ✅ COMPLETE | Settings Tab + Browse (60s timeout, defaultPath) |
+| UX | ✅ COMPLETE | Destination checkboxes, canStart bugfix |
 
-**Remaining Work (Phase 1a-CORE):**
-1. [ ] LucidLink cache eviction testing
-2. [ ] NFS stale handle testing
-3. [ ] Performance baselines documentation
-4. [ ] Risk scenario testing
+**Risk-Accepted Decision (2025-11-26):**
+- Skip empirical integration testing, fix issues in production
+- Rationale: Error handling comprehensive, real-world feedback faster
+- I4 (Zero Data Loss) remains 🟡 Partial until production validation
+- Commitment: First LucidLink/NFS failure = BLOCKING priority fix
 
 **Deferred (Phase 1a-POLISH → parallel to Phase 1b):**
 - [ ] Auto-detection IPC + UI (service ready, activate when multi-card needed)
 - [ ] Path Intelligence (MRU, smart defaults, pinned folders) - 5 days
 - [ ] Enhanced error log UI (real-time stream, history, export) - 5 days
+- [ ] Integration testing (address issues as encountered in production)
 
 ---
 
-### Phase 1b: Proxy Generation (NOT STARTED)
+### Phase 1b: Proxy Generation - ⏳ NEXT (after Phase 1c)
 
-**Timeline:** 2 weeks | **Blocked by:** Phase 1a-CORE completion
+**Timeline:** 2 weeks | **Blocked by:** Phase 1c (resequenced - user needs toggles first)
 
 **Scope:**
 1. [ ] D2 Design: ffmpeg + exiftool integration architecture
@@ -78,9 +79,10 @@ exiftool -overwrite_original "-QuickTime:DateTimeOriginal=$ORIG_DATE" proxy.MOV
 
 ---
 
-### Phase 1c: Power Features (NOT STARTED)
+### Phase 1c: Power Features - 🚀 ACTIVE (Resequenced)
 
-**Timeline:** 2-3 weeks | **Blocked by:** Phase 1b completion
+**Timeline:** 2-3 weeks | **Unblocked:** Phase 1a complete, user priority override
+**Reason:** User needs toggles for current workflow before proxy generation
 
 **Scope:**
 1. [ ] D2 Design: Toggle architecture, template parser
@@ -174,14 +176,14 @@ exiftool -overwrite_original "-QuickTime:DateTimeOriginal=$ORIG_DATE" proxy.MOV
 ## Timeline Summary
 
 ```
-Phase 1a CORE:    ~4 days remaining (Integration Testing only)
-Phase 1a POLISH:  5-10 days (parallel to 1b, includes auto-detection IPC+UI if needed)
-Phase 1b:         ~2 weeks
-Phase 1c:         ~2-3 weeks
+Phase 1a CORE:    ✅ COMPLETE (risk-accepted skip of integration testing)
+Phase 1c:         ~2-3 weeks (ACTIVE - resequenced, user priority)
+Phase 1b:         ~2 weeks (NEXT - after Phase 1c)
+Phase 1a POLISH:  5-10 days (parallel to 1b/1c, includes auto-detection IPC+UI if needed)
 Issue #63:        3-6 months (after CFEx complete + guardrails)
 ```
 
-**Total CFEx Integration:** ~6-7 weeks
+**Total CFEx Integration:** ~5-6 weeks (resequenced: 1c→1b)
 
 ---
 

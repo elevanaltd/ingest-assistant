@@ -725,4 +725,119 @@ lexicon:
       expect(result.error).toContain('Invalid API key');
     });
   });
+
+  describe('CFEx Transfer Toggles', () => {
+    it('should return default toggle values when no config exists', async () => {
+      const mockReadFile = vi.mocked(fs.readFile);
+      mockReadFile.mockRejectedValueOnce({ code: 'ENOENT' });
+
+      const toggles = await configManager.getCfexToggles();
+
+      expect(toggles).toEqual({
+        aiAutoAnalyze: false,
+        metadataWrite: false,
+        filenameRewrite: false,
+        filenameTemplate: '{location}-{subject}-{action}-{shotType}'
+      });
+    });
+
+    it('should persist toggle values via setCfexToggles', async () => {
+      const mockReadFile = vi.mocked(fs.readFile);
+      const mockWriteFile = vi.mocked(fs.writeFile);
+
+      mockReadFile.mockResolvedValueOnce('lexicon:\n  commonLocations: []\n');
+      mockWriteFile.mockResolvedValueOnce();
+
+      await configManager.setCfexToggles({
+        aiAutoAnalyze: true,
+        metadataWrite: true,
+        filenameRewrite: false,
+        filenameTemplate: '{subject}-{shotType}'
+      });
+
+      expect(mockWriteFile).toHaveBeenCalledOnce();
+      const savedYaml = mockWriteFile.mock.calls[0][1] as string;
+      expect(savedYaml).toContain('aiAutoAnalyze: true');
+      expect(savedYaml).toContain('metadataWrite: true');
+      expect(savedYaml).toContain('filenameRewrite: false');
+      expect(savedYaml).toContain('filenameTemplate: \'{subject}-{shotType}\'');
+    });
+
+    it('should retrieve persisted toggle values', async () => {
+      const mockReadFile = vi.mocked(fs.readFile);
+      const mockWriteFile = vi.mocked(fs.writeFile);
+
+      // First save
+      mockReadFile.mockResolvedValueOnce('lexicon:\n  commonLocations: []\n');
+      mockWriteFile.mockResolvedValueOnce();
+
+      await configManager.setCfexToggles({
+        aiAutoAnalyze: true,
+        metadataWrite: false,
+        filenameRewrite: true,
+        filenameTemplate: '{location}-{subject}'
+      });
+
+      // Then load
+      mockReadFile.mockResolvedValueOnce(`
+lexicon:
+  commonLocations: []
+cfex:
+  aiAutoAnalyze: true
+  metadataWrite: false
+  filenameRewrite: true
+  filenameTemplate: '{location}-{subject}'
+`);
+
+      const toggles = await configManager.getCfexToggles();
+
+      expect(toggles).toEqual({
+        aiAutoAnalyze: true,
+        metadataWrite: false,
+        filenameRewrite: true,
+        filenameTemplate: '{location}-{subject}'
+      });
+    });
+
+    it('should merge partial toggle updates with existing config', async () => {
+      const mockReadFile = vi.mocked(fs.readFile);
+      const mockWriteFile = vi.mocked(fs.writeFile);
+
+      // Load existing config with some toggles
+      mockReadFile.mockResolvedValueOnce(`
+lexicon:
+  commonLocations: []
+cfex:
+  aiAutoAnalyze: true
+  metadataWrite: false
+`);
+      mockWriteFile.mockResolvedValueOnce();
+
+      // Update only filenameRewrite (should preserve existing values)
+      await configManager.setCfexToggles({
+        aiAutoAnalyze: true, // Keep existing
+        metadataWrite: false, // Keep existing
+        filenameRewrite: true, // New value
+        filenameTemplate: '{location}-{subject}-{action}-{shotType}' // Default
+      });
+
+      expect(mockWriteFile).toHaveBeenCalledOnce();
+      const savedYaml = mockWriteFile.mock.calls[0][1] as string;
+      expect(savedYaml).toContain('aiAutoAnalyze: true');
+      expect(savedYaml).toContain('metadataWrite: false');
+      expect(savedYaml).toContain('filenameRewrite: true');
+    });
+
+    it('should apply I7 defaults (all toggles OFF) when creating new config', async () => {
+      const mockReadFile = vi.mocked(fs.readFile);
+      mockReadFile.mockRejectedValueOnce({ code: 'ENOENT' });
+
+      const config = await configManager.loadConfig();
+
+      // Verify I7 compliance: Human Primacy requires explicit opt-in
+      expect(config.cfex?.aiAutoAnalyze).toBeUndefined(); // Undefined = OFF
+      expect(config.cfex?.metadataWrite).toBeUndefined();
+      expect(config.cfex?.filenameRewrite).toBeUndefined();
+    });
+  });
 });

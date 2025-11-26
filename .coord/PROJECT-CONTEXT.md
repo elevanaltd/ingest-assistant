@@ -1,6 +1,6 @@
 # Ingest Assistant - Project Context
 
-**Last Updated:** 2025-11-26 | **Version:** v2.2.0 baseline | **Branch:** feat/cfex-work
+**Last Updated:** 2025-11-26 | **Version:** v2.2.0 baseline | **Branch:** main (includes PR #87)
 
 ---
 
@@ -24,7 +24,7 @@
 - **Runtime:** Electron (main + renderer)
 - **Frontend:** React 18, TypeScript
 - **Build:** Vite
-- **Testing:** Vitest (764 tests, 40 files)
+- **Testing:** Vitest (828 tests, 56 files)
 - **AI:** OpenRouter, Anthropic Claude, OpenAI APIs
 - **Database:** Supabase (shared with EAV Monorepo)
 
@@ -34,15 +34,15 @@
 
 ### Branch Status
 ```
-Branch: feat/cfex-work (clean, up-to-date)
-Tests:  764/766 passing + 2 skipped
-Lint:   0 errors, 105 warnings
+Branch: main (rebased, includes PR #87 ubuntu-changes + Phase 1c work)
+Tests:  828/830 passing + 2 skipped (+64 new Phase 1c tests)
+Lint:   0 errors, 143 warnings
 Types:  0 errors
 ```
 
 ### Phase Progression
 ```
-D0→D1→D2→D3(v1.1+OCTAVE)→B0(FINAL GO)→B2(Week 2 Active)
+D0→D1→D2→D3(v1.1+OCTAVE)→B0(FINAL GO)→B2(Phase 1a COMPLETE)→Phase 1c ACTIVE (resequenced)
 ```
 
 ### CFEx Phase 1a Implementation
@@ -53,12 +53,18 @@ D0→D1→D2→D3(v1.1+OCTAVE)→B0(FINAL GO)→B2(Week 2 Active)
 - IPC handlers (cfexTransferHandlers)
 - Renderer UI (CfexTransferWindow)
 
-**Week 2:** COMPLETE
+**Week 2:** COMPLETE (100%)
 - Priority 1 (Error Handling): COMPLETE
 - Priority 2 (Auto-Detection service): COMPLETE (IPC+UI deferred - not needed for current workflow)
-- Priority 3 (Integration Testing): NEXT
+- Priority 3 (Integration Testing): SKIPPED (risk-accepted, fix-in-production approach)
 - Priority 4 (Settings Tab): COMPLETE
 - UX Enhancements: COMPLETE
+
+**Phase 1a-CORE:** ✅ COMPLETE (Risk-Accepted 2025-11-26)
+- Decision: Skip empirical integration testing, address issues in production
+- Rationale: Error handling comprehensive (47 tests, exponential backoff), real-world feedback faster
+- Risk: I4 (Zero Data Loss) remains 🟡 Partial until production validation
+- Commitment: First failure = BLOCKING priority fix
 
 ---
 
@@ -66,9 +72,9 @@ D0→D1→D2→D3(v1.1+OCTAVE)→B0(FINAL GO)→B2(Week 2 Active)
 
 | Gate | Status | Command |
 |------|--------|---------|
-| Lint | PASS | `npm run lint` |
-| Typecheck | PASS | `npm run typecheck` |
-| Tests | PASS (764/766) | `npm test` |
+| Lint | PASS (0 errors) | `npm run lint` |
+| Typecheck | PASS (0 errors) | `npm run typecheck` |
+| Tests | PASS (828/830) | `npm test` |
 
 ---
 
@@ -101,20 +107,40 @@ D0→D1→D2→D3(v1.1+OCTAVE)→B0(FINAL GO)→B2(Week 2 Active)
 
 ## Active Work
 
-### Immediate (Phase 1a-CORE Remaining)
-1. **Priority 3:** Integration Testing (4 days)
-   - LucidLink cache eviction testing
-   - NFS stale handle testing
-   - Performance baselines
+### Immediate (Phase 1c: Power Features) - B2 IN PROGRESS
+**Reason:** User needs toggles for current workflow before proxy generation
+**B0 Validation:** ✅ CONDITIONAL GO (critical-design-validator, 85% confidence)
 
-### Deferred (Phase 1a-POLISH → parallel to Phase 1b)
+**B2 Implementation Progress (2 of 6 phases complete):**
+- ✅ **Phase 1:** Security Foundation - FilenameTemplateParser (54 tests)
+  - Command injection prevention, path traversal blocking, whitelist sanitization
+  - Commits: `3f877d8` (RED) → `e1bd562` (GREEN)
+- ✅ **Phase 2:** TapeName Logic - MetadataToggleService (10 tests)
+  - Conditional metadata writing (I3 compliance)
+  - Commits: `9b053ea` (RED) → `1f0b789` (GREEN) → `d77eeea` (fix)
+- ⏳ **Phase 3:** Settings Persistence (CfexConfig extension)
+- ⏳ **Phase 4:** UI Implementation (SettingsModal toggles)
+- ⏳ **Phase 5:** AI Auto-Analyze Integration (batchQueueManager)
+- ⏳ **Phase 6:** Integration Testing + Code Review
+
+**3 Toggles (all default OFF per I7):**
+- AI Auto-Analyze Toggle
+- Metadata Write Toggle (shotName, LogComment, TapeName)
+- Filename Rewrite Toggle + Template parser
+
+### Next (Phase 1b: Proxy Generation)
+1. **D2 Design:** ffmpeg + exiftool integration architecture
+2. **D3 Blueprint:** Progress UI, EXIF validation dialogs
+3. **B0 Validation:** DateTimeOriginal preservation protocol
+4. **B2 Implementation:** proxyGenerator.ts, exifPreserver.ts
+
+### Deferred (Phase 1a-POLISH → parallel to Phase 1b/1c)
 - Auto-detection IPC + UI (service layer complete, IPC+multi-card dialog when needed)
 - Path Intelligence (MRU, smart defaults, pinned folders)
 - Enhanced error log UI
+- Integration testing (risk-accepted: fix-in-production)
 
 ### Future Phases
-- **Phase 1b:** Proxy Generation (2 weeks)
-- **Phase 1c:** Power Features (2-3 weeks)
 - **Issue #63:** Reference Catalog (3-6 months)
 
 ---
