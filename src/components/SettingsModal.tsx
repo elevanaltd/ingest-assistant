@@ -190,8 +190,14 @@ export function SettingsModal({ onClose, onSave, initialConfig }: SettingsModalP
           }
         })
         .catch(err => {
-          console.error('Failed to load CFEx config:', err);
-          setCfexError(`Failed to load configuration: ${err.message}`);
+          console.error('Failed to load config:', err);
+          const errorMsg = `Failed to load configuration: ${err.message}`;
+          // Set error on the appropriate tab
+          if (activeTab === 'cfex') {
+            setCfexError(errorMsg);
+          } else if (activeTab === 'ingestion') {
+            setIngestionError(errorMsg);
+          }
         });
     }
   }, [activeTab]);
