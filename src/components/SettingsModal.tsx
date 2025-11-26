@@ -53,6 +53,12 @@ export function SettingsModal({ onClose, onSave, initialConfig }: SettingsModalP
   const [cfexSaveSuccess, setCfexSaveSuccess] = useState(false);
   const [cfexError, setCfexError] = useState<string>('');
 
+  // CFEx toggle states (I7 Human Primacy - default OFF)
+  const [aiAutoAnalyze, setAiAutoAnalyze] = useState(false);
+  const [metadataWrite, setMetadataWrite] = useState(false);
+  const [filenameRewrite, setFilenameRewrite] = useState(false);
+  const [filenameTemplate, setFilenameTemplate] = useState('{location}-{subject}-{action}-{shotType}');
+
   // Refs for cleanup
   const lexiconCloseTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const aiCloseTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -158,11 +164,20 @@ export function SettingsModal({ onClose, onSave, initialConfig }: SettingsModalP
             setCfexSource(config.cfex.defaultSource || DEFAULT_CFEX_CONFIG.defaultSource);
             setCfexPhotos(config.cfex.defaultPhotos || DEFAULT_CFEX_CONFIG.defaultPhotos);
             setCfexVideos(config.cfex.defaultVideos || DEFAULT_CFEX_CONFIG.defaultVideos);
+            // Load toggle states (default to false per I7 Human Primacy)
+            setAiAutoAnalyze(config.cfex.aiAutoAnalyze ?? false);
+            setMetadataWrite(config.cfex.metadataWrite ?? false);
+            setFilenameRewrite(config.cfex.filenameRewrite ?? false);
+            setFilenameTemplate(config.cfex.filenameTemplate || '{location}-{subject}-{action}-{shotType}');
           } else {
             // Use defaults if no cfex config exists
             setCfexSource(DEFAULT_CFEX_CONFIG.defaultSource);
             setCfexPhotos(DEFAULT_CFEX_CONFIG.defaultPhotos);
             setCfexVideos(DEFAULT_CFEX_CONFIG.defaultVideos);
+            setAiAutoAnalyze(false);
+            setMetadataWrite(false);
+            setFilenameRewrite(false);
+            setFilenameTemplate('{location}-{subject}-{action}-{shotType}');
           }
         })
         .catch(err => {
@@ -358,7 +373,11 @@ export function SettingsModal({ onClose, onSave, initialConfig }: SettingsModalP
         cfex: {
           defaultSource: cfexSource,
           defaultPhotos: cfexPhotos,
-          defaultVideos: cfexVideos
+          defaultVideos: cfexVideos,
+          aiAutoAnalyze,
+          metadataWrite,
+          filenameRewrite,
+          filenameTemplate
         }
       };
 
@@ -837,6 +856,81 @@ export function SettingsModal({ onClose, onSave, initialConfig }: SettingsModalP
                 </button>
               </div>
               <small style={{ color: '#666' }}>Ubuntu NFS mount for raw video archival</small>
+            </div>
+
+            {/* Divider */}
+            <hr style={{ margin: '24px 0', border: 'none', borderTop: '1px solid #ddd' }} />
+
+            {/* Power Features - Toggles */}
+            <div>
+              <h3 style={{ marginTop: 0, marginBottom: '16px', fontSize: '16px' }}>Power Features</h3>
+              <p style={{ color: '#666', fontSize: '14px', marginBottom: '16px' }}>
+                Configure automation for post-transfer operations. All features default to OFF (I7 Human Primacy).
+              </p>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {/* AI Auto-Analyze Toggle */}
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={aiAutoAnalyze}
+                    onChange={(e) => setAiAutoAnalyze(e.target.checked)}
+                    style={{ cursor: 'pointer' }}
+                  />
+                  <span style={{ fontSize: '14px' }}>AI Auto-Analyze after transfer</span>
+                </label>
+                <small style={{ color: '#666', marginLeft: '24px', marginTop: '-8px', display: 'block' }}>
+                  Automatically run AI analysis on transferred files
+                </small>
+
+                {/* Metadata Write Toggle */}
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={metadataWrite}
+                    onChange={(e) => setMetadataWrite(e.target.checked)}
+                    style={{ cursor: 'pointer' }}
+                  />
+                  <span style={{ fontSize: '14px' }}>Write metadata to files (shotName, LogComment, Description, TapeName)</span>
+                </label>
+                <small style={{ color: '#666', marginLeft: '24px', marginTop: '-8px', display: 'block' }}>
+                  Embed XMP metadata directly into file headers
+                </small>
+
+                {/* Filename Rewrite Toggle */}
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={filenameRewrite}
+                    onChange={(e) => setFilenameRewrite(e.target.checked)}
+                    style={{ cursor: 'pointer' }}
+                  />
+                  <span style={{ fontSize: '14px' }}>Rename files using template</span>
+                </label>
+                <small style={{ color: '#666', marginLeft: '24px', marginTop: '-8px', display: 'block' }}>
+                  Rename files based on metadata template (preserves original via TapeName)
+                </small>
+
+                {/* Filename Template Input (conditional) */}
+                {filenameRewrite && (
+                  <div style={{ marginLeft: '24px', marginTop: '8px' }}>
+                    <label htmlFor="filenameTemplate" style={{ display: 'block', marginBottom: '4px', fontSize: '14px', fontWeight: 'bold' }}>
+                      Filename Template
+                    </label>
+                    <input
+                      id="filenameTemplate"
+                      type="text"
+                      value={filenameTemplate}
+                      onChange={(e) => setFilenameTemplate(e.target.value)}
+                      placeholder="{location}-{subject}-{action}-{shotType}"
+                      style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px', fontFamily: 'monospace' }}
+                    />
+                    <small style={{ color: '#666', display: 'block', marginTop: '4px' }}>
+                      Available tokens: {'{location}'}, {'{subject}'}, {'{action}'}, {'{shotType}'}
+                    </small>
+                  </div>
+                )}
+              </div>
             </div>
 
             {cfexError && <div style={{ color: 'red' }}>{cfexError}</div>}
