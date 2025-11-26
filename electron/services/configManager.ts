@@ -502,6 +502,57 @@ export class ConfigManager {
   }
 
   /**
+   * Get CFEx transfer toggle settings
+   * Returns defaults if not configured (I7 compliance: all OFF)
+   */
+  async getCfexToggles(): Promise<{
+    aiAutoAnalyze: boolean;
+    metadataWrite: boolean;
+    filenameRewrite: boolean;
+    filenameTemplate: string;
+  }> {
+    const config = await this.loadConfig();
+
+    return {
+      aiAutoAnalyze: config.cfex?.aiAutoAnalyze ?? false,
+      metadataWrite: config.cfex?.metadataWrite ?? false,
+      filenameRewrite: config.cfex?.filenameRewrite ?? false,
+      filenameTemplate: config.cfex?.filenameTemplate ?? '{location}-{subject}-{action}-{shotType}'
+    };
+  }
+
+  /**
+   * Save CFEx transfer toggle settings
+   * Preserves existing config values
+   */
+  async setCfexToggles(toggles: {
+    aiAutoAnalyze: boolean;
+    metadataWrite: boolean;
+    filenameRewrite: boolean;
+    filenameTemplate: string;
+  }): Promise<void> {
+    const config = await this.loadConfig();
+
+    // Ensure cfex object exists
+    if (!config.cfex) {
+      config.cfex = {
+        defaultSource: '',
+        defaultPhotos: '',
+        defaultVideos: ''
+      };
+    }
+
+    // Update toggles
+    config.cfex.aiAutoAnalyze = toggles.aiAutoAnalyze;
+    config.cfex.metadataWrite = toggles.metadataWrite;
+    config.cfex.filenameRewrite = toggles.filenameRewrite;
+    config.cfex.filenameTemplate = toggles.filenameTemplate;
+
+    // Save config
+    await this.saveConfig(config);
+  }
+
+  /**
    * Get AI configuration with fallback priority:
    * 1. electron-store + Keychain (production/runtime config)
    * 2. process.env (development/backward compatibility)
