@@ -1,161 +1,206 @@
 # Ingest Assistant - Project Roadmap
 
-## Phase History
+**Last Updated:** 2025-11-26 | **Current Phase:** CFEx Phase 1a B2 (Week 2)
 
-### D3 - Blueprint (Completed)
-**Video Feature Design:**
-- Codec detection logic
-- Compatibility checking for QuickTime Player
-- H.264 transcoding specification
-- Security validation requirements
+---
 
-### B0 - Foundation (Completed)
-**Initial Setup:**
-- Electron + React + TypeScript foundation
-- Vitest test infrastructure
-- AI provider integration (OpenRouter, Anthropic, OpenAI)
-- Basic EXIF metadata embedding
+## Completed Phases (Summary)
 
-### B1 - Workspace Setup (Completed)
-**Development Environment:**
-- Quality gates configured (lint, typecheck, test)
-- CI/CD pipeline established
-- Testing framework validated
+| Phase | Milestone | Date |
+|-------|-----------|------|
+| D3 | Video Feature Design | Oct 2025 |
+| B0 | Foundation (Electron/React/TypeScript) | Oct 2025 |
+| B1 | Workspace Setup | Oct 2025 |
+| B2/B3 | Video Transcoding + Integration | Nov 2025 |
+| B4 | Production Readiness (v2.2.0) | Nov 18, 2025 |
 
-### B2/B3 - Implementation/Integration (✅ COMPLETE)
-**Video Transcoding Feature:**
-- ✅ Codec detection implemented
-- ✅ Compatibility warnings added
-- ✅ Security validator enhanced (symlink resolution)
-- ✅ Video transcoding service integrated
-- ✅ App workflow integration complete
-- ✅ All test failures resolved (469/469 passing)
+**Full history:** [`PROJECT-HISTORY.md`](PROJECT-HISTORY.md)
 
-**Additional Accomplishments:**
-- ✅ User-friendly codec warnings for unsupported formats
-- ✅ macOS symlink security validation
-- ✅ Comprehensive test coverage (527 tests across 34 files)
-- ✅ Phase 0 prerequisites (Issues #18, #19, #20)
-- ✅ Tier 2-3 features (Issues #22, #23)
-- ✅ TypeScript strict mode (Issue #41)
-- ✅ ESLint v9 migration (Issue #45)
-- ✅ Video 4-part naming with action field
-- ✅ Batch processing with bug fixes (Issue #24)
-- ✅ Test infrastructure fix (vitest run for clean exit)
-- ✅ Security hardening (Security Report 007 - both BLOCKING issues resolved)
-- ✅ JSON v2.0 Schema Migration (Issue #54 - metadata→keywords, audit trail, schema versioning)
-- ✅ CEP Panel Date Field Integration (eav-cep-assist Issue #31 - LogComment date field)
+---
 
-## Previous Phase: B4 - Handoff/Production Readiness (✅ COMPLETE)
+## Current Phase: CFEx Integration
 
-**Status:** Production deployment ready (v2.1.0 - CEP Panel date field integration)
+### Phase 1a: Transfer + Integrity (Week 2 Active)
 
-## Current Phase: D1/D2 - Reference Image Lookup System (Feature #63)
+**Timeline:** 2 weeks (started Nov 20)
 
-### D1 - North Star (✅ COMPLETE)
-- ✅ 7 immutables defined (I1-I7: Visual similarity, human corrections, cross-project integration, offline operation, domain isolation)
-- ✅ 3 system flows documented (Reference population, enhanced analysis, cross-project coherence)
-- ✅ Architectural foundation (ADR-009: Shared Supabase + schema separation)
-- ✅ North Star approved → D2 ready
+| Priority | Status | Description |
+|----------|--------|-------------|
+| P1 | COMPLETE | Error Handling (errorHandler.ts, retryStrategy.ts, 47 tests) |
+| P2 | COMPLETE | Auto-Detection service (IPC+UI deferred - single-card workflow) |
+| P3 | NEXT | Integration Testing (4 days - LucidLink + NFS empirical) |
+| P4 | COMPLETE | Settings Tab + Browse (60s timeout, defaultPath) |
+| UX | COMPLETE | Destination checkboxes, canStart bugfix |
 
-### D2 - Design (✅ COMPLETE - Nov 15, 2025)
-**5 Critical Decisions Addressed:**
-- ✅ Vector embedding strategy → Hybrid OpenCLIP (local ONNX + optional server re-embed)
-- ✅ Schema design → media_references schema (3 tables: reference_images, reference_metadata, image_embeddings)
-- ✅ Client/server architecture → Client-side primary, server-side quality upgrades
-- ✅ Reference creation flow → Selective promotion (manual + bulk @ confidence ≥0.85)
-- ✅ Cache strategy → Local SQLite + pull-based delta sync
-**Deliverable:** 001-INGEST_ASSISTANT-D2-DESIGN.md (262 lines)
-**Consultations:** technical-architect (schema), security-specialist (RLS), holistic-orchestrator (coherence)
+**Remaining Work (Phase 1a-CORE):**
+1. [ ] LucidLink cache eviction testing
+2. [ ] NFS stale handle testing
+3. [ ] Performance baselines documentation
+4. [ ] Risk scenario testing
 
-## Current Phase: B4 - Handoff/Production Readiness (✅ READY + CEP Panel Integration COMPLETE)
+**Deferred (Phase 1a-POLISH → parallel to Phase 1b):**
+- [ ] Auto-detection IPC + UI (service ready, activate when multi-card needed)
+- [ ] Path Intelligence (MRU, smart defaults, pinned folders) - 5 days
+- [ ] Enhanced error log UI (real-time stream, history, export) - 5 days
 
-### Status: Production Ready + CEP Panel Date Field Complete
-- ✅ All tests passing (527/527 across 34 test files)
-- ✅ JSON v2.0 schema migration complete (Issue #54)
-- ✅ CEP Panel integration complete (shared XMP metadata strategy + date field)
-- ✅ CEP Panel date field integration (eav-cep-assist Issue #31)
-- ✅ All quality gates GREEN (lint ✅, typecheck ✅, tests ✅)
-- ✅ Test infrastructure reliable (clean exit, no hanging)
-- ✅ Video feature complete and validated
-- ✅ Security hardening complete (BLOCKING #1 & #2 resolved)
-- ✅ Documentation current and comprehensive
-- ✅ Performance optimized (60fps UI with 1000+ files)
+---
 
-### B4 Deliverables (Complete)
-- ✅ Production-ready codebase (v1.1.0 + Security Hardening)
-- ✅ Comprehensive documentation:
-  - Architecture (001-DOC-ARCHITECTURE.md)
-  - Batch processing (007-DOC-BATCH-PROCESSING-IMPLEMENTATION.md)
-  - Strategic analysis (006-DOC-INGEST-ASSISTANT-ARCHITECTURE-D1-STRATEGIC-ANALYSIS.md)
-  - Security Report 007 (BLOCKING issues resolved)
-  - ADRs for major decisions
-- ✅ Test coverage report (469 tests, all passing, +23 security tests)
-- ✅ Quality gate validation evidence
-- ✅ Security validation evidence (Critical-Engineer consultation)
+### Phase 1b: Proxy Generation (NOT STARTED)
 
-### Security Hardening (Nov 11, 2025)
-**Security Report 007 - BLOCKING Issues Resolved:**
+**Timeline:** 2 weeks | **Blocked by:** Phase 1a-CORE completion
 
-**BLOCKING #1: Command Injection in videoFrameExtractor**
-- ✅ Replaced exec() with spawn({shell: false})
-- ✅ Comprehensive shell metacharacter validation
-- ✅ Flag injection protection (leading dash rejection)
-- ✅ +12 security tests (15 total)
-- ✅ Commits: e1a1cf8 (test) → 6b1d92f (feat) → f01436b (refactor)
-- ✅ Critical-Engineer validated: Requirements met
+**Scope:**
+1. [ ] D2 Design: ffmpeg + exiftool integration architecture
+2. [ ] D3 Blueprint: Progress UI, EXIF validation dialogs
+3. [ ] B0 Validation: DateTimeOriginal preservation protocol
+4. [ ] B2 Implementation:
+   - [ ] proxyGenerator.ts (2560x1440 ProRes Proxy)
+   - [ ] exifPreserver.ts (DateTimeOriginal extraction)
+   - [ ] Integration with cfexTransfer.ts
+   - [ ] Per-file + overall progress tracking
+   - [ ] Integrity validation (timestamp match)
+   - [ ] +40 tests (transcode, EXIF, validation)
 
-**BLOCKING #2: Unauthenticated Media Server**
-- ✅ Capability token authentication (32-byte crypto.randomBytes)
-- ✅ Token validation before path validation
-- ✅ Cross-origin localhost probing prevented
-- ✅ +11 security tests
-- ✅ Commits: a0c6b00 (test) → fa99be1 (feat)
+**Technical Specification:**
+```bash
+# Transcode command (validated optimal)
+ffmpeg -i raw.MOV -vf "scale=2560:1440" -c:v prores_ks -profile:v 0 \
+  -vendor apl0 -pix_fmt yuv422p10le -c:a pcm_s16le proxy.MOV
 
-**Implementation Quality:**
-- ✅ TDD discipline: All fixes follow RED→GREEN→REFACTOR pattern
-- ✅ Zero regressions across 469 tests
-- ✅ Build-execution skill protocols followed
-- ✅ Minimal Intervention Principle applied (~100 lines changed total)
+# MANDATORY: DateTimeOriginal preservation (I1 compliance)
+ORIG_DATE=$(exiftool -s3 -DateTimeOriginal raw.MOV)
+exiftool -overwrite_original "-QuickTime:DateTimeOriginal=$ORIG_DATE" proxy.MOV
+```
 
-## Next Phase: B5 - Production Validation
+**Dependencies:**
+- ffmpeg (system)
+- exiftool (system)
 
-### Status: READY (Awaiting PR Creation)
-**Branch:** `fix/ce-issues` (6 commits ahead of origin)
+---
 
-### Deliverables
-- Pull request to `main` branch with security hardening
-- Security fixes demonstration
-- Code review with Critical-Engineer validation
-- Test coverage report (469 tests)
-- Security Report 007 closure documentation
+### Phase 1c: Power Features (NOT STARTED)
 
-## Future Phases
+**Timeline:** 2-3 weeks | **Blocked by:** Phase 1b completion
 
-### B5 - Production Validation
-**Post-merge activities:**
-- User acceptance testing
-- Performance validation
-- Edge case verification
+**Scope:**
+1. [ ] D2 Design: Toggle architecture, template parser
+2. [ ] D3 Blueprint: Settings panel UI, filename preview
+3. [ ] B0 Validation: Toggle defaults (all OFF = I7 compliance)
+4. [ ] B2 Implementation:
+   - [ ] AI Auto-Analyze Toggle (default: OFF)
+   - [ ] Metadata Write Toggle (shotName, LogComment, TapeName)
+   - [ ] Filename Rewrite Toggle + Template parser
+   - [ ] Settings persistence
+   - [ ] +50 tests (toggles, template, TapeName logic)
 
-### Backlog Items
-- Additional AI provider support
-- Batch processing capabilities
-- Advanced EXIF field customization
-- Audio file support
+**TapeName Logic:**
+- Written when: metadata write toggle ON OR filename rewrite toggle ON
+- NOT written when: Both toggles OFF (JSON-only workflow)
+
+---
+
+## Future Work
+
+### Issue #63: Reference Catalog (DEFERRED)
+
+**Timeline:** 3-6 months | **Blocked by:** CFEx Phase 1 + Guardrails
+
+**Prerequisites (MANDATORY):**
+- [ ] Formalize EAV_CONTRACT:v1 spec (YAML + machine-readable)
+- [ ] Contract compatibility tests (CI in both repos)
+- [ ] SLO observability (p95 <150ms alerts, CPU <70%)
+- [ ] Deletion workflow tool (admin panel feature)
+- [ ] Local Supabase validation (EAV → IA migration sequencing)
+- [ ] Principal-engineer re-validation (target: 7→9/10 viability)
+
+**Implementation:**
+- [ ] media_references schema (3 tables)
+- [ ] Vector embeddings (OpenAI CLIP, 512-dimensional)
+- [ ] Cross-schema FK to public.shots
+- [ ] SECURITY DEFINER view for RLS
+- [ ] Quarterly FK audit automation
+
+---
+
+### Tier 4 Enhancements (Backlog)
+
+**Component Decomposition:**
+- [ ] Extract App.tsx into smaller components (currently 800+ lines)
+- [ ] Create domain-specific components (MetadataForm, FileViewer)
+- [ ] Improve component testability
+
+**Error Handling:**
+- [ ] Standardize error boundaries
+- [ ] Implement retry logic for transient failures
+- [ ] Improve user-facing error messages
+
+**Performance Optimization:**
+- [ ] Profile batch processing performance
+- [ ] Optimize large folder scanning
+- [ ] Reduce memory footprint for 1000+ file lists
+
+**Documentation:**
+- [ ] User guide for keyboard shortcuts
+- [ ] Batch processing workflow documentation
+- [ ] Troubleshooting guide
+
+**Platform Support:**
+- [ ] Windows support (if client workflows require)
+
+---
+
+## Outstanding Checklist Items
+
+### From SHARED-CHECKLIST.md (Verified Nov 26)
+
+**Phase 1a Remaining:**
+- [ ] Integration testing (LucidLink + NFS)
+
+**Phase 1a Deferred:**
+- [~] Auto-detection IPC + UI (service complete, activate when multi-card workflow needed)
+
+**From PR #68 Session (Low Priority):**
+- [ ] 3 tests for cache reload scenario
+- [ ] skipNextVideoLoadRef implementation
+- [ ] Form independence tests
+
+**Cross-Ecosystem (Deferred):**
+- [ ] Guardrails implementation (4-6 weeks)
+- [ ] Local Supabase validation
+- [ ] Principal-engineer re-validation
+
+---
+
+## Timeline Summary
+
+```
+Phase 1a CORE:    ~4 days remaining (Integration Testing only)
+Phase 1a POLISH:  5-10 days (parallel to 1b, includes auto-detection IPC+UI if needed)
+Phase 1b:         ~2 weeks
+Phase 1c:         ~2-3 weeks
+Issue #63:        3-6 months (after CFEx complete + guardrails)
+```
+
+**Total CFEx Integration:** ~6-7 weeks
+
+---
 
 ## Strategic Goals
-1. **Reliability:** All features fully tested and validated ✅
-2. **Security:** Command injection prevention, media server authentication, path traversal protection ✅
-3. **Usability:** Clear error messages, intuitive workflows ✅
-4. **Performance:** Hardware-accelerated transcoding, efficient metadata embedding ✅
-5. **Maintainability:** Clean architecture, comprehensive test coverage, TDD discipline ✅
 
-## Upcoming Work (After Security PR Merged)
-- Tier 4 enhancements (component decomposition, error handling)
-- Performance profiling and optimization
-- User documentation (keyboard shortcuts, batch processing guides)
-- Additional AI provider support
+1. **Reliability:** All features fully tested and validated
+2. **Security:** Command injection prevention, media server auth, path traversal protection
+3. **Usability:** Clear error messages, intuitive workflows
+4. **Performance:** Hardware-accelerated transcoding, efficient metadata embedding
+5. **Maintainability:** Clean architecture, comprehensive test coverage, TDD discipline
 
-## Last Updated
-2025-11-14 (CEP Panel date field integration complete - implementation-lead)
+---
+
+## Key References
+
+| Document | Purpose |
+|----------|---------|
+| [`PROJECT-CONTEXT.md`](PROJECT-CONTEXT.md) | Current state |
+| [`PROJECT-HISTORY.md`](PROJECT-HISTORY.md) | Completed work |
+| [`SHARED-CHECKLIST.md`](SHARED-CHECKLIST.md) | Immediate tasks |
+| [`workflow-docs/001-CFEX-MICROPHASE-PLAN.md`](workflow-docs/001-CFEX-MICROPHASE-PLAN.md) | Phase structure |
+| [`workflow-docs/003-CFEX-D3-BLUEPRINT.md`](workflow-docs/003-CFEX-D3-BLUEPRINT.md) | Implementation specs |

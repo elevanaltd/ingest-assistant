@@ -95,16 +95,16 @@
 - [x] Quality gates: 707/708 tests passing, lint 0 errors, typecheck 0 errors
 - [x] Code review approved (code-review-specialist + test-methodology-guardian)
 
-**Priority 2: CFEx Auto-Detection (2.5 days) - 🔄 SERVICE LAYER COMPLETE**
-**Status:** GREEN + REFACTOR Complete, IPC + UI Integration NEXT
-**Timeline:** Week 2 Days 5-7 (Service: COMPLETE, IPC+UI: ~2 days remaining)
+**Priority 2: CFEx Auto-Detection (2.5 days) - ✅ SERVICE LAYER COMPLETE**
+**Status:** Service layer COMPLETE, IPC + UI DEFERRED (not needed for current workflow)
+**Timeline:** Week 2 Days 5-7 (Service: COMPLETE)
 **Deliverables:**
 - [x] Test specification: 19 comprehensive tests (electron/services/__tests__/cfexAutoDetect.test.ts)
 - [x] Service implementation (GREEN phase: cfexAutoDetect.ts) - COMPLETE
 - [x] Architectural refactor (REFACTOR phase: async I/O + timeout + error handling) - COMPLETE
 - [x] Validation chain (code-review + quality-observer + technical-architect) - ALL APPROVED
-- [ ] IPC handler integration (cfex:detect-sources)
-- [ ] UI integration (CfexTransferWindow + multi-card dialog)
+- [~] IPC handler integration (cfex:detect-sources) - DEFERRED
+- [~] UI integration (CfexTransferWindow + multi-card dialog) - DEFERRED
 
 **Service Layer Complete (2025-11-25):**
 - [x] Async I/O conversion: fs → fs/promises (architectural compliance)
@@ -158,6 +158,10 @@
   - Fix: Added `&& !state.isDetecting` to canStart condition
   - Tests: 1 new test (8b4b2d9→2f4b20d)
 - [x] Backward compatible (enabledDestinations defaults to both true)
+
+**Auto-Detection IPC + UI (deferred - not needed for current single-card workflow)**
+- [~] IPC handler integration (cfex:detect-sources) - Service layer ready when needed
+- [~] UI integration (CfexTransferWindow + multi-card dialog) - Activate when multi-card use case arises
 
 **Path Intelligence (deferred to Phase 1a-POLISH, parallel to Phase 1b)**
 - [ ] MRU paths (remember last-used folders per project, suggest on next launch)
@@ -497,10 +501,8 @@
 ---
 
 ## Last Updated
-2025-11-25 (Destination Checkboxes + canStart Bugfix complete - holistic-orchestrator)
+2025-11-26 (Auto-detection IPC+UI deferred - holistic-orchestrator)
 **Tests:** 764/766 passing + 2 skipped, CI GREEN
-**Priority 4:** Settings tab + Browse + UX enhancements ALL COMPLETE
-**UX Enhancements:** Destination enable/disable checkboxes ✅, canStart auto-detection fix ✅
-**TDD Evidence:** 9a666fe→b1b0142→4037a54→4bdb285 (checkboxes) | 8b4b2d9→2f4b20d (canStart)
-**PR #85 Review:** canStart bugfix resolves code review concern (wrong-path transfer prevention)
+**Priority 2:** Service layer COMPLETE, IPC+UI DEFERRED (single-card workflow sufficient)
+**Decision:** Auto-detection multi-card dialog not needed for current working environment
 **Next:** Priority 3 Integration Testing (LucidLink + NFS empirical validation)
