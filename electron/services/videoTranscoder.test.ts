@@ -179,10 +179,15 @@ describe('VideoTranscoder', () => {
 
       const result = await transcodePromise;
 
-      // Verify FFmpeg called with correct args (check key args, not full array due to many options)
+      // Verify FFmpeg called with correct platform-specific args
+      const isMacOS = process.platform === 'darwin';
+      const expectedArgs = isMacOS
+        ? ['-hwaccel', 'videotoolbox', '-i', mockSourceFile]
+        : ['-i', mockSourceFile, '-c:v', 'libx264'];
+
       expect(spawn).toHaveBeenCalledWith(
         '/usr/local/bin/ffmpeg',
-        expect.arrayContaining(['-hwaccel', 'videotoolbox', '-i', mockSourceFile])
+        expect.arrayContaining(expectedArgs)
       );
       expect(result).toBe(expectedPath);
     });
@@ -314,7 +319,7 @@ describe('VideoTranscoder', () => {
       await expect(transcodePromise).rejects.toThrow('ENOENT: ffmpeg not found');
     });
 
-    it('should construct FFmpeg args with hardware acceleration and streaming flags', async () => {
+    it('should construct FFmpeg args with platform-specific encoding and streaming flags', async () => {
       const mockProcess = new EventEmitter() as any;
       mockProcess.stderr = new EventEmitter();
       vi.mocked(spawn).mockReturnValue(mockProcess);
@@ -327,12 +332,22 @@ describe('VideoTranscoder', () => {
 
       await transcodePromise;
 
-      expect(spawn).toHaveBeenCalledWith('/usr/local/bin/ffmpeg', expect.arrayContaining([
-        '-hwaccel', 'videotoolbox',
-        '-c:v', 'h264_videotoolbox',
+      // Common args that should be present on all platforms
+      const commonArgs = [
         '-movflags', '+faststart+frag_keyframe+empty_moov',
         '-vf', 'scale=-2:720',
         '-r', '24'
+      ];
+
+      // Platform-specific args
+      const isMacOS = process.platform === 'darwin';
+      const platformArgs = isMacOS
+        ? ['-hwaccel', 'videotoolbox', '-c:v', 'h264_videotoolbox']
+        : ['-c:v', 'libx264', '-preset', 'fast'];
+
+      expect(spawn).toHaveBeenCalledWith('/usr/local/bin/ffmpeg', expect.arrayContaining([
+        ...commonArgs,
+        ...platformArgs
       ]));
     });
   });

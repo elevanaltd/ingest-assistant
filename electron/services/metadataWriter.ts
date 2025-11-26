@@ -109,7 +109,8 @@ export class MetadataWriter {
    */
   async readTapeNameFromFile(filePath: string): Promise<string | undefined> {
     try {
-      const args = ['-XMP-xmpDm:TapeName', '-json', filePath];
+      // -api largefilesupport=1 enables processing of files >2GB (ProRes MOV files)
+      const args = ['-api', 'largefilesupport=1', '-XMP-xmpDm:TapeName', '-json', filePath];
       const exiftoolPath = findExiftool();
 
       const { stdout } = await execFileAsync(exiftoolPath, args, {
@@ -202,7 +203,8 @@ export class MetadataWriter {
     }
 
     // Build exiftool arguments (array, NOT string concatenation)
-    const args: string[] = [];
+    // -api largefilesupport=1 enables processing of files >2GB (ProRes MOV files)
+    const args: string[] = ['-api', 'largefilesupport=1'];
 
     // PREMIERE PRO NATIVE FIELDS (Issue #54):
     // Use XMP Dynamic Media namespace - maps directly to PP Shot field
@@ -351,7 +353,8 @@ export class MetadataWriter {
     description?: string;
   }> {
     try {
-      const args = ['-XMP-xmpDM:shotName', '-Description', '-json', filePath];
+      // -api largefilesupport=1 enables processing of files >2GB (ProRes MOV files)
+      const args = ['-api', 'largefilesupport=1', '-XMP-xmpDM:shotName', '-Description', '-json', filePath];
       const exiftoolPath = findExiftool();
 
       const { stdout } = await execFileAsync(exiftoolPath, args, {
@@ -399,7 +402,9 @@ export class MetadataWriter {
    */
   async readCreationTimestamp(filePath: string): Promise<Date | undefined> {
     try {
+      // -api largefilesupport=1 enables processing of files >2GB (ProRes MOV files)
       const args = [
+        '-api', 'largefilesupport=1',
         '-DateTimeOriginal',
         '-CreateDate',
         '-MediaCreateDate',
