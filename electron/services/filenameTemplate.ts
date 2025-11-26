@@ -88,6 +88,23 @@ export class FilenameTemplateParser {
   // Based on OWASP Command Injection Prevention Cheat Sheet
   private readonly SHELL_METACHARACTERS = /[;|&$`\n<>{}!]/;
 
+  // Dangerous patterns in template static text (NOT field values)
+  // These patterns in the template string itself indicate security violations
+  private readonly DANGEROUS_TEMPLATE_PATTERNS = [
+    { pattern: /\.\./, name: 'path traversal (..)' },
+    { pattern: /\//, name: 'forward slash (/)' },
+    { pattern: /\\/, name: 'backslash (\\)' },
+    { pattern: /\$\(/, name: 'command substitution ($())' },
+    { pattern: /`/, name: 'backtick command substitution' },
+    { pattern: /;/, name: 'semicolon (;)' },
+    { pattern: /\|/, name: 'pipe (|)' },
+    { pattern: /&/, name: 'ampersand (&)' },
+    { pattern: /</, name: 'angle bracket (<)' },
+    { pattern: />/, name: 'angle bracket (>)' },
+    // eslint-disable-next-line no-control-regex
+    { pattern: /\x00/, name: 'null byte' }
+  ];
+
   // Maximum field value length (filesystem limit)
   private readonly MAX_LENGTH = 255;
 
@@ -145,6 +162,37 @@ export class FilenameTemplateParser {
   }
 
   /**
+   * Validate template static text for dangerous characters
+   *
+   * SECURITY: Validates template string BEFORE parsing to prevent:
+   * - Path traversal via static text: "../{subject}"
+   * - Shell injection via static text: "$(whoami)-{subject}"
+   * - Path separators in static text: "subdir/{subject}"
+   *
+   * This validates the template itself, NOT field values.
+   * Field values are validated separately in sanitizeFieldValue().
+   *
+   * @param template Template string to validate
+   * @throws SecurityViolationError if template contains dangerous characters
+   */
+  private validateTemplateString(template: string): void {
+    // Extract static portions (everything outside {field} tokens)
+    // Split by {field} placeholders to get static text parts
+    const staticParts = template.split(/\{[^}]+\}/);
+
+    // Check each static portion for dangerous patterns
+    for (const part of staticParts) {
+      for (const { pattern, name } of this.DANGEROUS_TEMPLATE_PATTERNS) {
+        if (pattern.test(part)) {
+          throw new SecurityViolationError(
+            `Template contains dangerous characters: ${name}`
+          );
+        }
+      }
+    }
+  }
+
+  /**
    * Parse template string and substitute field values
    *
    * Template syntax: {fieldName}
@@ -162,6 +210,9 @@ export class FilenameTemplateParser {
     if (!template || template.trim().length === 0) {
       throw new Error('Template cannot be empty');
     }
+
+    // SECURITY: Validate template static text BEFORE parsing
+    this.validateTemplateString(template);
 
     // Extract field placeholders from template
     const placeholderRegex = /\{(\w+)\}/g;
@@ -299,6 +350,17 @@ export class FilenameTemplateParser {
     if (!template || template.trim().length === 0) {
       errors.push('Template cannot be empty');
       return { valid: false, errors };
+    }
+
+    // SECURITY: Validate template static text for dangerous characters
+    try {
+      this.validateTemplateString(template);
+    } catch (error) {
+      if (error instanceof SecurityViolationError) {
+        errors.push(error.message);
+      } else {
+        throw error;
+      }
     }
 
     // Check for unclosed placeholders
