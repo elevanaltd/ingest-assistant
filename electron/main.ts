@@ -25,6 +25,7 @@ import type { AppConfig, LexiconConfig, ShotType, AIAnalysisResult, FileMetadata
 import { migrateToKeychain } from './services/keychainMigration';
 import { BatchQueueManager } from './services/batchQueueManager';
 import { registerCfexTransferHandlers } from './ipc/cfexTransferHandlers';
+import { FilenameTemplateParser } from './services/filenameTemplate';
 
 let mainWindow: BrowserWindow | null = null;
 let mediaServer: http.Server | null = null;
@@ -1075,6 +1076,7 @@ ipcMain.handle('batch:start', async (_event, fileIds: string[]) => {
     store.clearCache();
 
     const lexicon = await configManager.getLexicon();
+    const toggles = await configManager.getCfexToggles();
 
     // Define processor function that will be called for each file
     const processor = async (fileId: string) => {
@@ -1129,22 +1131,56 @@ ipcMain.handle('batch:start', async (_event, fileIds: string[]) => {
           const timestamp = await getOrExtractCreationTimestamp(fileMetadata);
           const formattedDate = timestamp ? formatTimestampForTitle(timestamp) : undefined;
 
-          // Issue #2: Write metadata to actual file (not just JSON store)
-          // This ensures batch processing updates both the JSON store AND the file's EXIF/XMP metadata
+          // Issue #2: Write metadata to actual file (conditionally based on toggle)
+          // Only write to file if metadataWrite toggle enabled (Phase 1c Power Features)
           // Use normalizedPath (not fileMetadata.filePath) for cross-platform compatibility
-          await metadataWriter.writeMetadataToFile(
-            normalizedPath,
-            fileMetadata.shotName,
-            fileMetadata.keywords,
-            {
+          if (toggles.metadataWrite) {
+            await metadataWriter.writeMetadataToFile(
+              normalizedPath,
+              fileMetadata.shotName,
+              fileMetadata.keywords,
+              {
+                location: fileMetadata.location,
+                subject: fileMetadata.subject,
+                action: fileMetadata.action,
+                shotType: fileMetadata.shotType,
+                shotNumber: fileMetadata.shotNumber,
+                cameraId: fileMetadata.cameraId
+              }
+            );
+          }
+
+          // Rename file if filenameRewrite toggle enabled (Phase 1c Power Features)
+          if (toggles.filenameRewrite) {
+            const parser = new FilenameTemplateParser();
+            const extension = path.extname(normalizedPath);
+            const newBasename = parser.parse(toggles.filenameTemplate, {
               location: fileMetadata.location,
               subject: fileMetadata.subject,
-              action: fileMetadata.action,
-              shotType: fileMetadata.shotType,
-              shotNumber: fileMetadata.shotNumber,
-              cameraId: fileMetadata.cameraId
-            }
-          );
+              action: fileMetadata.action || '',
+              shotType: fileMetadata.shotType
+            });
+
+            // I3 Compliance: Write TapeName BEFORE rename (preserves original filename)
+            const originalBasename = path.basename(normalizedPath, extension);
+            await metadataWriter.writeMetadataToFile(
+              normalizedPath,
+              '', // Don't update shotName, just TapeName
+              [],
+              {
+                cameraId: originalBasename // TapeName = original filename
+              }
+            );
+
+            // Rename file
+            const newPath = path.join(folderPath, newBasename + extension);
+            await fs.rename(normalizedPath, newPath);
+
+            // Update metadata store with new filename
+            fileMetadata.currentFilename = newBasename + extension;
+            fileMetadata.filePath = newPath;
+            await store.updateFileMetadata(fileId, fileMetadata);
+          }
         }
 
         return { success: true, result };
