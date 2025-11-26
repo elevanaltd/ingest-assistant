@@ -1,7 +1,6 @@
 # CFEx Integration - Microphase Plan
 
-**AUTHORITY:** D1 Execution Plan | Guides D2/D3 Design
-**CREATED:** 2025-11-18 | **STATUS:** 🟡 Pending D1 Approval
+**AUTHORITY:** D1 Execution Plan | **CREATED:** 2025-11-18 | **STATUS:** 🟡 Pending D1 Approval
 **GOVERNANCE:** CFEx Feature Development Sequence
 **INHERITS:** 000-INGEST_ASSISTANT-D1-NORTH-STAR.md (7 immutables)
 
@@ -9,10 +8,10 @@
 
 ## MISSION
 
-Integrate CFEx card file transfer + proxy generation into Ingest Assistant through sequential microphases, minimizing risk and maximizing iterative delivery value.
+Integrate CFEx card file transfer + proxy generation through sequential microphases (1a→1b→1c) → Minimize risk, maximize iterative delivery
 
-**STRATEGY:** Sequential microphases (1a→1b→1c) instead of monolithic Phase 1
-**RATIONALE:** Proxy generation complexity justifies separate phase with independent D2/D3/B2 cycle
+**STRATEGY:** Sequential microphases ≠ monolithic Phase 1
+**RATIONALE:** Proxy generation complexity justifies separate phase + independent D2/D3/B2 cycle
 
 ---
 
@@ -20,22 +19,16 @@ Integrate CFEx card file transfer + proxy generation into Ingest Assistant throu
 
 ```
 Phase 1a: Transfer + Integrity (2 weeks)
-├─ CFEx card → LucidLink (photos)
-├─ CFEx card → Ubuntu (raw videos)
-├─ Integrity validation (file count, EXIF timestamps)
-└─ Deliverable: Reliable 2-folder transfer
+SCOPE::[CFEx_card → LucidLink{photos}, CFEx_card → Ubuntu{raw_videos}, integrity_validation{file_count, EXIF_timestamps}]
+DELIVERABLE::reliable_2-folder_transfer
 
 Phase 1b: Proxy Generation (2 weeks)
-├─ Raw videos → 2K ProRes proxies (LucidLink)
-├─ DateTimeOriginal preservation (MANDATORY I1 compliance)
-├─ Integrity validation (timestamp matching)
-└─ Deliverable: Production-ready proxy workflow
+SCOPE::[raw_videos → 2K_ProRes_proxies{LucidLink}, DateTimeOriginal_preservation → MANDATORY_I1, integrity_validation{timestamp_matching}]
+DELIVERABLE::production-ready_proxy_workflow
 
 Phase 1c: Power Features (2-3 weeks)
-├─ AI auto-analyze toggle (default: OFF)
-├─ Metadata write toggle (shotName, LogComment, TapeName)
-├─ Filename rewrite toggle + format template
-└─ Deliverable: Advanced user control + workflow flexibility
+SCOPE::[AI_auto-analyze_toggle{default:OFF}, metadata_write_toggle{shotName,LogComment,TapeName}, filename_rewrite_toggle + format_template]
+DELIVERABLE::advanced_user_control + workflow_flexibility
 ```
 
 **TOTAL TIMELINE:** 6-7 weeks (sequential, with validation gates)
@@ -46,75 +39,50 @@ Phase 1c: Power Features (2-3 weeks)
 
 ### Scope
 
-**Features:**
-1. CFEx card auto-detection (macOS: `/Volumes/NO NAME/`)
-2. Destination folder pickers:
-   - Photos: `/LucidLink/EAV014/images/shoot1-20251124/`
-   - Raw videos: `/Ubuntu/EAV014/videos-raw/shoot1-20251124/`
-3. "Process" button → copy with progress tracking
-4. Integrity validation:
-   - File count match (source vs destination)
-   - File size verification
-   - EXIF DateTimeOriginal validation (warn if missing/corrupt)
-5. Path intelligence:
-   - Remember last-used folders
-   - Suggest project paths based on naming patterns
-   - Platform-aware (macOS LucidLink + Ubuntu NFS mounts)
+**FEATURES:**
+1. CFEx auto-detection (macOS: `/Volumes/NO NAME/`)
+2. Destination folder pickers::[photos: `/LucidLink/`, raw_videos: `/Ubuntu/`]
+3. "Process" button → copy + progress tracking
+4. Integrity validation::[file_count_match, file_size_verification, EXIF_DateTimeOriginal_validation → warn_if_missing]
+5. Path intelligence::[remember_last-used, suggest_project_paths, platform-aware{macOS_LucidLink + Ubuntu_NFS}]
 
-**Out of Scope (Deferred to 1b/1c):**
-- ❌ Proxy generation (Phase 1b)
-- ❌ AI auto-analyze toggle (Phase 1c)
-- ❌ Metadata write toggle (Phase 1c)
-- ❌ Filename rewrite (Phase 1c)
+**OUT OF SCOPE (Deferred):**
+- Proxy generation (Phase 1b)
+- AI auto-analyze toggle (Phase 1c)
+- Metadata write toggle (Phase 1c)
+- Filename rewrite (Phase 1c)
 
 ### Architecture Changes
 
-**New Components:**
+**NEW:**
 - `electron/services/cfexTransfer.ts` - Transfer orchestration
 - `electron/services/integrityValidator.ts` - File count, size, EXIF validation
 - `electron/services/pathIntelligence.ts` - Folder suggestions, recent paths cache
 - `electron/ipc/cfexHandlers.ts` - IPC bridge for CFEx operations
 
-**Modified Components:**
+**MODIFIED:**
 - `src/App.tsx` - Add CFEx transfer panel UI
 - `electron/main.ts` - Register CFEx IPC handlers
 
-**UI Components:**
+**UI:**
 - CFEx transfer panel (folder pickers, process button)
 - Progress tracking display (file count, current file, percentage)
 - Integrity validation warnings (missing timestamps, file count mismatch)
 
 ### Deliverables
 
-**D2 Design:**
-- CFEx transfer architecture (service layer + IPC)
-- Integrity validation protocol (EXIF timestamp checking)
-- Path intelligence caching strategy
-- Error handling + user warnings
-
-**D3 Blueprint:**
-- UI mockups (transfer panel, folder pickers, progress display)
-- Settings panel (path suggestions configuration)
-- Error states + warning dialogs
-
-**B2 Implementation:**
-- Working CFEx transfer (photos → LucidLink, raw → Ubuntu)
-- Integrity validation (file count, EXIF warnings)
-- Path intelligence (folder suggestions)
-- +30 tests (transfer, validation, path intelligence)
-
-**B0 Validation:**
-- critical-design-validator: Transfer integrity protocol
-- security-specialist: Path validation security
+**D2 Design:** CFEx transfer architecture, integrity protocol, path intelligence caching, error handling + warnings
+**D3 Blueprint:** UI mockups (transfer panel, folder pickers, progress), settings panel (path suggestions), error states + dialogs
+**B2 Implementation:** Working transfer (photos → LucidLink, raw → Ubuntu), integrity validation (file count, EXIF warnings), path intelligence (folder suggestions), +30 tests
+**B0 Validation:** critical-design-validator (transfer integrity), security-specialist (path validation security)
 
 ### Dependencies
 
-**Requires:**
-- ✅ v2.2.0 baseline (rollback capability)
-- ✅ North Star approval (7 immutables + microphase structure)
+**REQUIRES:**
+- v2.2.0 baseline (rollback capability)
+- North Star approval (7 immutables + microphase structure)
 
-**Enables:**
-- Phase 1b (proxy generation needs reliable transfer)
+**ENABLES:** Phase 1b (proxy generation needs reliable transfer)
 
 ---
 
@@ -122,11 +90,11 @@ Phase 1c: Power Features (2-3 weeks)
 
 ### Scope
 
-**Features:**
+**FEATURES:**
 1. Automatic proxy generation after raw transfer:
-   - Source: Raw videos in `/Ubuntu/EAV014/videos-raw/shoot1/`
-   - Destination: Proxies in `/LucidLink/EAV014/videos-proxy/shoot1/`
-   - Format: 2560×1440 ProRes Proxy (validated optimal sweet spot)
+   - Source: `/Ubuntu/EAV014/videos-raw/shoot1/`
+   - Destination: `/LucidLink/EAV014/videos-proxy/shoot1/`
+   - Format: 2560×1440 ProRes Proxy (validated optimal)
 2. **MANDATORY DateTimeOriginal preservation:**
    ```bash
    # Step 1: Transcode
@@ -140,74 +108,50 @@ Phase 1c: Power Features (2-3 weeks)
    PROXY_DATE=$(exiftool -s3 -DateTimeOriginal proxy.MOV)
    [[ "$ORIG_DATE" == "$PROXY_DATE" ]] || exit 1
    ```
-3. Progress tracking:
-   - Per-file progress (transcoding + EXIF writing)
-   - Overall progress (X of N files complete)
-4. Integrity validation:
-   - DateTimeOriginal match (raw vs proxy)
-   - File count match (all raws have proxies)
-   - Halt workflow if any validation fails
+3. Progress tracking::[per-file{transcoding + EXIF_writing}, overall{X_of_N_complete}]
+4. Integrity validation::[DateTimeOriginal_match{raw_vs_proxy}, file_count_match, halt_if_validation_fails]
 
-**Validated Proxy Quality:**
-- **2560×1440 ProRes Proxy** = goldilocks resolution (1.78x pixels vs 1080p)
-- **10-bit 4:2:2 color preserved** (professional grading capability)
-- **Low CPU decode** (intra-frame codec for smooth timeline playback)
-- **~6 MB/sec file size** (~175 MB for 24s video typical)
-- **Smaller than 1080p HQ** (7.8M vs 9.4M) despite 4x resolution
-- **Timeline performance validated** (M-series MacBooks + modern PCs 2017+)
+**VALIDATED PROXY QUALITY:**
+```
+2560×1440 ProRes Proxy = goldilocks_resolution (1.78x pixels vs 1080p)
+10-bit 4:2:2 color preserved (professional grading capability)
+Low CPU decode (intra-frame codec → smooth timeline playback)
+~6 MB/sec file size (~175 MB for 24s typical)
+Smaller than 1080p HQ (7.8M vs 9.4M) despite 4x resolution
+Timeline performance validated (M-series MacBooks + modern PCs 2017+)
+```
 
-**Out of Scope (Deferred to 1c):**
-- ❌ AI auto-analyze toggle (Phase 1c)
-- ❌ Metadata write toggle (Phase 1c)
-- ❌ Filename rewrite (Phase 1c)
+**OUT OF SCOPE (Deferred):** AI auto-analyze, metadata write, filename rewrite (Phase 1c)
 
 ### Architecture Changes
 
-**New Components:**
+**NEW:**
 - `electron/services/proxyGenerator.ts` - ffmpeg orchestration + EXIF preservation
 - `electron/services/exifPreserver.ts` - DateTimeOriginal extraction + validation
 
-**Modified Components:**
+**MODIFIED:**
 - `electron/services/cfexTransfer.ts` - Call proxy generation after raw transfer
 - `electron/ipc/cfexHandlers.ts` - Add proxy generation IPC endpoints
 
-**UI Components:**
+**UI:**
 - Proxy generation progress (per-file + overall)
 - EXIF validation warnings (timestamp mismatch, preservation failure)
 
 ### Deliverables
 
-**D2 Design:**
-- Proxy generation architecture (ffmpeg + exiftool integration)
-- DateTimeOriginal preservation protocol (extraction → write → validate)
-- Error handling (transcode failures, EXIF validation failures)
-- Performance optimization (hardware acceleration detection)
-
-**D3 Blueprint:**
-- Progress tracking UI (per-file + overall)
-- EXIF validation warning dialogs
-- Settings panel (CRF quality, resolution options)
-
-**B2 Implementation:**
-- Working proxy generation (2560×1440 ProRes Proxy)
-- DateTimeOriginal preservation (100% reliability)
-- Integrity validation (halt if timestamp mismatch)
-- +40 tests (transcode, EXIF preservation, validation)
-
-**B0 Validation:**
-- critical-design-validator: DateTimeOriginal preservation protocol
-- technical-architect: ffmpeg + exiftool integration architecture
+**D2 Design:** Proxy generation architecture (ffmpeg + exiftool), DateTimeOriginal protocol (extraction → write → validate), error handling (transcode failures, EXIF validation failures), performance optimization (hardware acceleration)
+**D3 Blueprint:** Progress tracking UI (per-file + overall), EXIF validation warning dialogs, settings panel (CRF quality, resolution options)
+**B2 Implementation:** Working proxy generation (2560×1440 ProRes Proxy), DateTimeOriginal preservation (100% reliability), integrity validation (halt timestamp mismatch), +40 tests
+**B0 Validation:** critical-design-validator (DateTimeOriginal protocol), technical-architect (ffmpeg + exiftool integration)
 
 ### Dependencies
 
-**Requires:**
-- ✅ Phase 1a complete (reliable transfer to Ubuntu)
-- ✅ ffmpeg installed (system dependency)
-- ✅ exiftool installed (system dependency)
+**REQUIRES:**
+- Phase 1a complete (reliable transfer to Ubuntu)
+- ffmpeg installed (system dependency)
+- exiftool installed (system dependency)
 
-**Enables:**
-- Phase 1c (AI auto-analyze needs proxies)
-- Core IA workflow (AI analyzes proxies, creates JSON in proxy folder)
+**ENABLES:** Phase 1c (AI auto-analyze needs proxies), Core IA workflow (AI analyzes proxies → creates JSON in proxy folder)
 
 ---
 
@@ -215,80 +159,60 @@ Phase 1c: Power Features (2-3 weeks)
 
 ### Scope
 
-**Features:**
+**FEATURES:**
 1. **AI Auto-Analyze Toggle:**
    - Settings: "Run AI analysis after transfer" (default: OFF)
-   - If enabled: Automatically opens proxy folder and runs batch AI processing
-   - If disabled: Manual workflow (existing production method)
+   - Enabled: Automatically opens proxy folder + runs batch AI processing
+   - Disabled: Manual workflow (existing production method)
 
 2. **Metadata Write Toggle:**
    - Settings: "Write metadata to files" (default: OFF)
-   - If enabled: Writes shotName, LogComment, Description, **TapeName** to file XMP
-   - If disabled: JSON-only workflow (current recommended)
+   - Enabled: Writes shotName, LogComment, Description, **TapeName** to file XMP
+   - Disabled: JSON-only workflow (current recommended)
    - **TapeName Logic:** Written when metadata write toggle ON (preserves original filename)
 
 3. **Filename Rewrite Toggle + Format:**
    - Settings: "Rename files" (default: OFF)
    - Template field: `{subject}-{shotNumber}` (customizable)
-   - Examples:
-     - `{subject}-{shotNumber}` → `oven-#5.MOV`
-     - `{cameraID}-{subject}-{shotType}-{shotNumber}` → `EA001621-oven-CU-#5.MOV`
+   - Examples::[
+       `{subject}-{shotNumber}` → `oven-#5.MOV`,
+       `{cameraID}-{subject}-{shotType}-{shotNumber}` → `EA001621-oven-CU-#5.MOV`
+     ]
    - Preview before commit (show filename changes)
-   - **TapeName Logic:** Written when rename toggle ON (preserves original filename before rename)
+   - **TapeName Logic:** Written when rename toggle ON (preserves original before rename)
 
-**Out of Scope:**
-- ❌ Zero-click AI during transfer (deferred - Option A complexity)
-- ❌ Reference Catalog (Issue #63 - separate 3-6 month cycle)
+**OUT OF SCOPE:** Zero-click AI during transfer (deferred - Option A complexity), Reference Catalog (Issue #63 - separate 3-6 month cycle)
 
 ### Architecture Changes
 
-**New Components:**
+**NEW:**
 - `electron/services/filenameTemplate.ts` - Template parser + substitution
 - `electron/services/metadataToggle.ts` - Conditional XMP writing logic
 
-**Modified Components:**
+**MODIFIED:**
 - `electron/services/metadataWriter.ts` - Add TapeName field writing
 - `electron/services/batchQueueManager.ts` - Optional AI auto-analyze after transfer
 - `src/components/SettingsModal.tsx` - Add toggle controls + template field
 
-**UI Components:**
+**UI:**
 - Settings panel (AI toggle, metadata toggle, rename toggle)
 - Template editor (syntax help, field autocomplete)
 - Filename preview (before/after rename)
 
 ### Deliverables
 
-**D2 Design:**
-- Template parser architecture (field substitution + validation)
-- TapeName writing logic (conditional based on toggles)
-- AI auto-analyze integration (optional batch processing)
-- Settings persistence (user preferences storage)
-
-**D3 Blueprint:**
-- Settings panel UI (toggles + template editor)
-- Filename preview display (before/after)
-- Toggle state indicators (ON/OFF visual feedback)
-
-**B2 Implementation:**
-- Working AI auto-analyze toggle (optional batch processing)
-- Working metadata write toggle (shotName, LogComment, TapeName)
-- Working filename rewrite toggle + template parser
-- Settings persistence (user preferences)
-- +50 tests (toggles, template parser, TapeName logic, AI integration)
-
-**B0 Validation:**
-- critical-design-validator: TapeName logic correctness
-- requirements-steward: Toggle default states (all OFF)
+**D2 Design:** Template parser architecture (field substitution + validation), TapeName writing logic (conditional toggles), AI auto-analyze integration (optional batch processing), settings persistence
+**D3 Blueprint:** Settings panel UI (toggles + template editor), filename preview display (before/after), toggle state indicators (ON/OFF feedback)
+**B2 Implementation:** Working AI auto-analyze toggle (optional batch), working metadata write toggle (shotName, LogComment, TapeName), working filename rewrite toggle + template parser, settings persistence, +50 tests
+**B0 Validation:** critical-design-validator (TapeName logic correctness), requirements-steward (toggle default states all OFF)
 
 ### Dependencies
 
-**Requires:**
-- ✅ Phase 1b complete (proxies available for AI analysis)
-- ✅ Core IA workflow operational (AI batch processing)
+**REQUIRES:**
+- Phase 1b complete (proxies available for AI analysis)
+- Core IA workflow operational (AI batch processing)
 
-**Enables:**
-- Advanced user workflows (power users)
-- Workflow flexibility (JSON-only vs file modification)
+**ENABLES:** Advanced user workflows (power users), workflow flexibility (JSON-only vs file modification)
 
 ---
 
@@ -296,34 +220,20 @@ Phase 1c: Power Features (2-3 weeks)
 
 ### Why Microphases?
 
-**Risk Mitigation:**
-- Each phase has independent D2/D3/B0 validation gates
-- Failures isolated to specific phase (not entire CFEx integration)
-- Rollback to previous stable phase if critical issues discovered
+**RISK MITIGATION:** Each phase → independent D2/D3/B0 gates | Failures isolated to specific phase ≠ entire CFEx | Rollback to previous stable if critical issues
 
-**Iterative Value Delivery:**
+**ITERATIVE VALUE:**
 - Phase 1a: Immediate value (reliable transfer replaces external app)
 - Phase 1b: Core workflow unlocked (proxies enable AI analysis)
 - Phase 1c: Power features for advanced users (optional enhancements)
 
-**Complexity Management:**
-- Proxy generation (1b) is complex enough to justify separate design cycle
-- DateTimeOriginal preservation protocol requires careful B0 validation
-- Template parser (1c) benefits from proven proxy workflow foundation
+**COMPLEXITY MANAGEMENT:** Proxy generation (1b) complex → justifies separate design cycle | DateTimeOriginal preservation → careful B0 validation | Template parser (1c) benefits from proven proxy foundation
 
 ### Integration Points
 
-**1a → 1b:**
-- Phase 1a delivers reliable raw transfer to Ubuntu
-- Phase 1b consumes raw files from Ubuntu, produces proxies on LucidLink
-
-**1b → 1c:**
-- Phase 1b delivers proxies with DateTimeOriginal preserved
-- Phase 1c consumes proxies for AI auto-analyze workflow
-
-**1c → Core IA:**
-- Phase 1c enables optional AI auto-analyze after transfer
-- Core IA workflow remains unchanged (manual trigger still supported)
+**1a → 1b:** Phase 1a delivers reliable raw transfer to Ubuntu | Phase 1b consumes raw → produces proxies on LucidLink
+**1b → 1c:** Phase 1b delivers proxies + DateTimeOriginal preserved | Phase 1c consumes proxies for AI auto-analyze
+**1c → Core IA:** Phase 1c enables optional AI auto-analyze after transfer | Core IA workflow unchanged (manual trigger still supported)
 
 ---
 
@@ -331,53 +241,21 @@ Phase 1c: Power Features (2-3 weeks)
 
 ### Phase 1a GO/NO-GO (B0)
 
-**critical-design-validator:**
-- Transfer integrity protocol sound?
-- EXIF validation catches missing timestamps?
-- Path validation security adequate?
-
-**security-specialist:**
-- Path traversal protection (LucidLink + Ubuntu mounts)?
-- CFEx card auto-detection safe?
-
-**GO Criteria:**
-- All validation protocols proven
-- Security vulnerabilities addressed
-- Transfer reliability 100% (no silent failures)
+**critical-design-validator:** Transfer integrity sound? | EXIF validation catches missing timestamps? | Path validation security adequate?
+**security-specialist:** Path traversal protection (LucidLink + Ubuntu mounts)? | CFEx auto-detection safe?
+**GO Criteria:** All validation protocols proven | Security vulnerabilities addressed | Transfer reliability 100% (no silent failures)
 
 ### Phase 1b GO/NO-GO (B0)
 
-**critical-design-validator:**
-- DateTimeOriginal preservation 100% reliable?
-- Validation protocol halts workflow on mismatch?
-- Proxy quality meets production requirements?
-
-**technical-architect:**
-- ffmpeg + exiftool integration architecture sound?
-- Hardware acceleration detection reliable?
-- Error recovery strategies adequate?
-
-**GO Criteria:**
-- DateTimeOriginal preservation proven (I1 compliance)
-- Proxy quality validated (2560×1440 ProRes Proxy)
-- Integrity validation catches all failures
+**critical-design-validator:** DateTimeOriginal preservation 100% reliable? | Validation halts workflow on mismatch? | Proxy quality meets production?
+**technical-architect:** ffmpeg + exiftool integration sound? | Hardware acceleration detection reliable? | Error recovery adequate?
+**GO Criteria:** DateTimeOriginal proven (I1 compliance) | Proxy quality validated (2560×1440 ProRes Proxy) | Integrity validation catches all failures
 
 ### Phase 1c GO/NO-GO (B0)
 
-**requirements-steward:**
-- Toggle default states correct (all OFF)?
-- TapeName logic aligns with immutables (I3)?
-- AI auto-analyze optional (I7 Human Primacy)?
-
-**critical-design-validator:**
-- Template parser security (no injection vulnerabilities)?
-- Filename rewrite atomic (no partial renames)?
-- Settings persistence reliable?
-
-**GO Criteria:**
-- Toggles optional (users can disable without breaking workflow)
-- TapeName logic correct (write when file modification enabled)
-- Template parser safe (no security vulnerabilities)
+**requirements-steward:** Toggle defaults correct (all OFF)? | TapeName logic aligns immutables (I3)? | AI auto-analyze optional (I7 Human Primacy)?
+**critical-design-validator:** Template parser security (no injection)? | Filename rewrite atomic (no partial renames)? | Settings persistence reliable?
+**GO Criteria:** Toggles optional (users disable without breaking workflow) | TapeName logic correct (write when file modification enabled) | Template parser safe (no security vulnerabilities)
 
 ---
 
@@ -385,58 +263,43 @@ Phase 1c: Power Features (2-3 weeks)
 
 ```
 Phase 1a: Transfer + Integrity
-├─ D2 Design: 2-3 days
-├─ D3 Blueprint: 1-2 days
-├─ B0 Validation: 1 day
-├─ B2 Implementation: 6-8 days (TDD)
-└─ Total: ~2 weeks
+DURATION::[D2:2-3_days, D3:1-2_days, B0:1_day, B2:6-8_days{TDD}] → Total:~2_weeks
 
 Phase 1b: Proxy Generation
-├─ D2 Design: 3-4 days (ffmpeg + exiftool integration)
-├─ D3 Blueprint: 1-2 days
-├─ B0 Validation: 1 day (DateTimeOriginal preservation critical)
-├─ B2 Implementation: 7-9 days (TDD + validation)
-└─ Total: ~2 weeks
+DURATION::[D2:3-4_days{ffmpeg+exiftool}, D3:1-2_days, B0:1_day{DateTimeOriginal_critical}, B2:7-9_days{TDD+validation}] → Total:~2_weeks
 
 Phase 1c: Power Features
-├─ D2 Design: 3-4 days (template parser + toggle architecture)
-├─ D3 Blueprint: 2-3 days (settings panel UI)
-├─ B0 Validation: 1 day
-├─ B2 Implementation: 8-10 days (TDD + integration)
-└─ Total: ~2-3 weeks
+DURATION::[D2:3-4_days{template_parser+toggle_architecture}, D3:2-3_days{settings_panel}, B0:1_day, B2:8-10_days{TDD+integration}] → Total:~2-3_weeks
 
 Total: 6-7 weeks (sequential)
 ```
 
-**Assumptions:**
-- Quality gates pass without major rework
-- No critical architecture changes discovered during validation
-- TDD discipline maintained (RED→GREEN→REFACTOR)
+**ASSUMPTIONS:** Quality gates pass without major rework | No critical architecture changes during validation | TDD discipline maintained (RED→GREEN→REFACTOR)
 
 ---
 
 ## SUCCESS CRITERIA
 
 ### Phase 1a Success
-- ✅ CFEx card → LucidLink (photos) 100% reliable
-- ✅ CFEx card → Ubuntu (raw videos) 100% reliable
-- ✅ Integrity validation catches missing files/timestamps
-- ✅ Path intelligence suggests correct folders 90%+ of time
-- ✅ Zero data loss (I4 compliance)
+- CFEx → LucidLink (photos) 100% reliable
+- CFEx → Ubuntu (raw) 100% reliable
+- Integrity validation catches missing files/timestamps
+- Path intelligence suggests correct folders 90%+ time
+- Zero data loss (I4 compliance)
 
 ### Phase 1b Success
-- ✅ Proxies generated with 2560×1440 ProRes Proxy quality
-- ✅ DateTimeOriginal preserved 100% of time (I1 compliance)
-- ✅ Validation halts workflow on timestamp mismatch
-- ✅ Proxy quality validated (10-bit 4:2:2 color, low CPU intra-frame decode)
-- ✅ Timeline performance smooth (M-series + modern PCs)
+- Proxies generated 2560×1440 ProRes Proxy quality
+- DateTimeOriginal preserved 100% time (I1 compliance)
+- Validation halts workflow timestamp mismatch
+- Proxy quality validated (10-bit 4:2:2 color, low CPU intra-frame decode)
+- Timeline performance smooth (M-series + modern PCs)
 
 ### Phase 1c Success
-- ✅ AI auto-analyze toggle works (optional batch processing)
-- ✅ Metadata write toggle writes TapeName + shotName + LogComment
-- ✅ Filename rewrite toggle + template parser functional
-- ✅ All toggles default OFF (manual control preserved - I7)
-- ✅ Settings persist across sessions
+- AI auto-analyze toggle works (optional batch)
+- Metadata write toggle writes TapeName + shotName + LogComment
+- Filename rewrite toggle + template parser functional
+- All toggles default OFF (manual control preserved - I7)
+- Settings persist across sessions
 
 ---
 
