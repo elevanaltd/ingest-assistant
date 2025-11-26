@@ -848,4 +848,266 @@ describe('SettingsModal', () => {
       expect(window.electronAPI.saveConfig).not.toHaveBeenCalled();
     });
   });
+
+  /**
+   * Phase 1c: Power Features - CFEx Toggle Settings
+   *
+   * TDD RED Phase - Tests for AI Auto-Analyze, Metadata Write, and Filename Rewrite toggles
+   * Feature: User-controlled post-transfer automation (I7 Human Primacy compliance)
+   */
+  describe('CFEx Power Features - Toggle Settings', () => {
+    beforeEach(() => {
+      // Mock window.electronAPI with CFEx toggle methods
+      window.electronAPI = {
+        getAIConfig: vi.fn().mockResolvedValue({
+          provider: 'openrouter',
+          model: 'anthropic/claude-3.5-sonnet',
+          apiKey: '***masked***'
+        }),
+        isAIConfigured: vi.fn().mockResolvedValue(true),
+        updateAIConfig: vi.fn().mockResolvedValue({ success: true }),
+        testAIConnection: vi.fn().mockResolvedValue({ success: true }),
+        testSavedAIConnection: vi.fn().mockResolvedValue({ success: true }),
+        getAIModels: vi.fn().mockResolvedValue([]),
+        loadConfig: vi.fn().mockResolvedValue({
+          lexicon: {},
+          cfex: {
+            defaultSource: '/Volumes/Untitled/DCIM/100_FUJI',
+            defaultPhotos: '/Volumes/videos-current/2. WORKING PROJECTS/',
+            defaultVideos: '/Volumes/EAV_Video_RAW/',
+            aiAutoAnalyze: false,
+            metadataWrite: false,
+            filenameRewrite: false,
+            filenameTemplate: '{location}-{subject}-{action}-{shotType}'
+          }
+        }),
+        saveConfig: vi.fn().mockResolvedValue(true),
+        selectFolder: vi.fn().mockResolvedValue('/selected/path'),
+        batchStart: vi.fn(async () => 'mock-queue-id'),
+        batchCancel: vi.fn(async () => ({ success: true })),
+        batchGetStatus: vi.fn(async () => ({
+          items: [],
+          status: 'idle',
+          currentFile: null
+        })),
+        onBatchProgress: vi.fn(() => () => {}),
+        onTranscodeProgress: vi.fn(() => () => {}),
+      } as Partial<typeof window.electronAPI> as typeof window.electronAPI;
+    });
+
+    it('should render AI Auto-Analyze toggle checkbox', async () => {
+      render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
+
+      fireEvent.click(screen.getByText('CFEx Transfer'));
+
+      await waitFor(() => {
+        expect(window.electronAPI.loadConfig).toHaveBeenCalled();
+      });
+
+      // Should have AI Auto-Analyze checkbox
+      expect(screen.getByLabelText(/AI Auto-Analyze after transfer/i)).toBeInTheDocument();
+    });
+
+    it('should render Metadata Write toggle checkbox', async () => {
+      render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
+
+      fireEvent.click(screen.getByText('CFEx Transfer'));
+
+      await waitFor(() => {
+        expect(window.electronAPI.loadConfig).toHaveBeenCalled();
+      });
+
+      // Should have Metadata Write checkbox
+      expect(screen.getByLabelText(/Write metadata to files/i)).toBeInTheDocument();
+    });
+
+    it('should render Filename Rewrite toggle checkbox', async () => {
+      render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
+
+      fireEvent.click(screen.getByText('CFEx Transfer'));
+
+      await waitFor(() => {
+        expect(window.electronAPI.loadConfig).toHaveBeenCalled();
+      });
+
+      // Should have Filename Rewrite checkbox
+      expect(screen.getByLabelText(/Rename files using template/i)).toBeInTheDocument();
+    });
+
+    it('should show filename template input only when filenameRewrite is enabled', async () => {
+      render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
+
+      fireEvent.click(screen.getByText('CFEx Transfer'));
+
+      await waitFor(() => {
+        expect(window.electronAPI.loadConfig).toHaveBeenCalled();
+      });
+
+      // Filename template input should NOT be visible initially (filenameRewrite=false)
+      expect(screen.queryByPlaceholderText(/\{location\}-\{subject\}-\{action\}-\{shotType\}/)).not.toBeInTheDocument();
+
+      // Enable filename rewrite toggle
+      const filenameRewriteCheckbox = screen.getByLabelText(/Rename files using template/i);
+      fireEvent.click(filenameRewriteCheckbox);
+
+      // Now filename template input should be visible
+      await waitFor(() => {
+        expect(screen.getByPlaceholderText(/\{location\}-\{subject\}-\{action\}-\{shotType\}/)).toBeInTheDocument();
+      });
+    });
+
+    it('should load toggle state from config (all OFF by default per I7)', async () => {
+      render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
+
+      fireEvent.click(screen.getByText('CFEx Transfer'));
+
+      await waitFor(() => {
+        expect(window.electronAPI.loadConfig).toHaveBeenCalled();
+      });
+
+      // All toggles should be unchecked (I7 Human Primacy - default OFF)
+      const aiAutoAnalyzeCheckbox = screen.getByLabelText(/AI Auto-Analyze after transfer/i) as HTMLInputElement;
+      const metadataWriteCheckbox = screen.getByLabelText(/Write metadata to files/i) as HTMLInputElement;
+      const filenameRewriteCheckbox = screen.getByLabelText(/Rename files using template/i) as HTMLInputElement;
+
+      expect(aiAutoAnalyzeCheckbox.checked).toBe(false);
+      expect(metadataWriteCheckbox.checked).toBe(false);
+      expect(filenameRewriteCheckbox.checked).toBe(false);
+    });
+
+    it('should update toggle state when checkboxes clicked', async () => {
+      render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
+
+      fireEvent.click(screen.getByText('CFEx Transfer'));
+
+      await waitFor(() => {
+        expect(window.electronAPI.loadConfig).toHaveBeenCalled();
+      });
+
+      const aiAutoAnalyzeCheckbox = screen.getByLabelText(/AI Auto-Analyze after transfer/i) as HTMLInputElement;
+      const metadataWriteCheckbox = screen.getByLabelText(/Write metadata to files/i) as HTMLInputElement;
+
+      // Initially unchecked
+      expect(aiAutoAnalyzeCheckbox.checked).toBe(false);
+      expect(metadataWriteCheckbox.checked).toBe(false);
+
+      // Click toggles
+      fireEvent.click(aiAutoAnalyzeCheckbox);
+      fireEvent.click(metadataWriteCheckbox);
+
+      // Should be checked now
+      expect(aiAutoAnalyzeCheckbox.checked).toBe(true);
+      expect(metadataWriteCheckbox.checked).toBe(true);
+    });
+
+    it('should save toggle state when Save CFEx Settings clicked', async () => {
+      render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
+
+      fireEvent.click(screen.getByText('CFEx Transfer'));
+
+      await waitFor(() => {
+        expect(window.electronAPI.loadConfig).toHaveBeenCalled();
+      });
+
+      // Enable AI Auto-Analyze
+      const aiAutoAnalyzeCheckbox = screen.getByLabelText(/AI Auto-Analyze after transfer/i);
+      fireEvent.click(aiAutoAnalyzeCheckbox);
+
+      // Enable Metadata Write
+      const metadataWriteCheckbox = screen.getByLabelText(/Write metadata to files/i);
+      fireEvent.click(metadataWriteCheckbox);
+
+      // Save
+      const saveButton = screen.getByText('Save CFEx Settings');
+      fireEvent.click(saveButton);
+
+      await waitFor(() => {
+        expect(window.electronAPI.saveConfig).toHaveBeenCalledWith(
+          expect.objectContaining({
+            cfex: expect.objectContaining({
+              aiAutoAnalyze: true,
+              metadataWrite: true,
+              filenameRewrite: false
+            })
+          })
+        );
+      });
+    });
+
+    it('should save filename template when filenameRewrite enabled', async () => {
+      render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
+
+      fireEvent.click(screen.getByText('CFEx Transfer'));
+
+      await waitFor(() => {
+        expect(window.electronAPI.loadConfig).toHaveBeenCalled();
+      });
+
+      // Enable filename rewrite
+      const filenameRewriteCheckbox = screen.getByLabelText(/Rename files using template/i);
+      fireEvent.click(filenameRewriteCheckbox);
+
+      // Template input should appear
+      await waitFor(() => {
+        expect(screen.getByPlaceholderText(/\{location\}-\{subject\}-\{action\}-\{shotType\}/)).toBeInTheDocument();
+      });
+
+      // Change template
+      const templateInput = screen.getByPlaceholderText(/\{location\}-\{subject\}-\{action\}-\{shotType\}/);
+      fireEvent.change(templateInput, { target: { value: '{subject}-{shotType}' } });
+
+      // Save
+      const saveButton = screen.getByText('Save CFEx Settings');
+      fireEvent.click(saveButton);
+
+      await waitFor(() => {
+        expect(window.electronAPI.saveConfig).toHaveBeenCalledWith(
+          expect.objectContaining({
+            cfex: expect.objectContaining({
+              filenameRewrite: true,
+              filenameTemplate: '{subject}-{shotType}'
+            })
+          })
+        );
+      });
+    });
+
+    it('should load enabled toggle state from config', async () => {
+      // Mock config with toggles ENABLED
+      window.electronAPI.loadConfig = vi.fn().mockResolvedValue({
+        lexicon: {},
+        cfex: {
+          defaultSource: '/Volumes/Untitled/DCIM/100_FUJI',
+          defaultPhotos: '/Volumes/videos-current/2. WORKING PROJECTS/',
+          defaultVideos: '/Volumes/EAV_Video_RAW/',
+          aiAutoAnalyze: true,
+          metadataWrite: true,
+          filenameRewrite: true,
+          filenameTemplate: '{location}-{subject}-{shotType}'
+        }
+      });
+
+      render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
+
+      fireEvent.click(screen.getByText('CFEx Transfer'));
+
+      await waitFor(() => {
+        expect(window.electronAPI.loadConfig).toHaveBeenCalled();
+      });
+
+      // All toggles should be checked
+      const aiAutoAnalyzeCheckbox = screen.getByLabelText(/AI Auto-Analyze after transfer/i) as HTMLInputElement;
+      const metadataWriteCheckbox = screen.getByLabelText(/Write metadata to files/i) as HTMLInputElement;
+      const filenameRewriteCheckbox = screen.getByLabelText(/Rename files using template/i) as HTMLInputElement;
+
+      await waitFor(() => {
+        expect(aiAutoAnalyzeCheckbox.checked).toBe(true);
+        expect(metadataWriteCheckbox.checked).toBe(true);
+        expect(filenameRewriteCheckbox.checked).toBe(true);
+      });
+
+      // Filename template input should be visible
+      expect(screen.getByDisplayValue('{location}-{subject}-{shotType}')).toBeInTheDocument();
+    });
+  });
 });
