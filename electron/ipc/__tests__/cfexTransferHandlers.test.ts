@@ -636,4 +636,206 @@ describe('CFEx Transfer IPC Handlers', () => {
       expect(result.shouldAutoPopulate).toBe(false)
     })
   })
+
+  describe('AI Auto-Analyze Integration (Phase 1c-5)', () => {
+    test('emits cfex:trigger-ai-analysis event when aiAutoAnalyze enabled and integrity passes', async () => {
+      // ARRANGE
+      mockService.startTransfer.mockResolvedValue({
+        success: true,
+        filesTransferred: 5,
+        filesTotal: 5,
+        bytesTransferred: 500000,
+        duration: 1000,
+        validationWarnings: [],
+        errors: []
+      })
+
+      registerCfexTransferHandlers(mockWindow)
+      const handler = (ipcMain.handle as any).mock.calls.find(
+        (call: any) => call[0] === 'cfex:start-transfer'
+      )[1]
+
+      const configWithAiToggle = {
+        source: '/Volumes/NO NAME/',
+        destinations: {
+          photos: '/Volumes/videos-current/test/',
+          rawVideos: '/Volumes/EAV_Video_RAW/test/'
+        },
+        aiAutoAnalyze: true
+      }
+
+      // ACT
+      await handler({}, configWithAiToggle)
+
+      // ASSERT
+      expect(mockWindow.webContents.send).toHaveBeenCalledWith(
+        'cfex:trigger-ai-analysis',
+        expect.objectContaining({
+          destination: '/Volumes/videos-current/test/'
+        })
+      )
+    })
+
+    test('does NOT emit cfex:trigger-ai-analysis when aiAutoAnalyze disabled', async () => {
+      // ARRANGE
+      mockService.startTransfer.mockResolvedValue({
+        success: true,
+        filesTransferred: 5,
+        filesTotal: 5,
+        bytesTransferred: 500000,
+        duration: 1000,
+        validationWarnings: [],
+        errors: []
+      })
+
+      registerCfexTransferHandlers(mockWindow)
+      const handler = (ipcMain.handle as any).mock.calls.find(
+        (call: any) => call[0] === 'cfex:start-transfer'
+      )[1]
+
+      const configWithoutAiToggle = {
+        source: '/Volumes/NO NAME/',
+        destinations: {
+          photos: '/Volumes/videos-current/test/',
+          rawVideos: '/Volumes/EAV_Video_RAW/test/'
+        },
+        aiAutoAnalyze: false
+      }
+
+      // ACT
+      await handler({}, configWithoutAiToggle)
+
+      // ASSERT
+      expect(mockWindow.webContents.send).not.toHaveBeenCalledWith(
+        'cfex:trigger-ai-analysis',
+        expect.anything()
+      )
+    })
+
+    test('does NOT emit cfex:trigger-ai-analysis when integrity validation fails', async () => {
+      // ARRANGE
+      mockService.startTransfer.mockResolvedValue({
+        success: false,
+        filesTransferred: 3,
+        filesTotal: 5,
+        bytesTransferred: 300000,
+        duration: 1000,
+        validationWarnings: [],
+        errors: [
+          {
+            file: 'EA001622.JPG',
+            error: new Error('Size mismatch'),
+            phase: 'validation' as const
+          }
+        ]
+      })
+
+      registerCfexTransferHandlers(mockWindow)
+      const handler = (ipcMain.handle as any).mock.calls.find(
+        (call: any) => call[0] === 'cfex:start-transfer'
+      )[1]
+
+      const configWithAiToggle = {
+        source: '/Volumes/NO NAME/',
+        destinations: {
+          photos: '/Volumes/videos-current/test/',
+          rawVideos: '/Volumes/EAV_Video_RAW/test/'
+        },
+        aiAutoAnalyze: true
+      }
+
+      // ACT
+      await handler({}, configWithAiToggle)
+
+      // ASSERT - I4 compliance: no AI when integrity fails
+      expect(mockWindow.webContents.send).not.toHaveBeenCalledWith(
+        'cfex:trigger-ai-analysis',
+        expect.anything()
+      )
+    })
+
+    test('emits event with photo destination when photos transferred', async () => {
+      // ARRANGE
+      mockService.startTransfer.mockResolvedValue({
+        success: true,
+        filesTransferred: 10,
+        filesTotal: 10,
+        bytesTransferred: 1000000,
+        duration: 1000,
+        validationWarnings: [],
+        errors: []
+      })
+
+      registerCfexTransferHandlers(mockWindow)
+      const handler = (ipcMain.handle as any).mock.calls.find(
+        (call: any) => call[0] === 'cfex:start-transfer'
+      )[1]
+
+      const configWithPhotos = {
+        source: '/Volumes/NO NAME/',
+        destinations: {
+          photos: '/Volumes/LucidLink/images/',
+          rawVideos: '/Volumes/Ubuntu/videos/'
+        },
+        enabledDestinations: {
+          photos: true,
+          rawVideos: false
+        },
+        aiAutoAnalyze: true
+      }
+
+      // ACT
+      await handler({}, configWithPhotos)
+
+      // ASSERT - triggers on photo destination
+      expect(mockWindow.webContents.send).toHaveBeenCalledWith(
+        'cfex:trigger-ai-analysis',
+        expect.objectContaining({
+          destination: '/Volumes/LucidLink/images/'
+        })
+      )
+    })
+
+    test('emits event with video destination when videos transferred', async () => {
+      // ARRANGE
+      mockService.startTransfer.mockResolvedValue({
+        success: true,
+        filesTransferred: 5,
+        filesTotal: 5,
+        bytesTransferred: 5000000,
+        duration: 5000,
+        validationWarnings: [],
+        errors: []
+      })
+
+      registerCfexTransferHandlers(mockWindow)
+      const handler = (ipcMain.handle as any).mock.calls.find(
+        (call: any) => call[0] === 'cfex:start-transfer'
+      )[1]
+
+      const configWithVideos = {
+        source: '/Volumes/NO NAME/',
+        destinations: {
+          photos: '/Volumes/LucidLink/images/',
+          rawVideos: '/Volumes/Ubuntu/videos/'
+        },
+        enabledDestinations: {
+          photos: false,
+          rawVideos: true
+        },
+        aiAutoAnalyze: true
+      }
+
+      // ACT
+      await handler({}, configWithVideos)
+
+      // ASSERT - triggers on video destination
+      expect(mockWindow.webContents.send).toHaveBeenCalledWith(
+        'cfex:trigger-ai-analysis',
+        expect.objectContaining({
+          destination: '/Volumes/Ubuntu/videos/'
+        })
+      )
+    })
+  })
 })
