@@ -4,15 +4,17 @@
 ```bash
 # Parse arguments for role name and flags
 FULL_ARGS="$ARGUMENTS"
-RAPH_MODE="ceremonial"  # default
+RAPH_MODE="live_raph"  # default: RAPH OCTAVE mode (evidence-based activation)
 
-# Check for --raph flag to enforce Live RAPH
-if echo "$FULL_ARGS" | grep -q -- "--raph"; then
-  RAPH_MODE="live_raph"
-  # Remove --raph from arguments to get role name
-  ROLE_INPUT=$(echo "$FULL_ARGS" | sed 's/--raph//g' | xargs)
+# Check for --raph-verbose first, then --noraph/--ceremonial for opt-out
+if echo "$FULL_ARGS" | grep -q -- "--raph-verbose"; then
+  RAPH_MODE="live_raph_verbose"
+  ROLE_INPUT=$(echo "$FULL_ARGS" | sed 's/--raph-verbose//g' | xargs)
+elif echo "$FULL_ARGS" | grep -q -E -- "--noraph|--ceremonial"; then
+  RAPH_MODE="ceremonial"
+  ROLE_INPUT=$(echo "$FULL_ARGS" | sed -E 's/--noraph|--ceremonial//g' | xargs)
 else
-  ROLE_INPUT="$FULL_ARGS"
+  ROLE_INPUT=$(echo "$FULL_ARGS" | sed 's/--raph//g' | xargs)  # strip legacy --raph if present
 fi
 
 # Normalize role name (spaces→hyphens, common aliases)
@@ -56,27 +58,135 @@ echo "✓ Activating: $ROLE_NAME [mode: ${RAPH_MODE}]"
 ## STEP 2: Load Constitutional Document
 ```
 # Read the agent's constitutional document into memory
-# This ensures the full text is available for the activation prompt
-AGENT_CONSTITUTION=$(Read("/Users/shaunbuswell/.claude/agents/$ROLE_NAME.oct.md"))
+# Constitution is LOADED - do not re-display in prompt (agent has access via Read)
+Read("/Users/shaunbuswell/.claude/agents/$ROLE_NAME.oct.md")
+# Constitution now in context. Reference by line number, not re-display.
 ```
 
 ⚠️  Read directly. NO delegation to other agents.
 
-## STEP 3: RAPH Processing (Evidence-Based Cognitive Forcing)
-
-**CRITICAL**: RAPH processing is a **cognitive forcing function** that demands evidence of genuine understanding. Sequential processing with TodoWrite prevents ceremonial shortcuts.
+## STEP 3: RAPH Processing
 
 ```bash
 if [ "$RAPH_MODE" = "live_raph" ]; then
-  echo "🔒 LIVE RAPH MODE - Evidence-based sequential processing..."
+  # OCTAVE MODE (Default --raph) - Efficient evidence-based processing
+  echo "🔒 LIVE RAPH MODE (OCTAVE) - Efficient evidence-based processing..."
 
   cat <<EOF
-You are being activated as **$ROLE_NAME**. To ensure genuine cognitive integration (not ceremonial processing), you must perform evidence-based analysis that cannot be faked through text reformulation.
+Activating as **$ROLE_NAME**. Constitution LOADED via Read() above.
 
-**Your Constitutional Document:**
+**MANDATORY: Create TodoWrite with 4 phases, then process sequentially.**
+
+TodoWrite([
+  {content: "READ: Extract constitutional components with line citations", status: "in_progress", activeForm: "Extracting components"},
+  {content: "ABSORB: Identify 5 constitutional tensions", status: "pending", activeForm: "Finding tensions"},
+  {content: "PERCEIVE: Generate 3 edge-case scenarios", status: "pending", activeForm: "Testing understanding"},
+  {content: "HARMONISE: Predict 3 behavioral differences", status: "pending", activeForm: "Integrating identity"}
+])
+
 ---
-$AGENT_CONSTITUTION
+
+## FORMAT DISCIPLINE
+
+PRINCIPLE::"Structure forces comprehension → verbose prose enables passive reading → OCTAVE requires active extraction"
+
+RULES::[
+  LINE_CITATIONS::mandatory[proves_reading],
+  KEYWORDS::max_5_words_per_field,
+  RESOLUTION::via[principle]→optional(transfer_mechanic_max_12_words),
+  NO_PROSE::after_ACTIVATED_block,
+  GATE_MARKERS::explicit_verification_points
+]
+
+TRANSFER_MECHANIC_GUIDANCE::[
+  WHEN::resolution_requires_operational_clarification,
+  FORMAT::"RESOLUTION::via[PRINCIPLE::L{N}]→(how_it_applies_operationally)",
+  EXAMPLE::"RESOLUTION::via[WISDOM_PATTERN::L34]→(wait_for_emergence≠construct_then_validate)",
+  MAX::12_words_in_parenthetical,
+  DEFAULT::omit_if_principle_reference_is_self_explanatory
+]
+
 ---
+
+## OCTAVE OUTPUT FORMAT
+
+**Phase 1: READ** → Mark todo in_progress, then output:
+\`\`\`
+EXTRACTION::[
+  CORE_FORCES::[{name}::L{N}, ...],
+  PRINCIPLES::[{name}::L{N}, ...],
+  ARCHETYPES::{cognition}+{archetypes}::L{N},
+  OVERLAYS::[{section}::L{N-M}]_if_present,
+  CONSTRAINTS::[MUST::{items}::L{N}, NEVER::{items}::L{N}]
+]
+GATE::8-15_components_cited
+\`\`\`
+Mark todo complete.
+
+**Phase 2: ABSORB** → Mark todo in_progress, then output:
+\`\`\`
+TENSIONS::[
+  T1::{name}[
+    A::L{X}[keyword],
+    B::L{Y}[keyword],
+    CONFLICT::when[scenario_max_10_words],
+    RESOLUTION::via[principle]→optional(transfer_mechanic)
+  ],
+  T2::..., T3::..., T4::..., T5::...
+]
+GATE::5_non-obvious_tensions[require_synthesis≠restatement]
+\`\`\`
+Mark todo complete.
+
+**Phase 3: PERCEIVE** → Mark todo in_progress, then output:
+\`\`\`
+SCENARIOS::[
+  S1::{name}[
+    SITUATION::max_15_words,
+    AMBIGUITY::principle_X_vs_principle_Y,
+    RESOLUTION::approach_max_15_words
+  ],
+  S2::..., S3::...
+]
+GATE::3_novel_scenarios[not_explicitly_in_constitution]
+\`\`\`
+Mark todo complete.
+
+**Phase 4: HARMONISE** → Mark todo in_progress, then output:
+\`\`\`
+BEHAVIORS::[
+  B1::[
+    GENERIC::would[action_max_8_words],
+    I_WILL::instead[action_max_8_words],
+    BECAUSE::principle::L{N}
+  ],
+  B2::..., B3::...
+]
+GATE::3_concrete_testable[if_OVERLAY→1_must_demonstrate_compliance]
+\`\`\`
+Mark todo complete.
+
+**Phase 5: ACTIVATE** → Output identity block (no prose after):
+\`\`\`
+ACTIVATED::[
+  MODEL::{actual_model},
+  ROLE::$ROLE_NAME,
+  COGNITION::{primary_force},
+  ARCHETYPES::{active_archetypes},
+  DOMAIN::{execution_domain},
+  CONSTRAINTS::{key_MUST/NEVER_summary},
+  READY::true
+]
+\`\`\`
+
+EOF
+
+elif [ "$RAPH_MODE" = "live_raph_verbose" ]; then
+  # VERBOSE MODE (--raph-verbose) - Full prose for debugging
+  echo "🔒 LIVE RAPH MODE (VERBOSE) - Full prose for debugging..."
+
+  cat <<EOF
+You are being activated as **$ROLE_NAME**. Constitution LOADED via Read() above.
 
 **MANDATORY: Create TodoWrite First**
 Before beginning, create a todo list with these 4 phases:
@@ -164,23 +274,22 @@ TodoWrite([
 **Mark Phase 4 complete** when all behaviors are specific and testable
 
 **Final Confirmation:**
-After marking all todos complete, declare activation ready and acknowledge that your actual behavior in the first task will be the true test of constitutional integration.
+After marking all todos complete, declare activation with:
+- Model identity (e.g., "I am Claude Opus 4.5 operating as $ROLE_NAME")
+- Core cognition and archetypes
+- Execution domain
+- Ready for task
 
-**Quality Standard:** Evidence-based processing demonstrating genuine cognitive work, not ceremonial text reformulation. Your ability to find tensions, generate edge cases, and predict behaviors proves understanding.
+**Quality Standard:** Evidence-based processing demonstrating genuine cognitive work, not ceremonial text reformulation.
 EOF
 
 else
-  # Ceremonial Mode - Quick RAPH processing (simulated)
+  # CEREMONIAL MODE (no flag) - Quick activation
   echo "⚡ CEREMONIAL MODE - Quick activation..."
   cat <<EOF
 **⚡ CEREMONIAL MODE - Quick activation...**
 
-Activating as the **$ROLE_NAME**.
-
-**Constitution Loaded:**
----
-$AGENT_CONSTITUTION
----
+Activating as **$ROLE_NAME**. Constitution LOADED via Read() above.
 
 **CEREMONIAL ACTIVATION PROTOCOL:**
 DO NOT perform detailed RAPH processing. Simply acknowledge constitutional identity and proceed.
@@ -215,27 +324,38 @@ If file not found, try:
 
 ## USAGE MODES:
 
-### Standard (Ceremonial - Fast):
+### Live RAPH - OCTAVE (DEFAULT):
 ```bash
-/role holistic-orchestrator     # Quick activation with no deep processing
-/role ho                        # Using alias
-/role holistic orchestrator     # With spaces (auto-normalized)
+/role holistic-orchestrator     # OCTAVE output, ~9/10 integration (default)
+/role ho                        # Using alias, same RAPH default
+/role critical-engineer         # Evidence-based activation, line citations
 ```
 
-### Live RAPH (Evidence-Based Deep Processing):
+### Ceremonial (Fast - Opt-In):
 ```bash
-/role holistic-orchestrator --raph   # Forces evidence-based sequential self-processing
-/role ho --raph                      # Alias with enforced processing
+/role ho --noraph               # Quick activation, ~7/10 integration
+/role ho --ceremonial           # Same as --noraph
 ```
 
-**Ceremonial Mode**: ~2.2k tokens, instant activation, ~7/10 quality
-**Live RAPH Mode**: ~3k tokens, evidence-based sequential processing with TodoWrite, **target: genuine cognitive integration**
+### Live RAPH - Verbose (Debugging):
+```bash
+/role ho --raph-verbose         # Full prose output for debugging new agents
+/role ta --raph-verbose         # Use when validating agent constitutions
+```
 
-**Why TodoWrite Matters:**
-- Forces sequential acknowledgment of each phase
-- Creates visible checkpoints (can't skip ahead)
-- Makes processing observable and verifiable
-- Provides external structure that prevents batch completion claims
+**Token Comparison:**
+- RAPH (OCTAVE): ~1.5k tokens, evidence-based (DEFAULT)
+- Ceremonial: ~1k tokens, instant (--noraph)
+- RAPH (Verbose): ~4k tokens, full prose for debugging
+
+**Design Rationale (S027 Evidence + System Evolution):**
+- RAPH OCTAVE is now DEFAULT: minimal token overhead (+500) yields +20% integration quality
+- Verbose prose enables passive reading → comprehension theater risk
+- OCTAVE structure requires active extraction → cognitive forcing preserved
+- Line citations prove reading without full quotes
+- Selective prose injection (transfer mechanics) preserves synthesis depth
+- ~70% token savings vs verbose with equivalent or better binding effectiveness
+- Ceremonial remains available via --noraph for utility agents or quick queries
 
 ## QUICK REFERENCE:
 **Common:** ce (critical-engineer), ea (error-architect), ta (technical), il (implementation)
