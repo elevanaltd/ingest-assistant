@@ -56,7 +56,7 @@ describe('Cache Directory Registration', () => {
     await securityValidator.addAllowedPath(resolvedCacheDir);
 
     // Step 2: Set base path (simulates user selecting folder)
-    securityValidator.setAllowedBasePath(tempBaseDir);
+    await securityValidator.setAllowedBasePath(tempBaseDir);
 
     // Step 3: Validate cache file access (simulates batch processing)
     const testCacheFile = path.join(tempCacheDir, 'test-video-preview.mp4');
@@ -75,7 +75,7 @@ describe('Cache Directory Registration', () => {
     // 3. Expect PATH_TRAVERSAL error
 
     // Step 1: Set base path (simulates user selecting folder)
-    securityValidator.setAllowedBasePath(tempBaseDir);
+    await securityValidator.setAllowedBasePath(tempBaseDir);
 
     // Step 2: Attempt cache file access WITHOUT registration
     // (simulates batch processing starting before IIFE completes)
@@ -96,7 +96,7 @@ describe('Cache Directory Registration', () => {
     await securityValidator.addAllowedPath(resolvedCacheDir);
 
     // Set base path
-    securityValidator.setAllowedBasePath(tempBaseDir);
+    await securityValidator.setAllowedBasePath(tempBaseDir);
 
     // Validate file in cache (also resolves symlinks)
     const testCacheFile = path.join(cacheDir, 'symlink-test.mp4');
@@ -118,7 +118,7 @@ describe('Cache Directory Registration', () => {
     await securityValidator.addAllowedPath(resolvedCacheDir);
 
     // Set base path
-    securityValidator.setAllowedBasePath(tempBaseDir);
+    await securityValidator.setAllowedBasePath(tempBaseDir);
 
     // Validate cache file access still works
     const testCacheFile = path.join(tempCacheDir, 'duplicate-test.mp4');
@@ -161,7 +161,7 @@ describe('Cache Directory Registration', () => {
       await validator.addAllowedPath(resolved);
 
       // Set base path for validation
-      validator.setAllowedBasePath(tempBaseDir);
+      await validator.setAllowedBasePath(tempBaseDir);
 
       // Verify: SecurityValidator properly stores allowlist
       const testFile = path.join(resolved, 'test.txt');

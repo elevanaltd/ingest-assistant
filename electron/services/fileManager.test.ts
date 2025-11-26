@@ -39,8 +39,8 @@ describe('FileManager', () => {
       }
     );
 
-    // Mock setAllowedBasePath (no-op for normal tests)
-    vi.spyOn(mockSecurityValidator, 'setAllowedBasePath').mockImplementation(() => {});
+    // Mock setAllowedBasePath (no-op for normal tests, now async)
+    vi.spyOn(mockSecurityValidator, 'setAllowedBasePath').mockImplementation(async () => {});
 
     fileManager = new FileManager(mockSecurityValidator);
   });

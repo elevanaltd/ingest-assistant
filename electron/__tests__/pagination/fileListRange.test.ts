@@ -96,7 +96,7 @@ describe('file:list-range - Pagination', () => {
       vi.clearAllMocks();
       mockSecurityValidator = new SecurityValidator();
       vi.spyOn(mockSecurityValidator, 'validateFilePath').mockResolvedValue('/test/folder');
-      vi.spyOn(mockSecurityValidator, 'setAllowedBasePath').mockImplementation(() => {});
+      vi.spyOn(mockSecurityValidator, 'setAllowedBasePath').mockImplementation(async () => {});
 
       // Mock MetadataWriter to prevent real execFile calls (CI performance issue)
       mockMetadataWriter = {

@@ -91,6 +91,7 @@ export class VideoTranscoder {
 
   /**
    * Execute FFmpeg transcoding with optimized settings
+   * Uses hardware acceleration on macOS, software encoding on Linux
    */
   private doTranscode(
     sourceFile: string,
@@ -98,22 +99,41 @@ export class VideoTranscoder {
     onProgress?: (time: string, percentage: number) => void
   ): Promise<string> {
     return new Promise((resolve, reject) => {
+      const isMacOS = process.platform === 'darwin';
+
+      // Platform-specific video encoding settings
+      const hwAccelArgs = isMacOS
+        ? ['-hwaccel', 'videotoolbox'] // macOS hardware decode
+        : []; // Linux: no hwaccel by default (software decode)
+
+      const videoEncoderArgs = isMacOS
+        ? [
+            '-c:v', 'h264_videotoolbox', // macOS hardware encoder
+            '-b:v', '2500k', // Target bitrate
+            '-maxrate', '3000k',
+            '-bufsize', '5000k',
+          ]
+        : [
+            '-c:v', 'libx264', // Linux software encoder
+            '-preset', 'fast', // Balance speed/quality
+            '-crf', '23', // Quality-based encoding (lower = better)
+            '-maxrate', '3000k',
+            '-bufsize', '5000k',
+          ];
+
       const args = [
         '-hide_banner',
         '-y', // Overwrite output file
 
-        // Hardware acceleration (macOS VideoToolbox)
-        '-hwaccel', 'videotoolbox',
+        // Hardware acceleration (platform-specific)
+        ...hwAccelArgs,
 
         // Input
         '-i', sourceFile,
 
         // Video settings
         '-vf', 'scale=-2:720', // 720p height, maintain aspect ratio
-        '-c:v', 'h264_videotoolbox', // Hardware H.264 encoder
-        '-b:v', '2500k', // Target bitrate
-        '-maxrate', '3000k',
-        '-bufsize', '5000k',
+        ...videoEncoderArgs,
 
         // GOP/keyframe settings for seekability
         '-g', '48', // GOP size (2 seconds at 24fps)

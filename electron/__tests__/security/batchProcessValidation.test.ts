@@ -44,7 +44,7 @@ describe('Batch Process Security Validation', () => {
 
   describe('Path Validation in Batch Context', () => {
     it('should validate each file path in batch is within allowed base path', async () => {
-      validator.setAllowedBasePath('/selected/folder');
+      await validator.setAllowedBasePath('/selected/folder');
 
       const fileMetadataList: Partial<FileMetadata>[] = [
         { id: 'file1', filePath: '/selected/folder/image1.jpg', shotName: 'test1', keywords: [], fileType: 'image', processedByAI: false },
@@ -62,7 +62,7 @@ describe('Batch Process Security Validation', () => {
     });
 
     it('should reject batch processing when file path is outside allowed base path', async () => {
-      validator.setAllowedBasePath('/selected/folder');
+      await validator.setAllowedBasePath('/selected/folder');
 
       // Malicious file metadata with path traversal
       const maliciousFileMetadata: Partial<FileMetadata> = {
@@ -83,7 +83,7 @@ describe('Batch Process Security Validation', () => {
     });
 
     it('should reject path traversal attempt in batch file', async () => {
-      validator.setAllowedBasePath('/selected/folder');
+      await validator.setAllowedBasePath('/selected/folder');
 
       const traversalFileMetadata: Partial<FileMetadata> = {
         id: 'traversal1',
@@ -103,7 +103,7 @@ describe('Batch Process Security Validation', () => {
     });
 
     it('should validate multiple files and identify which ones fail', async () => {
-      validator.setAllowedBasePath('/selected/folder');
+      await validator.setAllowedBasePath('/selected/folder');
 
       const mixedFiles: Partial<FileMetadata>[] = [
         { id: 'valid1', filePath: '/selected/folder/image1.jpg', shotName: 'test1', keywords: [], fileType: 'image', processedByAI: false },
@@ -144,7 +144,7 @@ describe('Batch Process Security Validation', () => {
     const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB
 
     it('should validate each file size in batch is within limit', async () => {
-      validator.setAllowedBasePath('/selected/folder');
+      await validator.setAllowedBasePath('/selected/folder');
 
       const fileMetadataList: Partial<FileMetadata>[] = [
         { id: 'file1', filePath: '/selected/folder/image1.jpg', shotName: 'test1', keywords: [], fileType: 'image', processedByAI: false },
@@ -164,7 +164,7 @@ describe('Batch Process Security Validation', () => {
     });
 
     it('should reject files exceeding size limit in batch', async () => {
-      validator.setAllowedBasePath('/selected/folder');
+      await validator.setAllowedBasePath('/selected/folder');
 
       const oversizedFileMetadata: Partial<FileMetadata> = {
         id: 'oversized1',
@@ -193,7 +193,7 @@ describe('Batch Process Security Validation', () => {
     });
 
     it('should handle mixed file sizes in batch and identify oversized files', async () => {
-      validator.setAllowedBasePath('/selected/folder');
+      await validator.setAllowedBasePath('/selected/folder');
 
       const mixedSizeFiles: Partial<FileMetadata>[] = [
         { id: 'small1', filePath: '/selected/folder/image1.jpg', shotName: 'test1', keywords: [], fileType: 'image', processedByAI: false },
@@ -234,7 +234,7 @@ describe('Batch Process Security Validation', () => {
     const MAX_FILE_SIZE = 100 * 1024 * 1024;
 
     it('should validate both path and size for each batch file', async () => {
-      validator.setAllowedBasePath('/selected/folder');
+      await validator.setAllowedBasePath('/selected/folder');
 
       const fileMetadata: Partial<FileMetadata> = {
         id: 'file1',
@@ -263,7 +263,7 @@ describe('Batch Process Security Validation', () => {
     });
 
     it('should fail validation if path is valid but size exceeds limit', async () => {
-      validator.setAllowedBasePath('/selected/folder');
+      await validator.setAllowedBasePath('/selected/folder');
 
       const fileMetadata: Partial<FileMetadata> = {
         id: 'file1',
@@ -293,7 +293,7 @@ describe('Batch Process Security Validation', () => {
     });
 
     it('should fail validation if path is invalid regardless of size', async () => {
-      validator.setAllowedBasePath('/selected/folder');
+      await validator.setAllowedBasePath('/selected/folder');
 
       const fileMetadata: Partial<FileMetadata> = {
         id: 'file1',
@@ -316,7 +316,7 @@ describe('Batch Process Security Validation', () => {
 
   describe('Error Handling in Batch Processing', () => {
     it('should continue processing remaining files when one file validation fails', async () => {
-      validator.setAllowedBasePath('/selected/folder');
+      await validator.setAllowedBasePath('/selected/folder');
 
       const batchFiles: Partial<FileMetadata>[] = [
         { id: 'file1', filePath: '/selected/folder/image1.jpg', shotName: 'test1', keywords: [], fileType: 'image', processedByAI: false },

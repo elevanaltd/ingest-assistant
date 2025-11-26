@@ -33,7 +33,7 @@ describe('SecurityValidator', () => {
 
   describe('Path Traversal Protection', () => {
     it('should allow files within allowed root', async () => {
-      validator.setAllowedBasePath('/selected/folder');
+      await validator.setAllowedBasePath('/selected/folder');
 
       // Mock realpath to return the same path (simulates valid file)
       vi.mocked(fs.realpath).mockResolvedValue('/selected/folder/subdir/image.jpg');
@@ -45,7 +45,7 @@ describe('SecurityValidator', () => {
     });
 
     it('should reject absolute paths outside allowed root', async () => {
-      validator.setAllowedBasePath('/selected/folder');
+      await validator.setAllowedBasePath('/selected/folder');
 
       // Mock realpath to return the actual path (no traversal)
       vi.mocked(fs.realpath).mockResolvedValue('/etc/passwd');
@@ -64,7 +64,7 @@ describe('SecurityValidator', () => {
     });
 
     it('should reject relative path traversal attempts (../)', async () => {
-      validator.setAllowedBasePath('/selected/folder');
+      await validator.setAllowedBasePath('/selected/folder');
 
       // Mock realpath to resolve the traversal (simulates what Node does)
       vi.mocked(fs.realpath).mockResolvedValue('/etc/passwd');
@@ -76,7 +76,7 @@ describe('SecurityValidator', () => {
     });
 
     it('should reject symlink path traversal', async () => {
-      validator.setAllowedBasePath('/selected/folder');
+      await validator.setAllowedBasePath('/selected/folder');
 
       // Mock realpath to simulate symlink pointing outside
       vi.mocked(fs.realpath).mockResolvedValue('/etc/passwd');
@@ -98,7 +98,7 @@ describe('SecurityValidator', () => {
     // CRITICAL-2 REGRESSION TESTS: Prefix Bypass Vulnerability
     describe('CRITICAL-2: Prefix Bypass Prevention', () => {
       it('should reject sibling directory with matching prefix', async () => {
-        validator.setAllowedBasePath('/Users/alice/ingest');
+        await validator.setAllowedBasePath('/Users/alice/ingest');
 
         // Sibling directory that LOOKS like it's inside base
         // Current bug: "/Users/alice/ingest-backup".startsWith("/Users/alice/ingest") → TRUE
@@ -121,7 +121,7 @@ describe('SecurityValidator', () => {
       });
 
       it('should reject parent directory traversal after resolution', async () => {
-        validator.setAllowedBasePath('/Users/alice/ingest');
+        await validator.setAllowedBasePath('/Users/alice/ingest');
 
         // Path that resolves outside after traversal
         vi.mocked(fs.realpath).mockResolvedValue('/Users/alice/.ssh/id_rsa');
@@ -134,7 +134,7 @@ describe('SecurityValidator', () => {
       });
 
       it('should allow legitimate subdirectories', async () => {
-        validator.setAllowedBasePath('/Users/alice/ingest');
+        await validator.setAllowedBasePath('/Users/alice/ingest');
 
         vi.mocked(fs.realpath).mockResolvedValue('/Users/alice/ingest/subfolder/image.jpg');
 
@@ -146,7 +146,7 @@ describe('SecurityValidator', () => {
       });
 
       it('should reject paths that are prefix but not contained', async () => {
-        validator.setAllowedBasePath('/app/data');
+        await validator.setAllowedBasePath('/app/data');
 
         // Malicious: /app/data-backup shares prefix but is NOT inside /app/data
         vi.mocked(fs.realpath).mockResolvedValue('/app/data-backup/secrets.txt');
@@ -160,7 +160,7 @@ describe('SecurityValidator', () => {
 
   describe('Additional Allowed Paths', () => {
     it('should allow files in additional allowed paths', async () => {
-      validator.setAllowedBasePath('/selected/folder');
+      await validator.setAllowedBasePath('/selected/folder');
       await validator.addAllowedPath('/tmp/cache');
 
       // File in cache directory (not in base path)
@@ -173,7 +173,7 @@ describe('SecurityValidator', () => {
     });
 
     it('should allow files in subdirectories of additional paths', async () => {
-      validator.setAllowedBasePath('/selected/folder');
+      await validator.setAllowedBasePath('/selected/folder');
       await validator.addAllowedPath('/var/tmp/previews');
 
       // File in subdirectory of additional path
@@ -186,7 +186,7 @@ describe('SecurityValidator', () => {
     });
 
     it('should reject files outside both base and additional paths', async () => {
-      validator.setAllowedBasePath('/selected/folder');
+      await validator.setAllowedBasePath('/selected/folder');
       await validator.addAllowedPath('/tmp/cache');
 
       // File in neither base nor additional path
@@ -198,7 +198,7 @@ describe('SecurityValidator', () => {
     });
 
     it('should support multiple additional allowed paths', async () => {
-      validator.setAllowedBasePath('/selected/folder');
+      await validator.setAllowedBasePath('/selected/folder');
       await validator.addAllowedPath('/tmp/cache');
       await validator.addAllowedPath('/var/previews');
 
@@ -211,7 +211,7 @@ describe('SecurityValidator', () => {
     });
 
     it('should not add duplicate additional paths', async () => {
-      validator.setAllowedBasePath('/selected/folder');
+      await validator.setAllowedBasePath('/selected/folder');
       await validator.addAllowedPath('/tmp/cache');
       await validator.addAllowedPath('/tmp/cache'); // Duplicate
 
@@ -224,7 +224,7 @@ describe('SecurityValidator', () => {
     });
 
     it('should reject path traversal from additional allowed paths', async () => {
-      validator.setAllowedBasePath('/selected/folder');
+      await validator.setAllowedBasePath('/selected/folder');
       await validator.addAllowedPath('/tmp/cache');
 
       // Attempt to traverse outside additional path
@@ -237,7 +237,7 @@ describe('SecurityValidator', () => {
 
     it('should handle macOS symlink resolution in additional paths', async () => {
       // macOS /var -> /private/var symlink scenario
-      validator.setAllowedBasePath('/selected/folder');
+      await validator.setAllowedBasePath('/selected/folder');
 
       // Mock realpath to resolve /var -> /private/var for both directory and file
       vi.mocked(fs.realpath).mockImplementation((path) => {
