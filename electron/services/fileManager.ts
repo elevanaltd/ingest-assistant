@@ -61,7 +61,7 @@ export class FileManager {
     }
 
     // Set allowed base path for security validation
-    this.securityValidator.setAllowedBasePath(folderPath);
+    await this.securityValidator.setAllowedBasePath(folderPath);
 
     const entries = await fs.readdir(folderPath, { withFileTypes: true });
     const files: FileMetadata[] = [];

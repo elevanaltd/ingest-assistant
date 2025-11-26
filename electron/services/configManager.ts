@@ -259,17 +259,39 @@ export class ConfigManager {
    */
   async saveAIConfig(config: AIConfig): Promise<boolean> {
     try {
+      console.log('[ConfigManager.saveAIConfig] Saving config:', {
+        provider: config.provider,
+        model: config.model,
+        hasApiKey: !!(config.apiKey && config.apiKey.trim() && config.apiKey !== '***')
+      });
+
       // Only update API key in Keychain if a new key is provided
-      if (config.apiKey && config.apiKey.trim()) {
+      if (config.apiKey && config.apiKey.trim() && config.apiKey !== '***') {
         const keychainAccount = `${config.provider}-key`;
-        await keytar.setPassword(KEYCHAIN_SERVICE, keychainAccount, config.apiKey);
+        console.log('[ConfigManager.saveAIConfig] Saving API key to keychain account:', keychainAccount);
+        try {
+          await keytar.setPassword(KEYCHAIN_SERVICE, keychainAccount, config.apiKey);
+          console.log('[ConfigManager.saveAIConfig] API key saved to keychain');
+        } catch (keychainError) {
+          console.error('[ConfigManager.saveAIConfig] Failed to save to keychain:', keychainError);
+          // Continue anyway - we'll fall back to env variables
+        }
+      } else {
+        console.log('[ConfigManager.saveAIConfig] No new API key to save');
       }
 
       // Store non-sensitive metadata in electron-store
       const store = this.aiConfigStore as unknown as StoreWithMethods<AIConfigSchema>;
+      console.log('[ConfigManager.saveAIConfig] Saving to electron-store:', { provider: config.provider, model: config.model });
       store.set('provider', config.provider);
       store.set('model', config.model);
       store.set('apiKey', null); // Don't store in plaintext anymore
+
+      // Verify save
+      const savedProvider = store.get('provider');
+      const savedModel = store.get('model');
+      console.log('[ConfigManager.saveAIConfig] Verified saved values:', { savedProvider, savedModel });
+
       return true;
     } catch (error) {
       console.error('Failed to save AI config:', error);
@@ -436,15 +458,27 @@ export class ConfigManager {
         const client = new OpenAI({
           apiKey,
           baseURL: 'https://openrouter.ai/api/v1',
-          timeout: 5000,
+          timeout: 10000,
         });
+        console.log('[ConfigManager.testAIConnection] Testing OpenRouter model:', model);
         // OpenRouter: Test with a minimal completion request
-        await client.chat.completions.create({
-          model,
-          messages: [{ role: 'user', content: 'test' }],
-          max_tokens: 1,
-        });
-        return { success: true };
+        try {
+          await client.chat.completions.create({
+            model,
+            messages: [{ role: 'user', content: 'test' }],
+            max_tokens: 1,
+          });
+          return { success: true };
+        } catch (openRouterError: unknown) {
+          // Extract more detailed error from OpenRouter
+          const err = openRouterError as { status?: number; message?: string; error?: { message?: string } };
+          console.error('[ConfigManager.testAIConnection] OpenRouter error:', openRouterError);
+          if (err.status === 400) {
+            const errorMsg = err.error?.message || err.message || 'Invalid request';
+            return { success: false, error: `Model error: ${errorMsg}. Check if "${model}" is a valid OpenRouter model ID.` };
+          }
+          throw openRouterError;
+        }
       } else {
         // Anthropic
         const client = new Anthropic({ apiKey, timeout: 5000 });
@@ -474,24 +508,59 @@ export class ConfigManager {
    * Returns null if API key is not configured
    */
   static async getAIConfig(): Promise<AIConfig | null> {
+    console.log('[ConfigManager.getAIConfig] Getting AI config...');
+
     // Priority 1: Check electron-store + Keychain
     if (ConfigManager.staticAIConfigStore) {
       const store = ConfigManager.staticAIConfigStore as unknown as StoreWithMethods<AIConfigSchema>;
       const provider = store.get('provider');
       const model = store.get('model');
 
+      console.log('[ConfigManager.getAIConfig] electron-store values:', { provider, model });
+
       if (provider && model) {
         const keychainAccount = `${provider}-key`;
-        const apiKey = await keytar.getPassword(KEYCHAIN_SERVICE, keychainAccount);
+        console.log('[ConfigManager.getAIConfig] Looking for keychain account:', keychainAccount);
 
-        if (apiKey) {
-          return { provider, model, apiKey };
+        try {
+          const apiKey = await keytar.getPassword(KEYCHAIN_SERVICE, keychainAccount);
+          console.log('[ConfigManager.getAIConfig] Keychain lookup result:', apiKey ? 'found' : 'not found');
+
+          if (apiKey) {
+            console.log('[ConfigManager.getAIConfig] Returning electron-store + keychain config');
+            return { provider, model, apiKey };
+          }
+        } catch (keychainError) {
+          console.error('[ConfigManager.getAIConfig] Keychain error:', keychainError);
         }
       }
+    } else {
+      console.log('[ConfigManager.getAIConfig] No static store available');
     }
 
-    // Priority 2: Fall back to environment variables
-    const provider = (process.env.AI_PROVIDER || 'openrouter') as 'openai' | 'anthropic' | 'openrouter';
+    console.log('[ConfigManager.getAIConfig] Falling back to environment variables...');
+
+    // Check if we have electron-store values to prefer over env (model selection from UI)
+    let storeProvider: string | null = null;
+    let storeModel: string | null = null;
+    if (ConfigManager.staticAIConfigStore) {
+      const store = ConfigManager.staticAIConfigStore as unknown as StoreWithMethods<AIConfigSchema>;
+      storeProvider = store.get('provider');
+      storeModel = store.get('model');
+    }
+
+    // Priority 2: Fall back to environment variables for API key, but prefer store for provider/model
+    const provider = (storeProvider || process.env.AI_PROVIDER || 'openrouter') as 'openai' | 'anthropic' | 'openrouter';
+
+    console.log('[ConfigManager.getAIConfig] ENV vars:', {
+      AI_PROVIDER: process.env.AI_PROVIDER || '(not set, using openrouter)',
+      AI_MODEL: process.env.AI_MODEL || '(not set)',
+      hasOpenRouterKey: !!process.env.OPENROUTER_API_KEY,
+      hasOpenAIKey: !!process.env.OPENAI_API_KEY,
+      hasAnthropicKey: !!process.env.ANTHROPIC_API_KEY,
+      storeProvider,
+      storeModel
+    });
 
     let apiKey: string | undefined;
     let defaultModel: string;
@@ -511,13 +580,18 @@ export class ConfigManager {
         break;
     }
 
+    // Prefer electron-store model over env variable (user's UI selection takes priority)
+    const finalModel = storeModel || process.env.AI_MODEL || defaultModel;
+    console.log('[ConfigManager.getAIConfig] Using env fallback:', { provider, model: finalModel, hasApiKey: !!apiKey });
+
     if (!apiKey) {
+      console.log('[ConfigManager.getAIConfig] No API key found in env variables');
       return null;
     }
 
     return {
       provider,
-      model: process.env.AI_MODEL || defaultModel,
+      model: finalModel,
       apiKey,
     };
   }

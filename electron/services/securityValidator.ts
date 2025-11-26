@@ -32,9 +32,16 @@ export class SecurityValidator {
   /**
    * Set the allowed base path (typically from folder selection dialog).
    * All file operations must be within this path.
+   * Resolves symlinks for consistency with validateFilePath().
    */
-  setAllowedBasePath(folderPath: string): void {
-    this.allowedBasePath = path.resolve(folderPath);
+  async setAllowedBasePath(folderPath: string): Promise<void> {
+    // Resolve symlinks to canonical path (consistent with validateFilePath)
+    // This fixes PATH_TRAVERSAL errors on NFS mounts where realpath differs from path.resolve
+    this.allowedBasePath = await fs.realpath(folderPath).catch((error) => {
+      console.warn(`[SecurityValidator] Failed to resolve symlink for base path ${folderPath}:`, error.message);
+      return path.resolve(folderPath);
+    });
+    console.log(`[SecurityValidator] Base path set to: ${this.allowedBasePath}`);
   }
 
   /**

@@ -242,7 +242,7 @@ export async function transferFile(
   // SECURITY: Validate paths before any file I/O (prevents path traversal)
   // Note: securityValidator requires allowedBasePath to be set
   // For now, allow any path (will be constrained in startTransfer orchestration)
-  securityValidator.setAllowedBasePath('/');
+  await securityValidator.setAllowedBasePath('/');
   await securityValidator.validateFilePath(task.source);
   await securityValidator.validateFilePath(task.destination);
 

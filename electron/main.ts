@@ -21,7 +21,7 @@ import { VideoTranscoder } from './services/videoTranscoder';
 import { convertToYAMLFormat, convertToUIFormat } from './utils/lexiconConverter';
 import { sanitizeError } from './utils/errorSanitization';
 import { FileRenameSchema, FileUpdateMetadataSchema, FileStructuredUpdateSchema, AIBatchProcessSchema, BatchStartSchema, FileStructuredUpdateInput } from './schemas/ipcSchemas';
-import type { AppConfig, LexiconConfig, ShotType, AIAnalysisResult } from '../src/types';
+import type { AppConfig, LexiconConfig, ShotType, AIAnalysisResult, FileMetadata } from '../src/types';
 import { migrateToKeychain } from './services/keychainMigration';
 import { BatchQueueManager } from './services/batchQueueManager';
 import { registerCfexTransferHandlers } from './ipc/cfexTransferHandlers';
@@ -164,6 +164,26 @@ async function generateTitleWithTimestamp(
   // This maintains backward compatibility for files without timestamp metadata
   console.warn(`[generateTitleWithTimestamp] No creation timestamp found for ${fileMetadata.filePath}, using base title only`);
   return baseTitle;
+}
+
+/**
+ * Normalize file path for cross-platform compatibility.
+ * When metadata was created on macOS (/Volumes/...) but we're running on Linux (/mnt/...),
+ * reconstruct the path using the current folder path and filename.
+ */
+function normalizeFilePath(fileMetadata: FileMetadata, baseFolderPath: string): string {
+  // Use currentFilename (or originalFilename as fallback) with the current folder path
+  const filename = fileMetadata.currentFilename || fileMetadata.originalFilename;
+  const normalizedPath = path.join(baseFolderPath, filename);
+
+  // Log if path was normalized (indicates cross-platform usage)
+  if (fileMetadata.filePath !== normalizedPath) {
+    console.log(`[normalizeFilePath] Cross-platform path normalization:`);
+    console.log(`  Stored path: ${fileMetadata.filePath}`);
+    console.log(`  Normalized:  ${normalizedPath}`);
+  }
+
+  return normalizedPath;
 }
 
 // Cache directory registration moved to app.whenReady() to prevent race condition
@@ -418,7 +438,7 @@ ipcMain.handle('file:select-folder', async (_event, startPath?: string) => {
     // CRITICAL-1 FIX: Store selected folder in main process (trusted source)
     // Only dialog.showOpenDialog() can set the security boundary
     currentFolderPath = folderPath;
-    securityValidator.setAllowedBasePath(folderPath);
+    await securityValidator.setAllowedBasePath(folderPath);
 
     // Issue #24: Clear stale batch queue when folder changes
     // Prevents 99/100 failures from fileIds belonging to previous folder
@@ -953,7 +973,9 @@ ipcMain.handle('ai:batch-process', async (_event, fileIds: string[]) => {
       // CRITICAL-8: Security validation for each file in batch
       // Mitigates: Path traversal, content type confusion, resource exhaustion
       // Pattern: Same 3-layer validation as ai:analyze-file handler
-      const validatedPath = await securityValidator.validateFilePath(fileMetadata.filePath);
+      // Cross-platform fix: Normalize path to handle macOS/Linux mount point differences
+      const normalizedPath = normalizeFilePath(fileMetadata, currentFolderPath);
+      const validatedPath = await securityValidator.validateFilePath(normalizedPath);
       await securityValidator.validateFileContent(validatedPath);
 
       // Detect file type and route to appropriate analysis method
@@ -1040,10 +1062,13 @@ ipcMain.handle('batch:start', async (_event, fileIds: string[]) => {
       throw new Error('No folder selected');
     }
 
+    // Capture in const so TypeScript knows it won't be null in the closure
+    const folderPath = currentFolderPath;
+
     // Add files to queue
     const queueId = await batchQueueManager.addToQueue(validated.fileIds);
 
-    const store = getMetadataStoreForFolder(currentFolderPath);
+    const store = getMetadataStoreForFolder(folderPath);
 
     // Clear cache before batch processing to ensure fresh reads from disk
     // This prevents stale cached data when processing files currently displayed in UI (Issue #26)
@@ -1064,7 +1089,9 @@ ipcMain.handle('batch:start', async (_event, fileIds: string[]) => {
         // This is useful when prompt updates require re-analyzing existing files
 
         // CRITICAL-8: Security validation for each file in batch
-        const validatedPath = await securityValidator.validateFilePath(fileMetadata.filePath);
+        // Cross-platform fix: Normalize path to handle macOS/Linux mount point differences
+        const normalizedPath = normalizeFilePath(fileMetadata, folderPath);
+        const validatedPath = await securityValidator.validateFilePath(normalizedPath);
         await securityValidator.validateFileContent(validatedPath);
 
         // Detect file type and route to appropriate analysis method
@@ -1104,8 +1131,9 @@ ipcMain.handle('batch:start', async (_event, fileIds: string[]) => {
 
           // Issue #2: Write metadata to actual file (not just JSON store)
           // This ensures batch processing updates both the JSON store AND the file's EXIF/XMP metadata
+          // Use normalizedPath (not fileMetadata.filePath) for cross-platform compatibility
           await metadataWriter.writeMetadataToFile(
-            fileMetadata.filePath,
+            normalizedPath,
             fileMetadata.shotName,
             fileMetadata.keywords,
             {
@@ -1263,27 +1291,50 @@ ipcMain.handle('ai:get-config', async () => {
 // Update AI configuration
 ipcMain.handle('ai:update-config', async (_event, config: { provider: 'openai' | 'anthropic' | 'openrouter'; model: string; apiKey: string }) => {
   try {
+    console.log('[ai:update-config] Received config update:', {
+      provider: config.provider,
+      model: config.model,
+      hasApiKey: !!(config.apiKey && config.apiKey.trim() && config.apiKey !== '***')
+    });
+
     // Only test connection if a new API key is provided
-    if (config.apiKey && config.apiKey.trim()) {
+    if (config.apiKey && config.apiKey.trim() && config.apiKey !== '***') {
+      console.log('[ai:update-config] Testing connection with new API key...');
       const testResult = await configManager.testAIConnection(config.provider, config.model, config.apiKey);
       if (!testResult.success) {
+        console.log('[ai:update-config] Connection test failed:', testResult.error);
         return { success: false, error: testResult.error || 'Connection test failed' };
       }
+      console.log('[ai:update-config] Connection test passed');
+    } else {
+      console.log('[ai:update-config] No new API key provided, skipping connection test');
     }
 
     // Save configuration (to Keychain + electron-store)
     // If apiKey is empty, configManager will keep existing Keychain key
+    console.log('[ai:update-config] Saving config...');
     const saveResult = await configManager.saveAIConfig(config);
     if (!saveResult) {
+      console.log('[ai:update-config] Save failed');
       return { success: false, error: 'Failed to save configuration' };
     }
+    console.log('[ai:update-config] Config saved successfully');
 
     // Hot-reload aiService with new configuration
+    console.log('[ai:update-config] Reloading AI service...');
     const newConfig = await ConfigManager.getAIConfig();
+    console.log('[ai:update-config] Loaded new config:', newConfig ? {
+      provider: newConfig.provider,
+      model: newConfig.model,
+      hasApiKey: !!newConfig.apiKey
+    } : null);
+
     if (newConfig) {
       aiService = new AIService(newConfig.provider, newConfig.model, newConfig.apiKey);
+      console.log('[ai:update-config] AI service reloaded with model:', newConfig.model);
     } else {
       aiService = null;
+      console.log('[ai:update-config] AI service set to null (no config)');
     }
 
     return { success: true };
