@@ -219,14 +219,15 @@ describe('FilenameTemplateParser - Security Hardening', () => {
       expect(result).toBe('kitchen-oven-cleaning-WS');
     });
 
-    it('should REJECT template with missing required field values', () => {
-      expect(() =>
-        parser.parse('{location}-{subject}-{action}', {
-          location: 'kitchen',
-          subject: 'oven'
-          // action omitted - should throw
-        })
-      ).toThrow('Field value cannot be null or undefined');
+    it('should ALLOW template with missing optional field values', () => {
+      // Optional fields are handled gracefully (removed from output)
+      const result = parser.parse('{location}-{subject}-{action}', {
+        location: 'kitchen',
+        subject: 'oven'
+        // action omitted - handled gracefully
+      });
+
+      expect(result).toBe('kitchen-oven');
     });
 
     it('should REJECT template with unknown fields', () => {
@@ -406,16 +407,35 @@ describe('FilenameTemplateParser - Security Hardening', () => {
       expect(result).toBe('EA001622-5');
     });
 
-    it('should REJECT null field values', () => {
-      expect(() =>
-        parser.parse('{subject}', { subject: null as any })
-      ).toThrow('Field value cannot be null or undefined');
+    it('should ALLOW null field values (optional field handling)', () => {
+      // Optional fields with null values are handled gracefully
+      const result = parser.parse('{location}-{subject}', {
+        location: 'kitchen',
+        subject: null as any
+      });
+
+      expect(result).toBe('kitchen');
     });
 
-    it('should REJECT undefined field values', () => {
-      expect(() =>
-        parser.parse('{subject}', { subject: undefined as any })
-      ).toThrow('Field value cannot be null or undefined');
+    it('should ALLOW undefined field values (optional field handling)', () => {
+      // Optional fields with undefined values are handled gracefully
+      const result = parser.parse('{location}-{subject}', {
+        location: 'kitchen',
+        subject: undefined as any
+      });
+
+      expect(result).toBe('kitchen');
+    });
+
+    it('should ALLOW empty string field values (optional field handling)', () => {
+      // Optional fields with empty string values are handled gracefully
+      const result = parser.parse('{location}-{subject}-{action}', {
+        location: 'kitchen',
+        subject: 'oven',
+        action: ''
+      });
+
+      expect(result).toBe('kitchen-oven');
     });
   });
 });

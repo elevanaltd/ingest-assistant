@@ -225,4 +225,112 @@ describe('FilenameTemplateParser - Functional', () => {
       expect(result.valid).toBe(true);
     });
   });
+
+  describe('Optional Field Handling', () => {
+    it('should handle missing action field for photos (undefined)', () => {
+      const result = parser.parse('{location}-{subject}-{action}-{shotType}', {
+        location: 'kitchen',
+        subject: 'oven',
+        // action: undefined (photos don't have this)
+        shotType: 'CU'
+      });
+
+      expect(result).toBe('kitchen-oven-CU');
+    });
+
+    it('should handle empty string action same as undefined', () => {
+      const result = parser.parse('{location}-{subject}-{action}-{shotType}', {
+        location: 'kitchen',
+        subject: 'oven',
+        action: '',
+        shotType: 'CU'
+      });
+
+      expect(result).toBe('kitchen-oven-CU');
+    });
+
+    it('should include action when present for videos', () => {
+      const result = parser.parse('{location}-{subject}-{action}-{shotType}', {
+        location: 'kitchen',
+        subject: 'oven',
+        action: 'cleaning',
+        shotType: 'WS'
+      });
+
+      expect(result).toBe('kitchen-oven-cleaning-WS');
+    });
+
+    it('should handle multiple missing fields gracefully', () => {
+      const result = parser.parse('{location}-{subject}-{action}-{shotType}', {
+        location: 'kitchen',
+        // subject: undefined
+        // action: undefined
+        shotType: 'CU'
+      });
+
+      expect(result).toBe('kitchen-CU');
+    });
+
+    it('should handle missing field at start of template', () => {
+      const result = parser.parse('{action}-{location}-{subject}', {
+        // action: undefined
+        location: 'kitchen',
+        subject: 'oven'
+      });
+
+      expect(result).toBe('kitchen-oven');
+    });
+
+    it('should handle missing field at end of template', () => {
+      const result = parser.parse('{location}-{subject}-{action}', {
+        location: 'kitchen',
+        subject: 'oven'
+        // action: undefined
+      });
+
+      expect(result).toBe('kitchen-oven');
+    });
+
+    it('should not create double hyphens when field is missing', () => {
+      const result = parser.parse('{location}-{action}-{subject}', {
+        location: 'kitchen',
+        // action: undefined (middle field missing)
+        subject: 'oven'
+      });
+
+      expect(result).toBe('kitchen-oven');
+      expect(result).not.toContain('--');
+    });
+
+    it('should handle all fields missing except one', () => {
+      const result = parser.parse('{location}-{subject}-{action}-{shotType}', {
+        subject: 'oven'
+        // all other fields: undefined
+      });
+
+      expect(result).toBe('oven');
+    });
+
+    it('should preserve static text when fields are missing', () => {
+      const result = parser.parse('prefix-{location}-{action}-{subject}-suffix', {
+        location: 'kitchen',
+        // action: undefined
+        subject: 'oven'
+      });
+
+      expect(result).toBe('prefix-kitchen-oven-suffix');
+    });
+
+    it('should handle mixed separators (not just hyphens)', () => {
+      const result = parser.parse('{location}_{subject}_{action}', {
+        location: 'kitchen',
+        subject: 'oven'
+        // action: undefined
+      });
+
+      // Should clean up trailing underscore
+      expect(result).toBe('kitchen_oven');
+      expect(result).not.toContain('__');
+    });
+  });
 });
