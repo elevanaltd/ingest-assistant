@@ -247,6 +247,137 @@ describe('FilenameTemplateParser - Security Hardening', () => {
     });
   });
 
+  describe('Template String Security - Static Text Validation', () => {
+    // BLOCKING Security Gap: Template static text is NOT validated
+    // Field values are sanitized, but template string itself can contain malicious patterns
+
+    it('should REJECT path traversal in template static text', () => {
+      expect(() =>
+        parser.parse('../{subject}', { subject: 'kitchen' })
+      ).toThrow(SecurityViolationError);
+
+      expect(() =>
+        parser.parse('../{subject}', { subject: 'kitchen' })
+      ).toThrow('Template contains dangerous characters');
+    });
+
+    it('should REJECT forward slash in template static text', () => {
+      expect(() =>
+        parser.parse('subdir/{subject}', { subject: 'kitchen' })
+      ).toThrow(SecurityViolationError);
+
+      expect(() =>
+        parser.parse('subdir/{subject}', { subject: 'kitchen' })
+      ).toThrow('Template contains dangerous characters');
+    });
+
+    it('should REJECT backslash in template static text (Windows)', () => {
+      expect(() =>
+        parser.parse('dir\\{subject}', { subject: 'kitchen' })
+      ).toThrow(SecurityViolationError);
+
+      expect(() =>
+        parser.parse('dir\\{subject}', { subject: 'kitchen' })
+      ).toThrow('Template contains dangerous characters');
+    });
+
+    it('should REJECT shell metacharacters in template static text - $()', () => {
+      expect(() =>
+        parser.parse('$(whoami)-{subject}', { subject: 'kitchen' })
+      ).toThrow(SecurityViolationError);
+
+      expect(() =>
+        parser.parse('$(whoami)-{subject}', { subject: 'kitchen' })
+      ).toThrow('Template contains dangerous characters');
+    });
+
+    it('should REJECT shell metacharacters in template static text - backtick', () => {
+      expect(() =>
+        parser.parse('`whoami`-{subject}', { subject: 'kitchen' })
+      ).toThrow(SecurityViolationError);
+
+      expect(() =>
+        parser.parse('`whoami`-{subject}', { subject: 'kitchen' })
+      ).toThrow('Template contains dangerous characters');
+    });
+
+    it('should REJECT shell metacharacters in template static text - semicolon', () => {
+      expect(() =>
+        parser.parse('prefix;rm -rf /-{subject}', { subject: 'kitchen' })
+      ).toThrow(SecurityViolationError);
+
+      expect(() =>
+        parser.parse('prefix;rm -rf /-{subject}', { subject: 'kitchen' })
+      ).toThrow('Template contains dangerous characters');
+    });
+
+    it('should REJECT shell metacharacters in template static text - pipe', () => {
+      expect(() =>
+        parser.parse('prefix|cat /etc/passwd-{subject}', { subject: 'kitchen' })
+      ).toThrow(SecurityViolationError);
+
+      expect(() =>
+        parser.parse('prefix|cat /etc/passwd-{subject}', { subject: 'kitchen' })
+      ).toThrow('Template contains dangerous characters');
+    });
+
+    it('should REJECT shell metacharacters in template static text - ampersand', () => {
+      expect(() =>
+        parser.parse('prefix&-{subject}', { subject: 'kitchen' })
+      ).toThrow(SecurityViolationError);
+
+      expect(() =>
+        parser.parse('prefix&-{subject}', { subject: 'kitchen' })
+      ).toThrow('Template contains dangerous characters');
+    });
+
+    it('should REJECT angle brackets in template static text', () => {
+      expect(() =>
+        parser.parse('prefix>output-{subject}', { subject: 'kitchen' })
+      ).toThrow(SecurityViolationError);
+
+      expect(() =>
+        parser.parse('prefix<input-{subject}', { subject: 'kitchen' })
+      ).toThrow(SecurityViolationError);
+    });
+
+    it('should REJECT null bytes in template static text', () => {
+      expect(() =>
+        parser.parse('prefix\x00-{subject}', { subject: 'kitchen' })
+      ).toThrow(SecurityViolationError);
+
+      expect(() =>
+        parser.parse('prefix\x00-{subject}', { subject: 'kitchen' })
+      ).toThrow('Template contains dangerous characters');
+    });
+
+    it('should ALLOW safe template with hyphens and underscores', () => {
+      const result = parser.parse('{location}-{subject}_{action}', {
+        location: 'kitchen',
+        subject: 'oven',
+        action: 'cleaning'
+      });
+
+      expect(result).toBe('kitchen-oven_cleaning');
+    });
+
+    it('should ALLOW safe template with prefix/suffix static text', () => {
+      const result = parser.parse('prefix-{subject}-suffix', {
+        subject: 'oven'
+      });
+
+      expect(result).toBe('prefix-oven-suffix');
+    });
+
+    it('should ALLOW template with dots in static text', () => {
+      const result = parser.parse('v2.0-{subject}', {
+        subject: 'oven'
+      });
+
+      expect(result).toBe('v2.0-oven');
+    });
+  });
+
   describe('Edge Cases', () => {
     it('should handle empty template string', () => {
       expect(() =>
