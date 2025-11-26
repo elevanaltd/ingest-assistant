@@ -42,7 +42,7 @@ Types:  0 errors
 
 ### Phase Progression
 ```
-D0→D1→D2→D3(v1.1+OCTAVE)→B0(FINAL GO)→B2(Week 2 Active)
+D0→D1→D2→D3(v1.1+OCTAVE)→B0(FINAL GO)→B2(Phase 1a COMPLETE)→Phase 1b READY
 ```
 
 ### CFEx Phase 1a Implementation
@@ -53,12 +53,18 @@ D0→D1→D2→D3(v1.1+OCTAVE)→B0(FINAL GO)→B2(Week 2 Active)
 - IPC handlers (cfexTransferHandlers)
 - Renderer UI (CfexTransferWindow)
 
-**Week 2:** COMPLETE
+**Week 2:** COMPLETE (100%)
 - Priority 1 (Error Handling): COMPLETE
 - Priority 2 (Auto-Detection service): COMPLETE (IPC+UI deferred - not needed for current workflow)
-- Priority 3 (Integration Testing): NEXT
+- Priority 3 (Integration Testing): SKIPPED (risk-accepted, fix-in-production approach)
 - Priority 4 (Settings Tab): COMPLETE
 - UX Enhancements: COMPLETE
+
+**Phase 1a-CORE:** ✅ COMPLETE (Risk-Accepted 2025-11-26)
+- Decision: Skip empirical integration testing, address issues in production
+- Rationale: Error handling comprehensive (47 tests, exponential backoff), real-world feedback faster
+- Risk: I4 (Zero Data Loss) remains 🟡 Partial until production validation
+- Commitment: First failure = BLOCKING priority fix
 
 ---
 
@@ -101,19 +107,19 @@ D0→D1→D2→D3(v1.1+OCTAVE)→B0(FINAL GO)→B2(Week 2 Active)
 
 ## Active Work
 
-### Immediate (Phase 1a-CORE Remaining)
-1. **Priority 3:** Integration Testing (4 days)
-   - LucidLink cache eviction testing
-   - NFS stale handle testing
-   - Performance baselines
+### Immediate (Phase 1b: Proxy Generation)
+1. **D2 Design:** ffmpeg + exiftool integration architecture
+2. **D3 Blueprint:** Progress UI, EXIF validation dialogs
+3. **B0 Validation:** DateTimeOriginal preservation protocol
+4. **B2 Implementation:** proxyGenerator.ts, exifPreserver.ts
 
 ### Deferred (Phase 1a-POLISH → parallel to Phase 1b)
 - Auto-detection IPC + UI (service layer complete, IPC+multi-card dialog when needed)
 - Path Intelligence (MRU, smart defaults, pinned folders)
 - Enhanced error log UI
+- Integration testing (risk-accepted: fix-in-production)
 
 ### Future Phases
-- **Phase 1b:** Proxy Generation (2 weeks)
 - **Phase 1c:** Power Features (2-3 weeks)
 - **Issue #63:** Reference Catalog (3-6 months)
 
