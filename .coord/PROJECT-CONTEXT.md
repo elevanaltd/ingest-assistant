@@ -42,7 +42,7 @@ Types:  0 errors
 
 ### Phase Progression
 ```
-D0→D1→D2→D3(v1.1+OCTAVE)→B0(FINAL GO)→B2(Phase 1a COMPLETE)→Phase 1b READY
+D0→D1→D2→D3(v1.1+OCTAVE)→B0(FINAL GO)→B2(Phase 1a COMPLETE)→Phase 1c ACTIVE (resequenced)
 ```
 
 ### CFEx Phase 1a Implementation
@@ -107,20 +107,27 @@ D0→D1→D2→D3(v1.1+OCTAVE)→B0(FINAL GO)→B2(Phase 1a COMPLETE)→Phase 1b
 
 ## Active Work
 
-### Immediate (Phase 1b: Proxy Generation)
+### Immediate (Phase 1c: Power Features) - RESEQUENCED
+**Reason:** User needs toggles for current workflow before proxy generation
+1. **B0 Validation:** Toggle logic, template parser security, North Star alignment
+2. **B2 Implementation:** 3 toggles + ~50 tests (TDD/TRACED)
+   - AI Auto-Analyze Toggle (default: OFF)
+   - Metadata Write Toggle (shotName, LogComment, TapeName)
+   - Filename Rewrite Toggle + Template parser
+
+### Next (Phase 1b: Proxy Generation)
 1. **D2 Design:** ffmpeg + exiftool integration architecture
 2. **D3 Blueprint:** Progress UI, EXIF validation dialogs
 3. **B0 Validation:** DateTimeOriginal preservation protocol
 4. **B2 Implementation:** proxyGenerator.ts, exifPreserver.ts
 
-### Deferred (Phase 1a-POLISH → parallel to Phase 1b)
+### Deferred (Phase 1a-POLISH → parallel to Phase 1b/1c)
 - Auto-detection IPC + UI (service layer complete, IPC+multi-card dialog when needed)
 - Path Intelligence (MRU, smart defaults, pinned folders)
 - Enhanced error log UI
 - Integration testing (risk-accepted: fix-in-production)
 
 ### Future Phases
-- **Phase 1c:** Power Features (2-3 weeks)
 - **Issue #63:** Reference Catalog (3-6 months)
 
 ---

@@ -1,6 +1,6 @@
 # Ingest Assistant - Project Roadmap
 
-**Last Updated:** 2025-11-26 | **Current Phase:** CFEx Phase 1b (Proxy Generation) READY
+**Last Updated:** 2025-11-26 | **Current Phase:** CFEx Phase 1c (Power Features) ACTIVE - Resequenced
 
 ---
 
@@ -46,9 +46,9 @@
 
 ---
 
-### Phase 1b: Proxy Generation - 🚀 READY TO START
+### Phase 1b: Proxy Generation - ⏳ NEXT (after Phase 1c)
 
-**Timeline:** 2 weeks | **Unblocked:** Phase 1a-CORE complete (2025-11-26)
+**Timeline:** 2 weeks | **Blocked by:** Phase 1c (resequenced - user needs toggles first)
 
 **Scope:**
 1. [ ] D2 Design: ffmpeg + exiftool integration architecture
@@ -79,9 +79,10 @@ exiftool -overwrite_original "-QuickTime:DateTimeOriginal=$ORIG_DATE" proxy.MOV
 
 ---
 
-### Phase 1c: Power Features (NOT STARTED)
+### Phase 1c: Power Features - 🚀 ACTIVE (Resequenced)
 
-**Timeline:** 2-3 weeks | **Blocked by:** Phase 1b completion
+**Timeline:** 2-3 weeks | **Unblocked:** Phase 1a complete, user priority override
+**Reason:** User needs toggles for current workflow before proxy generation
 
 **Scope:**
 1. [ ] D2 Design: Toggle architecture, template parser
@@ -176,13 +177,13 @@ exiftool -overwrite_original "-QuickTime:DateTimeOriginal=$ORIG_DATE" proxy.MOV
 
 ```
 Phase 1a CORE:    ✅ COMPLETE (risk-accepted skip of integration testing)
-Phase 1a POLISH:  5-10 days (parallel to 1b, includes auto-detection IPC+UI if needed)
-Phase 1b:         ~2 weeks (READY TO START)
-Phase 1c:         ~2-3 weeks
+Phase 1c:         ~2-3 weeks (ACTIVE - resequenced, user priority)
+Phase 1b:         ~2 weeks (NEXT - after Phase 1c)
+Phase 1a POLISH:  5-10 days (parallel to 1b/1c, includes auto-detection IPC+UI if needed)
 Issue #63:        3-6 months (after CFEx complete + guardrails)
 ```
 
-**Total CFEx Integration:** ~5-6 weeks (accelerated by risk-accepted decision)
+**Total CFEx Integration:** ~5-6 weeks (resequenced: 1c→1b)
 
 ---
 
