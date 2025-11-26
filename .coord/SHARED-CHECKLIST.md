@@ -552,40 +552,33 @@
 
 ---
 
-## 🐛 Known Issues (For Next Session)
+## ✅ Recently Fixed Issues
 
-### BUG: Filename Rewrite Toggle Not Working in Batch Operations
-**Status:** REPORTED (2025-11-26) - NOT FIXED
-**Reporter:** User testing
-**Severity:** MEDIUM (toggle present but non-functional)
+### BUG FIX: Filename Rewrite Toggle Now Working in Batch Operations
+**Status:** FIXED (2025-11-26)
+**Commits:** a9afae0 (RED) → f28e96c (GREEN)
+**Review:** code-review-specialist APPROVED (9/10 reliability score)
 
-**Symptoms:**
-- User enables "Rename files using template" toggle in Settings → File Ingestion
-- Template input appears and can be configured
-- Toggle state persists correctly (saves to config)
-- **BUG:** Batch operations do NOT rename files when processing
+**Root Cause (confirmed):**
+- Phase 1c delivered components in isolation without integration wiring
+- Missing: getCfexToggles() call in batch:start handler
+- Missing: Conditional logic for metadataWrite and filenameRewrite toggles
+- Missing: fs.rename operation in batch processor
 
-**Root Cause (suspected):**
-- The FilenameTemplateParser and MetadataToggleService exist (Phase 1c implementation)
-- Likely missing: Integration between batch processor and the toggle/template logic
-- Need to check: Does `batchQueueManager.ts` or related batch code read the `filenameRewrite` toggle?
-- Need to check: Is `filenameTemplate` being passed to the rename logic?
+**Fix Applied:**
+- ✅ FilenameTemplateParser imported in main.ts
+- ✅ getCfexToggles() called in batch:start handler
+- ✅ metadataWrite toggle respected (conditional file metadata write)
+- ✅ filenameRewrite toggle respected (fs.rename with template)
+- ✅ TapeName written BEFORE rename (I3 compliance)
+- ✅ Metadata store updated after rename
+- ✅ 10 integration tests added (885 total tests passing)
 
-**Investigation Required:**
-1. Check batchQueueManager.ts for toggle consumption
-2. Check file:rename-file IPC handler for template integration
-3. Check metadataWriter.ts for template-based rename capability
-4. Trace the flow: Toggle state → Batch process → Actual rename operation
+**Quality Gates:**
+- Lint: 0 errors, 153 warnings
+- Typecheck: 0 errors
+- Tests: 885/885 passing
 
-**Files to Review:**
-- `electron/services/batchQueueManager.ts` - batch processing logic
-- `electron/services/metadataWriter.ts` - file operations
-- `electron/services/metadataToggle.ts` - toggle service (exists, tested)
-- `electron/services/filenameTemplate.ts` - template parser (exists, 54 tests)
-- `electron/main.ts` - IPC handlers for batch/rename
-
-**Acceptance Criteria (when fixed):**
-- [ ] Batch process reads `filenameRewrite` toggle from config
-- [ ] When enabled, files are renamed using template after AI analysis
-- [ ] Original filename preserved in TapeName metadata (I3 compliance)
-- [ ] Test coverage for batch + template integration
+**Advisory Notes (future enhancement):**
+- File collision detection (identical metadata → same filename) - low risk
+- Partial success rollback (rename succeeds, metadata fails) - very low risk
