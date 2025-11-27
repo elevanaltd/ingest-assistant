@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import * as os from 'os';
@@ -19,14 +19,6 @@ import * as os from 'os';
  *
  * TDD Evidence: RED phase - This test FAILS before implementation (scanSourceFiles not defined)
  */
-
-interface FileTransferTask {
-  source: string;
-  destination: string;
-  size: number;
-  mediaType: 'photo' | 'video';
-  enqueued: number;
-}
 
 interface TransferDestinations {
   photos: string;

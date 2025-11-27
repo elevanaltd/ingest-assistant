@@ -16,7 +16,6 @@ import { describe, test, expect, beforeEach, afterEach } from 'vitest';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { transferFile, FileTransferTask, TransferProgress } from '../cfexTransfer';
-import { SecurityValidator } from '../securityValidator';
 
 const TEST_DIR = path.join(process.cwd(), 'test-tmp-transfer');
 const SOURCE_DIR = path.join(TEST_DIR, 'source');
@@ -218,7 +217,7 @@ describe('transferFile', () => {
 
     // Track progress callback timestamps
     const progressTimestamps: number[] = [];
-    const onProgress = (progress: TransferProgress) => {
+    const onProgress = (_progress: TransferProgress) => {
       progressTimestamps.push(Date.now());
     };
 

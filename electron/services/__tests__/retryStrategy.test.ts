@@ -8,7 +8,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { RetryStrategy, RetryOptions, RetryResult } from '../retryStrategy';
+import { RetryStrategy, RetryOptions } from '../retryStrategy';
 
 describe('RetryStrategy', () => {
   beforeEach(() => {

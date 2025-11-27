@@ -700,7 +700,7 @@ ipcMain.handle('file:rename', async (_event, fileId: string, shotName: string, c
 
     // Extract and format timestamp for CEP Panel uniqueness (Issue #31)
     const timestamp = await getOrExtractCreationTimestamp(fileMetadata!);
-    const formattedDate = timestamp ? formatTimestampForTitle(timestamp) : undefined;
+    const _formattedDate = timestamp ? formatTimestampForTitle(timestamp) : undefined;
 
     // Write metadata to the file
     await metadataWriter.writeMetadataToFile(
@@ -767,7 +767,7 @@ ipcMain.handle('file:update-metadata', async (_event, fileId: string, metadata: 
 
     // Extract and format timestamp for CEP Panel uniqueness (Issue #31)
     const timestamp = await getOrExtractCreationTimestamp(fileMetadata);
-    const formattedDate = timestamp ? formatTimestampForTitle(timestamp) : undefined;
+    const _formattedDate = timestamp ? formatTimestampForTitle(timestamp) : undefined;
 
     // Write metadata INTO the actual file using exiftool
     // Use the current shotName from fileMetadata (which may have been updated by updateStructuredMetadata)
@@ -1129,7 +1129,7 @@ ipcMain.handle('batch:start', async (_event, fileIds: string[]) => {
 
           // Extract and format timestamp for CEP Panel uniqueness (Issue #31)
           const timestamp = await getOrExtractCreationTimestamp(fileMetadata);
-          const formattedDate = timestamp ? formatTimestampForTitle(timestamp) : undefined;
+          const _formattedDate = timestamp ? formatTimestampForTitle(timestamp) : undefined;
 
           // Issue #2: Write metadata to actual file (conditionally based on toggle)
           // Only write to file if metadataWrite toggle enabled (Phase 1c Power Features)

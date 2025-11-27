@@ -1,5 +1,5 @@
 import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest'
-import { ipcMain, BrowserWindow } from 'electron'
+import { ipcMain } from 'electron'
 import { registerCfexTransferHandlers, unregisterCfexTransferHandlers, __resetForTesting } from '../cfexTransferHandlers'
 import { CfexTransferService } from '../../services/cfexTransfer'
 import { CfexAutoDetect } from '../../services/cfexAutoDetect'

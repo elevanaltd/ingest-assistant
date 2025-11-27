@@ -459,7 +459,7 @@ describe('VideoTranscoder', () => {
       vi.mocked(fs.readdirSync).mockReturnValue(['old-cache.mp4', 'recent-cache.mp4'] as any);
 
       let statCallCount = 0;
-      vi.mocked(fs.statSync).mockImplementation((path) => {
+      vi.mocked(fs.statSync).mockImplementation((_path) => {
         statCallCount++;
         return {
           mtime: new Date(statCallCount === 1 ? oldFileTime : recentFileTime)

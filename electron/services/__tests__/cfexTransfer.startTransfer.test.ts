@@ -14,7 +14,7 @@
  * Reference: D3 Blueprint lines 137-195 (orchestration pattern)
  */
 
-import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, test, expect, beforeEach, afterEach } from 'vitest';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import {
