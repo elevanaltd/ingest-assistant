@@ -59,4 +59,12 @@ export default [
       '@typescript-eslint/no-explicit-any': 'warn',
     },
   },
+
+  // Override for test files - allow 'any' in test mocks
+  {
+    files: ['**/*.test.ts', '**/*.test.tsx', '**/__tests__/**/*.ts', '**/__tests__/**/*.tsx'],
+    rules: {
+      '@typescript-eslint/no-explicit-any': 'off',
+    },
+  },
 ];

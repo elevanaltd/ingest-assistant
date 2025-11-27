@@ -26,7 +26,6 @@ import { ipcMain, BrowserWindow } from 'electron'
 import { z } from 'zod'
 import {
   CfexTransferService,
-  TransferConfig,
   TransferProgress,
   FileTransferResult
 } from '../services/cfexTransfer'
@@ -283,7 +282,7 @@ export function registerCfexTransferHandlers(mainWindow: BrowserWindow) {
    *   error?: Error
    * }
    */
-  ipcMain.handle('cfex:get-transfer-state', async (event) => {
+  ipcMain.handle('cfex:get-transfer-state', async (_event) => {
     return transferState
   })
 
@@ -300,7 +299,7 @@ export function registerCfexTransferHandlers(mainWindow: BrowserWindow) {
    *   selectedCard: string | undefined
    * }
    */
-  ipcMain.handle('cfex:detect-sources', async (event) => {
+  ipcMain.handle('cfex:detect-sources', async (_event) => {
     const service = getAutoDetectService()
 
     try {

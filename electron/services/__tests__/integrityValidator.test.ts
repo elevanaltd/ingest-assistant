@@ -21,25 +21,7 @@ import { randomBytes } from 'crypto'
  * - Mock filesystem only, not exiftool (integration test for real extraction)
  */
 
-// Type definitions (will be imported from service once implemented)
-interface FileValidationResult {
-  file: string
-  sizeMatch: boolean
-  sourceSize: number
-  destSize: number
-  timestamp: Date | null
-  timestampSource: 'EXIF' | 'FILESYSTEM' | null
-  warnings: string[]
-}
-
-interface TimestampResult {
-  timestamp: Date | null
-  source: 'EXIF' | 'FILESYSTEM' | null
-  confidence: 'HIGH' | 'MEDIUM' | 'LOW'
-  warning: string | null
-}
-
-interface BatchValidationResult {
+interface _BatchValidationResult {
   fileCountMatch: boolean
   sourceFileCount: number
   destFileCount: number
@@ -371,7 +353,7 @@ describe('IntegrityValidator', () => {
       const validator = new IntegrityValidator()
 
       // Mock the validator to know 3 files were expected
-      vi.spyOn(validator, 'validateBatch').mockImplementation(async (results) => {
+      vi.spyOn(validator, 'validateBatch').mockImplementation(async (_results) => {
         return {
           fileCountMatch: false,
           sourceFileCount: 3, // Expected
@@ -407,7 +389,7 @@ describe('IntegrityValidator', () => {
       // For CI, we may need to skip if exiftool not available
 
       // ARRANGE: Create a file with mock EXIF (or skip if no exiftool)
-      const filePath = join(tempDir, 'test-photo.jpg')
+      const _filePath = join(tempDir, 'test-photo.jpg')
 
       // Create minimal JPEG with EXIF DateTimeOriginal
       // This would require using exiftool to inject metadata

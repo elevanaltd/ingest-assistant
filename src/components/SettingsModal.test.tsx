@@ -935,6 +935,8 @@ describe('SettingsModal', () => {
     });
 
     it('should show filename template input only when filenameRewrite is enabled', async () => {
+      window.confirm = vi.fn().mockReturnValue(true); // User confirms the warning
+
       render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
 
       fireEvent.click(screen.getByText('File Ingestion'));
@@ -946,9 +948,12 @@ describe('SettingsModal', () => {
       // Filename template input should NOT be visible initially (filenameRewrite=false)
       expect(screen.queryByPlaceholderText(/\{location\}-\{subject\}-\{action\}-\{shotType\}/)).not.toBeInTheDocument();
 
-      // Enable filename rewrite toggle
+      // Enable filename rewrite toggle (will show confirmation)
       const filenameRewriteCheckbox = screen.getByLabelText(/Rename files using template/i);
       fireEvent.click(filenameRewriteCheckbox);
+
+      // Confirmation should have been shown
+      expect(window.confirm).toHaveBeenCalled();
 
       // Now filename template input should be visible
       await waitFor(() => {
@@ -1035,6 +1040,8 @@ describe('SettingsModal', () => {
     });
 
     it('should save filename template when filenameRewrite enabled', async () => {
+      window.confirm = vi.fn().mockReturnValue(true); // User confirms the warning
+
       render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
 
       fireEvent.click(screen.getByText('File Ingestion'));
@@ -1043,9 +1050,12 @@ describe('SettingsModal', () => {
         expect(window.electronAPI.loadConfig).toHaveBeenCalled();
       });
 
-      // Enable filename rewrite
+      // Enable filename rewrite (will show confirmation)
       const filenameRewriteCheckbox = screen.getByLabelText(/Rename files using template/i);
       fireEvent.click(filenameRewriteCheckbox);
+
+      // Confirmation should have been shown
+      expect(window.confirm).toHaveBeenCalled();
 
       // Template input should appear
       await waitFor(() => {
@@ -1064,7 +1074,7 @@ describe('SettingsModal', () => {
         expect(window.electronAPI.saveConfig).toHaveBeenCalledWith(
           expect.objectContaining({
             cfex: expect.objectContaining({
-              filenameRewrite: true,
+              filenameRewrite: false, // Session-ephemeral: always saved as false
               filenameTemplate: '{subject}-{shotType}'
             })
           })
@@ -1082,7 +1092,7 @@ describe('SettingsModal', () => {
           defaultVideos: '/Volumes/EAV_Video_RAW/',
           aiAutoAnalyze: true,
           metadataWrite: true,
-          filenameRewrite: true,
+          filenameRewrite: true, // Will be ignored (session-ephemeral)
           filenameTemplate: '{location}-{subject}-{shotType}'
         }
       });
@@ -1095,7 +1105,7 @@ describe('SettingsModal', () => {
         expect(window.electronAPI.loadConfig).toHaveBeenCalled();
       });
 
-      // All toggles should be checked
+      // aiAutoAnalyze and metadataWrite should be checked
       const aiAutoAnalyzeCheckbox = screen.getByLabelText(/AI Auto-Analyze after transfer/i) as HTMLInputElement;
       const metadataWriteCheckbox = screen.getByLabelText(/Write metadata to files/i) as HTMLInputElement;
       const filenameRewriteCheckbox = screen.getByLabelText(/Rename files using template/i) as HTMLInputElement;
@@ -1103,11 +1113,12 @@ describe('SettingsModal', () => {
       await waitFor(() => {
         expect(aiAutoAnalyzeCheckbox.checked).toBe(true);
         expect(metadataWriteCheckbox.checked).toBe(true);
-        expect(filenameRewriteCheckbox.checked).toBe(true);
+        // Session-ephemeral: filenameRewrite always loads as false
+        expect(filenameRewriteCheckbox.checked).toBe(false);
       });
 
-      // Filename template input should be visible
-      expect(screen.getByDisplayValue('{location}-{subject}-{shotType}')).toBeInTheDocument();
+      // Filename template input should NOT be visible (since filenameRewrite is false)
+      expect(screen.queryByDisplayValue('{location}-{subject}-{shotType}')).not.toBeInTheDocument();
     });
   });
 
@@ -1223,6 +1234,233 @@ describe('SettingsModal', () => {
           })
         );
       });
+    });
+  });
+
+  /**
+   * File Rename Safety System Tests (B5 Enhancement)
+   *
+   * TDD RED Phase - Safety mechanisms for destructive file rename feature
+   * Feature: Three-layer safety system for filename rewriting
+   * - Warning dialog when checkbox is checked
+   * - Session-ephemeral state (defaults to false on load)
+   * - Batch operations warning when rename is enabled
+   */
+  describe('File Rename Safety System - Checkbox Confirmation', () => {
+    beforeEach(() => {
+      // Mock window.confirm for confirmation dialog tests
+      window.confirm = vi.fn();
+
+      window.electronAPI = {
+        getAIConfig: vi.fn().mockResolvedValue({
+          provider: 'openrouter',
+          model: 'anthropic/claude-3.5-sonnet',
+          apiKey: '***masked***'
+        }),
+        isAIConfigured: vi.fn().mockResolvedValue(true),
+        updateAIConfig: vi.fn().mockResolvedValue({ success: true }),
+        testAIConnection: vi.fn().mockResolvedValue({ success: true }),
+        testSavedAIConnection: vi.fn().mockResolvedValue({ success: true }),
+        getAIModels: vi.fn().mockResolvedValue([]),
+        loadConfig: vi.fn().mockResolvedValue({
+          lexicon: {},
+          cfex: {
+            defaultSource: '/Volumes/Untitled/DCIM/100_FUJI',
+            defaultPhotos: '/Volumes/videos-current/2. WORKING PROJECTS/',
+            defaultVideos: '/Volumes/EAV_Video_RAW/',
+            aiAutoAnalyze: false,
+            metadataWrite: false,
+            filenameRewrite: false,
+            filenameTemplate: '{location}-{subject}-{action}-{shotType}'
+          }
+        }),
+        saveConfig: vi.fn().mockResolvedValue(true),
+        selectFolder: vi.fn().mockResolvedValue('/selected/path'),
+        batchStart: vi.fn(async () => 'mock-queue-id'),
+        batchCancel: vi.fn(async () => ({ success: true })),
+        batchGetStatus: vi.fn(async () => ({
+          items: [],
+          status: 'idle',
+          currentFile: null
+        })),
+        onBatchProgress: vi.fn(() => () => {}),
+        onTranscodeProgress: vi.fn(() => () => {}),
+      } as Partial<typeof window.electronAPI> as typeof window.electronAPI;
+    });
+
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    it('shows confirmation dialog when filenameRewrite checkbox clicked', async () => {
+      render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
+
+      fireEvent.click(screen.getByText('File Ingestion'));
+
+      await waitFor(() => {
+        expect(window.electronAPI.loadConfig).toHaveBeenCalled();
+      });
+
+      const filenameRewriteCheckbox = screen.getByLabelText(/Rename files using template/i);
+
+      // Click checkbox should trigger confirmation dialog
+      fireEvent.click(filenameRewriteCheckbox);
+
+      // Should call window.confirm with warning message
+      expect(window.confirm).toHaveBeenCalledWith(
+        expect.stringContaining('⚠️ File Rename Warning')
+      );
+      expect(window.confirm).toHaveBeenCalledWith(
+        expect.stringContaining('This will rename files based on metadata')
+      );
+      expect(window.confirm).toHaveBeenCalledWith(
+        expect.stringContaining('Original filenames will be preserved in TapeName XMP field')
+      );
+    });
+
+    it('enables filenameRewrite when user confirms dialog', async () => {
+      (window.confirm as ReturnType<typeof vi.fn>).mockReturnValue(true); // User clicks OK
+
+      render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
+
+      fireEvent.click(screen.getByText('File Ingestion'));
+
+      await waitFor(() => {
+        expect(window.electronAPI.loadConfig).toHaveBeenCalled();
+      });
+
+      const filenameRewriteCheckbox = screen.getByLabelText(/Rename files using template/i) as HTMLInputElement;
+
+      // Initially unchecked
+      expect(filenameRewriteCheckbox.checked).toBe(false);
+
+      // Click checkbox
+      fireEvent.click(filenameRewriteCheckbox);
+
+      // Should show confirmation
+      expect(window.confirm).toHaveBeenCalled();
+
+      // Should be checked after confirmation
+      await waitFor(() => {
+        expect(filenameRewriteCheckbox.checked).toBe(true);
+      });
+    });
+
+    it('keeps filenameRewrite disabled when user cancels dialog', async () => {
+      (window.confirm as ReturnType<typeof vi.fn>).mockReturnValue(false); // User clicks Cancel
+
+      render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
+
+      fireEvent.click(screen.getByText('File Ingestion'));
+
+      await waitFor(() => {
+        expect(window.electronAPI.loadConfig).toHaveBeenCalled();
+      });
+
+      const filenameRewriteCheckbox = screen.getByLabelText(/Rename files using template/i) as HTMLInputElement;
+
+      // Initially unchecked
+      expect(filenameRewriteCheckbox.checked).toBe(false);
+
+      // Click checkbox
+      fireEvent.click(filenameRewriteCheckbox);
+
+      // Should show confirmation
+      expect(window.confirm).toHaveBeenCalled();
+
+      // Should remain unchecked after cancellation
+      await waitFor(() => {
+        expect(filenameRewriteCheckbox.checked).toBe(false);
+      });
+    });
+  });
+
+  describe('File Rename Safety System - Session-Ephemeral State', () => {
+    beforeEach(() => {
+      window.electronAPI = {
+        getAIConfig: vi.fn().mockResolvedValue({
+          provider: 'openrouter',
+          model: 'anthropic/claude-3.5-sonnet',
+          apiKey: '***masked***'
+        }),
+        isAIConfigured: vi.fn().mockResolvedValue(true),
+        updateAIConfig: vi.fn().mockResolvedValue({ success: true }),
+        testAIConnection: vi.fn().mockResolvedValue({ success: true }),
+        testSavedAIConnection: vi.fn().mockResolvedValue({ success: true }),
+        getAIModels: vi.fn().mockResolvedValue([]),
+        loadConfig: vi.fn().mockResolvedValue({
+          lexicon: {},
+          cfex: {
+            defaultSource: '/Volumes/Untitled/DCIM/100_FUJI',
+            defaultPhotos: '/Volumes/videos-current/2. WORKING PROJECTS/',
+            defaultVideos: '/Volumes/EAV_Video_RAW/',
+            aiAutoAnalyze: false,
+            metadataWrite: false,
+            filenameRewrite: true, // ⚠️ CRITICAL: Config has it enabled, but should load as false
+            filenameTemplate: '{location}-{subject}-{action}-{shotType}'
+          }
+        }),
+        saveConfig: vi.fn().mockResolvedValue(true),
+        selectFolder: vi.fn().mockResolvedValue('/selected/path'),
+        batchStart: vi.fn(async () => 'mock-queue-id'),
+        batchCancel: vi.fn(async () => ({ success: true })),
+        batchGetStatus: vi.fn(async () => ({
+          items: [],
+          status: 'idle',
+          currentFile: null
+        })),
+        onBatchProgress: vi.fn(() => () => {}),
+        onTranscodeProgress: vi.fn(() => () => {}),
+      } as Partial<typeof window.electronAPI> as typeof window.electronAPI;
+    });
+
+    it('filenameRewrite defaults to false on mount regardless of config', async () => {
+      render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
+
+      fireEvent.click(screen.getByText('File Ingestion'));
+
+      await waitFor(() => {
+        expect(window.electronAPI.loadConfig).toHaveBeenCalled();
+      });
+
+      // Even though config has filenameRewrite: true, checkbox should be unchecked (session-ephemeral)
+      const filenameRewriteCheckbox = screen.getByLabelText(/Rename files using template/i) as HTMLInputElement;
+
+      await waitFor(() => {
+        expect(filenameRewriteCheckbox.checked).toBe(false);
+      });
+    });
+
+    it('filenameRewrite not persisted to config on save', async () => {
+      window.confirm = vi.fn().mockReturnValue(true); // Allow enabling checkbox
+
+      render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
+
+      fireEvent.click(screen.getByText('File Ingestion'));
+
+      await waitFor(() => {
+        expect(window.electronAPI.loadConfig).toHaveBeenCalled();
+      });
+
+      // Enable filename rewrite
+      const filenameRewriteCheckbox = screen.getByLabelText(/Rename files using template/i);
+      fireEvent.click(filenameRewriteCheckbox);
+
+      await waitFor(() => {
+        expect((filenameRewriteCheckbox as HTMLInputElement).checked).toBe(true);
+      });
+
+      // Save settings
+      const saveButton = screen.getByText('Save Ingestion Settings');
+      fireEvent.click(saveButton);
+
+      await waitFor(() => {
+        expect(window.electronAPI.saveConfig).toHaveBeenCalled();
+      });
+
+      // Verify filenameRewrite was saved as FALSE (not persisted)
+      const savedConfig = (window.electronAPI.saveConfig as ReturnType<typeof vi.fn>).mock.calls[0][0];
+      expect(savedConfig.cfex.filenameRewrite).toBe(false);
     });
   });
 });

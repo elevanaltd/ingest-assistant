@@ -10,6 +10,19 @@ export interface ValidationResult {
   errors: string[];
 }
 
+interface SkillConfig {
+  type?: string;
+  autoInject?: boolean;
+  affinity?: unknown[];
+  [key: string]: unknown;
+}
+
+interface SkillRules {
+  version?: string;
+  skills?: Record<string, unknown>;
+  [key: string]: unknown;
+}
+
 /**
  * Validate skill-rules.json structure at runtime
  *
@@ -23,20 +36,34 @@ export interface ValidationResult {
  *   console.error('Validation errors:', result.errors);
  * }
  */
-export function validateSkillRules(skillRules: any): ValidationResult {
+export function validateSkillRules(skillRules: unknown): ValidationResult {
   const errors: string[] = [];
 
-  if (!skillRules.version) {
+  // Type guard: Ensure skillRules is an object
+  if (!skillRules || typeof skillRules !== 'object') {
+    errors.push('skillRules must be an object');
+    return { valid: false, errors };
+  }
+
+  const rules = skillRules as SkillRules;
+
+  if (!rules.version) {
     errors.push('Missing required field: version');
   }
 
-  if (!skillRules.skills || typeof skillRules.skills !== 'object') {
+  if (!rules.skills || typeof rules.skills !== 'object') {
     errors.push('Missing or invalid field: skills (must be object)');
     return { valid: false, errors };
   }
 
-  for (const [skillName, config] of Object.entries(skillRules.skills)) {
-    const skill = config as any;
+  for (const [skillName, config] of Object.entries(rules.skills)) {
+    // Type guard: Ensure config is an object
+    if (!config || typeof config !== 'object') {
+      errors.push(`${skillName}: skill config must be an object`);
+      continue;
+    }
+
+    const skill = config as SkillConfig;
 
     // Validate required fields
     if (!skill.type || !['guardrail', 'domain'].includes(skill.type)) {

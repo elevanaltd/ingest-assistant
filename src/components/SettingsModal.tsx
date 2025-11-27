@@ -12,9 +12,18 @@ interface SettingsModalProps {
   onClose: () => void;
   onSave: (config: LexiconConfig) => Promise<void>;
   initialConfig?: LexiconConfig;
+  // Session-ephemeral filenameRewrite state (lifted to App.tsx)
+  filenameRewrite?: boolean;
+  onFilenameRewriteChange?: (enabled: boolean) => void;
 }
 
-export function SettingsModal({ onClose, onSave, initialConfig }: SettingsModalProps) {
+export function SettingsModal({
+  onClose,
+  onSave,
+  initialConfig,
+  filenameRewrite: filenameRewriteProp = false,
+  onFilenameRewriteChange
+}: SettingsModalProps) {
   // Tab state
   const [activeTab, setActiveTab] = useState<'lexicon' | 'ai' | 'cfex' | 'ingestion'>('lexicon');
 
@@ -56,7 +65,11 @@ export function SettingsModal({ onClose, onSave, initialConfig }: SettingsModalP
   // CFEx toggle states (I7 Human Primacy - default OFF)
   const [aiAutoAnalyze, setAiAutoAnalyze] = useState(false);
   const [metadataWrite, setMetadataWrite] = useState(false);
-  const [filenameRewrite, setFilenameRewrite] = useState(false);
+  // filenameRewrite is controlled by parent (App.tsx) - use prop value
+  // Local state is fallback if prop not provided (backward compatibility)
+  const [filenameRewriteLocal, setFilenameRewriteLocal] = useState(false);
+  const filenameRewrite = onFilenameRewriteChange ? filenameRewriteProp : filenameRewriteLocal;
+  const setFilenameRewrite = onFilenameRewriteChange || setFilenameRewriteLocal;
   const [filenameTemplate, setFilenameTemplate] = useState('{location}-{subject}-{action}-{shotType}');
 
   // Ingestion settings save state
@@ -176,7 +189,8 @@ export function SettingsModal({ onClose, onSave, initialConfig }: SettingsModalP
             // Load toggle states (default to false per I7 Human Primacy)
             setAiAutoAnalyze(config.cfex.aiAutoAnalyze ?? false);
             setMetadataWrite(config.cfex.metadataWrite ?? false);
-            setFilenameRewrite(config.cfex.filenameRewrite ?? false);
+            // Session-ephemeral: filenameRewrite ALWAYS defaults to false on load (I7 Human Primacy)
+            setFilenameRewrite(false);
             setFilenameTemplate(config.cfex.filenameTemplate || '{location}-{subject}-{action}-{shotType}');
           } else {
             // Use defaults if no cfex config exists
@@ -200,7 +214,7 @@ export function SettingsModal({ onClose, onSave, initialConfig }: SettingsModalP
           }
         });
     }
-  }, [activeTab]);
+  }, [activeTab, setFilenameRewrite]);
 
   const handleSaveLexicon = async () => {
     try {
@@ -420,6 +434,27 @@ export function SettingsModal({ onClose, onSave, initialConfig }: SettingsModalP
     }
   };
 
+  const handleFilenameRewriteChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newValue = e.target.checked;
+
+    // Show confirmation dialog when enabling filenameRewrite
+    if (newValue) {
+      const confirmed = window.confirm(
+        '⚠️ File Rename Warning: This will rename files based on metadata. ' +
+        'Original filenames will be preserved in TapeName XMP field, but file system names will change. ' +
+        'This operation affects batch processing and cannot be easily undone. Are you sure?'
+      );
+
+      if (confirmed) {
+        setFilenameRewrite(true);
+      }
+      // If not confirmed, checkbox stays unchecked (don't call setFilenameRewrite)
+    } else {
+      // Unchecking doesn't need confirmation
+      setFilenameRewrite(false);
+    }
+  };
+
   const handleSaveIngestion = async () => {
     if (!window.electronAPI?.loadConfig || !window.electronAPI?.saveConfig) {
       setIngestionError('Configuration API not available');
@@ -444,7 +479,8 @@ export function SettingsModal({ onClose, onSave, initialConfig }: SettingsModalP
           // Update toggle states
           aiAutoAnalyze,
           metadataWrite,
-          filenameRewrite,
+          // Session-ephemeral: filenameRewrite ALWAYS saved as false (I7 Human Primacy)
+          filenameRewrite: false,
           filenameTemplate
         }
       };
@@ -1012,7 +1048,7 @@ export function SettingsModal({ onClose, onSave, initialConfig }: SettingsModalP
                   <input
                     type="checkbox"
                     checked={filenameRewrite}
-                    onChange={(e) => setFilenameRewrite(e.target.checked)}
+                    onChange={handleFilenameRewriteChange}
                     style={{ cursor: 'pointer' }}
                   />
                   <span style={{ fontSize: '14px' }}>Rename files using template</span>

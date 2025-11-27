@@ -295,7 +295,7 @@ export async function transferFile(
     // Clean up partial file on error (per D3 Blueprint L291-296)
     try {
       await fs.unlink(task.destination);
-    } catch (unlinkError) {
+    } catch {
       // Ignore unlink errors (file may not exist)
     }
 

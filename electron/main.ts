@@ -2,7 +2,7 @@
 import * as dotenv from 'dotenv';
 dotenv.config();
 
-import { app, BrowserWindow, ipcMain, dialog } from 'electron';
+import { app, BrowserWindow, ipcMain, dialog, screen } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs/promises';
 import * as fsSync from 'fs';
@@ -325,9 +325,12 @@ function createMediaServer(): http.Server {
 }
 
 async function createWindow() {
+  // Get primary display dimensions for full screen width
+  const { width, height } = screen.getPrimaryDisplay().workAreaSize;
+
   mainWindow = new BrowserWindow({
-    width: 1200,
-    height: 800,
+    width,
+    height,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -377,6 +380,22 @@ app.whenReady().then(async () => {
     }
   } catch (error) {
     console.error('Migration error (non-fatal):', error);
+  }
+
+  // I7 Human Primacy: Reset filenameRewrite to false on app startup (session-ephemeral)
+  // This ensures backend config matches frontend state - user must consciously enable each session
+  // Prevents silent destructive renames if config had filenameRewrite: true from previous session
+  try {
+    const currentToggles = await configManager.getCfexToggles();
+    if (currentToggles.filenameRewrite) {
+      console.log('[I7] Resetting filenameRewrite to false (session-ephemeral)');
+      await configManager.setCfexToggles({
+        ...currentToggles,
+        filenameRewrite: false
+      });
+    }
+  } catch (error) {
+    console.error('[I7] Failed to reset filenameRewrite (non-fatal):', error);
   }
 
   // Register transcode cache directory with security validator
@@ -700,7 +719,7 @@ ipcMain.handle('file:rename', async (_event, fileId: string, shotName: string, c
 
     // Extract and format timestamp for CEP Panel uniqueness (Issue #31)
     const timestamp = await getOrExtractCreationTimestamp(fileMetadata!);
-    const formattedDate = timestamp ? formatTimestampForTitle(timestamp) : undefined;
+    const _formattedDate = timestamp ? formatTimestampForTitle(timestamp) : undefined;
 
     // Write metadata to the file
     await metadataWriter.writeMetadataToFile(
@@ -767,7 +786,7 @@ ipcMain.handle('file:update-metadata', async (_event, fileId: string, metadata: 
 
     // Extract and format timestamp for CEP Panel uniqueness (Issue #31)
     const timestamp = await getOrExtractCreationTimestamp(fileMetadata);
-    const formattedDate = timestamp ? formatTimestampForTitle(timestamp) : undefined;
+    const _formattedDate = timestamp ? formatTimestampForTitle(timestamp) : undefined;
 
     // Write metadata INTO the actual file using exiftool
     // Use the current shotName from fileMetadata (which may have been updated by updateStructuredMetadata)
@@ -1129,7 +1148,7 @@ ipcMain.handle('batch:start', async (_event, fileIds: string[]) => {
 
           // Extract and format timestamp for CEP Panel uniqueness (Issue #31)
           const timestamp = await getOrExtractCreationTimestamp(fileMetadata);
-          const formattedDate = timestamp ? formatTimestampForTitle(timestamp) : undefined;
+          const _formattedDate = timestamp ? formatTimestampForTitle(timestamp) : undefined;
 
           // Issue #2: Write metadata to actual file (conditionally based on toggle)
           // Only write to file if metadataWrite toggle enabled (Phase 1c Power Features)

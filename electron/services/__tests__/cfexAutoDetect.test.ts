@@ -194,7 +194,7 @@ describe('CfexAutoDetect Service', () => {
 
     it('should return empty array when no CFEx cards found', async () => {
       // ARRANGE: Mock both locations empty
-      vi.mocked(fs.readdir).mockImplementation((path: PathLike) => {
+      vi.mocked(fs.readdir).mockImplementation((_path: PathLike) => {
         return Promise.resolve([] as any)
       })
 
@@ -207,7 +207,7 @@ describe('CfexAutoDetect Service', () => {
 
     it('should handle permission denied error gracefully', async () => {
       // ARRANGE: Mock permission denied error
-      vi.mocked(fs.readdir).mockImplementation((path: PathLike) => {
+      vi.mocked(fs.readdir).mockImplementation((_path: PathLike) => {
         const error = new Error('EACCES: permission denied')
         ;(error as any).code = 'EACCES'
         return Promise.reject(error)
@@ -283,7 +283,7 @@ describe('CfexAutoDetect Service', () => {
       // ARRANGE: /media doesn't exist
       vi.mocked(os.platform).mockReturnValue('linux')
       vi.mocked(os.homedir).mockReturnValue('/home/testuser')
-      vi.mocked(fs.readdir).mockImplementation((path: PathLike) => {
+      vi.mocked(fs.readdir).mockImplementation((_path: PathLike) => {
         const error = new Error('ENOENT: no such file')
         ;(error as any).code = 'ENOENT'
         return Promise.reject(error)
