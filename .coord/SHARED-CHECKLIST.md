@@ -549,3 +549,36 @@
 - ✅ Security Fix + Code Review: Template validation + optional fields (20 tests)
 
 **Next Phase:** Phase 1b: Proxy Generation (ffmpeg + exiftool integration)
+
+---
+
+## ✅ Recently Fixed Issues
+
+### BUG FIX: Filename Rewrite Toggle Now Working in Batch Operations
+**Status:** FIXED (2025-11-26)
+**Commits:** a9afae0 (RED) → f28e96c (GREEN)
+**Review:** code-review-specialist APPROVED (9/10 reliability score)
+
+**Root Cause (confirmed):**
+- Phase 1c delivered components in isolation without integration wiring
+- Missing: getCfexToggles() call in batch:start handler
+- Missing: Conditional logic for metadataWrite and filenameRewrite toggles
+- Missing: fs.rename operation in batch processor
+
+**Fix Applied:**
+- ✅ FilenameTemplateParser imported in main.ts
+- ✅ getCfexToggles() called in batch:start handler
+- ✅ metadataWrite toggle respected (conditional file metadata write)
+- ✅ filenameRewrite toggle respected (fs.rename with template)
+- ✅ TapeName written BEFORE rename (I3 compliance)
+- ✅ Metadata store updated after rename
+- ✅ 10 integration tests added (885 total tests passing)
+
+**Quality Gates:**
+- Lint: 0 errors, 153 warnings
+- Typecheck: 0 errors
+- Tests: 885/885 passing
+
+**Advisory Notes (future enhancement):**
+- File collision detection (identical metadata → same filename) - low risk
+- Partial success rollback (rename succeeds, metadata fails) - very low risk
