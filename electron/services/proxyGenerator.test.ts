@@ -571,4 +571,134 @@ describe('ProxyGenerator', () => {
       expect(result).toBe(`${mockOutputDir}/${customName}`);
     });
   });
+
+  describe('Preflight Validation (B2.4)', () => {
+    beforeEach(() => {
+      generator = new ProxyGenerator();
+    });
+
+    it('should validate source file exists before transcode', async () => {
+      // Mock file not existing
+      vi.mocked(fs.existsSync).mockReturnValue(false);
+
+      await expect(
+        generator.generateProxy('/nonexistent/video.MOV', mockOutputDir)
+      ).rejects.toThrow('Source file does not exist');
+    });
+
+    it('should validate source has video extension', async () => {
+      await expect(
+        generator.generateProxy('/Volumes/videos-raw/document.pdf', mockOutputDir)
+      ).rejects.toThrow('Source file must be a video');
+    });
+
+    it('should accept common video extensions (MOV, MP4, AVI, MKV)', async () => {
+      const mockProcess = new EventEmitter() as any;
+      mockProcess.stderr = new EventEmitter();
+
+      vi.mocked(spawn).mockReturnValue(mockProcess);
+
+      const validExtensions = ['.MOV', '.MP4', '.AVI', '.MKV', '.mkv', '.mp4', '.mov'];
+
+      for (const ext of validExtensions) {
+        const transcodePromise = generator.generateProxy(
+          `/Volumes/videos-raw/test${ext}`,
+          mockOutputDir
+        );
+
+        setTimeout(() => {
+          mockProcess.emit('close', 0);
+        }, 10);
+
+        await transcodePromise; // Should not throw
+      }
+    });
+  });
+
+  describe('Cleanup Logic (B2.5)', () => {
+    beforeEach(() => {
+      generator = new ProxyGenerator();
+      vi.mocked(fs.unlinkSync).mockImplementation(() => undefined);
+    });
+
+    it('should remove partial proxy file on transcode failure', async () => {
+      const mockProcess = new EventEmitter() as any;
+      mockProcess.stderr = new EventEmitter();
+
+      vi.mocked(spawn).mockReturnValue(mockProcess);
+
+      const transcodePromise = generator.generateProxy(mockSourceFile, mockOutputDir);
+
+      setTimeout(() => {
+        mockProcess.emit('close', 1); // Failure
+      }, 10);
+
+      await expect(transcodePromise).rejects.toThrow('Proxy generation failed');
+
+      // Should attempt to cleanup partial proxy
+      expect(fs.unlinkSync).toHaveBeenCalledWith(`${mockOutputDir}/test_proxy.MOV`);
+    });
+
+    it('should remove partial proxy file on timeout', async () => {
+      generator = new ProxyGenerator({ timeoutMs: 100 }); // Short timeout
+
+      const mockProcess = new EventEmitter() as any;
+      mockProcess.stderr = new EventEmitter();
+      mockProcess.kill = vi.fn();
+
+      vi.mocked(spawn).mockReturnValue(mockProcess);
+
+      const transcodePromise = generator.generateProxy(mockSourceFile, mockOutputDir);
+
+      // Don't emit close - let timeout trigger
+
+      await expect(transcodePromise).rejects.toThrow('Transcode timeout');
+
+      // Should attempt to cleanup partial proxy
+      expect(fs.unlinkSync).toHaveBeenCalledWith(`${mockOutputDir}/test_proxy.MOV`);
+    });
+
+    it('should handle cleanup gracefully if file does not exist', async () => {
+      const mockProcess = new EventEmitter() as any;
+      mockProcess.stderr = new EventEmitter();
+
+      vi.mocked(spawn).mockReturnValue(mockProcess);
+
+      // Mock unlinkSync to throw ENOENT (file not found)
+      vi.mocked(fs.unlinkSync).mockImplementation(() => {
+        const error: any = new Error('ENOENT');
+        error.code = 'ENOENT';
+        throw error;
+      });
+
+      const transcodePromise = generator.generateProxy(mockSourceFile, mockOutputDir);
+
+      setTimeout(() => {
+        mockProcess.emit('close', 1); // Failure
+      }, 10);
+
+      await expect(transcodePromise).rejects.toThrow('Proxy generation failed');
+
+      // Should attempt cleanup but not re-throw ENOENT
+      expect(fs.unlinkSync).toHaveBeenCalled();
+    });
+
+    it('should not attempt cleanup on successful transcode', async () => {
+      const mockProcess = new EventEmitter() as any;
+      mockProcess.stderr = new EventEmitter();
+
+      vi.mocked(spawn).mockReturnValue(mockProcess);
+
+      const transcodePromise = generator.generateProxy(mockSourceFile, mockOutputDir);
+
+      setTimeout(() => {
+        mockProcess.emit('close', 0); // Success
+      }, 10);
+
+      await transcodePromise;
+
+      // Should NOT attempt cleanup
+      expect(fs.unlinkSync).not.toHaveBeenCalled();
+    });
+  });
 });
