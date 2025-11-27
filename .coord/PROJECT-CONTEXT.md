@@ -1,6 +1,6 @@
 # Ingest Assistant - Project Context
 
-**Last Updated:** 2025-11-26 | **Version:** v2.2.0 baseline | **Branch:** main (includes PR #88 Phase 1c)
+**Last Updated:** 2025-11-27 | **Version:** v2.2.0 baseline | **Branch:** main (includes PR #93 Filename ID Stability Fix)
 
 ---
 
@@ -24,7 +24,7 @@
 - **Runtime:** Electron (main + renderer)
 - **Frontend:** React 18, TypeScript
 - **Build:** Vite
-- **Testing:** Vitest (871 tests, 56 files)
+- **Testing:** Vitest (890 tests, 58 files)
 - **AI:** OpenRouter, Anthropic Claude, OpenAI APIs
 - **Database:** Supabase (shared with EAV Monorepo)
 
@@ -34,9 +34,9 @@
 
 ### Branch Status
 ```
-Branch: main (includes PR #88 Phase 1c Power Features)
-Tests:  871/873 passing + 2 skipped (+104 new Phase 1c tests)
-Lint:   0 errors, 153 warnings
+Branch: main (includes PR #93 Filename ID Stability Fix)
+Tests:  890/892 passing + 2 skipped (+5 new stability tests)
+Lint:   0 errors, 150 warnings
 Types:  0 errors
 ```
 
@@ -74,7 +74,7 @@ D0→D1→D2→D3(v1.1+OCTAVE)→B0(FINAL GO)→B2(Phase 1a COMPLETE)→Phase 1c
 |------|--------|---------|
 | Lint | PASS (0 errors) | `npm run lint` |
 | Typecheck | PASS (0 errors) | `npm run typecheck` |
-| Tests | PASS (871/873) | `npm test` |
+| Tests | PASS (890/892) | `npm test` |
 
 ---
 
@@ -130,6 +130,23 @@ D0→D1→D2→D3(v1.1+OCTAVE)→B0(FINAL GO)→B2(Phase 1a COMPLETE)→Phase 1c
 - Metadata Write Toggle (shotName, LogComment, TapeName)
 - Filename Rewrite Toggle + Template parser with security hardening
 
+### ✅ Filename ID Stability Fix - COMPLETE (PR #93 merged 2025-11-27)
+
+**Architectural Gap Resolved:**
+- **Problem:** File IDs derived from filenames broke metadata lookup after filename rewrite
+- **Root Cause:** `extractFileId()` used first 8 chars of current filename → changed after rename
+- **Solution:** Use `cameraId` as stable anchor with polymorphic lookup strategy
+
+**Changes (3 files, +352 lines, 5 new tests):**
+- ✅ `metadataStore.ts` - 4-strategy polymorphic lookup (direct key → cameraId → currentFilename → originalFilename)
+- ✅ `fileManager.ts` - cameraId hydration in scanFolder(), defensive null check on load failure
+- ✅ `main.ts` - Double extension fix using cameraId before rename
+
+**Validation:**
+- code-review-specialist: GO (8/10 reliability)
+- TDD: RED→GREEN commits visible (06ed7ac → 5c3ddca → 291b28a)
+- Quality gates: All passing
+
 ### Immediate (Phase 1b: Proxy Generation) - NEXT
 1. **D2 Design:** ffmpeg + exiftool integration architecture
 2. **D3 Blueprint:** Progress UI, EXIF validation dialogs
@@ -182,9 +199,9 @@ D0→D1→D2→D3(v1.1+OCTAVE)→B0(FINAL GO)→B2(Phase 1a COMPLETE)→Phase 1c
 ## Recent Commits (Last 5)
 
 ```
-da92ab5 Merge pull request #88 from elevanaltd/feat/phase-1c-power-features
-b5cb698 feat: implement optional field handling in filename template parser (GREEN)
-1e9a512 test: add failing tests for optional field handling in filename templates (RED)
-01e659c fix: validate template static text for security vulnerabilities (GREEN)
-e130e91 test: add template string security validation tests (RED)
+7308896 Merge pull request #93 from elevanaltd/fix/filename-id-stability
+291b28a fix: nullify metadata store on load failure (defensive hardening)
+5c3ddca feat: implement stable file ID lookup via cameraId (GREEN)
+06ed7ac test: add failing tests for filename ID stability (RED)
+3b66a49 Merge pull request #92 from elevanaltd/sync-claude-config-with-eav-monorepo
 ```
