@@ -382,6 +382,22 @@ app.whenReady().then(async () => {
     console.error('Migration error (non-fatal):', error);
   }
 
+  // I7 Human Primacy: Reset filenameRewrite to false on app startup (session-ephemeral)
+  // This ensures backend config matches frontend state - user must consciously enable each session
+  // Prevents silent destructive renames if config had filenameRewrite: true from previous session
+  try {
+    const currentToggles = await configManager.getCfexToggles();
+    if (currentToggles.filenameRewrite) {
+      console.log('[I7] Resetting filenameRewrite to false (session-ephemeral)');
+      await configManager.setCfexToggles({
+        ...currentToggles,
+        filenameRewrite: false
+      });
+    }
+  } catch (error) {
+    console.error('[I7] Failed to reset filenameRewrite (non-fatal):', error);
+  }
+
   // Register transcode cache directory with security validator
   // CRITICAL: Must complete BEFORE createWindow() to prevent PATH_TRAVERSAL errors
   // during batch processing. Without this, if user triggers batch processing before
