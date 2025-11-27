@@ -43,13 +43,14 @@ export class FileManager {
       return cached;
     }
 
-    // Check if folder is marked as COMPLETED (locked)
-    // If COMPLETED, skip reprocessing and return existing metadata
+    // Load existing metadata for cameraId hydration (Filename ID Stability Fix)
+    // When files are renamed, we need to preserve their original cameraId
+    let existingMetadataStore: MetadataStore | null = null;
     try {
-      const metadataStore = new MetadataStore(path.join(folderPath, '.ingest-metadata.json'));
-      const existingMetadata = await metadataStore.loadMetadata();
+      existingMetadataStore = new MetadataStore(path.join(folderPath, '.ingest-metadata.json'));
+      const existingMetadata = await existingMetadataStore.loadMetadata();
 
-      if (metadataStore.getCompleted()) {
+      if (existingMetadataStore.getCompleted()) {
         console.log('[FileManager] Folder marked as COMPLETED - skipping processing');
         const metadataArray = Object.values(existingMetadata);
         this.scanCache.set(folderPath, metadataArray);
@@ -124,6 +125,45 @@ export class FileManager {
         creationTimestamp = stats.mtime;
       }
 
+      // Hydrate cameraId from existing metadata (Filename ID Stability Fix)
+      // When files are renamed via batch:start, the metadata store is updated with new currentFilename
+      // Search strategy to find existing metadata:
+      // 1. Direct lookup by baseId (works if file not renamed)
+      // 2. Search all records for matching currentFilename (works if renamed via batch:start)
+      // 3. Search all records for matching originalFilename (works if file reverted to original name)
+      let preservedCameraId = baseId; // Default to current extraction
+      if (existingMetadataStore) {
+        let existingRecord = await existingMetadataStore.getFileMetadata(baseId);
+
+        // If not found by baseId, search all metadata records
+        if (!existingRecord) {
+          const allMetadata = await existingMetadataStore.loadMetadata();
+
+          // Strategy 2: Match by currentFilename (most common case for renamed files)
+          for (const record of Object.values(allMetadata)) {
+            if (record.currentFilename === filename) {
+              existingRecord = record;
+              break;
+            }
+          }
+
+          // Strategy 3: Match by originalFilename (file reverted to original name)
+          if (!existingRecord) {
+            for (const record of Object.values(allMetadata)) {
+              if (record.originalFilename === filename) {
+                existingRecord = record;
+                break;
+              }
+            }
+          }
+        }
+
+        if (existingRecord?.cameraId) {
+          preservedCameraId = existingRecord.cameraId;
+          console.log(`[FileManager] Preserved cameraId ${preservedCameraId} for renamed file ${filename}`);
+        }
+      }
+
       // Create FileMetadata with audit trail using helper
       const fileMetadata = MetadataStore.createMetadata({
         id: finalId,
@@ -137,7 +177,7 @@ export class FileManager {
         fileType: this.getFileType(filename),
         processedByAI: false,
         creationTimestamp, // Use EXIF DateTimeOriginal (or mtime fallback)
-        cameraId: baseId // Extract camera ID from original filename
+        cameraId: preservedCameraId // Preserve immutable cameraId across renames
       });
 
       files.push(fileMetadata);

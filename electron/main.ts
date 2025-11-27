@@ -1162,13 +1162,15 @@ ipcMain.handle('batch:start', async (_event, fileIds: string[]) => {
             });
 
             // I3 Compliance: Write TapeName BEFORE rename (preserves original filename)
-            const originalBasename = path.basename(normalizedPath, extension);
+            // FIX: Use cameraId (immutable) instead of path.basename (changes after rename)
+            // Prevents double extension bug (.JPG.JPG) when file already renamed
+            const originalBasename = fileMetadata.cameraId || path.basename(normalizedPath, extension);
             await metadataWriter.writeMetadataToFile(
               normalizedPath,
               '', // Don't update shotName, just TapeName
               [],
               {
-                cameraId: originalBasename // TapeName = original filename
+                cameraId: originalBasename // TapeName = original camera filename (immutable)
               }
             );
 

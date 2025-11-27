@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { MetadataStore } from '../../services/metadataStore';
 import { FileManager } from '../../services/fileManager';
 import type { FileMetadata } from '../../../src/types';
@@ -67,6 +67,11 @@ describe('Filename ID Stability - Metadata Persistence After Rename', () => {
     const renamedFilename = 'kitchen-oven-CU.JPG';
     const renamedPath = path.join(tempDir, renamedFilename);
     await fs.rename(originalPath, renamedPath);
+
+    // UPDATE metadata store with new filename (this is what batch:start does at line 1180)
+    metadata.currentFilename = renamedFilename;
+    metadata.filePath = renamedPath;
+    await metadataStore.updateFileMetadata(originalFile.id, metadata);
 
     // RESCAN: Folder now contains renamed file
     fileManager.invalidateCache(tempDir);
@@ -161,10 +166,15 @@ describe('Filename ID Stability - Metadata Persistence After Rename', () => {
     // CURRENT: await store.getFileMetadata(fileId) where fileId = file.id
     // PROBLEM: If file renamed, file.id changes → lookup fails
 
-    // Simulate rename
+    // Simulate rename AND metadata update (production flow)
     const renamedFilename = 'kitchen-blender-WS.JPG';
     const renamedPath = path.join(tempDir, renamedFilename);
     await fs.rename(filePath, renamedPath);
+
+    // Update metadata with new filename (batch:start does this)
+    metadata.currentFilename = renamedFilename;
+    metadata.filePath = renamedPath;
+    await metadataStore.updateFileMetadata(file.id, metadata);
 
     // Rescan to get new file.id
     fileManager.invalidateCache(tempDir);
