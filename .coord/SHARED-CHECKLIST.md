@@ -1,6 +1,6 @@
 # Ingest Assistant - Shared Checklist
 
-## Current Status (2025-11-26 Updated)
+## Current Status (2025-11-27 Updated)
 
 ### ✅ v2.2.0 Release Complete (Nov 18, 2025)
 
@@ -536,23 +536,49 @@
 ---
 
 ## Last Updated
-2025-11-26 (Phase 1c COMPLETE - holistic-orchestrator)
-**Tests:** 871/873 passing + 2 skipped (+104 new Phase 1c tests)
-**Branch:** main (includes PR #88 Phase 1c Power Features)
+2025-11-27 (Filename ID Stability Fix - holistic-orchestrator)
+**Tests:** 890/892 passing + 2 skipped (+5 new stability tests)
+**Branch:** main (includes PR #93 Filename ID Stability Fix)
 
-**Phase 1c Complete (6 of 6 phases):**
-- ✅ Security Foundation: FilenameTemplateParser (54 tests)
-- ✅ TapeName Logic: MetadataToggleService (10 tests)
-- ✅ Settings Persistence: CfexConfig extension (6 tests)
-- ✅ UI Implementation: SettingsModal toggles (9 tests)
-- ✅ AI Auto-Analyze Integration: Event emission (5 tests)
-- ✅ Security Fix + Code Review: Template validation + optional fields (20 tests)
+**Latest Fix (PR #93):**
+- ✅ Polymorphic metadata lookup (cameraId as stable anchor)
+- ✅ cameraId hydration in scanFolder()
+- ✅ Double extension prevention
+- ✅ Defensive null check on metadata load failure
 
 **Next Phase:** Phase 1b: Proxy Generation (ffmpeg + exiftool integration)
 
 ---
 
 ## ✅ Recently Fixed Issues
+
+### BUG FIX: Filename ID Stability After Rename (PR #93)
+**Status:** FIXED (2025-11-27)
+**Commits:** 06ed7ac (RED) → 5c3ddca (GREEN) → 291b28a (HARDENING)
+**Review:** code-review-specialist APPROVED (8/10 reliability score)
+
+**Root Cause (architectural gap):**
+- File IDs derived from first 8 chars of current filename
+- After rename: `extractFileId("kitchen-oven-CU.JPG")` → `"kitchen-"` ≠ `"EB001535"`
+- Metadata lookup failed → orphaned entries, UI not updating
+- Double extension bug (.JPG.JPG) from corrupted originalFilename
+
+**Fix Applied:**
+- ✅ `metadataStore.ts` - 4-strategy polymorphic lookup (direct key → cameraId → currentFilename → originalFilename)
+- ✅ `fileManager.ts` - cameraId hydration in scanFolder(), defensive null check on load failure
+- ✅ `main.ts` - Use `fileMetadata.cameraId` for TapeName before rename
+- ✅ 5 new tests for filename ID stability (filenameIdStability.test.ts)
+
+**Quality Gates:**
+- Lint: 0 errors, 150 warnings
+- Typecheck: 0 errors
+- Tests: 890/892 passing
+
+**Advisory Notes (future enhancement):**
+- Performance: Consider caching allMetadata once in scanFolder (O(n²) → O(n))
+- Lookup precision: Consider exact string match before 8-char truncation
+
+---
 
 ### BUG FIX: Filename Rewrite Toggle Now Working in Batch Operations
 **Status:** FIXED (2025-11-26)
