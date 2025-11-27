@@ -2,7 +2,30 @@
 
 **Purpose:** Archive of completed work, major milestones, and historical decisions. Consult when needing context on past implementations.
 
-**Last Updated:** 2025-11-26
+**Last Updated:** 2025-11-27
+
+---
+
+## 2025-11-27 Session: File Rename Safety + Lint Cleanup
+**Status:** COMPLETE | **Tests:** 906/908 (+16)
+
+### Completed
+- SAFETY::filenameRewrite_warning_system→3_mechanisms[checkbox+ephemeral+batch]
+- LINT::153→0_warnings→test_exemption+proper_types
+- SECURITY::HIGH_vuln_eliminated→npm_audit_fix[glob+js-yaml]
+- UI::sidebar_improvements→select_all+full_width+checkbox_inline
+
+### Decisions
+- [2025-11-27] filenameRewrite→session_ephemeral[vs_persisted]→I7_Human_Primacy⊗explicit_consent_each_session
+- [2025-11-27] test_any_types→exemption_config[vs_type_each]→industry_standard⊗test_flexibility
+
+### Problems Solved
+- state_isolation⇒lift_to_App.tsx⇒warning_dialogs_work
+- backend/frontend_gap⇒reset_on_startup⇒coherence_restored
+
+### Quality
+TRACED: T✅ R✅ A✅ C✅ E✅ D✅
+QG: TypeScript✅ ESLint✅(0/0) Tests906/908✅ Build✅
 
 ---
 
