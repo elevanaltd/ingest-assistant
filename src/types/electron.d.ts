@@ -93,6 +93,37 @@ export interface ElectronAPI {
       error?: Error;
     }>;
   };
+
+  // Proxy generation operations (Phase 1b B2.6)
+  proxy: {
+    generateProxies: (request: {
+      rawVideoFolder: string;
+      proxyOutputFolder: string;
+      videoFilenames: string[];
+    }) => Promise<{
+      success: boolean;
+      completedCount: number;
+      failedCount: number;
+      failedFiles: Array<{ filename: string; error: string }>;
+      verificationFailures: Array<{
+        proxyPath: string;
+        rawDateTimeOriginal: string | null;
+        proxyDateTimeOriginal: string | null;
+        match: boolean;
+      }>;
+    }>;
+    onProxyProgress: (callback: (progress: {
+      type: 'file_start' | 'file_complete' | 'file_failed' | 'transcode_progress' | 'phase_start';
+      filename?: string;
+      index?: number;
+      total?: number;
+      success?: boolean;
+      error?: string;
+      timeString?: string;
+      percentage?: number;
+      phase?: 'transcode' | 'exif_preserve';
+    }) => void) => () => void;
+  };
 }
 
 declare global {
