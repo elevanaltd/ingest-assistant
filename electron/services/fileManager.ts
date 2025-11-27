@@ -46,9 +46,11 @@ export class FileManager {
     // Load existing metadata for cameraId hydration (Filename ID Stability Fix)
     // When files are renamed, we need to preserve their original cameraId
     let existingMetadataStore: MetadataStore | null = null;
+    let metadataLoaded = false;
     try {
       existingMetadataStore = new MetadataStore(path.join(folderPath, '.ingest-metadata.json'));
       const existingMetadata = await existingMetadataStore.loadMetadata();
+      metadataLoaded = true;
 
       if (existingMetadataStore.getCompleted()) {
         console.log('[FileManager] Folder marked as COMPLETED - skipping processing');
@@ -59,6 +61,7 @@ export class FileManager {
     } catch (error) {
       // No metadata store yet or other error - proceed with normal scan
       // This is expected for new folders or test scenarios
+      existingMetadataStore = null;
     }
 
     // Set allowed base path for security validation
@@ -132,7 +135,7 @@ export class FileManager {
       // 2. Search all records for matching currentFilename (works if renamed via batch:start)
       // 3. Search all records for matching originalFilename (works if file reverted to original name)
       let preservedCameraId = baseId; // Default to current extraction
-      if (existingMetadataStore) {
+      if (existingMetadataStore && metadataLoaded) {
         let existingRecord = await existingMetadataStore.getFileMetadata(baseId);
 
         // If not found by baseId, search all metadata records
