@@ -1,6 +1,6 @@
 # Ingest Assistant - Project Roadmap
 
-**Last Updated:** 2025-11-26 | **Current Phase:** CFEx Phase 1b (Proxy Generation) - NEXT
+**Last Updated:** 2025-11-27 | **Current Phase:** CFEx Phase 1b (Proxy Generation) - NEXT
 
 ---
 
@@ -15,6 +15,7 @@
 | B4 | Production Readiness (v2.2.0) | Nov 18, 2025 |
 | Phase 1a | CFEx Transfer + Integrity | Nov 26, 2025 |
 | Phase 1c | CFEx Power Features (+104 tests) | Nov 26, 2025 |
+| Bug Fix | Filename ID Stability (PR #93, +5 tests) | Nov 27, 2025 |
 
 **Full history:** [`PROJECT-HISTORY.md`](PROJECT-HISTORY.md)
 
