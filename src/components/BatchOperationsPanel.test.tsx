@@ -211,4 +211,151 @@ describe('BatchOperationsPanel', () => {
       expect(screen.queryByRole('button', { name: /^process 2 files$/i })).not.toBeInTheDocument();
     });
   });
+
+  /**
+   * File Rename Safety System - Batch Operations Warning (B5 Enhancement)
+   *
+   * TDD RED Phase - Safety warning before batch operations when filenameRewrite enabled
+   * Feature: Confirmation dialog showing file count before destructive batch rename
+   */
+  describe('Batch Operations Warning', () => {
+    beforeEach(() => {
+      // Mock window.confirm for batch confirmation tests
+      window.confirm = vi.fn();
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (window as any).electronAPI = {
+        batchGetStatus: vi.fn().mockResolvedValue({
+          queueId: null,
+          status: 'idle',
+          items: [],
+        }),
+        batchStart: vi.fn().mockResolvedValue('mock-queue-id'),
+        onBatchProgress: vi.fn().mockReturnValue(() => {}),
+        onTranscodeProgress: vi.fn().mockReturnValue(() => {}),
+      };
+    });
+
+    it('shows warning dialog before batch operation when filenameRewrite enabled', async () => {
+      render(
+        <BatchOperationsPanel
+          availableFiles={[
+            { id: '1', filename: 'test1.jpg', processedByAI: false },
+            { id: '2', filename: 'test2.jpg', processedByAI: false },
+          ]}
+          filenameRewrite={true}
+          onBatchComplete={vi.fn()}
+        />
+      );
+
+      const processButton = screen.getByRole('button', { name: /process 2 files/i });
+      processButton.click();
+
+      // Should call window.confirm with warning message
+      expect(window.confirm).toHaveBeenCalledWith(
+        expect.stringContaining('⚠️ Batch Rename Active')
+      );
+      expect(window.confirm).toHaveBeenCalledWith(
+        expect.stringContaining('2 files will be renamed')
+      );
+      expect(window.confirm).toHaveBeenCalledWith(
+        expect.stringContaining('Original filenames preserved in TapeName metadata')
+      );
+    });
+
+    it('proceeds with batch operation when user confirms warning', async () => {
+      (window.confirm as ReturnType<typeof vi.fn>).mockReturnValue(true); // User clicks OK
+
+      render(
+        <BatchOperationsPanel
+          availableFiles={[
+            { id: '1', filename: 'test1.jpg', processedByAI: false },
+            { id: '2', filename: 'test2.jpg', processedByAI: false },
+          ]}
+          filenameRewrite={true}
+          onBatchComplete={vi.fn()}
+        />
+      );
+
+      const processButton = screen.getByRole('button', { name: /process 2 files/i });
+      processButton.click();
+
+      // Should show confirmation
+      expect(window.confirm).toHaveBeenCalled();
+
+      // Should proceed with batch operation
+      const mockBatchStart = (window as any).electronAPI.batchStart;
+      expect(mockBatchStart).toHaveBeenCalledWith(['1', '2']);
+    });
+
+    it('cancels batch operation when user dismisses warning', async () => {
+      (window.confirm as ReturnType<typeof vi.fn>).mockReturnValue(false); // User clicks Cancel
+
+      render(
+        <BatchOperationsPanel
+          availableFiles={[
+            { id: '1', filename: 'test1.jpg', processedByAI: false },
+            { id: '2', filename: 'test2.jpg', processedByAI: false },
+          ]}
+          filenameRewrite={true}
+          onBatchComplete={vi.fn()}
+        />
+      );
+
+      const processButton = screen.getByRole('button', { name: /process 2 files/i });
+      processButton.click();
+
+      // Should show confirmation
+      expect(window.confirm).toHaveBeenCalled();
+
+      // Should NOT proceed with batch operation
+      const mockBatchStart = (window as any).electronAPI.batchStart;
+      expect(mockBatchStart).not.toHaveBeenCalled();
+    });
+
+    it('shows file count in warning dialog', async () => {
+      render(
+        <BatchOperationsPanel
+          availableFiles={[
+            { id: '1', filename: 'test1.jpg', processedByAI: false },
+            { id: '2', filename: 'test2.jpg', processedByAI: false },
+            { id: '3', filename: 'test3.jpg', processedByAI: false },
+          ]}
+          filenameRewrite={true}
+          onBatchComplete={vi.fn()}
+        />
+      );
+
+      const processButton = screen.getByRole('button', { name: /process 3 files/i });
+      processButton.click();
+
+      // Warning should include file count
+      expect(window.confirm).toHaveBeenCalledWith(
+        expect.stringContaining('3 files will be renamed')
+      );
+    });
+
+    it('does not show warning when filenameRewrite disabled', async () => {
+      render(
+        <BatchOperationsPanel
+          availableFiles={[
+            { id: '1', filename: 'test1.jpg', processedByAI: false },
+            { id: '2', filename: 'test2.jpg', processedByAI: false },
+          ]}
+          filenameRewrite={false}
+          onBatchComplete={vi.fn()}
+        />
+      );
+
+      const processButton = screen.getByRole('button', { name: /process 2 files/i });
+      processButton.click();
+
+      // Should NOT show confirmation
+      expect(window.confirm).not.toHaveBeenCalled();
+
+      // Should proceed directly with batch operation
+      const mockBatchStart = (window as any).electronAPI.batchStart;
+      expect(mockBatchStart).toHaveBeenCalledWith(['1', '2']);
+    });
+  });
 });
