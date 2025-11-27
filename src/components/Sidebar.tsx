@@ -103,12 +103,39 @@ export function Sidebar({
     );
   };
 
+  // Handle Select All button click
+  const handleSelectAll = () => {
+    if (!onToggleSelection) return;
+    files.forEach(file => {
+      onToggleSelection(file.id, true);
+    });
+  };
+
+  // Handle Deselect All button click
+  const handleDeselectAll = () => {
+    if (!onToggleSelection) return;
+    files.forEach(file => {
+      onToggleSelection(file.id, false);
+    });
+  };
+
   return (
     <aside className="sidebar" role="complementary" aria-label="File navigation">
       <div className="sidebar-header">
         <button onClick={onSelectFolder} className="sidebar-select-folder-btn">
           Select Folder
         </button>
+
+        {hasFiles && onToggleSelection && (
+          <div className="sidebar-selection-controls">
+            <button onClick={handleSelectAll} className="sidebar-selection-btn">
+              Select All
+            </button>
+            <button onClick={handleDeselectAll} className="sidebar-selection-btn">
+              Deselect All
+            </button>
+          </div>
+        )}
       </div>
 
       {!hasFiles && (

@@ -31,6 +31,29 @@
   background: #0051d5;
 }
 
+.sidebar-selection-controls {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.sidebar-selection-btn {
+  flex: 1;
+  padding: 6px 8px;
+  font-size: 12px;
+  background: #f0f0f0;
+  color: #333;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.2s;
+  font-weight: 500;
+}
+
+.sidebar-selection-btn:hover {
+  background: #e0e0e0;
+}
+
 .sidebar-empty-state {
   flex: 1;
   display: flex;
@@ -49,7 +72,9 @@
 }
 
 .sidebar-file-item {
-  display: block;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
   width: 100%;
   padding: 12px 16px;
   background: transparent;
@@ -71,7 +96,17 @@
   padding-left: 13px;
 }
 
+.sidebar-file-checkbox {
+  flex-shrink: 0;
+  margin-top: 2px;
+  cursor: pointer;
+  width: 16px;
+  height: 16px;
+}
+
 .sidebar-file-info {
+  flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 6px;

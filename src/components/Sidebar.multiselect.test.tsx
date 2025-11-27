@@ -283,4 +283,154 @@ describe('Sidebar - Multi-Select Feature (TDD RED)', () => {
       expect(checkbox).toBeChecked();
     });
   });
+
+  describe('Select All / Deselect All Controls', () => {
+    it('should render Select All button when files exist and onToggleSelection provided', () => {
+      // RED: This will fail - Select All button doesn't exist yet
+      const onSelectFolder = vi.fn();
+      const onSelectFile = vi.fn();
+      const onToggleSelection = vi.fn();
+      const selectedFileIds = new Set<string>();
+
+      render(
+        <Sidebar
+          files={mockFiles}
+          currentFileIndex={0}
+          onSelectFolder={onSelectFolder}
+          onSelectFile={onSelectFile}
+          selectedFileIds={selectedFileIds}
+          onToggleSelection={onToggleSelection}
+        />
+      );
+
+      const selectAllButton = screen.getByRole('button', { name: 'Select All' });
+      expect(selectAllButton).toBeInTheDocument();
+    });
+
+    it('should render Deselect All button when files exist and onToggleSelection provided', () => {
+      // RED: This will fail - Deselect All button doesn't exist yet
+      const onSelectFolder = vi.fn();
+      const onSelectFile = vi.fn();
+      const onToggleSelection = vi.fn();
+      const selectedFileIds = new Set<string>();
+
+      render(
+        <Sidebar
+          files={mockFiles}
+          currentFileIndex={0}
+          onSelectFolder={onSelectFolder}
+          onSelectFile={onSelectFile}
+          selectedFileIds={selectedFileIds}
+          onToggleSelection={onToggleSelection}
+        />
+      );
+
+      const deselectAllButton = screen.getByRole('button', { name: 'Deselect All' });
+      expect(deselectAllButton).toBeInTheDocument();
+    });
+
+    it('should NOT render selection control buttons when no files exist', () => {
+      // RED: Should not show buttons when file list is empty
+      const onSelectFolder = vi.fn();
+      const onSelectFile = vi.fn();
+      const onToggleSelection = vi.fn();
+      const selectedFileIds = new Set<string>();
+
+      render(
+        <Sidebar
+          files={[]}
+          currentFileIndex={0}
+          onSelectFolder={onSelectFolder}
+          onSelectFile={onSelectFile}
+          selectedFileIds={selectedFileIds}
+          onToggleSelection={onToggleSelection}
+        />
+      );
+
+      const selectAllButton = screen.queryByRole('button', { name: 'Select All' });
+      const deselectAllButton = screen.queryByRole('button', { name: 'Deselect All' });
+
+      expect(selectAllButton).not.toBeInTheDocument();
+      expect(deselectAllButton).not.toBeInTheDocument();
+    });
+
+    it('should NOT render selection control buttons when onToggleSelection is not provided', () => {
+      // RED: Should not show buttons when selection is disabled
+      const onSelectFolder = vi.fn();
+      const onSelectFile = vi.fn();
+
+      render(
+        <Sidebar
+          files={mockFiles}
+          currentFileIndex={0}
+          onSelectFolder={onSelectFolder}
+          onSelectFile={onSelectFile}
+        />
+      );
+
+      const selectAllButton = screen.queryByRole('button', { name: 'Select All' });
+      const deselectAllButton = screen.queryByRole('button', { name: 'Deselect All' });
+
+      expect(selectAllButton).not.toBeInTheDocument();
+      expect(deselectAllButton).not.toBeInTheDocument();
+    });
+
+    it('should call onToggleSelection for all files when Select All is clicked', async () => {
+      // RED: This will fail - Select All functionality doesn't exist yet
+      const user = userEvent.setup();
+      const onSelectFolder = vi.fn();
+      const onSelectFile = vi.fn();
+      const onToggleSelection = vi.fn();
+      const selectedFileIds = new Set<string>();
+
+      render(
+        <Sidebar
+          files={mockFiles}
+          currentFileIndex={0}
+          onSelectFolder={onSelectFolder}
+          onSelectFile={onSelectFile}
+          selectedFileIds={selectedFileIds}
+          onToggleSelection={onToggleSelection}
+        />
+      );
+
+      const selectAllButton = screen.getByRole('button', { name: 'Select All' });
+      await user.click(selectAllButton);
+
+      // Expect: onToggleSelection called for each file with true
+      expect(onToggleSelection).toHaveBeenCalledTimes(3);
+      expect(onToggleSelection).toHaveBeenCalledWith('file-001', true);
+      expect(onToggleSelection).toHaveBeenCalledWith('file-002', true);
+      expect(onToggleSelection).toHaveBeenCalledWith('file-003', true);
+    });
+
+    it('should call onToggleSelection for all files when Deselect All is clicked', async () => {
+      // RED: This will fail - Deselect All functionality doesn't exist yet
+      const user = userEvent.setup();
+      const onSelectFolder = vi.fn();
+      const onSelectFile = vi.fn();
+      const onToggleSelection = vi.fn();
+      const selectedFileIds = new Set(['file-001', 'file-002', 'file-003']);
+
+      render(
+        <Sidebar
+          files={mockFiles}
+          currentFileIndex={0}
+          onSelectFolder={onSelectFolder}
+          onSelectFile={onSelectFile}
+          selectedFileIds={selectedFileIds}
+          onToggleSelection={onToggleSelection}
+        />
+      );
+
+      const deselectAllButton = screen.getByRole('button', { name: 'Deselect All' });
+      await user.click(deselectAllButton);
+
+      // Expect: onToggleSelection called for each file with false
+      expect(onToggleSelection).toHaveBeenCalledTimes(3);
+      expect(onToggleSelection).toHaveBeenCalledWith('file-001', false);
+      expect(onToggleSelection).toHaveBeenCalledWith('file-002', false);
+      expect(onToggleSelection).toHaveBeenCalledWith('file-003', false);
+    });
+  });
 });
