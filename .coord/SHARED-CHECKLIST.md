@@ -536,15 +536,17 @@
 ---
 
 ## Last Updated
-2025-11-27 (Filename ID Stability Fix - holistic-orchestrator)
-**Tests:** 890/892 passing + 2 skipped (+5 new stability tests)
-**Branch:** main (includes PR #93 Filename ID Stability Fix)
+2025-11-27 (File Rename Safety + Lint Cleanup - holistic-orchestrator)
+**Tests:** 906/908 passing + 2 skipped (+16 new tests)
+**Branch:** fix/batch-operations-and-lint (8 commits ahead of main)
+**Lint:** 0 errors, 0 warnings (100% reduction from 153)
 
-**Latest Fix (PR #93):**
-- ✅ Polymorphic metadata lookup (cameraId as stable anchor)
-- ✅ cameraId hydration in scanFolder()
-- ✅ Double extension prevention
-- ✅ Defensive null check on metadata load failure
+**Session Work:**
+- ✅ File rename safety system (I7 Human Primacy - 3 warning mechanisms)
+- ✅ Backend/frontend coherence fix (filenameRewrite state alignment)
+- ✅ Lint cleanup (153→0 warnings, test exemption + proper types)
+- ✅ Security: HIGH vulnerability eliminated (npm audit fix)
+- ✅ UI: Select All/Deselect All, full width, checkbox alignment
 
 **Next Phase:** Phase 1b: Proxy Generation (ffmpeg + exiftool integration)
 

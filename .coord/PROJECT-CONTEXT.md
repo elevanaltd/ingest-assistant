@@ -1,6 +1,6 @@
 # Ingest Assistant - Project Context
 
-**Last Updated:** 2025-11-27 | **Version:** v2.2.0 baseline | **Branch:** main (includes PR #93 Filename ID Stability Fix)
+**Last Updated:** 2025-11-27 | **Version:** v2.2.0 baseline | **Branch:** fix/batch-operations-and-lint
 
 ---
 
@@ -34,10 +34,11 @@
 
 ### Branch Status
 ```
-Branch: main (includes PR #93 Filename ID Stability Fix)
-Tests:  890/892 passing + 2 skipped (+5 new stability tests)
-Lint:   0 errors, 150 warnings
+Branch: fix/batch-operations-and-lint (8 commits ahead of main)
+Tests:  906/908 passing + 2 skipped (+16 new tests)
+Lint:   0 errors, 0 warnings (100% reduction from 153)
 Types:  0 errors
+Security: 6 moderate vulns (HIGH eliminated via npm audit fix)
 ```
 
 ### Phase Progression
@@ -147,6 +148,26 @@ D0→D1→D2→D3(v1.1+OCTAVE)→B0(FINAL GO)→B2(Phase 1a COMPLETE)→Phase 1c
 - TDD: RED→GREEN commits visible (06ed7ac → 5c3ddca → 291b28a)
 - Quality gates: All passing
 
+### ✅ File Rename Safety System - COMPLETE (Branch: fix/batch-operations-and-lint)
+**I7 Human Primacy Enforcement:**
+- ✅ Checkbox warning dialog when enabling filenameRewrite
+- ✅ Session-ephemeral state (resets to false on app open)
+- ✅ Batch operations warning dialog before destructive operations
+- ✅ Backend/frontend coherence (both reset on startup)
+
+**Quality Improvements:**
+- ✅ Lint warnings: 153→0 (100% elimination)
+- ✅ Test file exemption for `any` types configured
+- ✅ Production code properly typed (`unknown` with guards)
+- ✅ Security: HIGH vulnerability eliminated (glob, js-yaml patched)
+
+**UI Enhancements:**
+- ✅ Select All/Deselect All buttons in sidebar
+- ✅ App opens at full screen width
+- ✅ Checkbox inline with filename (improved layout)
+
+**Commits:** e091fb6→3757275→56d2cc8→1e65d78→ab13473→5d36403→d3232f2→91cae52→d498693
+
 ### Immediate (Phase 1b: Proxy Generation) - NEXT
 1. **D2 Design:** ffmpeg + exiftool integration architecture
 2. **D3 Blueprint:** Progress UI, EXIF validation dialogs
@@ -196,12 +217,17 @@ D0→D1→D2→D3(v1.1+OCTAVE)→B0(FINAL GO)→B2(Phase 1a COMPLETE)→Phase 1c
 
 ---
 
-## Recent Commits (Last 5)
+## Recent Commits (Last 10)
 
 ```
+d498693 fix(i7): reset filenameRewrite on app startup (backend/frontend coherence)
+91cae52 feat(ui): sidebar improvements (select all, checkbox alignment, full width)
+d3232f2 fix: lift filenameRewrite state to App.tsx for BatchOperationsPanel
+5d36403 chore(security): run npm audit fix for vulnerabilities
+ab13473 fix(lint): add proper types to production code
+1e65d78 fix(lint): resolve unused variable warnings
+56d2cc8 chore(lint): configure test file exemption for any types
+3757275 feat: implement file rename safety system (GREEN)
+e091fb6 test: add failing tests for file rename safety system (RED)
 7308896 Merge pull request #93 from elevanaltd/fix/filename-id-stability
-291b28a fix: nullify metadata store on load failure (defensive hardening)
-5c3ddca feat: implement stable file ID lookup via cameraId (GREEN)
-06ed7ac test: add failing tests for filename ID stability (RED)
-3b66a49 Merge pull request #92 from elevanaltd/sync-claude-config-with-eav-monorepo
 ```
