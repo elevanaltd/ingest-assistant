@@ -1,0 +1,247 @@
+import { spawn } from 'child_process';
+
+/**
+ * ExifPreserver - Preserves DateTimeOriginal metadata from raw videos to proxies
+ *
+ * Features (Phase 1b B2.2):
+ * - 3-phase workflow: Extract → Transcode (ProxyGenerator) → Write → Verify
+ * - Batch operations for efficiency (single exiftool call per phase)
+ * - I1 compliance validation (chronological ordering preserved)
+ *
+ * B0 Condition 4 Compliance: EXIF DateTimeOriginal preservation with verification
+ */
+
+export interface ExifVerificationResult {
+  proxyPath: string;
+  rawDate: string | undefined;
+  proxyDate: string | undefined;
+  matches: boolean;
+}
+
+export class ExifPreserver {
+  /**
+   * Phase 1: Extract DateTimeOriginal from raw videos using exiftool -json
+   * Returns Map of rawPath -> DateTimeOriginal
+   */
+  async extractBatch(rawVideoPaths: string[]): Promise<Map<string, string>> {
+    if (rawVideoPaths.length === 0) {
+      return new Map();
+    }
+
+    return new Promise((resolve, reject) => {
+      const args = ['-json', '-DateTimeOriginal', ...rawVideoPaths];
+
+      console.log('[ExifPreserver] Extracting DateTimeOriginal from', rawVideoPaths.length, 'raw videos');
+      const exiftoolProcess = spawn('exiftool', args);
+
+      let stdout = '';
+      let stderr = '';
+
+      exiftoolProcess.stdout.on('data', (data) => {
+        stdout += data.toString();
+      });
+
+      exiftoolProcess.stderr.on('data', (data) => {
+        stderr += data.toString();
+      });
+
+      exiftoolProcess.on('close', (code) => {
+        if (code !== 0) {
+          console.error('[ExifPreserver] exiftool extraction failed:', stderr);
+          reject(new Error('Failed to extract EXIF data'));
+          return;
+        }
+
+        try {
+          const results = JSON.parse(stdout);
+          const dateMap = new Map<string, string>();
+
+          for (const result of results) {
+            if (result.DateTimeOriginal) {
+              dateMap.set(result.SourceFile, result.DateTimeOriginal);
+            }
+          }
+
+          console.log('[ExifPreserver] Extracted', dateMap.size, 'timestamps');
+          resolve(dateMap);
+        } catch (err) {
+          console.error('[ExifPreserver] Failed to parse exiftool output:', err);
+          reject(new Error('Failed to parse EXIF data'));
+        }
+      });
+
+      exiftoolProcess.on('error', (err) => {
+        console.error('[ExifPreserver] exiftool spawn error:', err);
+        reject(err);
+      });
+    });
+  }
+
+  /**
+   * Phase 3a: Write DateTimeOriginal to proxy videos using exiftool
+   * Accepts Map of proxyPath -> DateTimeOriginal
+   */
+  async writeBatch(proxyDateMap: Map<string, string>): Promise<void> {
+    if (proxyDateMap.size === 0) {
+      return;
+    }
+
+    return new Promise((resolve, reject) => {
+      // Build exiftool args: -overwrite_original -QuickTime:DateTimeOriginal=DATE1 FILE1 -QuickTime:DateTimeOriginal=DATE2 FILE2 ...
+      const args = ['-overwrite_original'];
+
+      for (const [proxyPath, dateTime] of proxyDateMap.entries()) {
+        args.push(`-QuickTime:DateTimeOriginal=${dateTime}`);
+        args.push(proxyPath);
+      }
+
+      console.log('[ExifPreserver] Writing DateTimeOriginal to', proxyDateMap.size, 'proxy videos');
+      const exiftoolProcess = spawn('exiftool', args);
+
+      let stderr = '';
+
+      exiftoolProcess.stderr.on('data', (data) => {
+        stderr += data.toString();
+      });
+
+      exiftoolProcess.on('close', (code) => {
+        if (code !== 0) {
+          console.error('[ExifPreserver] exiftool write failed:', stderr);
+          reject(new Error('Failed to write EXIF data'));
+          return;
+        }
+
+        console.log('[ExifPreserver] Write complete');
+        resolve();
+      });
+
+      exiftoolProcess.on('error', (err) => {
+        console.error('[ExifPreserver] exiftool spawn error:', err);
+        reject(err);
+      });
+    });
+  }
+
+  /**
+   * Phase 3b: Verify DateTimeOriginal matches between raw and proxies
+   * Returns verification results with I1 compliance status
+   */
+  async verifyBatch(
+    rawDateMap: Map<string, string>,
+    proxyPaths: string[]
+  ): Promise<ExifVerificationResult[]> {
+    return new Promise((resolve, reject) => {
+      const args = ['-json', '-DateTimeOriginal', ...proxyPaths];
+
+      console.log('[ExifPreserver] Verifying DateTimeOriginal in', proxyPaths.length, 'proxy videos');
+      const exiftoolProcess = spawn('exiftool', args);
+
+      let stdout = '';
+      let stderr = '';
+
+      exiftoolProcess.stdout.on('data', (data) => {
+        stdout += data.toString();
+      });
+
+      exiftoolProcess.stderr.on('data', (data) => {
+        stderr += data.toString();
+      });
+
+      exiftoolProcess.on('close', (code) => {
+        if (code !== 0) {
+          console.error('[ExifPreserver] exiftool verification failed:', stderr);
+          reject(new Error('Failed to verify EXIF data'));
+          return;
+        }
+
+        try {
+          const results = JSON.parse(stdout);
+          const verificationResults: ExifVerificationResult[] = [];
+
+          // Build lookup map of proxy -> proxyDate
+          const proxyDateMap = new Map<string, string | undefined>();
+          for (const result of results) {
+            proxyDateMap.set(result.SourceFile, result.DateTimeOriginal);
+          }
+
+          // Compare each proxy against raw
+          for (const [rawPath, rawDate] of rawDateMap.entries()) {
+            // Find corresponding proxy (assume {basename}_proxy.{ext} naming)
+            const proxyPath = proxyPaths.find(p => {
+              // Match by filename pattern
+              const rawBasename = rawPath.split('/').pop()?.replace('.MOV', '');
+              return p.includes(`${rawBasename}_proxy`);
+            });
+
+            if (!proxyPath) {
+              console.warn('[ExifPreserver] No proxy found for', rawPath);
+              continue;
+            }
+
+            const proxyDate = proxyDateMap.get(proxyPath);
+            const matches = proxyDate === rawDate;
+
+            verificationResults.push({
+              proxyPath,
+              rawDate,
+              proxyDate,
+              matches
+            });
+
+            if (!matches) {
+              console.warn('[ExifPreserver] I1 VIOLATION:', proxyPath, '- Expected:', rawDate, 'Got:', proxyDate);
+            }
+          }
+
+          console.log('[ExifPreserver] Verification complete -', verificationResults.filter(r => r.matches).length, '/', verificationResults.length, 'match');
+          resolve(verificationResults);
+        } catch (err) {
+          console.error('[ExifPreserver] Failed to parse verification output:', err);
+          reject(new Error('Failed to parse verification data'));
+        }
+      });
+
+      exiftoolProcess.on('error', (err) => {
+        console.error('[ExifPreserver] exiftool spawn error:', err);
+        reject(err);
+      });
+    });
+  }
+
+  /**
+   * Full workflow coordinator: Extract → Write → Verify
+   * Assumes proxies have been generated between extract and write phases
+   */
+  async preserveAndVerify(
+    rawPaths: string[],
+    proxyPaths: string[]
+  ): Promise<ExifVerificationResult[]> {
+    console.log('[ExifPreserver] Starting preserve-and-verify workflow');
+
+    // Phase 1: Extract DateTimeOriginal from raw videos
+    const rawDateMap = await this.extractBatch(rawPaths);
+
+    // Build proxyPath -> dateTime map for writing
+    const proxyDateMap = new Map<string, string>();
+    for (const [rawPath, dateTime] of rawDateMap.entries()) {
+      // Find corresponding proxy
+      const proxyPath = proxyPaths.find(p => {
+        const rawBasename = rawPath.split('/').pop()?.replace('.MOV', '');
+        return p.includes(`${rawBasename}_proxy`);
+      });
+
+      if (proxyPath) {
+        proxyDateMap.set(proxyPath, dateTime);
+      }
+    }
+
+    // Phase 3a: Write DateTimeOriginal to proxies
+    await this.writeBatch(proxyDateMap);
+
+    // Phase 3b: Verify DateTimeOriginal matches
+    const results = await this.verifyBatch(rawDateMap, proxyPaths);
+
+    console.log('[ExifPreserver] Workflow complete');
+    return results;
+  }
+}
