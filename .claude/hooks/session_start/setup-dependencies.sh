@@ -28,6 +28,15 @@ fi
 # Check if dependencies are already installed
 if [ -d "$INSTALL_DIR/node_modules" ] && [ -n "$(ls -A "$INSTALL_DIR/node_modules" 2>/dev/null)" ]; then
   echo "[SessionStart] ✓ Dependencies already installed"
+
+  # If in worktree, ensure symlink exists
+  if [ "$INSTALL_DIR" != "$HOOKS_DIR" ]; then
+    if [ ! -e "$HOOKS_DIR/node_modules" ]; then
+      echo "[SessionStart] Creating symlink to main repo node_modules"
+      ln -sfn "$INSTALL_DIR/node_modules" "$HOOKS_DIR/node_modules"
+    fi
+  fi
+
   exit 0
 fi
 
@@ -45,7 +54,13 @@ cd "$INSTALL_DIR" && npm install --silent > /dev/null 2>&1
 
 if [ $? -eq 0 ]; then
   echo "[SessionStart] ✓ Hook dependencies installed successfully"
-  echo "[SessionStart] All worktrees can now use shared node_modules via symlinks"
+
+  # If in worktree, create symlink to main repo's node_modules
+  if [ "$INSTALL_DIR" != "$HOOKS_DIR" ]; then
+    echo "[SessionStart] Creating symlink to main repo node_modules"
+    ln -sfn "$INSTALL_DIR/node_modules" "$HOOKS_DIR/node_modules"
+    echo "[SessionStart] ✓ Worktree symlink created"
+  fi
 else
   echo "[SessionStart] ✗ Failed to install dependencies - hooks may not work"
   exit 1
