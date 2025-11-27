@@ -220,10 +220,11 @@ export class ProxyGenerator {
     try {
       fs.unlinkSync(proxyPath);
       console.log('[ProxyGenerator] Cleaned up partial proxy:', proxyPath);
-    } catch (error: any) {
+    } catch (error) {
       // Ignore ENOENT (file doesn't exist) - other errors are logged but not thrown
-      if (error.code !== 'ENOENT') {
-        console.warn('[ProxyGenerator] Failed to cleanup partial proxy:', error.message);
+      const err = error as NodeJS.ErrnoException;
+      if (err.code !== 'ENOENT') {
+        console.warn('[ProxyGenerator] Failed to cleanup partial proxy:', err.message);
       }
     }
   }

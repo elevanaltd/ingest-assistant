@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { ProxyOrchestrator, ProxyJobConfig, ProxyJobResult } from './proxyOrchestrator';
+import { ProxyOrchestrator, ProxyJobConfig } from './proxyOrchestrator';
 import { ProxyGenerator } from './proxyGenerator';
 import { ExifPreserver } from './exifPreserver';
 
@@ -115,7 +115,7 @@ describe('ProxyOrchestrator', () => {
       };
 
       mockProxyGenerator.generateProxy.mockImplementation(
-        async (_source, _output, options) => {
+        async (_source: string, _output: string, options?: { onProgress?: (t: string, p: number) => void }) => {
           // Simulate progress events
           if (options?.onProgress) {
             options.onProgress('00:00:05.00', 50);
