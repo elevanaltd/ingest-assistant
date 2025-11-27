@@ -419,7 +419,7 @@ describe('ProxyGenerator', () => {
       const result = await transcodePromise;
 
       // Expected output: /Volumes/videos-proxy/test_proxy.MOV
-      expect(result).toBe(`${mockOutputDir}/test_proxy.MOV`);
+      expect(result).toBe(`${mockOutputDir}/test_proxy.mov`);
     });
 
     it('should resolve with output path on successful transcode', async () => {
@@ -436,7 +436,7 @@ describe('ProxyGenerator', () => {
 
       const result = await transcodePromise;
 
-      expect(result).toBe(`${mockOutputDir}/test_proxy.MOV`);
+      expect(result).toBe(`${mockOutputDir}/test_proxy.mov`);
     });
 
     it('should reject on ffmpeg failure (non-zero exit code)', async () => {
@@ -506,7 +506,7 @@ describe('ProxyGenerator', () => {
 
       const result = await transcodePromise;
 
-      expect(result).toBe(`${mockOutputDir}/test_proxy.MOV`);
+      expect(result).toBe(`${mockOutputDir}/test_proxy.mov`);
     });
   });
 
@@ -530,7 +530,7 @@ describe('ProxyGenerator', () => {
 
       const result = await transcodePromise;
 
-      expect(result).toBe(`${mockOutputDir}/test_proxy.MOV`);
+      expect(result).toBe(`${mockOutputDir}/test_proxy.mov`);
     });
 
     it('should accept custom output filename', async () => {
@@ -635,8 +635,8 @@ describe('ProxyGenerator', () => {
 
       await expect(transcodePromise).rejects.toThrow('Proxy generation failed');
 
-      // Should attempt to cleanup partial proxy
-      expect(fs.unlinkSync).toHaveBeenCalledWith(`${mockOutputDir}/test_proxy.MOV`);
+      // Should attempt to cleanup partial proxy (extension lowercase)
+      expect(fs.unlinkSync).toHaveBeenCalledWith(`${mockOutputDir}/test_proxy.mov`);
     });
 
     it('should remove partial proxy file on timeout', async () => {
@@ -654,8 +654,8 @@ describe('ProxyGenerator', () => {
 
       await expect(transcodePromise).rejects.toThrow('Transcode timeout');
 
-      // Should attempt to cleanup partial proxy
-      expect(fs.unlinkSync).toHaveBeenCalledWith(`${mockOutputDir}/test_proxy.MOV`);
+      // Should attempt to cleanup partial proxy (extension lowercase)
+      expect(fs.unlinkSync).toHaveBeenCalledWith(`${mockOutputDir}/test_proxy.mov`);
     });
 
     it('should handle cleanup gracefully if file does not exist', async () => {

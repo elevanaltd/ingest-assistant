@@ -1,6 +1,7 @@
 import { spawn } from 'child_process';
 import ffmpeg from '@ffmpeg-installer/ffmpeg';
 import * as path from 'path';
+import * as fs from 'fs';
 
 /**
  * ProxyGenerator - Generates 2560x1440 ProRes Proxy files for editing workflow
@@ -93,9 +94,21 @@ export class ProxyGenerator {
   ): Promise<string> {
     const { onProgress, outputFilename } = options;
 
+    // B2.4: Preflight Validation
+    // 1. Check source file exists
+    if (!fs.existsSync(sourceFile)) {
+      throw new Error('Source file does not exist');
+    }
+
+    // 2. Check source has video extension
+    const ext = path.extname(sourceFile).toLowerCase();
+    const validExtensions = ['.mov', '.mp4', '.avi', '.mkv', '.m4v', '.webm'];
+    if (!validExtensions.includes(ext)) {
+      throw new Error('Source file must be a video');
+    }
+
     // Determine output filename
     const basename = path.basename(sourceFile, path.extname(sourceFile));
-    const ext = path.extname(sourceFile);
     const defaultFilename = `${basename}_proxy${ext}`;
     const finalFilename = outputFilename || defaultFilename;
     const outputPath = path.join(outputDir, finalFilename);
@@ -134,6 +147,10 @@ export class ProxyGenerator {
       const timeoutHandle = setTimeout(() => {
         console.error('[ProxyGenerator] Timeout after', this.timeoutMs, 'ms');
         ffmpegProcess.kill();
+
+        // B2.5: Cleanup partial proxy on timeout
+        this.cleanupPartialProxy(outputPath);
+
         reject(new Error('Transcode timeout'));
       }, this.timeoutMs);
 
@@ -175,6 +192,10 @@ export class ProxyGenerator {
         } else {
           console.error('[ProxyGenerator] FFmpeg failed with code:', code);
           console.error('[ProxyGenerator] FFmpeg stderr:', stderr);
+
+          // B2.5: Cleanup partial proxy on failure
+          this.cleanupPartialProxy(outputPath);
+
           reject(new Error('Proxy generation failed'));
         }
       });
@@ -182,8 +203,28 @@ export class ProxyGenerator {
       ffmpegProcess.on('error', (err) => {
         clearTimeout(timeoutHandle);
         console.error('[ProxyGenerator] FFmpeg spawn error:', err);
+
+        // B2.5: Cleanup partial proxy on error
+        this.cleanupPartialProxy(outputPath);
+
         reject(err);
       });
     });
+  }
+
+  /**
+   * B2.5: Cleanup partial proxy file on failure
+   * Handles ENOENT gracefully (file may not exist yet)
+   */
+  private cleanupPartialProxy(proxyPath: string): void {
+    try {
+      fs.unlinkSync(proxyPath);
+      console.log('[ProxyGenerator] Cleaned up partial proxy:', proxyPath);
+    } catch (error: any) {
+      // Ignore ENOENT (file doesn't exist) - other errors are logged but not thrown
+      if (error.code !== 'ENOENT') {
+        console.warn('[ProxyGenerator] Failed to cleanup partial proxy:', error.message);
+      }
+    }
   }
 }
