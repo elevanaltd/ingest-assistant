@@ -12,9 +12,18 @@ interface SettingsModalProps {
   onClose: () => void;
   onSave: (config: LexiconConfig) => Promise<void>;
   initialConfig?: LexiconConfig;
+  // Session-ephemeral filenameRewrite state (lifted to App.tsx)
+  filenameRewrite?: boolean;
+  onFilenameRewriteChange?: (enabled: boolean) => void;
 }
 
-export function SettingsModal({ onClose, onSave, initialConfig }: SettingsModalProps) {
+export function SettingsModal({
+  onClose,
+  onSave,
+  initialConfig,
+  filenameRewrite: filenameRewriteProp = false,
+  onFilenameRewriteChange
+}: SettingsModalProps) {
   // Tab state
   const [activeTab, setActiveTab] = useState<'lexicon' | 'ai' | 'cfex' | 'ingestion'>('lexicon');
 
@@ -56,7 +65,11 @@ export function SettingsModal({ onClose, onSave, initialConfig }: SettingsModalP
   // CFEx toggle states (I7 Human Primacy - default OFF)
   const [aiAutoAnalyze, setAiAutoAnalyze] = useState(false);
   const [metadataWrite, setMetadataWrite] = useState(false);
-  const [filenameRewrite, setFilenameRewrite] = useState(false);
+  // filenameRewrite is controlled by parent (App.tsx) - use prop value
+  // Local state is fallback if prop not provided (backward compatibility)
+  const [filenameRewriteLocal, setFilenameRewriteLocal] = useState(false);
+  const filenameRewrite = onFilenameRewriteChange ? filenameRewriteProp : filenameRewriteLocal;
+  const setFilenameRewrite = onFilenameRewriteChange || setFilenameRewriteLocal;
   const [filenameTemplate, setFilenameTemplate] = useState('{location}-{subject}-{action}-{shotType}');
 
   // Ingestion settings save state
@@ -201,7 +214,7 @@ export function SettingsModal({ onClose, onSave, initialConfig }: SettingsModalP
           }
         });
     }
-  }, [activeTab]);
+  }, [activeTab, setFilenameRewrite]);
 
   const handleSaveLexicon = async () => {
     try {

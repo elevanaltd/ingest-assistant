@@ -44,6 +44,10 @@ function App() {
   const [isFolderCompleted, setIsFolderCompleted] = useState(false);
   const [isFolderLoading, setIsFolderLoading] = useState(false);
 
+  // Session-ephemeral: filenameRewrite always starts as false (I7 Human Primacy)
+  // User must consciously enable each session
+  const [filenameRewrite, setFilenameRewrite] = useState(false);
+
   // Force re-render on window resize to ensure UI layout recalculates
   // Fixes issue where batch processing causes UI to stop responding to window resize
   const [, forceUpdate] = useState(0);
@@ -983,6 +987,7 @@ function App() {
                 processedByAI: f.processedByAI,
               }))}
               selectedFileIds={selectedFileIds}
+              filenameRewrite={filenameRewrite}
               onBatchComplete={handleBatchComplete}
             />
 
@@ -1054,6 +1059,8 @@ function App() {
           onClose={handleSettingsClose}
           onSave={handleSaveLexicon}
           initialConfig={lexiconConfig}
+          filenameRewrite={filenameRewrite}
+          onFilenameRewriteChange={setFilenameRewrite}
         />
       )}
 
