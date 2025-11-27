@@ -110,12 +110,56 @@ export class MetadataStore {
 
   /**
    * Get metadata for a specific file
+   * Implements stable lookup via priority chain: fileId → cameraId → currentFilename → originalFilename
+   *
+   * Why this matters:
+   * - After rename: file.id changes (e.g., 'EB001535' → 'kitchen-')
+   * - cameraId stays immutable (always 'EB001535')
+   * - currentFilename updated to match renamed file
+   * - This method tries multiple lookup strategies to find metadata after rename
    */
   async getFileMetadata(fileId: string): Promise<FileMetadata | null> {
     if (!this.cache) {
       await this.loadMetadata();
     }
-    return this.cache![fileId] || null;
+
+    // Strategy 1: Direct lookup by fileId (works for new files or unrenamed files)
+    if (this.cache![fileId]) {
+      return this.cache![fileId];
+    }
+
+    // Strategy 2: Search by cameraId (handles renamed files)
+    // After rename, file.id changes but cameraId is stable
+    for (const metadata of Object.values(this.cache!)) {
+      if (metadata.cameraId === fileId) {
+        return metadata;
+      }
+    }
+
+    // Strategy 3: Search by currentFilename extraction (most common case)
+    // After rename via batch:start, currentFilename is updated to match new name
+    // Extract ID from currentFilename and compare
+    for (const metadata of Object.values(this.cache!)) {
+      if (metadata.currentFilename) {
+        const extractedId = path.parse(metadata.currentFilename).name.substring(0, 8);
+        if (extractedId === fileId) {
+          return metadata;
+        }
+      }
+    }
+
+    // Strategy 4: Search by originalFilename extraction (legacy fallback)
+    // For old records without cameraId, extract ID from originalFilename
+    for (const metadata of Object.values(this.cache!)) {
+      if (metadata.originalFilename) {
+        const extractedId = path.parse(metadata.originalFilename).name.substring(0, 8);
+        if (extractedId === fileId) {
+          return metadata;
+        }
+      }
+    }
+
+    return null;
   }
 
   /**
