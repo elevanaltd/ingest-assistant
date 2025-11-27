@@ -6,11 +6,13 @@ interface BatchOperationsPanelProps {
   availableFiles: Array<{ id: string; filename: string; processedByAI: boolean }>;
   /** Currently selected file IDs (optional - for multi-select batch processing) */
   selectedFileIds?: Set<string>;
+  /** Whether file renaming is enabled (triggers safety warning) */
+  filenameRewrite?: boolean;
   /** Callback when batch completes to refresh file list */
   onBatchComplete?: () => void;
 }
 
-export function BatchOperationsPanel({ availableFiles, selectedFileIds, onBatchComplete }: BatchOperationsPanelProps) {
+export function BatchOperationsPanel({ availableFiles, selectedFileIds, filenameRewrite = false, onBatchComplete }: BatchOperationsPanelProps) {
   const [queueState, setQueueState] = useState<BatchQueueState | null>(null);
   const [currentProgress, setCurrentProgress] = useState<BatchProgress | null>(null);
   const [isExpanded, setIsExpanded] = useState(false);
@@ -80,6 +82,16 @@ export function BatchOperationsPanel({ availableFiles, selectedFileIds, onBatchC
     const filesToProcess = unprocessedFiles.slice(0, BATCH_LIMIT);
     const remainingFiles = unprocessedFiles.length - filesToProcess.length;
 
+    // Show file rename warning if enabled
+    if (filenameRewrite) {
+      const renameConfirmed = window.confirm(
+        `⚠️ Batch Rename Active: File renaming is enabled. ` +
+        `${filesToProcess.length} files will be renamed during this batch operation. ` +
+        `Original filenames preserved in TapeName metadata. Continue?`
+      );
+      if (!renameConfirmed) return;
+    }
+
     // Warn user if files exceed limit
     if (remainingFiles > 0) {
       const proceed = confirm(
@@ -122,6 +134,16 @@ export function BatchOperationsPanel({ availableFiles, selectedFileIds, onBatchC
     // Convert Set to Array for batch processing
     const filesToProcess = Array.from(selectedFileIds);
 
+    // Show file rename warning if enabled
+    if (filenameRewrite) {
+      const renameConfirmed = window.confirm(
+        `⚠️ Batch Rename Active: File renaming is enabled. ` +
+        `${filesToProcess.length} files will be renamed during this batch operation. ` +
+        `Original filenames preserved in TapeName metadata. Continue?`
+      );
+      if (!renameConfirmed) return;
+    }
+
     try {
       await window.electronAPI.batchStart(filesToProcess);
       setIsExpanded(true);
@@ -150,6 +172,16 @@ export function BatchOperationsPanel({ availableFiles, selectedFileIds, onBatchC
 
     // Limit to 100 files per batch
     const actualFiles = filesToProcess.slice(0, 100);
+
+    // Show file rename warning if enabled
+    if (filenameRewrite) {
+      const renameConfirmed = window.confirm(
+        `⚠️ Batch Rename Active: File renaming is enabled. ` +
+        `${actualFiles.length} files will be renamed during this batch operation. ` +
+        `Original filenames preserved in TapeName metadata. Continue?`
+      );
+      if (!renameConfirmed) return;
+    }
 
     if (filesToProcess.length > 100) {
       const remainingFiles = filesToProcess.length - 100;

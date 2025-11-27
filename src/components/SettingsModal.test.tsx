@@ -935,6 +935,8 @@ describe('SettingsModal', () => {
     });
 
     it('should show filename template input only when filenameRewrite is enabled', async () => {
+      window.confirm = vi.fn().mockReturnValue(true); // User confirms the warning
+
       render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
 
       fireEvent.click(screen.getByText('File Ingestion'));
@@ -946,9 +948,12 @@ describe('SettingsModal', () => {
       // Filename template input should NOT be visible initially (filenameRewrite=false)
       expect(screen.queryByPlaceholderText(/\{location\}-\{subject\}-\{action\}-\{shotType\}/)).not.toBeInTheDocument();
 
-      // Enable filename rewrite toggle
+      // Enable filename rewrite toggle (will show confirmation)
       const filenameRewriteCheckbox = screen.getByLabelText(/Rename files using template/i);
       fireEvent.click(filenameRewriteCheckbox);
+
+      // Confirmation should have been shown
+      expect(window.confirm).toHaveBeenCalled();
 
       // Now filename template input should be visible
       await waitFor(() => {
@@ -1035,6 +1040,8 @@ describe('SettingsModal', () => {
     });
 
     it('should save filename template when filenameRewrite enabled', async () => {
+      window.confirm = vi.fn().mockReturnValue(true); // User confirms the warning
+
       render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
 
       fireEvent.click(screen.getByText('File Ingestion'));
@@ -1043,9 +1050,12 @@ describe('SettingsModal', () => {
         expect(window.electronAPI.loadConfig).toHaveBeenCalled();
       });
 
-      // Enable filename rewrite
+      // Enable filename rewrite (will show confirmation)
       const filenameRewriteCheckbox = screen.getByLabelText(/Rename files using template/i);
       fireEvent.click(filenameRewriteCheckbox);
+
+      // Confirmation should have been shown
+      expect(window.confirm).toHaveBeenCalled();
 
       // Template input should appear
       await waitFor(() => {
@@ -1064,7 +1074,7 @@ describe('SettingsModal', () => {
         expect(window.electronAPI.saveConfig).toHaveBeenCalledWith(
           expect.objectContaining({
             cfex: expect.objectContaining({
-              filenameRewrite: true,
+              filenameRewrite: false, // Session-ephemeral: always saved as false
               filenameTemplate: '{subject}-{shotType}'
             })
           })
@@ -1082,7 +1092,7 @@ describe('SettingsModal', () => {
           defaultVideos: '/Volumes/EAV_Video_RAW/',
           aiAutoAnalyze: true,
           metadataWrite: true,
-          filenameRewrite: true,
+          filenameRewrite: true, // Will be ignored (session-ephemeral)
           filenameTemplate: '{location}-{subject}-{shotType}'
         }
       });
@@ -1095,7 +1105,7 @@ describe('SettingsModal', () => {
         expect(window.electronAPI.loadConfig).toHaveBeenCalled();
       });
 
-      // All toggles should be checked
+      // aiAutoAnalyze and metadataWrite should be checked
       const aiAutoAnalyzeCheckbox = screen.getByLabelText(/AI Auto-Analyze after transfer/i) as HTMLInputElement;
       const metadataWriteCheckbox = screen.getByLabelText(/Write metadata to files/i) as HTMLInputElement;
       const filenameRewriteCheckbox = screen.getByLabelText(/Rename files using template/i) as HTMLInputElement;
@@ -1103,11 +1113,12 @@ describe('SettingsModal', () => {
       await waitFor(() => {
         expect(aiAutoAnalyzeCheckbox.checked).toBe(true);
         expect(metadataWriteCheckbox.checked).toBe(true);
-        expect(filenameRewriteCheckbox.checked).toBe(true);
+        // Session-ephemeral: filenameRewrite always loads as false
+        expect(filenameRewriteCheckbox.checked).toBe(false);
       });
 
-      // Filename template input should be visible
-      expect(screen.getByDisplayValue('{location}-{subject}-{shotType}')).toBeInTheDocument();
+      // Filename template input should NOT be visible (since filenameRewrite is false)
+      expect(screen.queryByDisplayValue('{location}-{subject}-{shotType}')).not.toBeInTheDocument();
     });
   });
 
