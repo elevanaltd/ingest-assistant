@@ -78,7 +78,7 @@ describe('ProxyGenerator', () => {
 
       expect(duration).toBe(20.5);
       expect(spawn).toHaveBeenCalledWith(
-        '/usr/local/bin/ffmpeg', // ffprobe path should use same installer
+        '/usr/local/bin/ffprobe', // ffprobe path (not ffmpeg)
         expect.arrayContaining([
           '-v', 'error',
           '-show_entries', 'format=duration',
@@ -167,10 +167,21 @@ describe('ProxyGenerator', () => {
     });
 
     it('should parse time= from ffmpeg stderr and calculate percentage', async () => {
-      const mockProcess = new EventEmitter() as any;
-      mockProcess.stderr = new EventEmitter();
+      // Mock ffprobe (duration extraction) - called first
+      const mockFfprobeProcess = new EventEmitter() as any;
+      mockFfprobeProcess.stdout = new EventEmitter();
+      mockFfprobeProcess.stderr = new EventEmitter();
 
-      vi.mocked(spawn).mockReturnValue(mockProcess);
+      // Mock ffmpeg (transcode) - called second
+      const mockFfmpegProcess = new EventEmitter() as any;
+      mockFfmpegProcess.stderr = new EventEmitter();
+
+      let callCount = 0;
+      vi.mocked(spawn).mockImplementation(() => {
+        callCount++;
+        if (callCount === 1) return mockFfprobeProcess; // First call: ffprobe
+        return mockFfmpegProcess; // Second call: ffmpeg
+      });
 
       const onProgress = vi.fn();
       const transcodePromise = generator.generateProxy(
@@ -180,18 +191,22 @@ describe('ProxyGenerator', () => {
       );
 
       setTimeout(() => {
-        // Simulate ffmpeg progress output for 20 second video
-        // Progress format: time=HH:MM:SS.MS
-        mockProcess.stderr.emit('data', Buffer.from('frame=  120 fps=24 time=00:00:05.00 bitrate=5000kbits/s'));
-        mockProcess.stderr.emit('data', Buffer.from('frame=  240 fps=24 time=00:00:10.00 bitrate=5000kbits/s'));
-        mockProcess.stderr.emit('data', Buffer.from('frame=  360 fps=24 time=00:00:15.00 bitrate=5000kbits/s'));
-        mockProcess.emit('close', 0);
+        // First: ffprobe returns duration (20 seconds)
+        mockFfprobeProcess.stdout.emit('data', Buffer.from('20.000000\n'));
+        mockFfprobeProcess.emit('close', 0);
       }, 10);
+
+      // Then: wait for ffmpeg to be spawned after duration extraction completes
+      setTimeout(() => {
+        mockFfmpegProcess.stderr.emit('data', Buffer.from('frame=  120 fps=24 time=00:00:05.00 bitrate=5000kbits/s'));
+        mockFfmpegProcess.stderr.emit('data', Buffer.from('frame=  240 fps=24 time=00:00:10.00 bitrate=5000kbits/s'));
+        mockFfmpegProcess.stderr.emit('data', Buffer.from('frame=  360 fps=24 time=00:00:15.00 bitrate=5000kbits/s'));
+        mockFfmpegProcess.emit('close', 0);
+      }, 50);
 
       await transcodePromise;
 
       // Progress callback should be called with time string and percentage
-      // Assuming 20 second video duration (extracted separately)
       expect(onProgress).toHaveBeenCalledTimes(3);
       expect(onProgress).toHaveBeenNthCalledWith(1, '00:00:05.00', 25);  // 5/20 = 25%
       expect(onProgress).toHaveBeenNthCalledWith(2, '00:00:10.00', 50);  // 10/20 = 50%
@@ -199,10 +214,21 @@ describe('ProxyGenerator', () => {
     });
 
     it('should calculate accurate progress for short clips (5 seconds)', async () => {
-      const mockProcess = new EventEmitter() as any;
-      mockProcess.stderr = new EventEmitter();
+      // Mock ffprobe (duration extraction)
+      const mockFfprobeProcess = new EventEmitter() as any;
+      mockFfprobeProcess.stdout = new EventEmitter();
+      mockFfprobeProcess.stderr = new EventEmitter();
 
-      vi.mocked(spawn).mockReturnValue(mockProcess);
+      // Mock ffmpeg (transcode)
+      const mockFfmpegProcess = new EventEmitter() as any;
+      mockFfmpegProcess.stderr = new EventEmitter();
+
+      let callCount = 0;
+      vi.mocked(spawn).mockImplementation(() => {
+        callCount++;
+        if (callCount === 1) return mockFfprobeProcess;
+        return mockFfmpegProcess;
+      });
 
       const onProgress = vi.fn();
       const transcodePromise = generator.generateProxy(
@@ -212,12 +238,18 @@ describe('ProxyGenerator', () => {
       );
 
       setTimeout(() => {
-        // 5 second video
-        mockProcess.stderr.emit('data', Buffer.from('time=00:00:01.00'));
-        mockProcess.stderr.emit('data', Buffer.from('time=00:00:02.50'));
-        mockProcess.stderr.emit('data', Buffer.from('time=00:00:04.00'));
-        mockProcess.emit('close', 0);
+        // ffprobe returns 5 second duration
+        mockFfprobeProcess.stdout.emit('data', Buffer.from('5.000000\n'));
+        mockFfprobeProcess.emit('close', 0);
       }, 10);
+
+      setTimeout(() => {
+        // ffmpeg progress for 5 second video
+        mockFfmpegProcess.stderr.emit('data', Buffer.from('time=00:00:01.00'));
+        mockFfmpegProcess.stderr.emit('data', Buffer.from('time=00:00:02.50'));
+        mockFfmpegProcess.stderr.emit('data', Buffer.from('time=00:00:04.00'));
+        mockFfmpegProcess.emit('close', 0);
+      }, 50);
 
       await transcodePromise;
 
@@ -228,10 +260,21 @@ describe('ProxyGenerator', () => {
     });
 
     it('should calculate accurate progress for long clips (60+ seconds)', async () => {
-      const mockProcess = new EventEmitter() as any;
-      mockProcess.stderr = new EventEmitter();
+      // Mock ffprobe (duration extraction)
+      const mockFfprobeProcess = new EventEmitter() as any;
+      mockFfprobeProcess.stdout = new EventEmitter();
+      mockFfprobeProcess.stderr = new EventEmitter();
 
-      vi.mocked(spawn).mockReturnValue(mockProcess);
+      // Mock ffmpeg (transcode)
+      const mockFfmpegProcess = new EventEmitter() as any;
+      mockFfmpegProcess.stderr = new EventEmitter();
+
+      let callCount = 0;
+      vi.mocked(spawn).mockImplementation(() => {
+        callCount++;
+        if (callCount === 1) return mockFfprobeProcess;
+        return mockFfmpegProcess;
+      });
 
       const onProgress = vi.fn();
       const transcodePromise = generator.generateProxy(
@@ -241,12 +284,18 @@ describe('ProxyGenerator', () => {
       );
 
       setTimeout(() => {
-        // 120 second video (2 minutes)
-        mockProcess.stderr.emit('data', Buffer.from('time=00:00:30.00'));
-        mockProcess.stderr.emit('data', Buffer.from('time=00:01:00.00'));
-        mockProcess.stderr.emit('data', Buffer.from('time=00:01:30.00'));
-        mockProcess.emit('close', 0);
+        // ffprobe returns 120 second duration
+        mockFfprobeProcess.stdout.emit('data', Buffer.from('120.000000\n'));
+        mockFfprobeProcess.emit('close', 0);
       }, 10);
+
+      setTimeout(() => {
+        // ffmpeg progress for 120 second video (2 minutes)
+        mockFfmpegProcess.stderr.emit('data', Buffer.from('time=00:00:30.00'));
+        mockFfmpegProcess.stderr.emit('data', Buffer.from('time=00:01:00.00'));
+        mockFfmpegProcess.stderr.emit('data', Buffer.from('time=00:01:30.00'));
+        mockFfmpegProcess.emit('close', 0);
+      }, 50);
 
       await transcodePromise;
 
@@ -340,12 +389,34 @@ describe('ProxyGenerator', () => {
     });
 
     it('should write proxy to output directory with correct filename', async () => {
-      const mockProcess = new EventEmitter() as any;
-      mockProcess.stderr = new EventEmitter();
+      // Mock ffprobe
+      const mockFfprobeProcess = new EventEmitter() as any;
+      mockFfprobeProcess.stdout = new EventEmitter();
+      mockFfprobeProcess.stderr = new EventEmitter();
 
-      vi.mocked(spawn).mockReturnValue(mockProcess);
+      // Mock ffmpeg
+      const mockFfmpegProcess = new EventEmitter() as any;
+      mockFfmpegProcess.stderr = new EventEmitter();
 
-      const result = await generator.generateProxy(mockSourceFile, mockOutputDir);
+      let callCount = 0;
+      vi.mocked(spawn).mockImplementation(() => {
+        callCount++;
+        if (callCount === 1) return mockFfprobeProcess;
+        return mockFfmpegProcess;
+      });
+
+      const transcodePromise = generator.generateProxy(mockSourceFile, mockOutputDir);
+
+      setTimeout(() => {
+        mockFfprobeProcess.stdout.emit('data', Buffer.from('20.000000\n'));
+        mockFfprobeProcess.emit('close', 0);
+      }, 10);
+
+      setTimeout(() => {
+        mockFfmpegProcess.emit('close', 0);
+      }, 50);
+
+      const result = await transcodePromise;
 
       // Expected output: /Volumes/videos-proxy/test_proxy.MOV
       expect(result).toBe(`${mockOutputDir}/test_proxy.MOV`);
@@ -463,17 +534,39 @@ describe('ProxyGenerator', () => {
     });
 
     it('should accept custom output filename', async () => {
-      const mockProcess = new EventEmitter() as any;
-      mockProcess.stderr = new EventEmitter();
+      // Mock ffprobe
+      const mockFfprobeProcess = new EventEmitter() as any;
+      mockFfprobeProcess.stdout = new EventEmitter();
+      mockFfprobeProcess.stderr = new EventEmitter();
 
-      vi.mocked(spawn).mockReturnValue(mockProcess);
+      // Mock ffmpeg
+      const mockFfmpegProcess = new EventEmitter() as any;
+      mockFfmpegProcess.stderr = new EventEmitter();
+
+      let callCount = 0;
+      vi.mocked(spawn).mockImplementation(() => {
+        callCount++;
+        if (callCount === 1) return mockFfprobeProcess;
+        return mockFfmpegProcess;
+      });
 
       const customName = 'custom_proxy.MOV';
-      const result = await generator.generateProxy(
+      const transcodePromise = generator.generateProxy(
         mockSourceFile,
         mockOutputDir,
         { outputFilename: customName }
       );
+
+      setTimeout(() => {
+        mockFfprobeProcess.stdout.emit('data', Buffer.from('20.000000\n'));
+        mockFfprobeProcess.emit('close', 0);
+      }, 10);
+
+      setTimeout(() => {
+        mockFfmpegProcess.emit('close', 0);
+      }, 50);
+
+      const result = await transcodePromise;
 
       expect(result).toBe(`${mockOutputDir}/${customName}`);
     });

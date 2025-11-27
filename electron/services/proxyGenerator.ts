@@ -1,0 +1,189 @@
+import { spawn } from 'child_process';
+import ffmpeg from '@ffmpeg-installer/ffmpeg';
+import * as path from 'path';
+
+/**
+ * ProxyGenerator - Generates 2560x1440 ProRes Proxy files for editing workflow
+ *
+ * Features (Phase 1b B2.1):
+ * - ffmpeg stderr `time=` parsing for progress (not 17.5% heuristic)
+ * - Duration extraction via ffprobe
+ * - Progress percentage calculation (currentTime / duration * 100)
+ * - 10-minute timeout per video
+ * - 2560x1440 ProRes Proxy profile
+ *
+ * B0 Condition 1 Compliance: Progress tracking via ffmpeg stderr parsing
+ */
+
+export interface ProxyGeneratorOptions {
+  timeoutMs?: number; // Default: 10 minutes
+}
+
+export interface GenerateProxyOptions {
+  onProgress?: (timeString: string, percentage: number) => void;
+  outputFilename?: string; // Custom filename (default: {basename}_proxy.{ext})
+}
+
+export class ProxyGenerator {
+  private timeoutMs: number;
+
+  constructor(options: ProxyGeneratorOptions = {}) {
+    this.timeoutMs = options.timeoutMs ?? 10 * 60 * 1000; // 10 minutes default
+  }
+
+  /**
+   * Extract duration from source video using ffprobe
+   * Returns duration in seconds
+   */
+  async extractDuration(sourceFile: string): Promise<number> {
+    return new Promise((resolve, reject) => {
+      const args = [
+        '-v', 'error',
+        '-show_entries', 'format=duration',
+        '-of', 'default=noprint_wrappers=1:nokey=1',
+        sourceFile
+      ];
+
+      console.log('[ProxyGenerator] Extracting duration via ffprobe:', sourceFile);
+      const ffprobeProcess = spawn(ffmpeg.path.replace('ffmpeg', 'ffprobe'), args);
+
+      let stdout = '';
+      let stderr = '';
+
+      ffprobeProcess.stdout.on('data', (data) => {
+        stdout += data.toString();
+      });
+
+      ffprobeProcess.stderr.on('data', (data) => {
+        stderr += data.toString();
+      });
+
+      ffprobeProcess.on('close', (code) => {
+        if (code !== 0) {
+          console.error('[ProxyGenerator] ffprobe failed:', stderr);
+          reject(new Error('Failed to extract duration'));
+          return;
+        }
+
+        const duration = parseFloat(stdout.trim());
+        if (isNaN(duration) || duration <= 0) {
+          reject(new Error('Invalid duration'));
+          return;
+        }
+
+        console.log('[ProxyGenerator] Duration:', duration, 'seconds');
+        resolve(duration);
+      });
+
+      ffprobeProcess.on('error', (err) => {
+        console.error('[ProxyGenerator] ffprobe spawn error:', err);
+        reject(err);
+      });
+    });
+  }
+
+  /**
+   * Generate 2560x1440 ProRes Proxy for source video
+   * Returns path to generated proxy file
+   */
+  async generateProxy(
+    sourceFile: string,
+    outputDir: string,
+    options: GenerateProxyOptions = {}
+  ): Promise<string> {
+    const { onProgress, outputFilename } = options;
+
+    // Determine output filename
+    const basename = path.basename(sourceFile, path.extname(sourceFile));
+    const ext = path.extname(sourceFile);
+    const defaultFilename = `${basename}_proxy${ext}`;
+    const finalFilename = outputFilename || defaultFilename;
+    const outputPath = path.join(outputDir, finalFilename);
+
+    // Extract duration first (for progress calculation)
+    let duration = 0;
+    try {
+      duration = await this.extractDuration(sourceFile);
+    } catch (err) {
+      console.warn('[ProxyGenerator] Could not extract duration:', err);
+      // Continue without duration - progress will show 0%
+    }
+
+    // Build ffmpeg args for 2560x1440 ProRes Proxy
+    const args = [
+      '-hide_banner',
+      '-y', // Overwrite output file
+      '-i', sourceFile,
+      '-vf', 'scale=2560:1440',
+      '-c:v', 'prores_ks',
+      '-profile:v', '0', // ProRes Proxy profile
+      '-vendor', 'apl0',
+      '-pix_fmt', 'yuv422p10le',
+      '-c:a', 'pcm_s16le',
+      outputPath
+    ];
+
+    console.log('[ProxyGenerator] Starting proxy generation:', sourceFile);
+    console.log('[ProxyGenerator] Output:', outputPath);
+
+    return new Promise((resolve, reject) => {
+      const ffmpegProcess = spawn(ffmpeg.path, args);
+      let stderr = '';
+
+      // Setup timeout
+      const timeoutHandle = setTimeout(() => {
+        console.error('[ProxyGenerator] Timeout after', this.timeoutMs, 'ms');
+        ffmpegProcess.kill();
+        reject(new Error('Transcode timeout'));
+      }, this.timeoutMs);
+
+      // Helper: Convert HH:MM:SS.MS to seconds
+      const timeToSeconds = (timeStr: string): number => {
+        const parts = timeStr.split(':');
+        const hours = parseInt(parts[0], 10);
+        const minutes = parseInt(parts[1], 10);
+        const seconds = parseFloat(parts[2]);
+        return hours * 3600 + minutes * 60 + seconds;
+      };
+
+      ffmpegProcess.stderr.on('data', (data) => {
+        const chunk = data.toString();
+        stderr += chunk;
+
+        // Parse progress from time= line
+        if (chunk.includes('time=')) {
+          const match = chunk.match(/time=(\d+:\d+:\d+\.\d+)/);
+          if (match) {
+            const currentTime = timeToSeconds(match[1]);
+            const percentage = duration > 0 ? Math.round((currentTime / duration) * 100) : 0;
+
+            console.log('[ProxyGenerator] Progress:', match[1], `(${percentage}%)`);
+
+            if (onProgress) {
+              onProgress(match[1], percentage);
+            }
+          }
+        }
+      });
+
+      ffmpegProcess.on('close', (code) => {
+        clearTimeout(timeoutHandle);
+
+        if (code === 0) {
+          console.log('[ProxyGenerator] Proxy generation complete:', outputPath);
+          resolve(outputPath);
+        } else {
+          console.error('[ProxyGenerator] FFmpeg failed with code:', code);
+          console.error('[ProxyGenerator] FFmpeg stderr:', stderr);
+          reject(new Error('Proxy generation failed'));
+        }
+      });
+
+      ffmpegProcess.on('error', (err) => {
+        clearTimeout(timeoutHandle);
+        console.error('[ProxyGenerator] FFmpeg spawn error:', err);
+        reject(err);
+      });
+    });
+  }
+}
