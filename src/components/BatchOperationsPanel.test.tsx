@@ -358,4 +358,41 @@ describe('BatchOperationsPanel', () => {
       expect(mockBatchStart).toHaveBeenCalledWith(['1', '2']);
     });
   });
+
+  /**
+   * B2.7_03: Button Renaming with AI Prefix (TDD RED Phase)
+   *
+   * Purpose: Clarify that existing buttons perform AI processing (not proxy generation)
+   * Buttons renamed: "Process X Files" → "AI Process X Files"
+   *                  "Reprocess All X Files" → "AI Reprocess All X Files"
+   */
+  describe('AI Button Prefix (B2.7_03)', () => {
+    it('should display "AI Process X Files" button with AI prefix', () => {
+      render(
+        <BatchOperationsPanel
+          availableFiles={[
+            { id: '1', filename: 'test1.jpg', processedByAI: false },
+            { id: '2', filename: 'test2.jpg', processedByAI: false },
+          ]}
+          onBatchComplete={vi.fn()}
+        />
+      );
+
+      expect(screen.getByRole('button', { name: /^AI Process 2 Files$/i })).toBeInTheDocument();
+    });
+
+    it('should display "AI Reprocess All X Files" button with AI prefix', () => {
+      render(
+        <BatchOperationsPanel
+          availableFiles={[
+            { id: '1', filename: 'test1.jpg', processedByAI: true },
+            { id: '2', filename: 'test2.jpg', processedByAI: true },
+          ]}
+          onBatchComplete={vi.fn()}
+        />
+      );
+
+      expect(screen.getByRole('button', { name: /^AI Reprocess All 2 Files$/i })).toBeInTheDocument();
+    });
+  });
 });
