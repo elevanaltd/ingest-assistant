@@ -530,4 +530,153 @@ describe('BatchOperationsPanel', () => {
       expect(screen.getByRole('button', { name: /generate proxies for 5 videos/i })).toBeInTheDocument();
     });
   });
+
+  /**
+   * B2.7_04b: Proxy Button Selection-Aware Behavior (TDD RED Phase)
+   *
+   * Purpose: Make proxy generation button selection-aware (mirrors AI Process pattern)
+   * Features:
+   * - Button shows ALL video count when no selection
+   * - Button shows SELECTED video count when files selected (filtered to videos)
+   * - Clicking processes ALL videos when none selected
+   * - Clicking processes only SELECTED videos when some selected
+   */
+  describe('Proxy Button Selection-Aware (B2.7_04b)', () => {
+    const mockGenerateProxies = vi.fn().mockResolvedValue({
+      success: true,
+      completedCount: 2,
+      failedCount: 0,
+      failedFiles: [],
+      verificationFailures: [],
+    });
+
+    beforeEach(() => {
+      // Mock window.electronAPI.proxy for proxy generation tests
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (window as any).electronAPI = {
+        ...(window as any).electronAPI,
+        proxy: {
+          generateProxies: mockGenerateProxies,
+          onProxyProgress: vi.fn().mockReturnValue(() => {}),
+        },
+      };
+    });
+
+    it('should show ALL video count when no files selected', () => {
+      render(
+        <BatchOperationsPanel
+          availableFiles={[
+            { id: '1', filename: 'video1.mov', processedByAI: false },
+            { id: '2', filename: 'video2.mp4', processedByAI: false },
+            { id: '3', filename: 'photo1.jpg', processedByAI: false },
+          ]}
+          selectedFileIds={new Set()}
+          onBatchComplete={vi.fn()}
+        />
+      );
+
+      // Should show 2 videos (photo excluded)
+      expect(screen.getByRole('button', { name: /generate proxies for 2 videos/i })).toBeInTheDocument();
+    });
+
+    it('should show SELECTED video count when files selected', () => {
+      render(
+        <BatchOperationsPanel
+          availableFiles={[
+            { id: '1', filename: 'video1.mov', processedByAI: false },
+            { id: '2', filename: 'video2.mp4', processedByAI: false },
+            { id: '3', filename: 'video3.mov', processedByAI: false },
+            { id: '4', filename: 'photo1.jpg', processedByAI: false },
+          ]}
+          selectedFileIds={new Set(['1', '4'])} // 1 video + 1 photo selected
+          onBatchComplete={vi.fn()}
+        />
+      );
+
+      // Should show 1 video (video1.mov selected, photo1.jpg ignored)
+      expect(screen.getByRole('button', { name: /generate proxies for 1 video/i })).toBeInTheDocument();
+    });
+
+    it('should process ALL videos when no files selected', async () => {
+      render(
+        <BatchOperationsPanel
+          availableFiles={[
+            { id: '/path/video1.mov', filename: 'video1.mov', processedByAI: false },
+            { id: '/path/video2.mp4', filename: 'video2.mp4', processedByAI: false },
+            { id: '/path/photo1.jpg', filename: 'photo1.jpg', processedByAI: false },
+          ]}
+          selectedFileIds={new Set()}
+          onBatchComplete={vi.fn()}
+        />
+      );
+
+      const proxyButton = screen.getByRole('button', { name: /generate proxies for 2 videos/i });
+      proxyButton.click();
+
+      // Should call with ALL video filenames (photo excluded)
+      expect(mockGenerateProxies).toHaveBeenCalledWith(
+        expect.objectContaining({
+          videoFilenames: ['video1.mov', 'video2.mp4'],
+        })
+      );
+    });
+
+    it('should process only SELECTED videos when files selected', async () => {
+      render(
+        <BatchOperationsPanel
+          availableFiles={[
+            { id: '/path/video1.mov', filename: 'video1.mov', processedByAI: false },
+            { id: '/path/video2.mp4', filename: 'video2.mp4', processedByAI: false },
+            { id: '/path/video3.mov', filename: 'video3.mov', processedByAI: false },
+            { id: '/path/photo1.jpg', filename: 'photo1.jpg', processedByAI: false },
+          ]}
+          selectedFileIds={new Set(['/path/video1.mov', '/path/photo1.jpg'])} // 1 video + 1 photo
+          onBatchComplete={vi.fn()}
+        />
+      );
+
+      const proxyButton = screen.getByRole('button', { name: /generate proxies for 1 video/i });
+      proxyButton.click();
+
+      // Should call with ONLY selected video filename (photo excluded)
+      expect(mockGenerateProxies).toHaveBeenCalledWith(
+        expect.objectContaining({
+          videoFilenames: ['video1.mov'],
+        })
+      );
+    });
+
+    it('should disable button when no videos in selection', () => {
+      render(
+        <BatchOperationsPanel
+          availableFiles={[
+            { id: '1', filename: 'video1.mov', processedByAI: false },
+            { id: '2', filename: 'photo1.jpg', processedByAI: false },
+            { id: '3', filename: 'photo2.jpg', processedByAI: false },
+          ]}
+          selectedFileIds={new Set(['2', '3'])} // Only photos selected
+          onBatchComplete={vi.fn()}
+        />
+      );
+
+      const proxyButton = screen.getByRole('button', { name: /no videos to process/i });
+      expect(proxyButton).toBeDisabled();
+    });
+
+    it('should handle singular "Video" when count is 1', () => {
+      render(
+        <BatchOperationsPanel
+          availableFiles={[
+            { id: '1', filename: 'video1.mov', processedByAI: false },
+            { id: '2', filename: 'photo1.jpg', processedByAI: false },
+          ]}
+          selectedFileIds={new Set(['1'])} // 1 video selected
+          onBatchComplete={vi.fn()}
+        />
+      );
+
+      // Should show "1 Video" (singular)
+      expect(screen.getByRole('button', { name: /generate proxies for 1 video$/i })).toBeInTheDocument();
+    });
+  });
 });
