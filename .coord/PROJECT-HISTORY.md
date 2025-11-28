@@ -2,12 +2,34 @@
 
 **Purpose:** Archive of completed work, major milestones, and historical decisions. Consult when needing context on past implementations.
 
-**Last Updated:** 2025-11-27
+**Last Updated:** 2025-11-28
+
+---
+
+## 2025-11-28 Session: Proxy Folder Path Wiring (Bug Fix)
+**Status:** COMPLETE | **Tests:** 994/1002 (+67)
+
+### Completed
+- BUG_FIX::proxy_folder_paths→currentFolderPath_prop+selectFolder_dialog→ZodError_eliminated
+- TDD::RED→GREEN→5_tests→folder_selection+path_wiring+cancellation→all_passing
+
+### Implementation
+- BatchOperationsPanel::currentFolderPath_prop→rawVideoFolder_population
+- selectFolder_dialog→proxyOutputFolder_user_selection→defaultPath=currentFolderPath
+- App.tsx::folderPath→BatchOperationsPanel[wiring]→paths_properly_populated
+
+### Problem Solved
+- ZodError[rawVideoFolder='',proxyOutputFolder='']⇒user_folder_selection⇒valid_paths_passed_to_IPC
+- Button_click_failure⇒async_folder_selection+await⇒graceful_cancellation
+
+### Quality
+TRACED: T✅ R✅ E✅ D✅
+QG: Lint✅(0/0) Typecheck✅ Tests994/1002✅
 
 ---
 
 ## 2025-11-27 Session: Phase 1b D2-B0 Orchestration + B2.1 Implementation
-**Status:** IN_PROGRESS | **Tests:** 927/929 (+21)
+**Status:** COMPLETE | **Tests:** 927/929 (+21)
 
 ### Completed
 - ORCHESTRATION::D2.1→D2.2→D2.3→D3.1→D3.2→B0→Progressive_Fidelity_Architecture
