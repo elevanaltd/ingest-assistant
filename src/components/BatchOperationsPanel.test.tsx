@@ -395,4 +395,139 @@ describe('BatchOperationsPanel', () => {
       expect(screen.getByRole('button', { name: /^AI Reprocess All 2 Files$/i })).toBeInTheDocument();
     });
   });
+
+  /**
+   * B2.7_04: Generate Proxies Button (TDD RED Phase)
+   *
+   * Purpose: Add proxy generation button to batch operations panel
+   * Features:
+   * - Button displays "Generate Proxies for X Videos"
+   * - Only counts video files (.mov, .mp4, .MOV, .MP4)
+   * - Disabled when no video files present
+   * - Enabled when video files present
+   * - Calls proxy:generateProxies IPC with correct parameters
+   */
+  describe('Generate Proxies Button (B2.7_04)', () => {
+    const mockGenerateProxies = vi.fn().mockResolvedValue({
+      success: true,
+      completedCount: 2,
+      failedCount: 0,
+      failedFiles: [],
+      verificationFailures: [],
+    });
+
+    beforeEach(() => {
+      // Mock window.electronAPI.proxy for proxy generation tests
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (window as any).electronAPI = {
+        ...(window as any).electronAPI,
+        proxy: {
+          generateProxies: mockGenerateProxies,
+          onProxyProgress: vi.fn().mockReturnValue(() => {}),
+        },
+      };
+    });
+
+    it('should render "Generate Proxies for X Videos" button', () => {
+      render(
+        <BatchOperationsPanel
+          availableFiles={[
+            { id: '1', filename: 'test1.mov', processedByAI: false },
+            { id: '2', filename: 'test2.mp4', processedByAI: false },
+          ]}
+          onBatchComplete={vi.fn()}
+        />
+      );
+
+      expect(screen.getByRole('button', { name: /generate proxies for.*videos/i })).toBeInTheDocument();
+    });
+
+    it('should only count video files in button label', () => {
+      render(
+        <BatchOperationsPanel
+          availableFiles={[
+            { id: '1', filename: 'photo1.jpg', processedByAI: false },
+            { id: '2', filename: 'video1.mov', processedByAI: false },
+            { id: '3', filename: 'photo2.png', processedByAI: false },
+            { id: '4', filename: 'video2.mp4', processedByAI: false },
+          ]}
+          onBatchComplete={vi.fn()}
+        />
+      );
+
+      // Should show 2 videos, not 4 files
+      expect(screen.getByRole('button', { name: /generate proxies for 2 videos/i })).toBeInTheDocument();
+    });
+
+    it('should disable button when no video files present', () => {
+      render(
+        <BatchOperationsPanel
+          availableFiles={[
+            { id: '1', filename: 'photo1.jpg', processedByAI: false },
+            { id: '2', filename: 'photo2.png', processedByAI: false },
+          ]}
+          onBatchComplete={vi.fn()}
+        />
+      );
+
+      const proxyButton = screen.getByRole('button', { name: /no videos to process/i });
+      expect(proxyButton).toBeDisabled();
+    });
+
+    it('should enable button when video files present', () => {
+      render(
+        <BatchOperationsPanel
+          availableFiles={[
+            { id: '1', filename: 'video1.mov', processedByAI: false },
+            { id: '2', filename: 'video2.MP4', processedByAI: false },
+          ]}
+          onBatchComplete={vi.fn()}
+        />
+      );
+
+      const proxyButton = screen.getByRole('button', { name: /generate proxies for 2 videos/i });
+      expect(proxyButton).toBeEnabled();
+    });
+
+    it('should call proxy:generateProxies IPC when clicked', async () => {
+      render(
+        <BatchOperationsPanel
+          availableFiles={[
+            { id: '/path/to/video1.mov', filename: 'video1.mov', processedByAI: false },
+            { id: '/path/to/video2.mp4', filename: 'video2.mp4', processedByAI: false },
+          ]}
+          onBatchComplete={vi.fn()}
+        />
+      );
+
+      const proxyButton = screen.getByRole('button', { name: /generate proxies for 2 videos/i });
+      proxyButton.click();
+
+      // Should call generateProxies with video filenames
+      expect(mockGenerateProxies).toHaveBeenCalledWith(
+        expect.objectContaining({
+          videoFilenames: ['video1.mov', 'video2.mp4'],
+        })
+      );
+    });
+
+    it('should recognize all video file extensions (case insensitive)', () => {
+      render(
+        <BatchOperationsPanel
+          availableFiles={[
+            { id: '1', filename: 'test1.mov', processedByAI: false },
+            { id: '2', filename: 'test2.MOV', processedByAI: false },
+            { id: '3', filename: 'test3.mp4', processedByAI: false },
+            { id: '4', filename: 'test4.MP4', processedByAI: false },
+            { id: '5', filename: 'test5.m4v', processedByAI: false },
+            { id: '6', filename: 'photo.jpg', processedByAI: false },
+          ]}
+          onBatchComplete={vi.fn()}
+        />
+      );
+
+      // Should count 5 videos (.mov, .MOV, .mp4, .MP4, .m4v)
+      expect(screen.getByRole('button', { name: /generate proxies for 5 videos/i })).toBeInTheDocument();
+    });
+  });
 });
