@@ -57,6 +57,9 @@ interface TransferResult {
   duration: number
   validationWarnings: ValidationWarning[]
   errors: TransferError[]
+  transferredFiles?: {
+    rawVideos?: string[]
+  }
 }
 
 interface TransferState {
@@ -552,6 +555,25 @@ export function CfexTransferWindow() {
         warnings: result.validationWarnings || [],
         errors: result.errors || []
       }))
+
+      // After successful transfer, trigger proxy generation if enabled (fire-and-forget)
+      if (state.enabledDestinations.proxies && result.transferredFiles?.rawVideos && result.transferredFiles.rawVideos.length > 0) {
+        // Extract just filenames from raw video paths
+        const videoFilenames = result.transferredFiles.rawVideos.map(
+          (filePath: string) => filePath.split('/').pop() || filePath
+        )
+
+        // Fire-and-forget: don't await, let it run in background
+        window.electronAPI.proxy.generateProxies({
+          rawVideoFolder: state.destinationPaths.rawVideos,
+          proxyOutputFolder: state.destinationPaths.proxies,
+          videoFilenames
+        }).catch((proxyError) => {
+          // Fail-log-continue: log error but don't change transfer status
+          console.error('Proxy generation failed:', proxyError)
+          // Optionally show warning notification, but transfer still succeeds
+        })
+      }
     } catch (error) {
       console.error('[CfexTransferWindow] Transfer failed:', error)
       setState(prev => ({
@@ -630,7 +652,10 @@ export function CfexTransferWindow() {
             cursor: canStart ? 'pointer' : 'not-allowed'
           }}
         >
-          {state.status === 'idle' ? 'Start Transfer' : 'Transfer In Progress...'}
+          {state.status === 'idle' ? 'Start Transfer' :
+           state.status === 'complete' ? 'Transfer Complete' :
+           state.status === 'error' ? 'Transfer Failed' :
+           'Transfer In Progress...'}
         </button>
 
         {isTransferring && (
