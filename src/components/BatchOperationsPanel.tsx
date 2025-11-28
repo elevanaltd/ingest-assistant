@@ -10,9 +10,11 @@ interface BatchOperationsPanelProps {
   filenameRewrite?: boolean;
   /** Callback when batch completes to refresh file list */
   onBatchComplete?: () => void;
+  /** Path to current folder being browsed (used for rawVideoFolder in proxy generation) */
+  currentFolderPath?: string;
 }
 
-export function BatchOperationsPanel({ availableFiles, selectedFileIds, filenameRewrite = false, onBatchComplete }: BatchOperationsPanelProps) {
+export function BatchOperationsPanel({ availableFiles, selectedFileIds, filenameRewrite = false, onBatchComplete, currentFolderPath }: BatchOperationsPanelProps) {
   const [queueState, setQueueState] = useState<BatchQueueState | null>(null);
   const [currentProgress, setCurrentProgress] = useState<BatchProgress | null>(null);
   const [isExpanded, setIsExpanded] = useState(false);
@@ -237,15 +239,21 @@ export function BatchOperationsPanel({ availableFiles, selectedFileIds, filename
       return;
     }
 
+    // Prompt user to select proxy output folder
+    const proxyOutputFolder = await window.electronAPI.selectFolder(currentFolderPath);
+
+    if (!proxyOutputFolder) {
+      // User cancelled folder selection
+      return;
+    }
+
     try {
       // Extract filenames from file IDs
       const videoFilenames = selectedVideoFiles.map(f => f.filename);
 
-      // TODO: Need to get rawVideoFolder and proxyOutputFolder from somewhere
-      // For now, using placeholder - this needs to be wired from parent or settings
       const result = await window.electronAPI.proxy.generateProxies({
-        rawVideoFolder: '', // TODO: wire from parent component
-        proxyOutputFolder: '', // TODO: wire from parent component
+        rawVideoFolder: currentFolderPath || '',
+        proxyOutputFolder: proxyOutputFolder,
         videoFilenames: videoFilenames,
       });
 

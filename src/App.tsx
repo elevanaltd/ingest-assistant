@@ -988,6 +988,7 @@ function App() {
               }))}
               selectedFileIds={selectedFileIds}
               filenameRewrite={filenameRewrite}
+              currentFolderPath={folderPath}
               onBatchComplete={handleBatchComplete}
             />
 
