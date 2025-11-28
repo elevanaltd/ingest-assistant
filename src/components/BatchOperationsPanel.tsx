@@ -287,9 +287,9 @@ export function BatchOperationsPanel({ availableFiles, selectedFileIds, filename
               }}
             >
               {unprocessedCount > 100
-                ? `Process First 100 Files`
+                ? `AI Process First 100 Files`
                 : unprocessedCount > 0
-                ? `Process ${unprocessedCount} File${unprocessedCount !== 1 ? 's' : ''}`
+                ? `AI Process ${unprocessedCount} File${unprocessedCount !== 1 ? 's' : ''}`
                 : 'No Files to Process'
               }
             </button>
@@ -317,8 +317,8 @@ export function BatchOperationsPanel({ availableFiles, selectedFileIds, filename
               }}
             >
               {totalFiles > 100
-                ? `Reprocess First 100 Files`
-                : `Reprocess All ${totalFiles} File${totalFiles !== 1 ? 's' : ''}`
+                ? `AI Reprocess First 100 Files`
+                : `AI Reprocess All ${totalFiles} File${totalFiles !== 1 ? 's' : ''}`
               }
             </button>
           )}

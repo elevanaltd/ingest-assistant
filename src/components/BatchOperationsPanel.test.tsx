@@ -57,7 +57,7 @@ describe('BatchOperationsPanel', () => {
       />
     );
 
-    expect(screen.getByRole('button', { name: /^process.*file/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^AI Process.*file/i })).toBeInTheDocument();
   });
 
   it('should disable process button when no unprocessed files', () => {
@@ -97,7 +97,7 @@ describe('BatchOperationsPanel', () => {
       />
     );
 
-    expect(screen.getByRole('button', { name: /reprocess all/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /AI Reprocess All/i })).toBeInTheDocument();
   });
 
   it('should show total file count for reprocess button', () => {
@@ -113,7 +113,7 @@ describe('BatchOperationsPanel', () => {
     );
 
     // Should show reprocess for all 3 files
-    expect(screen.getByRole('button', { name: /reprocess.*3.*file/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /AI Reprocess.*3.*file/i })).toBeInTheDocument();
   });
 
   // Phase 3: Multi-select batch processing tests (TDD - RED phase)
@@ -208,7 +208,7 @@ describe('BatchOperationsPanel', () => {
       expect(screen.getByRole('button', { name: /process selected.*1.*file/i })).toBeInTheDocument();
 
       // Assert: Regular batch button should not appear (replaced by Process Selected)
-      expect(screen.queryByRole('button', { name: /^process 2 files$/i })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /^AI Process 2 Files$/i })).not.toBeInTheDocument();
     });
   });
 
@@ -248,7 +248,7 @@ describe('BatchOperationsPanel', () => {
         />
       );
 
-      const processButton = screen.getByRole('button', { name: /process 2 files/i });
+      const processButton = screen.getByRole('button', { name: /AI Process 2 Files/i });
       processButton.click();
 
       // Should call window.confirm with warning message
@@ -277,7 +277,7 @@ describe('BatchOperationsPanel', () => {
         />
       );
 
-      const processButton = screen.getByRole('button', { name: /process 2 files/i });
+      const processButton = screen.getByRole('button', { name: /AI Process 2 Files/i });
       processButton.click();
 
       // Should show confirmation
@@ -302,7 +302,7 @@ describe('BatchOperationsPanel', () => {
         />
       );
 
-      const processButton = screen.getByRole('button', { name: /process 2 files/i });
+      const processButton = screen.getByRole('button', { name: /AI Process 2 Files/i });
       processButton.click();
 
       // Should show confirmation
@@ -326,7 +326,7 @@ describe('BatchOperationsPanel', () => {
         />
       );
 
-      const processButton = screen.getByRole('button', { name: /process 3 files/i });
+      const processButton = screen.getByRole('button', { name: /AI Process 3 Files/i });
       processButton.click();
 
       // Warning should include file count
@@ -347,7 +347,7 @@ describe('BatchOperationsPanel', () => {
         />
       );
 
-      const processButton = screen.getByRole('button', { name: /process 2 files/i });
+      const processButton = screen.getByRole('button', { name: /AI Process 2 Files/i });
       processButton.click();
 
       // Should NOT show confirmation
