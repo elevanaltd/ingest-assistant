@@ -161,6 +161,8 @@ export interface CfexConfig {
   defaultPhotos: string;
   /** Default destination for raw videos (e.g., /Volumes/EAV_Video_RAW/) */
   defaultVideos: string;
+  /** Default destination for proxy videos (e.g., /Volumes/videos-current/2. WORKING PROJECTS/) */
+  defaultProxies?: string;
   /** Enable AI auto-analysis after transfer (default: false per I7 Human Primacy) */
   aiAutoAnalyze?: boolean;
   /** Enable metadata write to files (default: false per I7 Human Primacy) */

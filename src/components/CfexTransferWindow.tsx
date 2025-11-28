@@ -66,10 +66,12 @@ interface TransferState {
   destinationPaths: {
     photos: string
     rawVideos: string
+    proxies: string
   }
   enabledDestinations: {
     photos: boolean
     rawVideos: boolean
+    proxies: boolean
   }
   currentFile: string | null
   filesCompleted: number
@@ -92,13 +94,15 @@ interface FolderPickerProps {
   destinationPaths: {
     photos: string
     rawVideos: string
+    proxies: string
   }
-  onDestinationChange: (paths: { photos: string; rawVideos: string }) => void
+  onDestinationChange: (paths: { photos: string; rawVideos: string; proxies: string }) => void
   enabledDestinations: {
     photos: boolean
     rawVideos: boolean
+    proxies: boolean
   }
-  onEnabledDestinationsChange: (enabled: { photos: boolean; rawVideos: boolean }) => void
+  onEnabledDestinationsChange: (enabled: { photos: boolean; rawVideos: boolean; proxies: boolean }) => void
   disabled: boolean
 }
 
@@ -157,6 +161,10 @@ function FolderPicker({ sourcePath, onSourceChange, destinationPaths, onDestinat
 
   async function handleBrowseVideos() {
     await handleBrowseWithTimeout((path) => onDestinationChange({ ...destinationPaths, rawVideos: path }), destinationPaths.rawVideos)
+  }
+
+  async function handleBrowseProxies() {
+    await handleBrowseWithTimeout((path) => onDestinationChange({ ...destinationPaths, proxies: path }), destinationPaths.proxies)
   }
 
   return (
@@ -222,6 +230,7 @@ function FolderPicker({ sourcePath, onSourceChange, destinationPaths, onDestinat
             disabled={disabled || !enabledDestinations.photos}
             placeholder="/Volumes/LucidLink/photos"
             style={{ flex: 1, padding: '6px 8px', fontSize: '13px', opacity: enabledDestinations.photos ? 1 : 0.6 }}
+            aria-label="Photos destination path"
           />
           <button
             onClick={handleBrowsePhotos}
@@ -277,6 +286,49 @@ function FolderPicker({ sourcePath, onSourceChange, destinationPaths, onDestinat
               borderRadius: '4px',
               cursor: (disabled || isBrowsing || !enabledDestinations.rawVideos) ? 'not-allowed' : 'pointer',
               opacity: enabledDestinations.rawVideos ? 1 : 0.6
+            }}
+          >
+            {isBrowsing ? 'Opening...' : 'Browse...'}
+          </button>
+        </div>
+      </div>
+
+      <div style={{ marginBottom: '12px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', marginBottom: '4px', gap: '8px' }}>
+          <input
+            id="proxies-enabled"
+            type="checkbox"
+            checked={enabledDestinations.proxies}
+            onChange={(e) => onEnabledDestinationsChange({ ...enabledDestinations, proxies: e.target.checked })}
+            disabled={disabled}
+            aria-label="Proxy Videos Destination (LucidLink)"
+            style={{ cursor: disabled ? 'not-allowed' : 'pointer' }}
+          />
+          <label htmlFor="proxies-dest" style={{ fontSize: '13px', fontWeight: 500 }}>
+            Proxy Videos Destination (LucidLink)
+          </label>
+        </div>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <input
+            id="proxies-dest"
+            type="text"
+            value={destinationPaths.proxies}
+            onChange={(e) => onDestinationChange({ ...destinationPaths, proxies: e.target.value })}
+            disabled={disabled || !enabledDestinations.proxies}
+            placeholder="/Volumes/LucidLink/videos-proxy"
+            style={{ flex: 1, padding: '6px 8px', fontSize: '13px', opacity: enabledDestinations.proxies ? 1 : 0.6 }}
+          />
+          <button
+            onClick={handleBrowseProxies}
+            disabled={disabled || isBrowsing || !enabledDestinations.proxies}
+            style={{
+              padding: '6px 16px',
+              fontSize: '13px',
+              backgroundColor: isBrowsing ? '#ffc107' : '#f0f0f0',
+              border: '1px solid #ccc',
+              borderRadius: '4px',
+              cursor: (disabled || isBrowsing || !enabledDestinations.proxies) ? 'not-allowed' : 'pointer',
+              opacity: enabledDestinations.proxies ? 1 : 0.6
             }}
           >
             {isBrowsing ? 'Opening...' : 'Browse...'}
@@ -359,11 +411,13 @@ export function CfexTransferWindow() {
     sourcePath: DEFAULT_CFEX_SOURCE, // Start with default, will be overridden by auto-detect or saved config
     destinationPaths: {
       photos: '/Volumes/videos-current/2. WORKING PROJECTS/',
-      rawVideos: '/Volumes/EAV_Video_RAW/'
+      rawVideos: '/Volumes/EAV_Video_RAW/',
+      proxies: '/Volumes/videos-current/2. WORKING PROJECTS/'
     },
     enabledDestinations: {
       photos: true,
-      rawVideos: true
+      rawVideos: true,
+      proxies: false  // Unchecked by default as per requirements
     },
     currentFile: null,
     filesCompleted: 0,
@@ -391,7 +445,8 @@ export function CfexTransferWindow() {
           sourcePath: cfexConfig.defaultSource || prev.sourcePath,
           destinationPaths: {
             photos: cfexConfig.defaultPhotos || prev.destinationPaths.photos,
-            rawVideos: cfexConfig.defaultVideos || prev.destinationPaths.rawVideos
+            rawVideos: cfexConfig.defaultVideos || prev.destinationPaths.rawVideos,
+            proxies: cfexConfig.defaultProxies || prev.destinationPaths.proxies
           }
         }))
       }
@@ -450,7 +505,8 @@ export function CfexTransferWindow() {
             photos: result.destinations.photos !== '/default/photos'
               ? result.destinations.photos : prev.destinationPaths.photos,
             rawVideos: result.destinations.rawVideos !== '/default/rawVideos'
-              ? result.destinations.rawVideos : prev.destinationPaths.rawVideos
+              ? result.destinations.rawVideos : prev.destinationPaths.rawVideos,
+            proxies: prev.destinationPaths.proxies  // Keep existing proxy path (not auto-detected)
           }
         }))
       } catch (error) {
