@@ -226,17 +226,20 @@ export function BatchOperationsPanel({ availableFiles, selectedFileIds, filename
   const handleGenerateProxies = async () => {
     if (!window.electronAPI?.proxy) return;
 
-    // Filter for video files only
-    const videoFiles = availableFiles.filter(f => isVideoFile(f.filename));
+    // Selection-aware video filtering (mirrors AI Process pattern)
+    const allVideoFiles = availableFiles.filter(f => isVideoFile(f.filename));
+    const selectedVideoFiles = selectedFileIds && selectedFileIds.size > 0
+      ? allVideoFiles.filter(f => selectedFileIds.has(f.id))
+      : allVideoFiles;
 
-    if (videoFiles.length === 0) {
+    if (selectedVideoFiles.length === 0) {
       alert('No video files available for proxy generation');
       return;
     }
 
     try {
       // Extract filenames from file IDs
-      const videoFilenames = videoFiles.map(f => f.filename);
+      const videoFilenames = selectedVideoFiles.map(f => f.filename);
 
       // TODO: Need to get rawVideoFolder and proxyOutputFolder from somewhere
       // For now, using placeholder - this needs to be wired from parent or settings
@@ -277,7 +280,14 @@ export function BatchOperationsPanel({ availableFiles, selectedFileIds, filename
 
   const unprocessedCount = availableFiles.filter(f => !f.processedByAI).length;
   const totalFiles = availableFiles.length;
-  const videoCount = availableFiles.filter(f => isVideoFile(f.filename)).length;
+
+  // Selection-aware video count (mirrors AI Process pattern)
+  const allVideoFiles = availableFiles.filter(f => isVideoFile(f.filename));
+  const selectedVideoFiles = selectedFileIds && selectedFileIds.size > 0
+    ? allVideoFiles.filter(f => selectedFileIds.has(f.id))
+    : allVideoFiles;
+  const videoCount = selectedVideoFiles.length;
+
   const isProcessing = queueState?.status === 'processing';
   const selectedCount = selectedFileIds?.size || 0;
   const hasSelection = selectedCount > 0;
