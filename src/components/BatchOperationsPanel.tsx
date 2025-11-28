@@ -217,6 +217,46 @@ export function BatchOperationsPanel({ availableFiles, selectedFileIds, filename
     }
   };
 
+  const isVideoFile = (filename: string): boolean => {
+    const videoExtensions = ['.mov', '.mp4', '.m4v'];
+    const lowerFilename = filename.toLowerCase();
+    return videoExtensions.some(ext => lowerFilename.endsWith(ext));
+  };
+
+  const handleGenerateProxies = async () => {
+    if (!window.electronAPI?.proxy) return;
+
+    // Filter for video files only
+    const videoFiles = availableFiles.filter(f => isVideoFile(f.filename));
+
+    if (videoFiles.length === 0) {
+      alert('No video files available for proxy generation');
+      return;
+    }
+
+    try {
+      // Extract filenames from file IDs
+      const videoFilenames = videoFiles.map(f => f.filename);
+
+      // TODO: Need to get rawVideoFolder and proxyOutputFolder from somewhere
+      // For now, using placeholder - this needs to be wired from parent or settings
+      const result = await window.electronAPI.proxy.generateProxies({
+        rawVideoFolder: '', // TODO: wire from parent component
+        proxyOutputFolder: '', // TODO: wire from parent component
+        videoFilenames: videoFilenames,
+      });
+
+      if (result.success) {
+        alert(`Proxy generation complete: ${result.completedCount} succeeded, ${result.failedCount} failed`);
+      } else {
+        alert(`Proxy generation failed: ${result.failedCount} files failed`);
+      }
+    } catch (error) {
+      console.error('[BatchPanel] Failed to generate proxies:', error);
+      alert('Failed to generate proxies: ' + (error instanceof Error ? error.message : 'Unknown error'));
+    }
+  };
+
   const getStatusColor = (status: string): string => {
     switch (status) {
       case 'processing': return '#2563eb'; // blue
@@ -237,6 +277,7 @@ export function BatchOperationsPanel({ availableFiles, selectedFileIds, filename
 
   const unprocessedCount = availableFiles.filter(f => !f.processedByAI).length;
   const totalFiles = availableFiles.length;
+  const videoCount = availableFiles.filter(f => isVideoFile(f.filename)).length;
   const isProcessing = queueState?.status === 'processing';
   const selectedCount = selectedFileIds?.size || 0;
   const hasSelection = selectedCount > 0;
@@ -311,7 +352,7 @@ export function BatchOperationsPanel({ availableFiles, selectedFileIds, filename
                 color: '#374151',
                 cursor: 'pointer',
                 fontWeight: '600',
-                marginBottom: '16px',
+                marginBottom: '8px',
                 position: 'relative',
                 zIndex: 1,
               }}
@@ -322,6 +363,29 @@ export function BatchOperationsPanel({ availableFiles, selectedFileIds, filename
               }
             </button>
           )}
+
+          {/* Generate Proxies Button (B2.7_04) */}
+          <button
+            onClick={handleGenerateProxies}
+            disabled={videoCount === 0}
+            style={{
+              width: '100%',
+              padding: '10px 16px',
+              fontSize: '14px',
+              borderRadius: '6px',
+              border: '1px solid #9ca3af',
+              backgroundColor: videoCount > 0 ? 'white' : '#e5e7eb',
+              color: videoCount > 0 ? '#374151' : '#9ca3af',
+              cursor: videoCount > 0 ? 'pointer' : 'not-allowed',
+              fontWeight: '600',
+              marginBottom: '16px',
+            }}
+          >
+            {videoCount > 0
+              ? `Generate Proxies for ${videoCount} Video${videoCount !== 1 ? 's' : ''}`
+              : 'No Videos to Process'
+            }
+          </button>
         </>
       )}
 
