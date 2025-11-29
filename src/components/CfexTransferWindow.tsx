@@ -85,6 +85,14 @@ interface TransferState {
   estimatedTimeRemaining: number | null
   warnings: ValidationWarning[]
   errors: TransferError[]
+  proxyProgress: {
+    type: string
+    filename?: string
+    index?: number
+    total?: number
+    percentage?: number
+    timeString?: string
+  } | null
 }
 
 /**
@@ -430,7 +438,8 @@ export function CfexTransferWindow() {
     percentComplete: 0,
     estimatedTimeRemaining: null,
     warnings: [],
-    errors: []
+    errors: [],
+    proxyProgress: null
   })
 
   // Load saved CFEx config on mount (before auto-detect)
@@ -484,6 +493,31 @@ export function CfexTransferWindow() {
     const cleanup = window.electronAPI.cfex.onTransferProgress(progressHandler)
 
     // Cleanup on unmount
+    return cleanup
+  }, [])
+
+  // Listen to proxy generation progress events
+  useEffect(() => {
+    if (!window.electronAPI?.proxy?.onProxyProgress) {
+      return
+    }
+
+    const proxyProgressHandler = (progress: {
+      type: string
+      filename?: string
+      index?: number
+      total?: number
+      percentage?: number
+      timeString?: string
+    }) => {
+      setState(prev => ({
+        ...prev,
+        proxyProgress: progress
+      }))
+    }
+
+    const cleanup = window.electronAPI.proxy.onProxyProgress(proxyProgressHandler)
+
     return cleanup
   }, [])
 
@@ -681,6 +715,31 @@ export function CfexTransferWindow() {
       {isTransferring && (
         <div style={{ marginBottom: '12px', padding: '8px', backgroundColor: '#fff3cd', borderRadius: '4px', fontSize: '12px', color: '#856404' }}>
           <strong>Note:</strong> Cancel currently stops UI updates only. Full graceful cancellation (stopping file operations) coming in Week 2.
+        </div>
+      )}
+
+      {/* Proxy Generation Progress */}
+      {state.proxyProgress && state.proxyProgress.type === 'transcode_progress' && (
+        <div style={{ marginBottom: '20px', padding: '12px', backgroundColor: '#f0f9ff', borderRadius: '4px', border: '1px solid #bfdbfe' }}>
+          <div style={{ fontSize: '13px', fontWeight: '500', marginBottom: '8px', color: '#1e40af' }}>
+            Generating Proxies: {state.proxyProgress.filename || 'N/A'}
+          </div>
+          <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '8px' }}>
+            Progress: {state.proxyProgress.index || 0} / {state.proxyProgress.total || 0} videos ({state.proxyProgress.percentage || 0}%)
+          </div>
+          <div style={{ width: '100%', height: '8px', backgroundColor: '#e5e7eb', borderRadius: '4px', overflow: 'hidden' }}>
+            <div style={{
+              width: `${state.proxyProgress.percentage || 0}%`,
+              height: '100%',
+              backgroundColor: '#3b82f6',
+              transition: 'width 0.3s ease'
+            }} />
+          </div>
+          {state.proxyProgress.timeString && (
+            <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>
+              Encoding: {state.proxyProgress.percentage || 0}% | ETA: {state.proxyProgress.timeString}
+            </div>
+          )}
         </div>
       )}
 
