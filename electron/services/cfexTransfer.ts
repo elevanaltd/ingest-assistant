@@ -365,6 +365,11 @@ export interface TransferResult {
   duration: number;
   validationWarnings: ValidationWarning[];
   errors: TransferError[];
+  /** Destination paths of successfully transferred files, grouped by type */
+  transferredFiles: {
+    photos: string[];
+    rawVideos: string[];
+  };
 }
 
 /**
@@ -452,6 +457,10 @@ export class CfexTransferService {
     // PHASE 2: Transfer + Validate files
     const errors: TransferError[] = [];
     const warnings: ValidationWarning[] = [];
+    const transferredFiles: { photos: string[]; rawVideos: string[] } = {
+      photos: [],
+      rawVideos: [],
+    };
     let filesTransferred = 0;
     let bytesTransferred = 0;
 
@@ -506,6 +515,13 @@ export class CfexTransferService {
         filesTransferred++;
         bytesTransferred += fileResult.bytesTransferred;
 
+        // Track successfully transferred file by type
+        if (task.mediaType === 'photo') {
+          transferredFiles.photos.push(task.destination);
+        } else if (task.mediaType === 'video') {
+          transferredFiles.rawVideos.push(task.destination);
+        }
+
         // Notify file completion
         if (config.onFileComplete) {
           const enhancedResult: FileTransferResultEnhanced = {
@@ -538,6 +554,7 @@ export class CfexTransferService {
       duration: Date.now() - startTime,
       validationWarnings: warnings,
       errors,
+      transferredFiles,
     };
   }
 
