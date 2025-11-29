@@ -1,4 +1,5 @@
 import { spawn } from 'child_process';
+import * as path from 'path';
 
 /**
  * ExifPreserver - Preserves DateTimeOriginal metadata from raw videos to proxies
@@ -10,6 +11,17 @@ import { spawn } from 'child_process';
  *
  * B0 Condition 4 Compliance: EXIF DateTimeOriginal preservation with verification
  */
+
+/**
+ * Helper: Extract filename without extension (cross-platform)
+ * Handles both Unix (/) and Windows (\) path separators
+ * Case-insensitive extension removal
+ */
+function getBasenameWithoutExt(filePath: string): string {
+  const basename = path.basename(filePath);
+  const ext = path.extname(basename);
+  return basename.slice(0, -ext.length);
+}
 
 export interface ExifVerificationResult {
   proxyPath: string;
@@ -168,9 +180,10 @@ export class ExifPreserver {
           for (const [rawPath, rawDate] of rawDateMap.entries()) {
             // Find corresponding proxy (assume {basename}_proxy.{ext} naming)
             const proxyPath = proxyPaths.find(p => {
-              // Match by filename pattern
-              const rawBasename = rawPath.split('/').pop()?.replace('.MOV', '');
-              return p.includes(`${rawBasename}_proxy`);
+              // Match by filename pattern (cross-platform, case-insensitive)
+              const rawBasename = getBasenameWithoutExt(rawPath);
+              const proxyBasename = getBasenameWithoutExt(p);
+              return proxyBasename.toLowerCase().includes(`${rawBasename.toLowerCase()}_proxy`);
             });
 
             if (!proxyPath) {
@@ -224,10 +237,11 @@ export class ExifPreserver {
     // Build proxyPath -> dateTime map for writing
     const proxyDateMap = new Map<string, string>();
     for (const [rawPath, dateTime] of rawDateMap.entries()) {
-      // Find corresponding proxy
+      // Find corresponding proxy (cross-platform, case-insensitive)
       const proxyPath = proxyPaths.find(p => {
-        const rawBasename = rawPath.split('/').pop()?.replace('.MOV', '');
-        return p.includes(`${rawBasename}_proxy`);
+        const rawBasename = getBasenameWithoutExt(rawPath);
+        const proxyBasename = getBasenameWithoutExt(p);
+        return proxyBasename.toLowerCase().includes(`${rawBasename.toLowerCase()}_proxy`);
       });
 
       if (proxyPath) {
