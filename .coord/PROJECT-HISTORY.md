@@ -2,7 +2,46 @@
 
 **Purpose:** Archive of completed work, major milestones, and historical decisions. Consult when needing context on past implementations.
 
-**Last Updated:** 2025-11-28
+**Last Updated:** 2025-11-29
+
+---
+
+## 2025-11-29 Session: B2.7 Proxy UI + Configurable Presets + Bug Fixes
+**Status:** COMPLETE | **Tests:** 1017/1025 | **PR:** #98
+
+### Completed
+- B2.7_00::main.ts_registration→proxy_IPC_handlers_callable
+- B2.7_03::BatchPanel_button_rename→"AI Process"/"AI Reprocess"_clarity
+- B2.7_04::proxy_button→"Generate Proxies for X Videos"+selection_aware
+- B2.7_01::CFEx_proxy_destination_UI→checkbox+input+browse
+- B2.7_02::CFEx_backend_integration→proxy_triggers_after_transfer
+- B2.7_05::configurable_proxy_presets→5_formats_in_Settings
+
+### Bug Fixes (Same Session)
+- FIX::proxy_folder_paths→currentFolderPath_prop+folder_picker→ZodError_eliminated
+- FIX::extension_bug→.MOV_for_ProRes,.mp4_for_H264→tied_to_codec
+- FIX::transferredFiles_missing→added_tracking_to_TransferResult→proxy_gets_video_paths
+- FIX::99.95%_progress→percentComplete:100_on_success
+
+### Proxy Format Presets (User-Validated)
+| Preset | Codec | Resolution | Container | ~Size/24s |
+|--------|-------|------------|-----------|-----------|
+| 2K ProRes Proxy ⭐ | prores_ks -profile:v 0 | 2560×1440 | .MOV | 175 MB |
+| 1080p ProRes Proxy | prores_ks -profile:v 0 | 1920×1080 | .MOV | 78 MB |
+| 4K ProRes Proxy | prores_ks -profile:v 0 | 3840×2160 | .MOV | 363 MB |
+| 2K H.264 CRF 23 | libx264 -crf 23 | 2560×1440 | .mp4 | ~25 MB |
+| 1080p H.264 CRF 18 | libx264 -crf 18 | 1920×1080 | .mp4 | ~15 MB |
+
+### Known Issue (Deferred)
+**P1: EXIF verification misses most proxy files** (electron/services/exifPreserver.ts:170-174)
+- Current code: `rawPath.split('/').pop()?.replace('.MOV', '')`
+- Only strips uppercase ".MOV" - misses .mov/.mp4/Windows paths
+- Impact: EXIF verification silently skipped, I1 compliance gap for non-.MOV sources
+- Status: DEFERRED to next session (see continuation prompt below)
+
+### Quality
+TRACED: T✅ R✅ E✅ D✅
+QG: Lint✅(0/0) Typecheck✅ Tests1017/1025✅
 
 ---
 
