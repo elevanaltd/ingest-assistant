@@ -27,6 +27,7 @@ describe('CfexTransferWindow', () => {
   let mockGetTransferState: ReturnType<typeof vi.fn>
   let mockOnTransferProgress: ReturnType<typeof vi.fn>
   let mockDetectSources: ReturnType<typeof vi.fn>
+  let mockGenerateProxies: ReturnType<typeof vi.fn>
 
   beforeEach(() => {
     // Create mocks first
@@ -47,6 +48,13 @@ describe('CfexTransferWindow', () => {
       shouldAutoPopulate: false,
       selectedCard: undefined
     })
+    mockGenerateProxies = vi.fn().mockResolvedValue({
+      success: true,
+      completedCount: 0,
+      failedCount: 0,
+      completedFiles: [],
+      failedFiles: []
+    })
 
     // Mock window.electronAPI.cfex (v2.2.0 contextBridge pattern)
     // Type mock structure against ElectronAPI['cfex'] contract for type safety
@@ -64,7 +72,11 @@ describe('CfexTransferWindow', () => {
 
     // Assign typed mock to window object (Partial<ElectronAPI> for test isolation)
     ;(window as any).electronAPI = {
-      cfex: cfexMock
+      cfex: cfexMock,
+      proxy: {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        generateProxies: mockGenerateProxies as any
+      }
     } as Partial<ElectronAPI>
   })
 
@@ -79,8 +91,9 @@ describe('CfexTransferWindow', () => {
 
       // ASSERT: Folder picker inputs visible (use more specific selectors to avoid checkbox/input ambiguity)
       expect(screen.getByLabelText(/source.*folder/i)).toBeInTheDocument()
-      expect(screen.getByPlaceholderText(/LucidLink/i)).toBeInTheDocument()
+      expect(screen.getByPlaceholderText(/LucidLink.*photos/i)).toBeInTheDocument()
       expect(screen.getByPlaceholderText(/Ubuntu/i)).toBeInTheDocument()
+      expect(screen.getByPlaceholderText(/LucidLink.*proxy/i)).toBeInTheDocument()
     })
 
     test('renders start transfer button when idle', () => {
@@ -550,8 +563,8 @@ describe('CfexTransferWindow', () => {
         expect(mockDetectSources).toHaveBeenCalled()
       })
 
-      // Wait for inputs to be enabled after detection
-      const photosInput = await screen.findByDisplayValue(/videos-current/i)
+      // Wait for inputs to be enabled after detection (use aria-label for specificity)
+      const photosInput = await screen.findByLabelText(/photos destination path/i)
       await waitFor(() => {
         expect(photosInput).not.toBeDisabled()
       })
@@ -620,13 +633,14 @@ describe('CfexTransferWindow', () => {
       // ACT: Start transfer with both checkboxes checked (default)
       await user.click(screen.getByRole('button', { name: /start transfer/i }))
 
-      // ASSERT: enabledDestinations passed with both true
+      // ASSERT: enabledDestinations passed with all three destinations
       await waitFor(() => {
         expect(mockStartTransfer).toHaveBeenCalledWith(
           expect.objectContaining({
             enabledDestinations: {
               photos: true,
-              rawVideos: true
+              rawVideos: true,
+              proxies: false  // Unchecked by default
             }
           })
         )
@@ -671,7 +685,8 @@ describe('CfexTransferWindow', () => {
           expect.objectContaining({
             enabledDestinations: {
               photos: false,
-              rawVideos: true
+              rawVideos: true,
+              proxies: false
             }
           })
         )
@@ -716,11 +731,176 @@ describe('CfexTransferWindow', () => {
           expect.objectContaining({
             enabledDestinations: {
               photos: true,
-              rawVideos: false
+              rawVideos: false,
+              proxies: false
             }
           })
         )
       })
+    })
+  })
+
+  /**
+   * Proxy Videos Destination UI Tests (B2.7_01 - RED Phase)
+   *
+   * Tests for proxy videos destination checkbox and input
+   * Follows same pattern as photos/rawVideos destinations
+   */
+  describe('Proxy Videos Destination UI', () => {
+    test('renders checkbox for proxy videos destination', () => {
+      // ARRANGE
+      render(<CfexTransferWindow />)
+
+      // ASSERT: Proxy videos checkbox exists and is unchecked by default
+      const proxyCheckbox = screen.getByRole('checkbox', { name: /proxy videos destination.*lucidlink/i })
+      expect(proxyCheckbox).toBeInTheDocument()
+      expect(proxyCheckbox).not.toBeChecked()
+    })
+
+    test('renders input for proxy videos destination path', () => {
+      // ARRANGE
+      render(<CfexTransferWindow />)
+
+      // ASSERT: Proxy videos input exists with correct placeholder
+      const proxyInput = screen.getByPlaceholderText(/LucidLink.*proxy/i)
+      expect(proxyInput).toBeInTheDocument()
+    })
+
+    test('proxy input disabled when checkbox unchecked by default', async () => {
+      // ARRANGE
+      render(<CfexTransferWindow />)
+
+      // Wait for auto-detection to complete
+      await waitFor(() => {
+        expect(mockDetectSources).toHaveBeenCalled()
+      })
+
+      // ASSERT: Proxy input and browse button disabled by default
+      const proxyInput = await screen.findByPlaceholderText(/LucidLink.*proxy/i)
+      expect(proxyInput).toBeDisabled()
+    })
+
+    test('enables proxy input when checkbox checked', async () => {
+      // ARRANGE
+      render(<CfexTransferWindow />)
+      const user = userEvent.setup()
+
+      // Wait for auto-detection to complete
+      await waitFor(() => {
+        expect(mockDetectSources).toHaveBeenCalled()
+      })
+
+      const proxyInput = await screen.findByPlaceholderText(/LucidLink.*proxy/i)
+
+      // ACT: Check proxy checkbox
+      const proxyCheckbox = screen.getByRole('checkbox', { name: /proxy videos destination.*lucidlink/i })
+      await user.click(proxyCheckbox)
+
+      // ASSERT: Proxy input and browse button enabled
+      expect(proxyInput).not.toBeDisabled()
+      const proxyBrowseButton = screen.getAllByRole('button', { name: /browse/i })[3]
+      expect(proxyBrowseButton).not.toBeDisabled()
+    })
+
+    test('proxy input is editable when checkbox checked', async () => {
+      // ARRANGE
+      render(<CfexTransferWindow />)
+      const user = userEvent.setup()
+
+      // Wait for auto-detection to complete
+      await waitFor(() => {
+        expect(mockDetectSources).toHaveBeenCalled()
+      })
+
+      // ACT: Check proxy checkbox
+      const proxyCheckbox = screen.getByRole('checkbox', { name: /proxy videos destination.*lucidlink/i })
+      await user.click(proxyCheckbox)
+
+      // ACT: Type in proxy input
+      const proxyInput = await screen.findByPlaceholderText(/LucidLink.*proxy/i)
+      await user.clear(proxyInput)
+      await user.type(proxyInput, '/Volumes/videos-current/proxies')
+
+      // ASSERT: Value updated correctly
+      expect(proxyInput).toHaveValue('/Volumes/videos-current/proxies')
+    })
+
+    test('browse button triggers directory picker for proxy destination', async () => {
+      // ARRANGE
+      const mockSelectFolder = vi.fn().mockResolvedValue('/Volumes/videos-current/proxies')
+      ;(window as any).electronAPI = {
+        ...((window as any).electronAPI || {}),
+        selectFolder: mockSelectFolder
+      }
+
+      render(<CfexTransferWindow />)
+      const user = userEvent.setup()
+
+      // Wait for auto-detection to complete
+      await waitFor(() => {
+        expect(mockDetectSources).toHaveBeenCalled()
+      })
+
+      // ACT: Check proxy checkbox to enable browse button
+      const proxyCheckbox = screen.getByRole('checkbox', { name: /proxy videos destination.*lucidlink/i })
+      await user.click(proxyCheckbox)
+
+      // ACT: Click browse button for proxy folder (4th browse button: source, photos, videos, proxies)
+      const proxyBrowseButton = screen.getAllByRole('button', { name: /browse/i })[3]
+      await user.click(proxyBrowseButton)
+
+      // ASSERT: selectFolder was called
+      await waitFor(() => {
+        expect(mockSelectFolder).toHaveBeenCalled()
+      })
+
+      // ASSERT: Proxy input updated with selected path
+      const proxyInput = await screen.findByPlaceholderText(/LucidLink.*proxy/i)
+      expect(proxyInput).toHaveValue('/Volumes/videos-current/proxies')
+    })
+
+    test.skip('proxy settings persist to localStorage', async () => {
+      // SKIPPED: localStorage persistence not yet implemented
+      // Will be implemented when config save/load added to backend
+      // For now, proxy settings follow existing photos/rawVideos pattern (state only)
+
+      // ARRANGE
+      const localStorageData: Record<string, string> = {}
+      const mockLocalStorage = {
+        getItem: vi.fn((key: string) => localStorageData[key] || null),
+        setItem: vi.fn((key: string, value: string) => { localStorageData[key] = value }),
+        removeItem: vi.fn((key: string) => { delete localStorageData[key] }),
+        clear: vi.fn(() => { Object.keys(localStorageData).forEach(k => delete localStorageData[k]) }),
+        length: 0,
+        key: vi.fn()
+      }
+      Object.defineProperty(window, 'localStorage', { value: mockLocalStorage, writable: true })
+
+      render(<CfexTransferWindow />)
+      const user = userEvent.setup()
+
+      // Wait for auto-detection to complete
+      await waitFor(() => {
+        expect(mockDetectSources).toHaveBeenCalled()
+      })
+
+      // ACT: Check proxy checkbox
+      const proxyCheckbox = screen.getByRole('checkbox', { name: /proxy videos destination.*lucidlink/i })
+      await user.click(proxyCheckbox)
+
+      // ACT: Set proxy destination path
+      const proxyInput = await screen.findByPlaceholderText(/LucidLink.*proxy/i)
+      await user.clear(proxyInput)
+      await user.type(proxyInput, '/Volumes/videos-current/proxies')
+
+      // Wait for debounced localStorage save (if using debounce pattern)
+      await new Promise(resolve => setTimeout(resolve, 100))
+
+      // ASSERT: Settings saved to localStorage
+      expect(mockLocalStorage.setItem).toHaveBeenCalledWith(
+        expect.stringContaining('cfex'),
+        expect.stringContaining('proxies')
+      )
     })
   })
 
@@ -815,9 +995,9 @@ describe('CfexTransferWindow', () => {
       // ACT
       render(<CfexTransferWindow />)
 
-      // ASSERT: Use placeholder text to avoid checkbox/input ambiguity
+      // ASSERT: Use specific placeholder text to avoid checkbox/input ambiguity
       await waitFor(() => {
-        const photosInput = screen.getByPlaceholderText(/LucidLink/i) as HTMLInputElement
+        const photosInput = screen.getByPlaceholderText(/LucidLink.*photos/i) as HTMLInputElement
         const videosInput = screen.getByPlaceholderText(/Ubuntu/i) as HTMLInputElement
         expect(photosInput.value).toBe('/Volumes/LucidLink/')
         expect(videosInput.value).toBe('/Volumes/Ubuntu/')
@@ -904,6 +1084,314 @@ describe('CfexTransferWindow', () => {
       await waitFor(() => {
         expect(mockDetectSources).toHaveBeenCalled()
       })
+    })
+  })
+
+  /**
+   * Proxy Generation After Transfer Tests (B2.7_02 - RED Phase)
+   *
+   * Tests for automatic proxy generation trigger after CFEx transfer completes
+   * when proxy destination is enabled.
+   */
+  describe('Proxy Generation After Transfer (B2.7_02)', () => {
+    test('triggers proxy generation when proxies enabled and transfer completes', async () => {
+      // ARRANGE
+      const rawVideosPaths = ['/Volumes/EAV_Video_RAW/video1.MOV', '/Volumes/EAV_Video_RAW/video2.MOV']
+
+      mockStartTransfer.mockResolvedValue({
+        success: true,
+        filesTransferred: 2,
+        filesTotal: 2,
+        bytesTransferred: 2000000,
+        duration: 5000,
+        validationWarnings: [],
+        errors: [],
+        transferredFiles: {
+          rawVideos: rawVideosPaths
+        }
+      })
+
+      render(<CfexTransferWindow />)
+      const user = userEvent.setup()
+
+      // Wait for auto-detection to complete
+      await waitFor(() => {
+        expect(mockDetectSources).toHaveBeenCalled()
+      })
+
+      // ACT: Enable proxy destination and set path
+      const proxyCheckbox = screen.getByRole('checkbox', { name: /proxy videos destination.*lucidlink/i })
+      await user.click(proxyCheckbox)
+
+      const proxyInput = await screen.findByPlaceholderText(/LucidLink.*proxy/i)
+      await user.clear(proxyInput)
+      await user.type(proxyInput, '/Volumes/videos-current/proxies')
+
+      // ACT: Start transfer
+      const startButton = screen.getByRole('button', { name: /start transfer/i })
+      await user.click(startButton)
+
+      // ASSERT: Proxy generation triggered with correct parameters
+      await waitFor(() => {
+        expect(mockGenerateProxies).toHaveBeenCalledWith(
+          expect.objectContaining({
+            rawVideoFolder: '/Volumes/EAV_Video_RAW/',
+            proxyOutputFolder: '/Volumes/videos-current/proxies',
+            videoFilenames: expect.arrayContaining(['video1.MOV', 'video2.MOV'])
+          })
+        )
+      })
+    })
+
+    test('does NOT trigger proxy generation when proxies disabled', async () => {
+      // ARRANGE
+      mockStartTransfer.mockResolvedValue({
+        success: true,
+        filesTransferred: 2,
+        filesTotal: 2,
+        bytesTransferred: 2000000,
+        duration: 5000,
+        validationWarnings: [],
+        errors: [],
+        transferredFiles: {
+          rawVideos: ['/Volumes/EAV_Video_RAW/video1.MOV']
+        }
+      })
+
+      render(<CfexTransferWindow />)
+      const user = userEvent.setup()
+
+      // Wait for auto-detection to complete
+      await waitFor(() => {
+        expect(mockDetectSources).toHaveBeenCalled()
+      })
+
+      // ACT: Start transfer with proxies disabled (default state)
+      const startButton = screen.getByRole('button', { name: /start transfer/i })
+      await user.click(startButton)
+
+      // Wait for transfer to complete
+      await waitFor(() => {
+        expect(mockStartTransfer).toHaveBeenCalled()
+      })
+
+      // ASSERT: Proxy generation NOT triggered
+      expect(mockGenerateProxies).not.toHaveBeenCalled()
+    })
+
+    test('passes correct destination path to proxy generation', async () => {
+      // ARRANGE
+      const customProxyPath = '/Volumes/custom-path/proxies'
+
+      mockStartTransfer.mockResolvedValue({
+        success: true,
+        filesTransferred: 1,
+        filesTotal: 1,
+        bytesTransferred: 1000000,
+        duration: 2500,
+        validationWarnings: [],
+        errors: [],
+        transferredFiles: {
+          rawVideos: ['/Volumes/EAV_Video_RAW/video.MOV']
+        }
+      })
+
+      render(<CfexTransferWindow />)
+      const user = userEvent.setup()
+
+      // Wait for auto-detection to complete
+      await waitFor(() => {
+        expect(mockDetectSources).toHaveBeenCalled()
+      })
+
+      // ACT: Enable proxies and set custom path
+      const proxyCheckbox = screen.getByRole('checkbox', { name: /proxy videos destination.*lucidlink/i })
+      await user.click(proxyCheckbox)
+
+      const proxyInput = await screen.findByPlaceholderText(/LucidLink.*proxy/i)
+      await user.clear(proxyInput)
+      await user.type(proxyInput, customProxyPath)
+
+      // ACT: Start transfer
+      const startButton = screen.getByRole('button', { name: /start transfer/i })
+      await user.click(startButton)
+
+      // ASSERT: Custom path passed correctly
+      await waitFor(() => {
+        expect(mockGenerateProxies).toHaveBeenCalledWith(
+          expect.objectContaining({
+            proxyOutputFolder: customProxyPath
+          })
+        )
+      })
+    })
+
+    test('proxy generation failure does not fail overall transfer (fail-log-continue)', async () => {
+      // ARRANGE - Proxy generation fails
+      mockGenerateProxies.mockResolvedValue({
+        success: false,
+        completedCount: 0,
+        failedCount: 2,
+        completedFiles: [],
+        failedFiles: ['video1.MOV', 'video2.MOV']
+      })
+
+      mockStartTransfer.mockResolvedValue({
+        success: true,
+        filesTransferred: 2,
+        filesTotal: 2,
+        bytesTransferred: 2000000,
+        duration: 5000,
+        validationWarnings: [],
+        errors: [],
+        transferredFiles: {
+          rawVideos: ['/Volumes/EAV_Video_RAW/video1.MOV', '/Volumes/EAV_Video_RAW/video2.MOV']
+        }
+      })
+
+      render(<CfexTransferWindow />)
+      const user = userEvent.setup()
+
+      // Wait for auto-detection to complete
+      await waitFor(() => {
+        expect(mockDetectSources).toHaveBeenCalled()
+      })
+
+      // ACT: Enable proxies and start transfer
+      const proxyCheckbox = screen.getByRole('checkbox', { name: /proxy videos destination.*lucidlink/i })
+      await user.click(proxyCheckbox)
+
+      const startButton = screen.getByRole('button', { name: /start transfer/i })
+      await user.click(startButton)
+
+      // Wait for both transfer and proxy generation
+      await waitFor(() => {
+        expect(mockGenerateProxies).toHaveBeenCalled()
+      })
+
+      // ASSERT: Transfer still shows as complete despite proxy failure
+      // Status should be 'complete', not 'error'
+      await waitFor(() => {
+        // Check UI shows completion (not error state)
+        expect(screen.queryByText(/transfer in progress/i)).not.toBeInTheDocument()
+      })
+    })
+  })
+
+  describe('Proxy Generation Progress (TDD - RED phase)', () => {
+    test('should display proxy progress section after transfer completes with proxies enabled', async () => {
+      // ARRANGE: Setup proxy progress event emitter
+      let proxyProgressCallback: ((progress: any) => void) | null = null
+      const mockOnProxyProgress = vi.fn((callback) => {
+        proxyProgressCallback = callback
+        return () => {} // cleanup function
+      })
+
+      ;(window as any).electronAPI.proxy = {
+        ...( (window as any).electronAPI.proxy || {} ),
+        onProxyProgress: mockOnProxyProgress,
+        generateProxies: mockGenerateProxies
+      }
+
+      mockStartTransfer.mockResolvedValue({
+        success: true,
+        filesTransferred: 2,
+        filesTotal: 2,
+        bytesTransferred: 1000000,
+        duration: 2500,
+        validationWarnings: [],
+        errors: [],
+        transferredFiles: {
+          rawVideos: ['EA001621.MOV', 'EA001622.MOV']
+        }
+      })
+
+      const user = userEvent.setup()
+      render(<CfexTransferWindow />)
+
+      // ACT: Enable proxies and start transfer
+      const proxyCheckbox = screen.getByRole('checkbox', { name: /proxy videos destination.*lucidlink/i })
+      await user.click(proxyCheckbox)
+
+      const startButton = screen.getByRole('button', { name: /start transfer/i })
+      await user.click(startButton)
+
+      // Wait for transfer to complete
+      await waitFor(() => {
+        expect(mockStartTransfer).toHaveBeenCalled()
+      })
+
+      // Simulate proxy progress event
+      if (proxyProgressCallback) {
+        (proxyProgressCallback as (progress: any) => void)({
+          type: 'transcode_progress',
+          filename: 'EA001621.MOV',
+          index: 1,
+          total: 2,
+          percentage: 45,
+          timeString: '2m 30s'
+        });
+      }
+
+      // ASSERT: Should display proxy generation progress
+      await waitFor(() => {
+        expect(screen.getByText(/Generating Proxies:/)).toBeInTheDocument()
+        expect(screen.getByText(/EA001621\.MOV/)).toBeInTheDocument()
+        expect(screen.getByText(/Progress:.*1.*2.*videos/)).toBeInTheDocument()
+        expect(screen.getByText(/Encoding:.*45%/)).toBeInTheDocument()
+      })
+    })
+
+    test('should show current file and encoding percentage during proxy generation', async () => {
+      // ARRANGE: Setup proxy progress event emitter
+      let proxyProgressCallback: ((progress: any) => void) | null = null
+      const mockOnProxyProgress = vi.fn((callback) => {
+        proxyProgressCallback = callback
+        return () => {}
+      })
+
+      ;(window as any).electronAPI.proxy = {
+        ...( (window as any).electronAPI.proxy || {} ),
+        onProxyProgress: mockOnProxyProgress
+      }
+
+      render(<CfexTransferWindow />)
+
+      // ACT: Simulate proxy progress events
+      if (proxyProgressCallback) {
+        (proxyProgressCallback as (progress: any) => void)({
+          type: 'transcode_progress',
+          filename: 'EA001622.MOV',
+          index: 2,
+          total: 5,
+          percentage: 67
+        });
+      }
+
+      // ASSERT: Should display encoding progress
+      await waitFor(() => {
+        expect(screen.getByText(/67%/)).toBeInTheDocument()
+        expect(screen.getByText(/EA001622\.MOV/)).toBeInTheDocument()
+      })
+    })
+
+    test('should cleanup proxy progress subscription on unmount', () => {
+      // ARRANGE: Mock cleanup function
+      const mockCleanup = vi.fn()
+      const mockOnProxyProgress = vi.fn().mockReturnValue(mockCleanup)
+
+      ;(window as any).electronAPI.proxy = {
+        ...( (window as any).electronAPI.proxy || {} ),
+        onProxyProgress: mockOnProxyProgress
+      }
+
+      const { unmount } = render(<CfexTransferWindow />)
+
+      // ACT: Unmount component
+      unmount()
+
+      // ASSERT: Should call cleanup function
+      expect(mockCleanup).toHaveBeenCalled()
     })
   })
 })

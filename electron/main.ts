@@ -25,6 +25,7 @@ import type { AppConfig, LexiconConfig, ShotType, AIAnalysisResult, FileMetadata
 import { migrateToKeychain } from './services/keychainMigration';
 import { BatchQueueManager } from './services/batchQueueManager';
 import { registerCfexTransferHandlers } from './ipc/cfexTransferHandlers';
+import { registerProxyGenerationHandlers } from './ipc/proxyGenerationHandlers';
 import { FilenameTemplateParser } from './services/filenameTemplate';
 
 let mainWindow: BrowserWindow | null = null;
@@ -346,6 +347,9 @@ async function createWindow() {
 
   // Register CFEx transfer IPC handlers
   registerCfexTransferHandlers(mainWindow);
+
+  // Register Proxy Generation IPC handlers
+  registerProxyGenerationHandlers(mainWindow);
 
   // In development, use Vite dev server; in production, load built files
   const isDev = !app.isPackaged;

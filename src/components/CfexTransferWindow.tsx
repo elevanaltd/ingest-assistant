@@ -57,6 +57,9 @@ interface TransferResult {
   duration: number
   validationWarnings: ValidationWarning[]
   errors: TransferError[]
+  transferredFiles?: {
+    rawVideos?: string[]
+  }
 }
 
 interface TransferState {
@@ -66,10 +69,12 @@ interface TransferState {
   destinationPaths: {
     photos: string
     rawVideos: string
+    proxies: string
   }
   enabledDestinations: {
     photos: boolean
     rawVideos: boolean
+    proxies: boolean
   }
   currentFile: string | null
   filesCompleted: number
@@ -80,6 +85,14 @@ interface TransferState {
   estimatedTimeRemaining: number | null
   warnings: ValidationWarning[]
   errors: TransferError[]
+  proxyProgress: {
+    type: string
+    filename?: string
+    index?: number
+    total?: number
+    percentage?: number
+    timeString?: string
+  } | null
 }
 
 /**
@@ -92,13 +105,15 @@ interface FolderPickerProps {
   destinationPaths: {
     photos: string
     rawVideos: string
+    proxies: string
   }
-  onDestinationChange: (paths: { photos: string; rawVideos: string }) => void
+  onDestinationChange: (paths: { photos: string; rawVideos: string; proxies: string }) => void
   enabledDestinations: {
     photos: boolean
     rawVideos: boolean
+    proxies: boolean
   }
-  onEnabledDestinationsChange: (enabled: { photos: boolean; rawVideos: boolean }) => void
+  onEnabledDestinationsChange: (enabled: { photos: boolean; rawVideos: boolean; proxies: boolean }) => void
   disabled: boolean
 }
 
@@ -157,6 +172,10 @@ function FolderPicker({ sourcePath, onSourceChange, destinationPaths, onDestinat
 
   async function handleBrowseVideos() {
     await handleBrowseWithTimeout((path) => onDestinationChange({ ...destinationPaths, rawVideos: path }), destinationPaths.rawVideos)
+  }
+
+  async function handleBrowseProxies() {
+    await handleBrowseWithTimeout((path) => onDestinationChange({ ...destinationPaths, proxies: path }), destinationPaths.proxies)
   }
 
   return (
@@ -222,6 +241,7 @@ function FolderPicker({ sourcePath, onSourceChange, destinationPaths, onDestinat
             disabled={disabled || !enabledDestinations.photos}
             placeholder="/Volumes/LucidLink/photos"
             style={{ flex: 1, padding: '6px 8px', fontSize: '13px', opacity: enabledDestinations.photos ? 1 : 0.6 }}
+            aria-label="Photos destination path"
           />
           <button
             onClick={handleBrowsePhotos}
@@ -277,6 +297,49 @@ function FolderPicker({ sourcePath, onSourceChange, destinationPaths, onDestinat
               borderRadius: '4px',
               cursor: (disabled || isBrowsing || !enabledDestinations.rawVideos) ? 'not-allowed' : 'pointer',
               opacity: enabledDestinations.rawVideos ? 1 : 0.6
+            }}
+          >
+            {isBrowsing ? 'Opening...' : 'Browse...'}
+          </button>
+        </div>
+      </div>
+
+      <div style={{ marginBottom: '12px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', marginBottom: '4px', gap: '8px' }}>
+          <input
+            id="proxies-enabled"
+            type="checkbox"
+            checked={enabledDestinations.proxies}
+            onChange={(e) => onEnabledDestinationsChange({ ...enabledDestinations, proxies: e.target.checked })}
+            disabled={disabled}
+            aria-label="Proxy Videos Destination (LucidLink)"
+            style={{ cursor: disabled ? 'not-allowed' : 'pointer' }}
+          />
+          <label htmlFor="proxies-dest" style={{ fontSize: '13px', fontWeight: 500 }}>
+            Proxy Videos Destination (LucidLink)
+          </label>
+        </div>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <input
+            id="proxies-dest"
+            type="text"
+            value={destinationPaths.proxies}
+            onChange={(e) => onDestinationChange({ ...destinationPaths, proxies: e.target.value })}
+            disabled={disabled || !enabledDestinations.proxies}
+            placeholder="/Volumes/LucidLink/videos-proxy"
+            style={{ flex: 1, padding: '6px 8px', fontSize: '13px', opacity: enabledDestinations.proxies ? 1 : 0.6 }}
+          />
+          <button
+            onClick={handleBrowseProxies}
+            disabled={disabled || isBrowsing || !enabledDestinations.proxies}
+            style={{
+              padding: '6px 16px',
+              fontSize: '13px',
+              backgroundColor: isBrowsing ? '#ffc107' : '#f0f0f0',
+              border: '1px solid #ccc',
+              borderRadius: '4px',
+              cursor: (disabled || isBrowsing || !enabledDestinations.proxies) ? 'not-allowed' : 'pointer',
+              opacity: enabledDestinations.proxies ? 1 : 0.6
             }}
           >
             {isBrowsing ? 'Opening...' : 'Browse...'}
@@ -359,11 +422,13 @@ export function CfexTransferWindow() {
     sourcePath: DEFAULT_CFEX_SOURCE, // Start with default, will be overridden by auto-detect or saved config
     destinationPaths: {
       photos: '/Volumes/videos-current/2. WORKING PROJECTS/',
-      rawVideos: '/Volumes/EAV_Video_RAW/'
+      rawVideos: '/Volumes/EAV_Video_RAW/',
+      proxies: '/Volumes/videos-current/2. WORKING PROJECTS/'
     },
     enabledDestinations: {
       photos: true,
-      rawVideos: true
+      rawVideos: true,
+      proxies: false  // Unchecked by default as per requirements
     },
     currentFile: null,
     filesCompleted: 0,
@@ -373,7 +438,8 @@ export function CfexTransferWindow() {
     percentComplete: 0,
     estimatedTimeRemaining: null,
     warnings: [],
-    errors: []
+    errors: [],
+    proxyProgress: null
   })
 
   // Load saved CFEx config on mount (before auto-detect)
@@ -391,7 +457,8 @@ export function CfexTransferWindow() {
           sourcePath: cfexConfig.defaultSource || prev.sourcePath,
           destinationPaths: {
             photos: cfexConfig.defaultPhotos || prev.destinationPaths.photos,
-            rawVideos: cfexConfig.defaultVideos || prev.destinationPaths.rawVideos
+            rawVideos: cfexConfig.defaultVideos || prev.destinationPaths.rawVideos,
+            proxies: cfexConfig.defaultProxies || prev.destinationPaths.proxies
           }
         }))
       }
@@ -429,6 +496,31 @@ export function CfexTransferWindow() {
     return cleanup
   }, [])
 
+  // Listen to proxy generation progress events
+  useEffect(() => {
+    if (!window.electronAPI?.proxy?.onProxyProgress) {
+      return
+    }
+
+    const proxyProgressHandler = (progress: {
+      type: string
+      filename?: string
+      index?: number
+      total?: number
+      percentage?: number
+      timeString?: string
+    }) => {
+      setState(prev => ({
+        ...prev,
+        proxyProgress: progress
+      }))
+    }
+
+    const cleanup = window.electronAPI.proxy.onProxyProgress(proxyProgressHandler)
+
+    return cleanup
+  }, [])
+
   // Auto-detect CFEx cards and destinations on mount
   useEffect(() => {
     // Verify electronAPI.cfex.detectSources exists (contextBridge abstraction)
@@ -450,7 +542,8 @@ export function CfexTransferWindow() {
             photos: result.destinations.photos !== '/default/photos'
               ? result.destinations.photos : prev.destinationPaths.photos,
             rawVideos: result.destinations.rawVideos !== '/default/rawVideos'
-              ? result.destinations.rawVideos : prev.destinationPaths.rawVideos
+              ? result.destinations.rawVideos : prev.destinationPaths.rawVideos,
+            proxies: prev.destinationPaths.proxies  // Keep existing proxy path (not auto-detected)
           }
         }))
       } catch (error) {
@@ -493,9 +586,29 @@ export function CfexTransferWindow() {
         filesCompleted: result.filesTransferred,
         filesTotal: result.filesTotal,
         bytesTransferred: result.bytesTransferred,
+        percentComplete: result.success ? 100 : prev.percentComplete,
         warnings: result.validationWarnings || [],
         errors: result.errors || []
       }))
+
+      // After successful transfer, trigger proxy generation if enabled (fire-and-forget)
+      if (state.enabledDestinations.proxies && result.transferredFiles?.rawVideos && result.transferredFiles.rawVideos.length > 0) {
+        // Extract just filenames from raw video paths
+        const videoFilenames = result.transferredFiles.rawVideos.map(
+          (filePath: string) => filePath.split('/').pop() || filePath
+        )
+
+        // Fire-and-forget: don't await, let it run in background
+        window.electronAPI.proxy.generateProxies({
+          rawVideoFolder: state.destinationPaths.rawVideos,
+          proxyOutputFolder: state.destinationPaths.proxies,
+          videoFilenames
+        }).catch((proxyError) => {
+          // Fail-log-continue: log error but don't change transfer status
+          console.error('Proxy generation failed:', proxyError)
+          // Optionally show warning notification, but transfer still succeeds
+        })
+      }
     } catch (error) {
       console.error('[CfexTransferWindow] Transfer failed:', error)
       setState(prev => ({
@@ -574,7 +687,10 @@ export function CfexTransferWindow() {
             cursor: canStart ? 'pointer' : 'not-allowed'
           }}
         >
-          {state.status === 'idle' ? 'Start Transfer' : 'Transfer In Progress...'}
+          {state.status === 'idle' ? 'Start Transfer' :
+           state.status === 'complete' ? 'Transfer Complete' :
+           state.status === 'error' ? 'Transfer Failed' :
+           'Transfer In Progress...'}
         </button>
 
         {isTransferring && (
@@ -599,6 +715,31 @@ export function CfexTransferWindow() {
       {isTransferring && (
         <div style={{ marginBottom: '12px', padding: '8px', backgroundColor: '#fff3cd', borderRadius: '4px', fontSize: '12px', color: '#856404' }}>
           <strong>Note:</strong> Cancel currently stops UI updates only. Full graceful cancellation (stopping file operations) coming in Week 2.
+        </div>
+      )}
+
+      {/* Proxy Generation Progress */}
+      {state.proxyProgress && state.proxyProgress.type === 'transcode_progress' && (
+        <div style={{ marginBottom: '20px', padding: '12px', backgroundColor: '#f0f9ff', borderRadius: '4px', border: '1px solid #bfdbfe' }}>
+          <div style={{ fontSize: '13px', fontWeight: '500', marginBottom: '8px', color: '#1e40af' }}>
+            Generating Proxies: {state.proxyProgress.filename || 'N/A'}
+          </div>
+          <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '8px' }}>
+            Progress: {state.proxyProgress.index || 0} / {state.proxyProgress.total || 0} videos ({state.proxyProgress.percentage || 0}%)
+          </div>
+          <div style={{ width: '100%', height: '8px', backgroundColor: '#e5e7eb', borderRadius: '4px', overflow: 'hidden' }}>
+            <div style={{
+              width: `${state.proxyProgress.percentage || 0}%`,
+              height: '100%',
+              backgroundColor: '#3b82f6',
+              transition: 'width 0.3s ease'
+            }} />
+          </div>
+          {state.proxyProgress.timeString && (
+            <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>
+              Encoding: {state.proxyProgress.percentage || 0}% | ETA: {state.proxyProgress.timeString}
+            </div>
+          )}
         </div>
       )}
 

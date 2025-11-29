@@ -10,13 +10,23 @@ interface BatchOperationsPanelProps {
   filenameRewrite?: boolean;
   /** Callback when batch completes to refresh file list */
   onBatchComplete?: () => void;
+  /** Path to current folder being browsed (used for rawVideoFolder in proxy generation) */
+  currentFolderPath?: string;
 }
 
-export function BatchOperationsPanel({ availableFiles, selectedFileIds, filenameRewrite = false, onBatchComplete }: BatchOperationsPanelProps) {
+export function BatchOperationsPanel({ availableFiles, selectedFileIds, filenameRewrite = false, onBatchComplete, currentFolderPath }: BatchOperationsPanelProps) {
   const [queueState, setQueueState] = useState<BatchQueueState | null>(null);
   const [currentProgress, setCurrentProgress] = useState<BatchProgress | null>(null);
   const [isExpanded, setIsExpanded] = useState(false);
   const [previousStatus, setPreviousStatus] = useState<string | null>(null);
+  const [proxyProgress, setProxyProgress] = useState<{
+    type: string;
+    filename?: string;
+    index?: number;
+    total?: number;
+    percentage?: number;
+    timeString?: string;
+  } | null>(null);
 
   // Subscribe to progress events
   useEffect(() => {
@@ -24,6 +34,18 @@ export function BatchOperationsPanel({ availableFiles, selectedFileIds, filename
 
     const cleanup = window.electronAPI.onBatchProgress((progress) => {
       setCurrentProgress(progress);
+    });
+
+    // Cleanup on unmount
+    return cleanup;
+  }, []);
+
+  // Subscribe to proxy generation progress events
+  useEffect(() => {
+    if (!window.electronAPI?.proxy?.onProxyProgress) return;
+
+    const cleanup = window.electronAPI.proxy.onProxyProgress((progress) => {
+      setProxyProgress(progress);
     });
 
     // Cleanup on unmount
@@ -217,6 +239,63 @@ export function BatchOperationsPanel({ availableFiles, selectedFileIds, filename
     }
   };
 
+  const isVideoFile = (filename: string): boolean => {
+    const videoExtensions = ['.mov', '.mp4', '.m4v'];
+    const lowerFilename = filename.toLowerCase();
+    return videoExtensions.some(ext => lowerFilename.endsWith(ext));
+  };
+
+  const handleGenerateProxies = async () => {
+    if (!window.electronAPI?.proxy) return;
+
+    // Selection-aware video filtering (mirrors AI Process pattern)
+    const allVideoFiles = availableFiles.filter(f => isVideoFile(f.filename));
+    const selectedVideoFiles = selectedFileIds && selectedFileIds.size > 0
+      ? allVideoFiles.filter(f => selectedFileIds.has(f.id))
+      : allVideoFiles;
+
+    if (selectedVideoFiles.length === 0) {
+      alert('No video files available for proxy generation');
+      return;
+    }
+
+    // Prompt user to select proxy output folder
+    const proxyOutputFolder = await window.electronAPI.selectFolder(currentFolderPath);
+
+    if (!proxyOutputFolder) {
+      // User cancelled folder selection
+      return;
+    }
+
+    try {
+      // Extract filenames from file IDs
+      const videoFilenames = selectedVideoFiles.map(f => f.filename);
+
+      const result = await window.electronAPI.proxy.generateProxies({
+        rawVideoFolder: currentFolderPath || '',
+        proxyOutputFolder: proxyOutputFolder,
+        videoFilenames: videoFilenames,
+      });
+
+      // Build informative message showing all outcomes
+      const totalFiles = videoFilenames.length;
+      let message = `Proxy generation: ${result.completedCount}/${totalFiles} completed`;
+
+      if (result.failedCount > 0) {
+        message += `\n\n⚠️ ${result.failedCount} file(s) failed to transcode`;
+      }
+
+      if (result.verificationFailures && result.verificationFailures.length > 0) {
+        message += `\n\n⚠️ ${result.verificationFailures.length} file(s) have EXIF timestamp issues (I1 compliance)`;
+      }
+
+      alert(message);
+    } catch (error) {
+      console.error('[BatchPanel] Failed to generate proxies:', error);
+      alert('Failed to generate proxies: ' + (error instanceof Error ? error.message : 'Unknown error'));
+    }
+  };
+
   const getStatusColor = (status: string): string => {
     switch (status) {
       case 'processing': return '#2563eb'; // blue
@@ -237,6 +316,14 @@ export function BatchOperationsPanel({ availableFiles, selectedFileIds, filename
 
   const unprocessedCount = availableFiles.filter(f => !f.processedByAI).length;
   const totalFiles = availableFiles.length;
+
+  // Selection-aware video count (mirrors AI Process pattern)
+  const allVideoFiles = availableFiles.filter(f => isVideoFile(f.filename));
+  const selectedVideoFiles = selectedFileIds && selectedFileIds.size > 0
+    ? allVideoFiles.filter(f => selectedFileIds.has(f.id))
+    : allVideoFiles;
+  const videoCount = selectedVideoFiles.length;
+
   const isProcessing = queueState?.status === 'processing';
   const selectedCount = selectedFileIds?.size || 0;
   const hasSelection = selectedCount > 0;
@@ -287,9 +374,9 @@ export function BatchOperationsPanel({ availableFiles, selectedFileIds, filename
               }}
             >
               {unprocessedCount > 100
-                ? `Process First 100 Files`
+                ? `AI Process First 100 Files`
                 : unprocessedCount > 0
-                ? `Process ${unprocessedCount} File${unprocessedCount !== 1 ? 's' : ''}`
+                ? `AI Process ${unprocessedCount} File${unprocessedCount !== 1 ? 's' : ''}`
                 : 'No Files to Process'
               }
             </button>
@@ -311,17 +398,40 @@ export function BatchOperationsPanel({ availableFiles, selectedFileIds, filename
                 color: '#374151',
                 cursor: 'pointer',
                 fontWeight: '600',
-                marginBottom: '16px',
+                marginBottom: '8px',
                 position: 'relative',
                 zIndex: 1,
               }}
             >
               {totalFiles > 100
-                ? `Reprocess First 100 Files`
-                : `Reprocess All ${totalFiles} File${totalFiles !== 1 ? 's' : ''}`
+                ? `AI Reprocess First 100 Files`
+                : `AI Reprocess All ${totalFiles} File${totalFiles !== 1 ? 's' : ''}`
               }
             </button>
           )}
+
+          {/* Generate Proxies Button (B2.7_04) */}
+          <button
+            onClick={handleGenerateProxies}
+            disabled={videoCount === 0}
+            style={{
+              width: '100%',
+              padding: '10px 16px',
+              fontSize: '14px',
+              borderRadius: '6px',
+              border: '1px solid #9ca3af',
+              backgroundColor: videoCount > 0 ? 'white' : '#e5e7eb',
+              color: videoCount > 0 ? '#374151' : '#9ca3af',
+              cursor: videoCount > 0 ? 'pointer' : 'not-allowed',
+              fontWeight: '600',
+              marginBottom: '16px',
+            }}
+          >
+            {videoCount > 0
+              ? `Generate Proxies for ${videoCount} Video${videoCount !== 1 ? 's' : ''}`
+              : 'No Videos to Process'
+            }
+          </button>
         </>
       )}
 
@@ -472,6 +582,31 @@ export function BatchOperationsPanel({ availableFiles, selectedFileIds, filename
               </span>
             )}
           </div>
+        </div>
+      )}
+
+      {/* Proxy Generation Progress */}
+      {proxyProgress && proxyProgress.type === 'transcode_progress' && (
+        <div style={{ marginTop: '12px', padding: '12px', backgroundColor: '#f0f9ff', borderRadius: '4px', border: '1px solid #bfdbfe' }}>
+          <div style={{ fontSize: '13px', fontWeight: '500', marginBottom: '8px', color: '#1e40af' }}>
+            Generating Proxies: {proxyProgress.filename || 'N/A'}
+          </div>
+          <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '8px' }}>
+            Progress: {proxyProgress.index || 0} / {proxyProgress.total || 0} videos ({proxyProgress.percentage || 0}%)
+          </div>
+          <div style={{ width: '100%', height: '8px', backgroundColor: '#e5e7eb', borderRadius: '4px', overflow: 'hidden' }}>
+            <div style={{
+              width: `${proxyProgress.percentage || 0}%`,
+              height: '100%',
+              backgroundColor: '#3b82f6',
+              transition: 'width 0.3s ease'
+            }} />
+          </div>
+          {proxyProgress.timeString && (
+            <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>
+              Encoding: {proxyProgress.percentage || 0}% | ETA: {proxyProgress.timeString}
+            </div>
+          )}
         </div>
       )}
     </div>

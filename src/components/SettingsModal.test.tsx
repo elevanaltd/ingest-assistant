@@ -1463,4 +1463,159 @@ describe('SettingsModal', () => {
       expect(savedConfig.cfex.filenameRewrite).toBe(false);
     });
   });
+
+  describe('Proxy Format Settings (File Ingestion Tab)', () => {
+    beforeEach(() => {
+      window.electronAPI = {
+        loadConfig: vi.fn().mockResolvedValue({
+          cfex: {
+            defaultSource: '/Volumes/Untitled/DCIM/100_FUJI',
+            defaultPhotos: '/Volumes/videos-current/2. WORKING PROJECTS/',
+            defaultVideos: '/Volumes/EAV_Video_RAW/',
+            aiAutoAnalyze: false,
+            metadataWrite: false,
+            filenameRewrite: false,
+            filenameTemplate: '{location}-{subject}-{action}-{shotType}',
+            proxyPresetId: '2k-prores-proxy'
+          }
+        }),
+        saveConfig: vi.fn().mockResolvedValue(true)
+      } as any;
+    });
+
+    it('should render proxy format dropdown in File Ingestion tab', async () => {
+      render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
+
+      // Switch to File Ingestion tab
+      const ingestionTab = screen.getByText('File Ingestion');
+      fireEvent.click(ingestionTab);
+
+      await waitFor(() => {
+        expect(window.electronAPI.loadConfig).toHaveBeenCalled();
+      });
+
+      // Should show proxy format dropdown
+      expect(screen.getByLabelText(/Proxy Format/i)).toBeInTheDocument();
+    });
+
+    it('should show all 5 proxy preset options', async () => {
+      render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
+
+      // Switch to File Ingestion tab
+      const ingestionTab = screen.getByText('File Ingestion');
+      fireEvent.click(ingestionTab);
+
+      await waitFor(() => {
+        expect(window.electronAPI.loadConfig).toHaveBeenCalled();
+      });
+
+      // Find the select element
+      const proxySelect = screen.getByLabelText(/Proxy Format/i) as HTMLSelectElement;
+
+      // Should have 5 options
+      expect(proxySelect.options.length).toBe(5);
+
+      // Verify option values and labels
+      expect(proxySelect.options[0].value).toBe('2k-prores-proxy');
+      expect(proxySelect.options[0].text).toContain('2K ProRes Proxy (Recommended)');
+
+      expect(proxySelect.options[1].value).toBe('1080p-prores-proxy');
+      expect(proxySelect.options[1].text).toContain('1080p ProRes Proxy');
+
+      expect(proxySelect.options[2].value).toBe('4k-prores-proxy');
+      expect(proxySelect.options[2].text).toContain('4K ProRes Proxy');
+
+      expect(proxySelect.options[3].value).toBe('2k-h264-crf23');
+      expect(proxySelect.options[3].text).toContain('2K H.264');
+
+      expect(proxySelect.options[4].value).toBe('1080p-h264-crf18');
+      expect(proxySelect.options[4].text).toContain('1080p H.264');
+    });
+
+    it('should default to 2k-prores-proxy when no preset saved', async () => {
+      window.electronAPI.loadConfig = vi.fn().mockResolvedValue({
+        cfex: {
+          // No proxyPresetId saved
+        }
+      });
+
+      render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
+
+      // Switch to File Ingestion tab
+      const ingestionTab = screen.getByText('File Ingestion');
+      fireEvent.click(ingestionTab);
+
+      await waitFor(() => {
+        expect(window.electronAPI.loadConfig).toHaveBeenCalled();
+      });
+
+      const proxySelect = screen.getByLabelText(/Proxy Format/i) as HTMLSelectElement;
+      expect(proxySelect.value).toBe('2k-prores-proxy');
+    });
+
+    it('should load saved proxy preset selection', async () => {
+      window.electronAPI.loadConfig = vi.fn().mockResolvedValue({
+        cfex: {
+          proxyPresetId: '1080p-h264-crf18'
+        }
+      });
+
+      render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
+
+      // Switch to File Ingestion tab
+      const ingestionTab = screen.getByText('File Ingestion');
+      fireEvent.click(ingestionTab);
+
+      await waitFor(() => {
+        expect(window.electronAPI.loadConfig).toHaveBeenCalled();
+      });
+
+      const proxySelect = screen.getByLabelText(/Proxy Format/i) as HTMLSelectElement;
+      expect(proxySelect.value).toBe('1080p-h264-crf18');
+    });
+
+    it('should save proxy preset selection when Save button clicked', async () => {
+      render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
+
+      // Switch to File Ingestion tab
+      const ingestionTab = screen.getByText('File Ingestion');
+      fireEvent.click(ingestionTab);
+
+      await waitFor(() => {
+        expect(window.electronAPI.loadConfig).toHaveBeenCalled();
+      });
+
+      // Change proxy format
+      const proxySelect = screen.getByLabelText(/Proxy Format/i) as HTMLSelectElement;
+      fireEvent.change(proxySelect, { target: { value: '4k-prores-proxy' } });
+      expect(proxySelect.value).toBe('4k-prores-proxy');
+
+      // Save settings
+      const saveButton = screen.getByText('Save Ingestion Settings');
+      fireEvent.click(saveButton);
+
+      await waitFor(() => {
+        expect(window.electronAPI.saveConfig).toHaveBeenCalled();
+      });
+
+      // Verify proxyPresetId was saved
+      const savedConfig = (window.electronAPI.saveConfig as ReturnType<typeof vi.fn>).mock.calls[0][0];
+      expect(savedConfig.cfex.proxyPresetId).toBe('4k-prores-proxy');
+    });
+
+    it('should show preset description below dropdown', async () => {
+      render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
+
+      // Switch to File Ingestion tab
+      const ingestionTab = screen.getByText('File Ingestion');
+      fireEvent.click(ingestionTab);
+
+      await waitFor(() => {
+        expect(window.electronAPI.loadConfig).toHaveBeenCalled();
+      });
+
+      // Should show description for default preset (2k-prores-proxy)
+      expect(screen.getByText(/Sweet spot: 10-bit 4:2:2, low CPU/i)).toBeInTheDocument();
+    });
+  });
 });

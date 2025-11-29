@@ -2,7 +2,89 @@
 
 **Purpose:** Archive of completed work, major milestones, and historical decisions. Consult when needing context on past implementations.
 
-**Last Updated:** 2025-11-27
+**Last Updated:** 2025-11-29
+
+---
+
+## 2025-11-29 Session: B2.7 Proxy UI + Configurable Presets + Bug Fixes
+**Status:** COMPLETE | **Tests:** 1017/1025 | **PR:** #98
+
+### Completed
+- B2.7_00::main.ts_registration→proxy_IPC_handlers_callable
+- B2.7_03::BatchPanel_button_rename→"AI Process"/"AI Reprocess"_clarity
+- B2.7_04::proxy_button→"Generate Proxies for X Videos"+selection_aware
+- B2.7_01::CFEx_proxy_destination_UI→checkbox+input+browse
+- B2.7_02::CFEx_backend_integration→proxy_triggers_after_transfer
+- B2.7_05::configurable_proxy_presets→5_formats_in_Settings
+
+### Bug Fixes (Same Session)
+- FIX::proxy_folder_paths→currentFolderPath_prop+folder_picker→ZodError_eliminated
+- FIX::extension_bug→.MOV_for_ProRes,.mp4_for_H264→tied_to_codec
+- FIX::transferredFiles_missing→added_tracking_to_TransferResult→proxy_gets_video_paths
+- FIX::99.95%_progress→percentComplete:100_on_success
+
+### Proxy Format Presets (User-Validated)
+| Preset | Codec | Resolution | Container | ~Size/24s |
+|--------|-------|------------|-----------|-----------|
+| 2K ProRes Proxy ⭐ | prores_ks -profile:v 0 | 2560×1440 | .MOV | 175 MB |
+| 1080p ProRes Proxy | prores_ks -profile:v 0 | 1920×1080 | .MOV | 78 MB |
+| 4K ProRes Proxy | prores_ks -profile:v 0 | 3840×2160 | .MOV | 363 MB |
+| 2K H.264 CRF 23 | libx264 -crf 23 | 2560×1440 | .mp4 | ~25 MB |
+| 1080p H.264 CRF 18 | libx264 -crf 18 | 1920×1080 | .mp4 | ~15 MB |
+
+### Known Issue (Deferred)
+**P1: EXIF verification misses most proxy files** (electron/services/exifPreserver.ts:170-174)
+- Current code: `rawPath.split('/').pop()?.replace('.MOV', '')`
+- Only strips uppercase ".MOV" - misses .mov/.mp4/Windows paths
+- Impact: EXIF verification silently skipped, I1 compliance gap for non-.MOV sources
+- Status: DEFERRED to next session (see continuation prompt below)
+
+### Quality
+TRACED: T✅ R✅ E✅ D✅
+QG: Lint✅(0/0) Typecheck✅ Tests1017/1025✅
+
+---
+
+## 2025-11-28 Session: Proxy Folder Path Wiring (Bug Fix)
+**Status:** COMPLETE | **Tests:** 994/1002 (+67)
+
+### Completed
+- BUG_FIX::proxy_folder_paths→currentFolderPath_prop+selectFolder_dialog→ZodError_eliminated
+- TDD::RED→GREEN→5_tests→folder_selection+path_wiring+cancellation→all_passing
+
+### Implementation
+- BatchOperationsPanel::currentFolderPath_prop→rawVideoFolder_population
+- selectFolder_dialog→proxyOutputFolder_user_selection→defaultPath=currentFolderPath
+- App.tsx::folderPath→BatchOperationsPanel[wiring]→paths_properly_populated
+
+### Problem Solved
+- ZodError[rawVideoFolder='',proxyOutputFolder='']⇒user_folder_selection⇒valid_paths_passed_to_IPC
+- Button_click_failure⇒async_folder_selection+await⇒graceful_cancellation
+
+### Quality
+TRACED: T✅ R✅ E✅ D✅
+QG: Lint✅(0/0) Typecheck✅ Tests994/1002✅
+
+---
+
+## 2025-11-27 Session: Phase 1b D2-B0 Orchestration + B2.1 Implementation
+**Status:** COMPLETE | **Tests:** 927/929 (+21)
+
+### Completed
+- ORCHESTRATION::D2.1→D2.2→D2.3→D3.1→D3.2→B0→Progressive_Fidelity_Architecture
+- B2.1::ProxyGenerator→21_tests→ffmpeg_stderr_time=_parsing→GREEN
+
+### Decisions
+- [2025-11-27] progress→ffmpeg_stderr_parsing[vs_file_size_17.5%]→accuracy⊗variable_raw_sizes
+- [2025-11-27] architecture→Profile_0_first[vs_parallel_immediately]→additive_complexity⊗simplicity_first
+
+### Problems Solved
+- validator_rejected_17.5%_heuristic⇒ffmpeg_time=_parsing⇒accurate_progress
+- technical-architect_identified_error_gap⇒fail-log-continue⇒batch_resilience
+
+### Quality
+TRACED: T✅ R✅ A✅ C✅ E✅ D✅
+QG: TypeScript✅ ESLint✅(0/0) Tests927/929✅ Build✅
 
 ---
 

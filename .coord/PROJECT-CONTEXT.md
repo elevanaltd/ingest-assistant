@@ -1,6 +1,6 @@
 # Ingest Assistant - Project Context
 
-**Last Updated:** 2025-11-27 | **Version:** v2.2.0 baseline | **Branch:** fix/batch-operations-and-lint
+**Last Updated:** 2025-11-27 | **Version:** v2.2.0 baseline | **Branch:** main (Phase 1b in progress)
 
 ---
 
@@ -34,16 +34,16 @@
 
 ### Branch Status
 ```
-Branch: fix/batch-operations-and-lint (8 commits ahead of main)
-Tests:  906/908 passing + 2 skipped (+16 new tests)
-Lint:   0 errors, 0 warnings (100% reduction from 153)
+Branch: main (Phase 1b B2.7 UI in progress)
+Tests:  965/972 passing + 7 skipped (+64 Phase 1b tests)
+Lint:   0 errors, 0 warnings
 Types:  0 errors
-Security: 6 moderate vulns (HIGH eliminated via npm audit fix)
+Security: 6 moderate vulns (HIGH eliminated)
 ```
 
 ### Phase Progression
 ```
-D0→D1→D2→D3(v1.1+OCTAVE)→B0(FINAL GO)→B2(Phase 1a COMPLETE)→Phase 1c COMPLETE→Phase 1b NEXT
+D0→D1→D2→D3→B0(Phase 1a)→B2(1a COMPLETE)→1c COMPLETE→Phase 1b(B2.1-B2.6 COMPLETE→B2.7 UI IN PROGRESS)
 ```
 
 ### CFEx Phase 1a Implementation
@@ -168,11 +168,38 @@ D0→D1→D2→D3(v1.1+OCTAVE)→B0(FINAL GO)→B2(Phase 1a COMPLETE)→Phase 1c
 
 **Commits:** e091fb6→3757275→56d2cc8→1e65d78→ab13473→5d36403→d3232f2→91cae52→d498693
 
-### Immediate (Phase 1b: Proxy Generation) - NEXT
-1. **D2 Design:** ffmpeg + exiftool integration architecture
-2. **D3 Blueprint:** Progress UI, EXIF validation dialogs
-3. **B0 Validation:** DateTimeOriginal preservation protocol
-4. **B2 Implementation:** proxyGenerator.ts, exifPreserver.ts
+### 🚧 Phase 1b: Proxy Generation - IN PROGRESS
+
+**D2-B0 Orchestration (2025-11-27):** COMPLETE
+- D2.1::ideator→22_alternatives[5_dimensions]
+- D2.2::validator(codex)→CONDITIONAL[file_size_heuristic_rejected]
+- D2.3::synthesizer→Progressive_Fidelity_Architecture[Profile_0_first]
+- D3.1::design-architect→1800_line_blueprint[9_sections]
+- D3.2::technical-architect(gemini)→CONDITIONAL_GO[8/10][2_critical_fixes]
+- B0::critical-design-validator(codex)→CONDITIONAL_GO[7/10][5_conditions]
+
+**B0 Conditions (ALL RESOLVED):**
+1. ✅ Progress→ffmpeg_stderr_time=_parsing[B2.1]
+2. ✅ Error→fail-log-continue[B2.3]
+3. ✅ Security→SecurityValidator_integration[B2.4]
+4. ✅ Validation→preflight+EXIF_post-verify[B2.2+B2.4]
+5. ✅ Cleanup→partial_proxy_deletion[B2.5]
+
+**B2 Implementation Progress:**
+- ✅ B2.1::ProxyGenerator→21_tests→ffmpeg_stderr_progress_parsing→GREEN
+- ✅ B2.2::ExifPreserver→12_tests→3-phase_workflow[extract→transcode→verify]→GREEN
+- ✅ B2.3::ProxyOrchestrator→11_tests→fail-log-continue→GREEN
+- ✅ B2.4::Security+Validation→4_tests→SecurityValidator_integration→GREEN
+- ✅ B2.5::Cleanup→3_tests→partial_proxy_deletion→GREEN
+- ✅ B2.6::IPC_Handlers→8_tests→proxyGenerationHandlers.ts→GREEN
+- ⏳ B2.7::UI_Components→D3_Blueprint_created→awaiting_implementation
+- ✅ B2.8::Integration_Tests→5_test_plans_documented[skipped_pending_fixtures]
+
+**B2.7 UI Design (2025-11-27):**
+- D3 Blueprint: `.coord/workflow-docs/009-PHASE1B-B2.7-UI-DESIGN.md`
+- Scope: CFEx Transfer proxy destination + BatchPanel proxy button
+- Backend: 59 tests passing, main.ts registration BLOCKING
+- Next: implementation-lead delegation with TDD
 
 ### Deferred (Phase 1a-POLISH → parallel to Phase 1b/1c)
 - Auto-detection IPC + UI (service layer complete, IPC+multi-card dialog when needed)

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { BatchOperationsPanel } from './BatchOperationsPanel';
 
 /**
@@ -57,7 +57,7 @@ describe('BatchOperationsPanel', () => {
       />
     );
 
-    expect(screen.getByRole('button', { name: /^process.*file/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^AI Process.*file/i })).toBeInTheDocument();
   });
 
   it('should disable process button when no unprocessed files', () => {
@@ -97,7 +97,7 @@ describe('BatchOperationsPanel', () => {
       />
     );
 
-    expect(screen.getByRole('button', { name: /reprocess all/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /AI Reprocess All/i })).toBeInTheDocument();
   });
 
   it('should show total file count for reprocess button', () => {
@@ -113,7 +113,92 @@ describe('BatchOperationsPanel', () => {
     );
 
     // Should show reprocess for all 3 files
-    expect(screen.getByRole('button', { name: /reprocess.*3.*file/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /AI Reprocess.*3.*file/i })).toBeInTheDocument();
+  });
+
+  // Phase 3: Proxy Generation Progress Tests (TDD - RED phase)
+  describe('Proxy Generation Progress', () => {
+    it('should subscribe to proxy progress events on mount', () => {
+      // ARRANGE: Mock onProxyProgress handler
+      const mockOnProxyProgress = vi.fn().mockReturnValue(() => {});
+      (window as any).electronAPI.proxy = {
+        onProxyProgress: mockOnProxyProgress
+      };
+
+      // ACT: Render component
+      render(
+        <BatchOperationsPanel
+          availableFiles={[]}
+          onBatchComplete={vi.fn()}
+        />
+      );
+
+      // ASSERT: Should subscribe to proxy progress events
+      expect(mockOnProxyProgress).toHaveBeenCalledWith(expect.any(Function));
+    });
+
+    it('should display proxy progress when generating proxies', async () => {
+      // ARRANGE: Setup proxy progress event emitter
+      let proxyProgressCallback: ((progress: any) => void) | null = null;
+      const mockOnProxyProgress = vi.fn((callback) => {
+        proxyProgressCallback = callback;
+        return () => {}; // cleanup function
+      });
+
+      (window as any).electronAPI.proxy = {
+        onProxyProgress: mockOnProxyProgress
+      };
+
+      render(
+        <BatchOperationsPanel
+          availableFiles={[]}
+          onBatchComplete={vi.fn()}
+        />
+      );
+
+      // ACT: Simulate proxy progress event
+      if (proxyProgressCallback) {
+        (proxyProgressCallback as (progress: any) => void)({
+          type: 'transcode_progress',
+          filename: 'EA001621.MOV',
+          index: 12,
+          total: 58,
+          percentage: 45,
+          timeString: '2m 30s'
+        });
+      }
+
+      // ASSERT: Should display proxy generation progress
+      await waitFor(() => {
+        expect(screen.getByText(/Generating Proxies:/)).toBeInTheDocument();
+        expect(screen.getByText(/EA001621\.MOV/)).toBeInTheDocument();
+        expect(screen.getByText(/Progress:.*12.*58.*videos/)).toBeInTheDocument();
+        expect(screen.getByText(/Encoding:.*45%/)).toBeInTheDocument();
+      });
+    });
+
+    it('should cleanup proxy progress subscription on unmount', () => {
+      // ARRANGE: Mock cleanup function
+      const mockCleanup = vi.fn();
+      const mockOnProxyProgress = vi.fn().mockReturnValue(mockCleanup);
+
+      (window as any).electronAPI.proxy = {
+        onProxyProgress: mockOnProxyProgress
+      };
+
+      const { unmount } = render(
+        <BatchOperationsPanel
+          availableFiles={[]}
+          onBatchComplete={vi.fn()}
+        />
+      );
+
+      // ACT: Unmount component
+      unmount();
+
+      // ASSERT: Should call cleanup function
+      expect(mockCleanup).toHaveBeenCalled();
+    });
   });
 
   // Phase 3: Multi-select batch processing tests (TDD - RED phase)
@@ -208,7 +293,7 @@ describe('BatchOperationsPanel', () => {
       expect(screen.getByRole('button', { name: /process selected.*1.*file/i })).toBeInTheDocument();
 
       // Assert: Regular batch button should not appear (replaced by Process Selected)
-      expect(screen.queryByRole('button', { name: /^process 2 files$/i })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /^AI Process 2 Files$/i })).not.toBeInTheDocument();
     });
   });
 
@@ -248,7 +333,7 @@ describe('BatchOperationsPanel', () => {
         />
       );
 
-      const processButton = screen.getByRole('button', { name: /process 2 files/i });
+      const processButton = screen.getByRole('button', { name: /AI Process 2 Files/i });
       processButton.click();
 
       // Should call window.confirm with warning message
@@ -277,7 +362,7 @@ describe('BatchOperationsPanel', () => {
         />
       );
 
-      const processButton = screen.getByRole('button', { name: /process 2 files/i });
+      const processButton = screen.getByRole('button', { name: /AI Process 2 Files/i });
       processButton.click();
 
       // Should show confirmation
@@ -302,7 +387,7 @@ describe('BatchOperationsPanel', () => {
         />
       );
 
-      const processButton = screen.getByRole('button', { name: /process 2 files/i });
+      const processButton = screen.getByRole('button', { name: /AI Process 2 Files/i });
       processButton.click();
 
       // Should show confirmation
@@ -326,7 +411,7 @@ describe('BatchOperationsPanel', () => {
         />
       );
 
-      const processButton = screen.getByRole('button', { name: /process 3 files/i });
+      const processButton = screen.getByRole('button', { name: /AI Process 3 Files/i });
       processButton.click();
 
       // Warning should include file count
@@ -347,7 +432,7 @@ describe('BatchOperationsPanel', () => {
         />
       );
 
-      const processButton = screen.getByRole('button', { name: /process 2 files/i });
+      const processButton = screen.getByRole('button', { name: /AI Process 2 Files/i });
       processButton.click();
 
       // Should NOT show confirmation
@@ -356,6 +441,709 @@ describe('BatchOperationsPanel', () => {
       // Should proceed directly with batch operation
       const mockBatchStart = (window as any).electronAPI.batchStart;
       expect(mockBatchStart).toHaveBeenCalledWith(['1', '2']);
+    });
+  });
+
+  /**
+   * B2.7_03: Button Renaming with AI Prefix (TDD RED Phase)
+   *
+   * Purpose: Clarify that existing buttons perform AI processing (not proxy generation)
+   * Buttons renamed: "Process X Files" → "AI Process X Files"
+   *                  "Reprocess All X Files" → "AI Reprocess All X Files"
+   */
+  describe('AI Button Prefix (B2.7_03)', () => {
+    it('should display "AI Process X Files" button with AI prefix', () => {
+      render(
+        <BatchOperationsPanel
+          availableFiles={[
+            { id: '1', filename: 'test1.jpg', processedByAI: false },
+            { id: '2', filename: 'test2.jpg', processedByAI: false },
+          ]}
+          onBatchComplete={vi.fn()}
+        />
+      );
+
+      expect(screen.getByRole('button', { name: /^AI Process 2 Files$/i })).toBeInTheDocument();
+    });
+
+    it('should display "AI Reprocess All X Files" button with AI prefix', () => {
+      render(
+        <BatchOperationsPanel
+          availableFiles={[
+            { id: '1', filename: 'test1.jpg', processedByAI: true },
+            { id: '2', filename: 'test2.jpg', processedByAI: true },
+          ]}
+          onBatchComplete={vi.fn()}
+        />
+      );
+
+      expect(screen.getByRole('button', { name: /^AI Reprocess All 2 Files$/i })).toBeInTheDocument();
+    });
+  });
+
+  /**
+   * B2.7_04: Generate Proxies Button (TDD RED Phase)
+   *
+   * Purpose: Add proxy generation button to batch operations panel
+   * Features:
+   * - Button displays "Generate Proxies for X Videos"
+   * - Only counts video files (.mov, .mp4, .MOV, .MP4)
+   * - Disabled when no video files present
+   * - Enabled when video files present
+   * - Calls proxy:generateProxies IPC with correct parameters
+   */
+  describe('Generate Proxies Button (B2.7_04)', () => {
+    const mockGenerateProxies = vi.fn().mockResolvedValue({
+      success: true,
+      completedCount: 2,
+      failedCount: 0,
+      failedFiles: [],
+      verificationFailures: [],
+    });
+
+    beforeEach(() => {
+      // Mock window.electronAPI.proxy and selectFolder for proxy generation tests
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (window as any).electronAPI = {
+        ...(window as any).electronAPI,
+        proxy: {
+          generateProxies: mockGenerateProxies,
+          onProxyProgress: vi.fn().mockReturnValue(() => {}),
+        },
+        selectFolder: vi.fn().mockResolvedValue('/mock/proxy/output'),
+      };
+      window.alert = vi.fn(); // Mock alert for all tests
+    });
+
+    it('should render "Generate Proxies for X Videos" button', () => {
+      render(
+        <BatchOperationsPanel
+          availableFiles={[
+            { id: '1', filename: 'test1.mov', processedByAI: false },
+            { id: '2', filename: 'test2.mp4', processedByAI: false },
+          ]}
+          onBatchComplete={vi.fn()}
+        />
+      );
+
+      expect(screen.getByRole('button', { name: /generate proxies for.*videos/i })).toBeInTheDocument();
+    });
+
+    it('should only count video files in button label', () => {
+      render(
+        <BatchOperationsPanel
+          availableFiles={[
+            { id: '1', filename: 'photo1.jpg', processedByAI: false },
+            { id: '2', filename: 'video1.mov', processedByAI: false },
+            { id: '3', filename: 'photo2.png', processedByAI: false },
+            { id: '4', filename: 'video2.mp4', processedByAI: false },
+          ]}
+          onBatchComplete={vi.fn()}
+        />
+      );
+
+      // Should show 2 videos, not 4 files
+      expect(screen.getByRole('button', { name: /generate proxies for 2 videos/i })).toBeInTheDocument();
+    });
+
+    it('should disable button when no video files present', () => {
+      render(
+        <BatchOperationsPanel
+          availableFiles={[
+            { id: '1', filename: 'photo1.jpg', processedByAI: false },
+            { id: '2', filename: 'photo2.png', processedByAI: false },
+          ]}
+          onBatchComplete={vi.fn()}
+        />
+      );
+
+      const proxyButton = screen.getByRole('button', { name: /no videos to process/i });
+      expect(proxyButton).toBeDisabled();
+    });
+
+    it('should enable button when video files present', () => {
+      render(
+        <BatchOperationsPanel
+          availableFiles={[
+            { id: '1', filename: 'video1.mov', processedByAI: false },
+            { id: '2', filename: 'video2.MP4', processedByAI: false },
+          ]}
+          onBatchComplete={vi.fn()}
+        />
+      );
+
+      const proxyButton = screen.getByRole('button', { name: /generate proxies for 2 videos/i });
+      expect(proxyButton).toBeEnabled();
+    });
+
+    it('should call proxy:generateProxies IPC when clicked', async () => {
+      render(
+        <BatchOperationsPanel
+          availableFiles={[
+            { id: '/path/to/video1.mov', filename: 'video1.mov', processedByAI: false },
+            { id: '/path/to/video2.mp4', filename: 'video2.mp4', processedByAI: false },
+          ]}
+          onBatchComplete={vi.fn()}
+        />
+      );
+
+      const proxyButton = screen.getByRole('button', { name: /generate proxies for 2 videos/i });
+      proxyButton.click();
+
+      // Wait for async folder selection and proxy generation
+      await vi.waitFor(() => {
+        expect(mockGenerateProxies).toHaveBeenCalledWith(
+          expect.objectContaining({
+            videoFilenames: ['video1.mov', 'video2.mp4'],
+          })
+        );
+      });
+    });
+
+    it('should recognize all video file extensions (case insensitive)', () => {
+      render(
+        <BatchOperationsPanel
+          availableFiles={[
+            { id: '1', filename: 'test1.mov', processedByAI: false },
+            { id: '2', filename: 'test2.MOV', processedByAI: false },
+            { id: '3', filename: 'test3.mp4', processedByAI: false },
+            { id: '4', filename: 'test4.MP4', processedByAI: false },
+            { id: '5', filename: 'test5.m4v', processedByAI: false },
+            { id: '6', filename: 'photo.jpg', processedByAI: false },
+          ]}
+          onBatchComplete={vi.fn()}
+        />
+      );
+
+      // Should count 5 videos (.mov, .MOV, .mp4, .MP4, .m4v)
+      expect(screen.getByRole('button', { name: /generate proxies for 5 videos/i })).toBeInTheDocument();
+    });
+  });
+
+  /**
+   * B2.7_04b: Proxy Button Selection-Aware Behavior (TDD RED Phase)
+   *
+   * Purpose: Make proxy generation button selection-aware (mirrors AI Process pattern)
+   * Features:
+   * - Button shows ALL video count when no selection
+   * - Button shows SELECTED video count when files selected (filtered to videos)
+   * - Clicking processes ALL videos when none selected
+   * - Clicking processes only SELECTED videos when some selected
+   */
+  describe('Proxy Button Selection-Aware (B2.7_04b)', () => {
+    const mockGenerateProxies = vi.fn().mockResolvedValue({
+      success: true,
+      completedCount: 2,
+      failedCount: 0,
+      failedFiles: [],
+      verificationFailures: [],
+    });
+
+    beforeEach(() => {
+      // Mock window.electronAPI.proxy and selectFolder for proxy generation tests
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (window as any).electronAPI = {
+        ...(window as any).electronAPI,
+        proxy: {
+          generateProxies: mockGenerateProxies,
+          onProxyProgress: vi.fn().mockReturnValue(() => {}),
+        },
+        selectFolder: vi.fn().mockResolvedValue('/mock/proxy/output'),
+      };
+      window.alert = vi.fn(); // Mock alert for all tests
+    });
+
+    it('should show ALL video count when no files selected', () => {
+      render(
+        <BatchOperationsPanel
+          availableFiles={[
+            { id: '1', filename: 'video1.mov', processedByAI: false },
+            { id: '2', filename: 'video2.mp4', processedByAI: false },
+            { id: '3', filename: 'photo1.jpg', processedByAI: false },
+          ]}
+          selectedFileIds={new Set()}
+          onBatchComplete={vi.fn()}
+        />
+      );
+
+      // Should show 2 videos (photo excluded)
+      expect(screen.getByRole('button', { name: /generate proxies for 2 videos/i })).toBeInTheDocument();
+    });
+
+    it('should show SELECTED video count when files selected', () => {
+      render(
+        <BatchOperationsPanel
+          availableFiles={[
+            { id: '1', filename: 'video1.mov', processedByAI: false },
+            { id: '2', filename: 'video2.mp4', processedByAI: false },
+            { id: '3', filename: 'video3.mov', processedByAI: false },
+            { id: '4', filename: 'photo1.jpg', processedByAI: false },
+          ]}
+          selectedFileIds={new Set(['1', '4'])} // 1 video + 1 photo selected
+          onBatchComplete={vi.fn()}
+        />
+      );
+
+      // Should show 1 video (video1.mov selected, photo1.jpg ignored)
+      expect(screen.getByRole('button', { name: /generate proxies for 1 video/i })).toBeInTheDocument();
+    });
+
+    it('should process ALL videos when no files selected', async () => {
+      render(
+        <BatchOperationsPanel
+          availableFiles={[
+            { id: '/path/video1.mov', filename: 'video1.mov', processedByAI: false },
+            { id: '/path/video2.mp4', filename: 'video2.mp4', processedByAI: false },
+            { id: '/path/photo1.jpg', filename: 'photo1.jpg', processedByAI: false },
+          ]}
+          selectedFileIds={new Set()}
+          onBatchComplete={vi.fn()}
+        />
+      );
+
+      const proxyButton = screen.getByRole('button', { name: /generate proxies for 2 videos/i });
+      proxyButton.click();
+
+      // Wait for async folder selection and proxy generation
+      await vi.waitFor(() => {
+        expect(mockGenerateProxies).toHaveBeenCalledWith(
+          expect.objectContaining({
+            videoFilenames: ['video1.mov', 'video2.mp4'],
+          })
+        );
+      });
+    });
+
+    it('should process only SELECTED videos when files selected', async () => {
+      render(
+        <BatchOperationsPanel
+          availableFiles={[
+            { id: '/path/video1.mov', filename: 'video1.mov', processedByAI: false },
+            { id: '/path/video2.mp4', filename: 'video2.mp4', processedByAI: false },
+            { id: '/path/video3.mov', filename: 'video3.mov', processedByAI: false },
+            { id: '/path/photo1.jpg', filename: 'photo1.jpg', processedByAI: false },
+          ]}
+          selectedFileIds={new Set(['/path/video1.mov', '/path/photo1.jpg'])} // 1 video + 1 photo
+          onBatchComplete={vi.fn()}
+        />
+      );
+
+      const proxyButton = screen.getByRole('button', { name: /generate proxies for 1 video/i });
+      proxyButton.click();
+
+      // Wait for async folder selection and proxy generation
+      await vi.waitFor(() => {
+        expect(mockGenerateProxies).toHaveBeenCalledWith(
+          expect.objectContaining({
+            videoFilenames: ['video1.mov'],
+          })
+        );
+      });
+    });
+
+    it('should disable button when no videos in selection', () => {
+      render(
+        <BatchOperationsPanel
+          availableFiles={[
+            { id: '1', filename: 'video1.mov', processedByAI: false },
+            { id: '2', filename: 'photo1.jpg', processedByAI: false },
+            { id: '3', filename: 'photo2.jpg', processedByAI: false },
+          ]}
+          selectedFileIds={new Set(['2', '3'])} // Only photos selected
+          onBatchComplete={vi.fn()}
+        />
+      );
+
+      const proxyButton = screen.getByRole('button', { name: /no videos to process/i });
+      expect(proxyButton).toBeDisabled();
+    });
+
+    it('should handle singular "Video" when count is 1', () => {
+      render(
+        <BatchOperationsPanel
+          availableFiles={[
+            { id: '1', filename: 'video1.mov', processedByAI: false },
+            { id: '2', filename: 'photo1.jpg', processedByAI: false },
+          ]}
+          selectedFileIds={new Set(['1'])} // 1 video selected
+          onBatchComplete={vi.fn()}
+        />
+      );
+
+      // Should show "1 Video" (singular)
+      expect(screen.getByRole('button', { name: /generate proxies for 1 video$/i })).toBeInTheDocument();
+    });
+  });
+
+  /**
+   * Proxy Generation Result Messages (B2.7 Enhancement)
+   *
+   * Purpose: Fix misleading result messages that show "0 files failed" on EXIF verification failures
+   * Problem: result.success is false when verificationFailures exist, but alert shows "0 files failed"
+   * Solution: Distinguish between transcode failures vs EXIF verification issues
+   */
+  describe('Proxy Generation Result Messages (RED Phase)', () => {
+    const mockGenerateProxies = vi.fn();
+    const mockSelectFolder = vi.fn();
+
+    beforeEach(() => {
+      // Reset mocks
+      mockGenerateProxies.mockClear();
+      mockSelectFolder.mockClear();
+
+      // Mock window.electronAPI.proxy and selectFolder
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (window as any).electronAPI = {
+        batchGetStatus: vi.fn().mockResolvedValue({
+          queueId: null,
+          status: 'idle',
+          items: [],
+        }),
+        onBatchProgress: vi.fn().mockReturnValue(() => {}),
+        onTranscodeProgress: vi.fn().mockReturnValue(() => {}),
+        proxy: {
+          generateProxies: mockGenerateProxies,
+          onProxyProgress: vi.fn().mockReturnValue(() => {}),
+        },
+        selectFolder: mockSelectFolder,
+      };
+      window.alert = vi.fn();
+    });
+
+    it('should show success message when all proxies completed with no EXIF issues', async () => {
+      mockSelectFolder.mockResolvedValue('/path/to/proxies');
+      mockGenerateProxies.mockResolvedValue({
+        success: true,
+        completedCount: 5,
+        failedCount: 0,
+        failedFiles: [],
+        verificationFailures: [],
+      });
+
+      render(
+        <BatchOperationsPanel
+          availableFiles={[
+            { id: '/path/video1.mov', filename: 'video1.mov', processedByAI: false },
+            { id: '/path/video2.mov', filename: 'video2.mov', processedByAI: false },
+            { id: '/path/video3.mov', filename: 'video3.mov', processedByAI: false },
+            { id: '/path/video4.mov', filename: 'video4.mov', processedByAI: false },
+            { id: '/path/video5.mov', filename: 'video5.mov', processedByAI: false },
+          ]}
+          currentFolderPath="/path"
+          onBatchComplete={vi.fn()}
+        />
+      );
+
+      const proxyButton = screen.getByRole('button', { name: /generate proxies for 5 videos/i });
+      proxyButton.click();
+
+      await vi.waitFor(() => {
+        expect(window.alert).toHaveBeenCalledWith(
+          expect.stringMatching(/Proxy generation.*5\/5.*completed/)
+        );
+      });
+
+      // Should NOT show warnings
+      expect(window.alert).not.toHaveBeenCalledWith(
+        expect.stringContaining('⚠️')
+      );
+    });
+
+    it('should show EXIF warning when verification failures exist', async () => {
+      mockSelectFolder.mockResolvedValue('/path/to/proxies');
+      mockGenerateProxies.mockResolvedValue({
+        success: false, // false because verificationFailures exist
+        completedCount: 5,
+        failedCount: 0,
+        failedFiles: [],
+        verificationFailures: [
+          { proxyPath: '/path/proxy1.MOV', rawDate: '2024:11:29 10:30:00', proxyDate: undefined, matches: false },
+          { proxyPath: '/path/proxy2.MOV', rawDate: '2024:11:29 10:31:00', proxyDate: undefined, matches: false },
+        ],
+      });
+
+      render(
+        <BatchOperationsPanel
+          availableFiles={[
+            { id: '/path/video1.mov', filename: 'video1.mov', processedByAI: false },
+            { id: '/path/video2.mov', filename: 'video2.mov', processedByAI: false },
+            { id: '/path/video3.mov', filename: 'video3.mov', processedByAI: false },
+            { id: '/path/video4.mov', filename: 'video4.mov', processedByAI: false },
+            { id: '/path/video5.mov', filename: 'video5.mov', processedByAI: false },
+          ]}
+          currentFolderPath="/path"
+          onBatchComplete={vi.fn()}
+        />
+      );
+
+      const proxyButton = screen.getByRole('button', { name: /generate proxies for 5 videos/i });
+      proxyButton.click();
+
+      await vi.waitFor(() => {
+        expect(window.alert).toHaveBeenCalledWith(
+          expect.stringMatching(/Proxy generation.*5\/5.*completed/)
+        );
+        expect(window.alert).toHaveBeenCalledWith(
+          expect.stringContaining('⚠️ 2 file(s) have EXIF timestamp issues')
+        );
+      });
+    });
+
+    it('should show transcode failure count when files failed', async () => {
+      mockSelectFolder.mockResolvedValue('/path/to/proxies');
+      mockGenerateProxies.mockResolvedValue({
+        success: false,
+        completedCount: 3,
+        failedCount: 2,
+        failedFiles: [
+          { filename: 'video4.mov', error: 'Codec not supported' },
+          { filename: 'video5.mov', error: 'Invalid file format' },
+        ],
+        verificationFailures: [],
+      });
+
+      render(
+        <BatchOperationsPanel
+          availableFiles={[
+            { id: '/path/video1.mov', filename: 'video1.mov', processedByAI: false },
+            { id: '/path/video2.mov', filename: 'video2.mov', processedByAI: false },
+            { id: '/path/video3.mov', filename: 'video3.mov', processedByAI: false },
+            { id: '/path/video4.mov', filename: 'video4.mov', processedByAI: false },
+            { id: '/path/video5.mov', filename: 'video5.mov', processedByAI: false },
+          ]}
+          currentFolderPath="/path"
+          onBatchComplete={vi.fn()}
+        />
+      );
+
+      const proxyButton = screen.getByRole('button', { name: /generate proxies for 5 videos/i });
+      proxyButton.click();
+
+      await vi.waitFor(() => {
+        expect(window.alert).toHaveBeenCalledWith(
+          expect.stringMatching(/Proxy generation.*3\/5.*completed/)
+        );
+        expect(window.alert).toHaveBeenCalledWith(
+          expect.stringContaining('⚠️ 2 file(s) failed to transcode')
+        );
+      });
+    });
+
+    it('should show both transcode and EXIF warnings when both issues exist', async () => {
+      mockSelectFolder.mockResolvedValue('/path/to/proxies');
+      mockGenerateProxies.mockResolvedValue({
+        success: false,
+        completedCount: 3,
+        failedCount: 1,
+        failedFiles: [
+          { filename: 'video5.mov', error: 'Codec not supported' },
+        ],
+        verificationFailures: [
+          { proxyPath: '/path/proxy1.MOV', rawDate: '2024:11:29 10:30:00', proxyDate: undefined, matches: false },
+        ],
+      });
+
+      render(
+        <BatchOperationsPanel
+          availableFiles={[
+            { id: '/path/video1.mov', filename: 'video1.mov', processedByAI: false },
+            { id: '/path/video2.mov', filename: 'video2.mov', processedByAI: false },
+            { id: '/path/video3.mov', filename: 'video3.mov', processedByAI: false },
+            { id: '/path/video4.mov', filename: 'video4.mov', processedByAI: false },
+            { id: '/path/video5.mov', filename: 'video5.mov', processedByAI: false },
+          ]}
+          currentFolderPath="/path"
+          onBatchComplete={vi.fn()}
+        />
+      );
+
+      const proxyButton = screen.getByRole('button', { name: /generate proxies for 5 videos/i });
+      proxyButton.click();
+
+      await vi.waitFor(() => {
+        expect(window.alert).toHaveBeenCalledWith(
+          expect.stringMatching(/Proxy generation.*3\/5.*completed/)
+        );
+        expect(window.alert).toHaveBeenCalledWith(
+          expect.stringContaining('⚠️ 1 file(s) failed to transcode')
+        );
+        expect(window.alert).toHaveBeenCalledWith(
+          expect.stringContaining('⚠️ 1 file(s) have EXIF timestamp issues')
+        );
+      });
+    });
+  });
+
+  /**
+   * Proxy Folder Path Wiring (Bug Fix)
+   *
+   * Purpose: Fix ZodError - rawVideoFolder and proxyOutputFolder are empty strings
+   * Solution:
+   * 1. Accept currentFolderPath prop for rawVideoFolder
+   * 2. Prompt user with selectFolder dialog for proxyOutputFolder
+   * 3. Pass both paths to proxy:generateProxies IPC
+   */
+  describe('Proxy Folder Path Wiring (Bug Fix)', () => {
+    const mockGenerateProxies = vi.fn().mockResolvedValue({
+      success: true,
+      completedCount: 2,
+      failedCount: 0,
+      failedFiles: [],
+      verificationFailures: [],
+    });
+
+    const mockSelectFolder = vi.fn();
+
+    beforeEach(() => {
+      // Reset mocks
+      mockGenerateProxies.mockClear();
+      mockSelectFolder.mockClear();
+
+      // Mock window.electronAPI.proxy and selectFolder
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (window as any).electronAPI = {
+        batchGetStatus: vi.fn().mockResolvedValue({
+          queueId: null,
+          status: 'idle',
+          items: [],
+        }),
+        onBatchProgress: vi.fn().mockReturnValue(() => {}),
+        onTranscodeProgress: vi.fn().mockReturnValue(() => {}),
+        proxy: {
+          generateProxies: mockGenerateProxies,
+          onProxyProgress: vi.fn().mockReturnValue(() => {}),
+        },
+        selectFolder: mockSelectFolder,
+      };
+    });
+
+    it('should accept currentFolderPath prop', () => {
+      // This test just verifies the component accepts the prop without error
+      render(
+        <BatchOperationsPanel
+          availableFiles={[
+            { id: '/path/to/raw/video1.mov', filename: 'video1.mov', processedByAI: false },
+          ]}
+          currentFolderPath="/path/to/raw"
+          onBatchComplete={vi.fn()}
+        />
+      );
+
+      expect(screen.getByRole('button', { name: /generate proxies for 1 video/i })).toBeInTheDocument();
+    });
+
+    it('should prompt for output folder when proxy button clicked', async () => {
+      mockSelectFolder.mockResolvedValue('/path/to/proxies');
+      window.alert = vi.fn(); // Mock alert
+
+      render(
+        <BatchOperationsPanel
+          availableFiles={[
+            { id: '/path/to/raw/video1.mov', filename: 'video1.mov', processedByAI: false },
+          ]}
+          currentFolderPath="/path/to/raw"
+          onBatchComplete={vi.fn()}
+        />
+      );
+
+      const proxyButton = screen.getByRole('button', { name: /generate proxies for 1 video/i });
+      proxyButton.click();
+
+      // Should show folder picker dialog with currentFolderPath as default
+      await vi.waitFor(() => {
+        expect(mockSelectFolder).toHaveBeenCalledWith('/path/to/raw');
+      });
+    });
+
+    it('should pass both rawVideoFolder and proxyOutputFolder to IPC', async () => {
+      mockSelectFolder.mockResolvedValue('/path/to/proxies');
+      window.alert = vi.fn(); // Mock alert
+
+      render(
+        <BatchOperationsPanel
+          availableFiles={[
+            { id: '/path/to/raw/video1.mov', filename: 'video1.mov', processedByAI: false },
+            { id: '/path/to/raw/video2.mp4', filename: 'video2.mp4', processedByAI: false },
+          ]}
+          currentFolderPath="/path/to/raw"
+          onBatchComplete={vi.fn()}
+        />
+      );
+
+      const proxyButton = screen.getByRole('button', { name: /generate proxies for 2 videos/i });
+      proxyButton.click();
+
+      // Wait for folder selection
+      await vi.waitFor(() => {
+        expect(mockSelectFolder).toHaveBeenCalled();
+      });
+
+      // Should call generateProxies with both paths
+      await vi.waitFor(() => {
+        expect(mockGenerateProxies).toHaveBeenCalledWith({
+          rawVideoFolder: '/path/to/raw',
+          proxyOutputFolder: '/path/to/proxies',
+          videoFilenames: ['video1.mov', 'video2.mp4'],
+        });
+      });
+    });
+
+    it('should cancel operation if user closes folder picker', async () => {
+      mockSelectFolder.mockResolvedValue(null); // User cancelled
+      window.alert = vi.fn(); // Mock alert
+
+      render(
+        <BatchOperationsPanel
+          availableFiles={[
+            { id: '/path/to/raw/video1.mov', filename: 'video1.mov', processedByAI: false },
+          ]}
+          currentFolderPath="/path/to/raw"
+          onBatchComplete={vi.fn()}
+        />
+      );
+
+      const proxyButton = screen.getByRole('button', { name: /generate proxies for 1 video/i });
+      proxyButton.click();
+
+      // Wait for folder selection
+      await vi.waitFor(() => {
+        expect(mockSelectFolder).toHaveBeenCalled();
+      });
+
+      // Should NOT call generateProxies
+      expect(mockGenerateProxies).not.toHaveBeenCalled();
+    });
+
+    it('should use empty string for rawVideoFolder if currentFolderPath not provided', async () => {
+      mockSelectFolder.mockResolvedValue('/path/to/proxies');
+      window.alert = vi.fn(); // Mock alert
+
+      render(
+        <BatchOperationsPanel
+          availableFiles={[
+            { id: 'video1.mov', filename: 'video1.mov', processedByAI: false },
+          ]}
+          // currentFolderPath NOT provided
+          onBatchComplete={vi.fn()}
+        />
+      );
+
+      const proxyButton = screen.getByRole('button', { name: /generate proxies for 1 video/i });
+      proxyButton.click();
+
+      // Wait for folder selection
+      await vi.waitFor(() => {
+        expect(mockSelectFolder).toHaveBeenCalled();
+      });
+
+      // Should call generateProxies with empty rawVideoFolder
+      await vi.waitFor(() => {
+        expect(mockGenerateProxies).toHaveBeenCalledWith({
+          rawVideoFolder: '',
+          proxyOutputFolder: '/path/to/proxies',
+          videoFilenames: ['video1.mov'],
+        });
+      });
     });
   });
 });
