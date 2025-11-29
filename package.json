@@ -1,6 +1,6 @@
 {
   "name": "ingest-assistant",
-  "version": "2.2.0",
+  "version": "2.3.0",
   "description": "AI-powered media file ingestion and metadata assistant with keyboard shortcuts, virtual scrolling, and enhanced security",
   "main": "dist/electron/electron/main.js",
   "scripts": {

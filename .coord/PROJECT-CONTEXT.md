@@ -1,6 +1,6 @@
 # Ingest Assistant - Project Context
 
-**Last Updated:** 2025-11-27 | **Version:** v2.2.0 baseline | **Branch:** main (Phase 1b in progress)
+**Last Updated:** 2025-11-29 | **Version:** v2.3.0 | **Branch:** main (Phase 1b COMPLETE)
 
 ---
 
@@ -24,7 +24,7 @@
 - **Runtime:** Electron (main + renderer)
 - **Frontend:** React 18, TypeScript
 - **Build:** Vite
-- **Testing:** Vitest (890 tests, 58 files)
+- **Testing:** Vitest (1034 tests, 64 files)
 - **AI:** OpenRouter, Anthropic Claude, OpenAI APIs
 - **Database:** Supabase (shared with EAV Monorepo)
 
@@ -34,16 +34,16 @@
 
 ### Branch Status
 ```
-Branch: feat/b2.7-proxy-ui-and-presets (Phase 1b B2.7 COMPLETE)
-Tests:  1032/1040 passing + 8 skipped
-Lint:   0 errors, 0 warnings
+Branch: main (v2.3.0 release)
+Tests:  1034/1042 passing + 8 skipped
+Lint:   0 errors
 Types:  0 errors
 Security: 6 moderate vulns (HIGH eliminated)
 ```
 
 ### Phase Progression
 ```
-D0→D1→D2→D3→B0(Phase 1a)→B2(1a COMPLETE)→1c COMPLETE→Phase 1b(B2.1-B2.7 COMPLETE)→B3 INTEGRATION READY
+D0→D1→D2→D3→B0(Phase 1a)→B2(1a COMPLETE)→1c COMPLETE→Phase 1b(B2.1-B2.8 COMPLETE)→B3 VALIDATED→✅ RELEASE READY
 ```
 
 ### CFEx Phase 1a Implementation
@@ -75,7 +75,7 @@ D0→D1→D2→D3→B0(Phase 1a)→B2(1a COMPLETE)→1c COMPLETE→Phase 1b(B2.1
 |------|--------|---------|
 | Lint | PASS (0 errors) | `npm run lint` |
 | Typecheck | PASS (0 errors) | `npm run typecheck` |
-| Tests | PASS (890/892) | `npm test` |
+| Tests | PASS (1034/1042) | `npm test` |
 
 ---
 
@@ -168,7 +168,7 @@ D0→D1→D2→D3→B0(Phase 1a)→B2(1a COMPLETE)→1c COMPLETE→Phase 1b(B2.1
 
 **Commits:** e091fb6→3757275→56d2cc8→1e65d78→ab13473→5d36403→d3232f2→91cae52→d498693
 
-### 🚧 Phase 1b: Proxy Generation - IN PROGRESS
+### ✅ Phase 1b: Proxy Generation - COMPLETE (v2.3.0)
 
 **D2-B0 Orchestration (2025-11-27):** COMPLETE
 - D2.1::ideator→22_alternatives[5_dimensions]
@@ -178,28 +178,30 @@ D0→D1→D2→D3→B0(Phase 1a)→B2(1a COMPLETE)→1c COMPLETE→Phase 1b(B2.1
 - D3.2::technical-architect(gemini)→CONDITIONAL_GO[8/10][2_critical_fixes]
 - B0::critical-design-validator(codex)→CONDITIONAL_GO[7/10][5_conditions]
 
-**B0 Conditions (ALL RESOLVED):**
-1. ✅ Progress→ffmpeg_stderr_time=_parsing[B2.1]
-2. ✅ Error→fail-log-continue[B2.3]
-3. ✅ Security→SecurityValidator_integration[B2.4]
-4. ✅ Validation→preflight+EXIF_post-verify[B2.2+B2.4]
-5. ✅ Cleanup→partial_proxy_deletion[B2.5]
-
-**B2 Implementation Progress:**
+**B2 Implementation (ALL COMPLETE):**
 - ✅ B2.1::ProxyGenerator→21_tests→ffmpeg_stderr_progress_parsing→GREEN
-- ✅ B2.2::ExifPreserver→18_tests→3-phase_workflow+cross_platform_matching→GREEN
+- ✅ B2.2::ExifPreserver→19_tests→3-phase_workflow+cross_platform_matching+ENOENT→GREEN
 - ✅ B2.3::ProxyOrchestrator→11_tests→fail-log-continue→GREEN
 - ✅ B2.4::Security+Validation→4_tests→SecurityValidator_integration→GREEN
-- ✅ B2.5::Cleanup→3_tests→partial_proxy_deletion→GREEN
+- ✅ B2.5::Cleanup→4_tests→partial_proxy_deletion+disk_space_exhaustion→GREEN
 - ✅ B2.6::IPC_Handlers→8_tests→proxyGenerationHandlers.ts→GREEN
 - ✅ B2.7::UI_Components→proxy_progress_UI+result_messages→COMPLETE
 - ✅ B2.8::Integration_Tests→5_test_plans_documented[skipped_pending_fixtures]
 
-**B2.7 Session (2025-11-29):**
-- P1_BUG_FIX::EXIF_verification→path_module_cross_platform→I1_compliance_restored
-- FEATURE::proxy_progress_UI→BatchPanel+CfexWindow→real-time_feedback
-- BUG_FIX::result_message→shows_EXIF_verification_failures→actionable_UX
-- Quality: code-review-specialist GO(0.93) + quality-observer(9.8/10)
+**B3 Validation (2025-11-29):**
+- ✅ test-methodology-guardian(codex)::TDD_9/10+Quality_8/10→GO
+- ✅ code-review-specialist::9.2/10→GO[no_blocking_issues]
+- ✅ quality-observer(gemini)::8.5/10→CONDITIONAL_GO[conditions_met]
+- ✅ universal-test-engineer::2_HIGH_tests_added[ENOENT+disk_space]
+- ✅ Quality gates: 1034/1042 tests, 0 lint, 0 type errors
+
+**Features Delivered:**
+- 2560×1440 ProRes Proxy generation (10-bit 4:2:2)
+- DateTimeOriginal EXIF preservation (I1 compliance)
+- Real-time progress UI (ffmpeg time= parsing)
+- Fail-log-continue architecture (single failure doesn't halt batch)
+- Proxy presets: ProRes 2K, ProRes 1080p, H.264 1080p, H.264 720p
+- EXIF verification with I1 violation detection
 
 ### Deferred (Phase 1a-POLISH → parallel to Phase 1b/1c)
 - Auto-detection IPC + UI (service layer complete, IPC+multi-card dialog when needed)
@@ -247,6 +249,8 @@ D0→D1→D2→D3→B0(Phase 1a)→B2(1a COMPLETE)→1c COMPLETE→Phase 1b(B2.1
 ## Recent Commits (Last 10)
 
 ```
+760b97b test: add HIGH priority validation tests for Phase 1b proxy generation (GREEN)
+bdae1ed Merge pull request #99 from elevanaltd/feat/b2.7-proxy-ui-and-presets
 3386874 fix: show EXIF verification failures in proxy result message (GREEN)
 4695bd6 test: add failing tests for proxy result messages (RED)
 a6f594f feat: implement proxy progress UI in BatchOperationsPanel and CfexTransferWindow (GREEN)
@@ -255,6 +259,4 @@ aa24169 test: add failing tests for proxy progress UI (RED)
 c1ee176 test: add failing tests for proxy path matching edge cases (RED)
 5a1c600 docs: update PROJECT-HISTORY with B2.7 session and known EXIF issue
 149af45 fix: set percentComplete to 100 on successful transfer completion
-713ea83 fix: add transferredFiles tracking to TransferResult for proxy generation
-d741561 feat: add Settings UI for proxy format dropdown (GREEN)
 ```

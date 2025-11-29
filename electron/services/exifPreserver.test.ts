@@ -32,6 +32,24 @@ describe('ExifPreserver', () => {
   });
 
   describe('Phase 1: Batch Extract DateTimeOriginal', () => {
+    it('should reject with clear error when exiftool is not installed', async () => {
+      // Mock spawn to emit ENOENT error (simulating missing exiftool)
+      const mockProcess = new EventEmitter() as any;
+      mockProcess.stdout = new EventEmitter();
+      mockProcess.stderr = new EventEmitter();
+      vi.mocked(spawn).mockReturnValue(mockProcess);
+
+      const extractPromise = preserver.extractBatch(['/valid/video.MOV']);
+
+      setTimeout(() => {
+        const enoentError: any = new Error('spawn exiftool ENOENT');
+        enoentError.code = 'ENOENT';
+        mockProcess.emit('error', enoentError);
+      }, 10);
+
+      await expect(extractPromise).rejects.toThrow(/ENOENT|exiftool/i);
+    });
+
     it('should extract DateTimeOriginal from multiple raw videos via exiftool -json', async () => {
       // Mock exiftool spawn to return JSON output
       const mockProcess = new EventEmitter() as any;
