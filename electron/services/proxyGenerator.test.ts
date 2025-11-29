@@ -701,4 +701,191 @@ describe('ProxyGenerator', () => {
       expect(fs.unlinkSync).not.toHaveBeenCalled();
     });
   });
+
+  describe('Preset-Based Proxy Generation', () => {
+    beforeEach(() => {
+      generator = new ProxyGenerator();
+    });
+
+    it('should accept presetId in options and build ffmpeg args from preset', async () => {
+      const mockProcess = new EventEmitter() as any;
+      mockProcess.stderr = new EventEmitter();
+
+      vi.mocked(spawn).mockReturnValue(mockProcess);
+
+      const transcodePromise = generator.generateProxy(
+        mockSourceFile,
+        mockOutputDir,
+        { presetId: '1080p-prores-proxy' }
+      );
+
+      setTimeout(() => {
+        mockProcess.emit('close', 0);
+      }, 10);
+
+      await transcodePromise;
+
+      // Should use 1080p scale from preset (not hardcoded 2560x1440)
+      expect(spawn).toHaveBeenCalledWith(
+        '/usr/local/bin/ffmpeg',
+        expect.arrayContaining([
+          '-vf', 'scale=1920:1080'
+        ])
+      );
+    });
+
+    it('should build ProRes ffmpeg args from preset config', async () => {
+      const mockProcess = new EventEmitter() as any;
+      mockProcess.stderr = new EventEmitter();
+
+      vi.mocked(spawn).mockReturnValue(mockProcess);
+
+      const transcodePromise = generator.generateProxy(
+        mockSourceFile,
+        mockOutputDir,
+        { presetId: '2k-prores-proxy' }
+      );
+
+      setTimeout(() => {
+        mockProcess.emit('close', 0);
+      }, 10);
+
+      await transcodePromise;
+
+      // ProRes args from preset
+      expect(spawn).toHaveBeenCalledWith(
+        '/usr/local/bin/ffmpeg',
+        expect.arrayContaining([
+          '-c:v', 'prores_ks',
+          '-profile:v', '0',
+          '-vendor', 'apl0',
+          '-pix_fmt', 'yuv422p10le',
+          '-c:a', 'pcm_s16le'
+        ])
+      );
+    });
+
+    it('should build H.264 ffmpeg args from preset config', async () => {
+      const mockProcess = new EventEmitter() as any;
+      mockProcess.stderr = new EventEmitter();
+
+      vi.mocked(spawn).mockReturnValue(mockProcess);
+
+      const transcodePromise = generator.generateProxy(
+        mockSourceFile,
+        mockOutputDir,
+        { presetId: '2k-h264-crf23' }
+      );
+
+      setTimeout(() => {
+        mockProcess.emit('close', 0);
+      }, 10);
+
+      await transcodePromise;
+
+      // H.264 args from preset
+      expect(spawn).toHaveBeenCalledWith(
+        '/usr/local/bin/ffmpeg',
+        expect.arrayContaining([
+          '-c:v', 'libx264',
+          '-preset', 'medium',
+          '-crf', '23',
+          '-pix_fmt', 'yuv422p10le',
+          '-c:a', 'aac'
+        ])
+      );
+    });
+
+    it('should use preset extension NOT source extension (BUG FIX)', async () => {
+      // Mock ffprobe
+      const mockFfprobeProcess = new EventEmitter() as any;
+      mockFfprobeProcess.stdout = new EventEmitter();
+      mockFfprobeProcess.stderr = new EventEmitter();
+
+      // Mock ffmpeg
+      const mockFfmpegProcess = new EventEmitter() as any;
+      mockFfmpegProcess.stderr = new EventEmitter();
+
+      let callCount = 0;
+      vi.mocked(spawn).mockImplementation(() => {
+        callCount++;
+        if (callCount === 1) return mockFfprobeProcess;
+        return mockFfmpegProcess;
+      });
+
+      // Source is .MOV, but preset is H.264 → should output .mp4 NOT .mov
+      const transcodePromise = generator.generateProxy(
+        mockSourceFile, // test.MOV
+        mockOutputDir,
+        { presetId: '2k-h264-crf23' } // H.264 preset = .mp4
+      );
+
+      setTimeout(() => {
+        mockFfprobeProcess.stdout.emit('data', Buffer.from('20.000000\n'));
+        mockFfprobeProcess.emit('close', 0);
+      }, 10);
+
+      setTimeout(() => {
+        mockFfmpegProcess.emit('close', 0);
+      }, 50);
+
+      const result = await transcodePromise;
+
+      // MUST be .mp4 (from preset), NOT .mov (from source)
+      expect(result).toBe(`${mockOutputDir}/test_proxy.mp4`);
+      expect(result).not.toContain('.mov');
+      expect(result).not.toContain('.MOV');
+    });
+
+    it('should handle 4K preset with null scale (no scaling)', async () => {
+      const mockProcess = new EventEmitter() as any;
+      mockProcess.stderr = new EventEmitter();
+
+      vi.mocked(spawn).mockReturnValue(mockProcess);
+
+      const transcodePromise = generator.generateProxy(
+        mockSourceFile,
+        mockOutputDir,
+        { presetId: '4k-prores-proxy' } // scale: null
+      );
+
+      setTimeout(() => {
+        mockProcess.emit('close', 0);
+      }, 10);
+
+      await transcodePromise;
+
+      // Should NOT include -vf scale when scale is null
+      const spawnArgs = vi.mocked(spawn).mock.calls[0][1];
+      expect(spawnArgs).not.toContain('scale');
+    });
+
+    it('should default to 2k-prores-proxy when no presetId provided', async () => {
+      const mockProcess = new EventEmitter() as any;
+      mockProcess.stderr = new EventEmitter();
+
+      vi.mocked(spawn).mockReturnValue(mockProcess);
+
+      const transcodePromise = generator.generateProxy(
+        mockSourceFile,
+        mockOutputDir
+        // No presetId option - should use default
+      );
+
+      setTimeout(() => {
+        mockProcess.emit('close', 0);
+      }, 10);
+
+      await transcodePromise;
+
+      // Should use default 2k-prores-proxy settings
+      expect(spawn).toHaveBeenCalledWith(
+        '/usr/local/bin/ffmpeg',
+        expect.arrayContaining([
+          '-vf', 'scale=2560:1440',
+          '-c:v', 'prores_ks'
+        ])
+      );
+    });
+  });
 });
