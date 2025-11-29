@@ -34,8 +34,8 @@
 
 ### Branch Status
 ```
-Branch: main (Phase 1b B2.7 UI in progress)
-Tests:  965/972 passing + 7 skipped (+64 Phase 1b tests)
+Branch: feat/b2.7-proxy-ui-and-presets (Phase 1b B2.7 COMPLETE)
+Tests:  1032/1040 passing + 8 skipped
 Lint:   0 errors, 0 warnings
 Types:  0 errors
 Security: 6 moderate vulns (HIGH eliminated)
@@ -43,7 +43,7 @@ Security: 6 moderate vulns (HIGH eliminated)
 
 ### Phase Progression
 ```
-D0→D1→D2→D3→B0(Phase 1a)→B2(1a COMPLETE)→1c COMPLETE→Phase 1b(B2.1-B2.6 COMPLETE→B2.7 UI IN PROGRESS)
+D0→D1→D2→D3→B0(Phase 1a)→B2(1a COMPLETE)→1c COMPLETE→Phase 1b(B2.1-B2.7 COMPLETE)→B3 INTEGRATION READY
 ```
 
 ### CFEx Phase 1a Implementation
@@ -187,19 +187,19 @@ D0→D1→D2→D3→B0(Phase 1a)→B2(1a COMPLETE)→1c COMPLETE→Phase 1b(B2.1
 
 **B2 Implementation Progress:**
 - ✅ B2.1::ProxyGenerator→21_tests→ffmpeg_stderr_progress_parsing→GREEN
-- ✅ B2.2::ExifPreserver→12_tests→3-phase_workflow[extract→transcode→verify]→GREEN
+- ✅ B2.2::ExifPreserver→18_tests→3-phase_workflow+cross_platform_matching→GREEN
 - ✅ B2.3::ProxyOrchestrator→11_tests→fail-log-continue→GREEN
 - ✅ B2.4::Security+Validation→4_tests→SecurityValidator_integration→GREEN
 - ✅ B2.5::Cleanup→3_tests→partial_proxy_deletion→GREEN
 - ✅ B2.6::IPC_Handlers→8_tests→proxyGenerationHandlers.ts→GREEN
-- ⏳ B2.7::UI_Components→D3_Blueprint_created→awaiting_implementation
+- ✅ B2.7::UI_Components→proxy_progress_UI+result_messages→COMPLETE
 - ✅ B2.8::Integration_Tests→5_test_plans_documented[skipped_pending_fixtures]
 
-**B2.7 UI Design (2025-11-27):**
-- D3 Blueprint: `.coord/workflow-docs/009-PHASE1B-B2.7-UI-DESIGN.md`
-- Scope: CFEx Transfer proxy destination + BatchPanel proxy button
-- Backend: 59 tests passing, main.ts registration BLOCKING
-- Next: implementation-lead delegation with TDD
+**B2.7 Session (2025-11-29):**
+- P1_BUG_FIX::EXIF_verification→path_module_cross_platform→I1_compliance_restored
+- FEATURE::proxy_progress_UI→BatchPanel+CfexWindow→real-time_feedback
+- BUG_FIX::result_message→shows_EXIF_verification_failures→actionable_UX
+- Quality: code-review-specialist GO(0.93) + quality-observer(9.8/10)
 
 ### Deferred (Phase 1a-POLISH → parallel to Phase 1b/1c)
 - Auto-detection IPC + UI (service layer complete, IPC+multi-card dialog when needed)
@@ -247,14 +247,14 @@ D0→D1→D2→D3→B0(Phase 1a)→B2(1a COMPLETE)→1c COMPLETE→Phase 1b(B2.1
 ## Recent Commits (Last 10)
 
 ```
-d498693 fix(i7): reset filenameRewrite on app startup (backend/frontend coherence)
-91cae52 feat(ui): sidebar improvements (select all, checkbox alignment, full width)
-d3232f2 fix: lift filenameRewrite state to App.tsx for BatchOperationsPanel
-5d36403 chore(security): run npm audit fix for vulnerabilities
-ab13473 fix(lint): add proper types to production code
-1e65d78 fix(lint): resolve unused variable warnings
-56d2cc8 chore(lint): configure test file exemption for any types
-3757275 feat: implement file rename safety system (GREEN)
-e091fb6 test: add failing tests for file rename safety system (RED)
-7308896 Merge pull request #93 from elevanaltd/fix/filename-id-stability
+3386874 fix: show EXIF verification failures in proxy result message (GREEN)
+4695bd6 test: add failing tests for proxy result messages (RED)
+a6f594f feat: implement proxy progress UI in BatchOperationsPanel and CfexTransferWindow (GREEN)
+aa24169 test: add failing tests for proxy progress UI (RED)
+379f8d6 fix: use path module for cross-platform proxy matching (GREEN)
+c1ee176 test: add failing tests for proxy path matching edge cases (RED)
+5a1c600 docs: update PROJECT-HISTORY with B2.7 session and known EXIF issue
+149af45 fix: set percentComplete to 100 on successful transfer completion
+713ea83 fix: add transferredFiles tracking to TransferResult for proxy generation
+d741561 feat: add Settings UI for proxy format dropdown (GREEN)
 ```
