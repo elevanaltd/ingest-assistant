@@ -1277,4 +1277,121 @@ describe('CfexTransferWindow', () => {
       })
     })
   })
+
+  describe('Proxy Generation Progress (TDD - RED phase)', () => {
+    test('should display proxy progress section after transfer completes with proxies enabled', async () => {
+      // ARRANGE: Setup proxy progress event emitter
+      let proxyProgressCallback: ((progress: any) => void) | null = null
+      const mockOnProxyProgress = vi.fn((callback) => {
+        proxyProgressCallback = callback
+        return () => {} // cleanup function
+      })
+
+      ;(window as any).electronAPI.proxy = {
+        ...( (window as any).electronAPI.proxy || {} ),
+        onProxyProgress: mockOnProxyProgress,
+        generateProxies: mockGenerateProxies
+      }
+
+      mockStartTransfer.mockResolvedValue({
+        success: true,
+        filesTransferred: 2,
+        filesTotal: 2,
+        bytesTransferred: 1000000,
+        duration: 2500,
+        validationWarnings: [],
+        errors: [],
+        transferredFiles: {
+          rawVideos: ['EA001621.MOV', 'EA001622.MOV']
+        }
+      })
+
+      const user = userEvent.setup()
+      render(<CfexTransferWindow />)
+
+      // ACT: Enable proxies and start transfer
+      const proxyCheckbox = screen.getByRole('checkbox', { name: /proxy videos destination.*lucidlink/i })
+      await user.click(proxyCheckbox)
+
+      const startButton = screen.getByRole('button', { name: /start transfer/i })
+      await user.click(startButton)
+
+      // Wait for transfer to complete
+      await waitFor(() => {
+        expect(mockStartTransfer).toHaveBeenCalled()
+      })
+
+      // Simulate proxy progress event
+      if (proxyProgressCallback) {
+        (proxyProgressCallback as (progress: any) => void)({
+          type: 'transcode_progress',
+          filename: 'EA001621.MOV',
+          index: 1,
+          total: 2,
+          percentage: 45,
+          timeString: '2m 30s'
+        });
+      }
+
+      // ASSERT: Should display proxy generation progress
+      await waitFor(() => {
+        expect(screen.getByText(/Generating Proxies:/)).toBeInTheDocument()
+        expect(screen.getByText(/EA001621\.MOV/)).toBeInTheDocument()
+        expect(screen.getByText(/Progress:.*1.*2.*videos/)).toBeInTheDocument()
+        expect(screen.getByText(/Encoding:.*45%/)).toBeInTheDocument()
+      })
+    })
+
+    test('should show current file and encoding percentage during proxy generation', async () => {
+      // ARRANGE: Setup proxy progress event emitter
+      let proxyProgressCallback: ((progress: any) => void) | null = null
+      const mockOnProxyProgress = vi.fn((callback) => {
+        proxyProgressCallback = callback
+        return () => {}
+      })
+
+      ;(window as any).electronAPI.proxy = {
+        ...( (window as any).electronAPI.proxy || {} ),
+        onProxyProgress: mockOnProxyProgress
+      }
+
+      render(<CfexTransferWindow />)
+
+      // ACT: Simulate proxy progress events
+      if (proxyProgressCallback) {
+        (proxyProgressCallback as (progress: any) => void)({
+          type: 'transcode_progress',
+          filename: 'EA001622.MOV',
+          index: 2,
+          total: 5,
+          percentage: 67
+        });
+      }
+
+      // ASSERT: Should display encoding progress
+      await waitFor(() => {
+        expect(screen.getByText(/67%/)).toBeInTheDocument()
+        expect(screen.getByText(/EA001622\.MOV/)).toBeInTheDocument()
+      })
+    })
+
+    test('should cleanup proxy progress subscription on unmount', () => {
+      // ARRANGE: Mock cleanup function
+      const mockCleanup = vi.fn()
+      const mockOnProxyProgress = vi.fn().mockReturnValue(mockCleanup)
+
+      ;(window as any).electronAPI.proxy = {
+        ...( (window as any).electronAPI.proxy || {} ),
+        onProxyProgress: mockOnProxyProgress
+      }
+
+      const { unmount } = render(<CfexTransferWindow />)
+
+      // ACT: Unmount component
+      unmount()
+
+      // ASSERT: Should call cleanup function
+      expect(mockCleanup).toHaveBeenCalled()
+    })
+  })
 })

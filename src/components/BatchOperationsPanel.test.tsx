@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { BatchOperationsPanel } from './BatchOperationsPanel';
 
 /**
@@ -114,6 +114,91 @@ describe('BatchOperationsPanel', () => {
 
     // Should show reprocess for all 3 files
     expect(screen.getByRole('button', { name: /AI Reprocess.*3.*file/i })).toBeInTheDocument();
+  });
+
+  // Phase 3: Proxy Generation Progress Tests (TDD - RED phase)
+  describe('Proxy Generation Progress', () => {
+    it('should subscribe to proxy progress events on mount', () => {
+      // ARRANGE: Mock onProxyProgress handler
+      const mockOnProxyProgress = vi.fn().mockReturnValue(() => {});
+      (window as any).electronAPI.proxy = {
+        onProxyProgress: mockOnProxyProgress
+      };
+
+      // ACT: Render component
+      render(
+        <BatchOperationsPanel
+          availableFiles={[]}
+          onBatchComplete={vi.fn()}
+        />
+      );
+
+      // ASSERT: Should subscribe to proxy progress events
+      expect(mockOnProxyProgress).toHaveBeenCalledWith(expect.any(Function));
+    });
+
+    it('should display proxy progress when generating proxies', async () => {
+      // ARRANGE: Setup proxy progress event emitter
+      let proxyProgressCallback: ((progress: any) => void) | null = null;
+      const mockOnProxyProgress = vi.fn((callback) => {
+        proxyProgressCallback = callback;
+        return () => {}; // cleanup function
+      });
+
+      (window as any).electronAPI.proxy = {
+        onProxyProgress: mockOnProxyProgress
+      };
+
+      render(
+        <BatchOperationsPanel
+          availableFiles={[]}
+          onBatchComplete={vi.fn()}
+        />
+      );
+
+      // ACT: Simulate proxy progress event
+      if (proxyProgressCallback) {
+        (proxyProgressCallback as (progress: any) => void)({
+          type: 'transcode_progress',
+          filename: 'EA001621.MOV',
+          index: 12,
+          total: 58,
+          percentage: 45,
+          timeString: '2m 30s'
+        });
+      }
+
+      // ASSERT: Should display proxy generation progress
+      await waitFor(() => {
+        expect(screen.getByText(/Generating Proxies:/)).toBeInTheDocument();
+        expect(screen.getByText(/EA001621\.MOV/)).toBeInTheDocument();
+        expect(screen.getByText(/Progress:.*12.*58.*videos/)).toBeInTheDocument();
+        expect(screen.getByText(/Encoding:.*45%/)).toBeInTheDocument();
+      });
+    });
+
+    it('should cleanup proxy progress subscription on unmount', () => {
+      // ARRANGE: Mock cleanup function
+      const mockCleanup = vi.fn();
+      const mockOnProxyProgress = vi.fn().mockReturnValue(mockCleanup);
+
+      (window as any).electronAPI.proxy = {
+        onProxyProgress: mockOnProxyProgress
+      };
+
+      const { unmount } = render(
+        <BatchOperationsPanel
+          availableFiles={[]}
+          onBatchComplete={vi.fn()}
+        />
+      );
+
+      // ACT: Unmount component
+      unmount();
+
+      // ASSERT: Should call cleanup function
+      expect(mockCleanup).toHaveBeenCalled();
+    });
   });
 
   // Phase 3: Multi-select batch processing tests (TDD - RED phase)
