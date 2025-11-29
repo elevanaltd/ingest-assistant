@@ -776,6 +776,205 @@ describe('BatchOperationsPanel', () => {
   });
 
   /**
+   * Proxy Generation Result Messages (B2.7 Enhancement)
+   *
+   * Purpose: Fix misleading result messages that show "0 files failed" on EXIF verification failures
+   * Problem: result.success is false when verificationFailures exist, but alert shows "0 files failed"
+   * Solution: Distinguish between transcode failures vs EXIF verification issues
+   */
+  describe('Proxy Generation Result Messages (RED Phase)', () => {
+    const mockGenerateProxies = vi.fn();
+    const mockSelectFolder = vi.fn();
+
+    beforeEach(() => {
+      // Reset mocks
+      mockGenerateProxies.mockClear();
+      mockSelectFolder.mockClear();
+
+      // Mock window.electronAPI.proxy and selectFolder
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (window as any).electronAPI = {
+        batchGetStatus: vi.fn().mockResolvedValue({
+          queueId: null,
+          status: 'idle',
+          items: [],
+        }),
+        onBatchProgress: vi.fn().mockReturnValue(() => {}),
+        onTranscodeProgress: vi.fn().mockReturnValue(() => {}),
+        proxy: {
+          generateProxies: mockGenerateProxies,
+          onProxyProgress: vi.fn().mockReturnValue(() => {}),
+        },
+        selectFolder: mockSelectFolder,
+      };
+      window.alert = vi.fn();
+    });
+
+    it('should show success message when all proxies completed with no EXIF issues', async () => {
+      mockSelectFolder.mockResolvedValue('/path/to/proxies');
+      mockGenerateProxies.mockResolvedValue({
+        success: true,
+        completedCount: 5,
+        failedCount: 0,
+        failedFiles: [],
+        verificationFailures: [],
+      });
+
+      render(
+        <BatchOperationsPanel
+          availableFiles={[
+            { id: '/path/video1.mov', filename: 'video1.mov', processedByAI: false },
+            { id: '/path/video2.mov', filename: 'video2.mov', processedByAI: false },
+            { id: '/path/video3.mov', filename: 'video3.mov', processedByAI: false },
+            { id: '/path/video4.mov', filename: 'video4.mov', processedByAI: false },
+            { id: '/path/video5.mov', filename: 'video5.mov', processedByAI: false },
+          ]}
+          currentFolderPath="/path"
+          onBatchComplete={vi.fn()}
+        />
+      );
+
+      const proxyButton = screen.getByRole('button', { name: /generate proxies for 5 videos/i });
+      proxyButton.click();
+
+      await vi.waitFor(() => {
+        expect(window.alert).toHaveBeenCalledWith(
+          expect.stringMatching(/Proxy generation.*5\/5.*completed/)
+        );
+      });
+
+      // Should NOT show warnings
+      expect(window.alert).not.toHaveBeenCalledWith(
+        expect.stringContaining('⚠️')
+      );
+    });
+
+    it('should show EXIF warning when verification failures exist', async () => {
+      mockSelectFolder.mockResolvedValue('/path/to/proxies');
+      mockGenerateProxies.mockResolvedValue({
+        success: false, // false because verificationFailures exist
+        completedCount: 5,
+        failedCount: 0,
+        failedFiles: [],
+        verificationFailures: [
+          { proxyPath: '/path/proxy1.MOV', rawDate: '2024:11:29 10:30:00', proxyDate: undefined, matches: false },
+          { proxyPath: '/path/proxy2.MOV', rawDate: '2024:11:29 10:31:00', proxyDate: undefined, matches: false },
+        ],
+      });
+
+      render(
+        <BatchOperationsPanel
+          availableFiles={[
+            { id: '/path/video1.mov', filename: 'video1.mov', processedByAI: false },
+            { id: '/path/video2.mov', filename: 'video2.mov', processedByAI: false },
+            { id: '/path/video3.mov', filename: 'video3.mov', processedByAI: false },
+            { id: '/path/video4.mov', filename: 'video4.mov', processedByAI: false },
+            { id: '/path/video5.mov', filename: 'video5.mov', processedByAI: false },
+          ]}
+          currentFolderPath="/path"
+          onBatchComplete={vi.fn()}
+        />
+      );
+
+      const proxyButton = screen.getByRole('button', { name: /generate proxies for 5 videos/i });
+      proxyButton.click();
+
+      await vi.waitFor(() => {
+        expect(window.alert).toHaveBeenCalledWith(
+          expect.stringMatching(/Proxy generation.*5\/5.*completed/)
+        );
+        expect(window.alert).toHaveBeenCalledWith(
+          expect.stringContaining('⚠️ 2 file(s) have EXIF timestamp issues')
+        );
+      });
+    });
+
+    it('should show transcode failure count when files failed', async () => {
+      mockSelectFolder.mockResolvedValue('/path/to/proxies');
+      mockGenerateProxies.mockResolvedValue({
+        success: false,
+        completedCount: 3,
+        failedCount: 2,
+        failedFiles: [
+          { filename: 'video4.mov', error: 'Codec not supported' },
+          { filename: 'video5.mov', error: 'Invalid file format' },
+        ],
+        verificationFailures: [],
+      });
+
+      render(
+        <BatchOperationsPanel
+          availableFiles={[
+            { id: '/path/video1.mov', filename: 'video1.mov', processedByAI: false },
+            { id: '/path/video2.mov', filename: 'video2.mov', processedByAI: false },
+            { id: '/path/video3.mov', filename: 'video3.mov', processedByAI: false },
+            { id: '/path/video4.mov', filename: 'video4.mov', processedByAI: false },
+            { id: '/path/video5.mov', filename: 'video5.mov', processedByAI: false },
+          ]}
+          currentFolderPath="/path"
+          onBatchComplete={vi.fn()}
+        />
+      );
+
+      const proxyButton = screen.getByRole('button', { name: /generate proxies for 5 videos/i });
+      proxyButton.click();
+
+      await vi.waitFor(() => {
+        expect(window.alert).toHaveBeenCalledWith(
+          expect.stringMatching(/Proxy generation.*3\/5.*completed/)
+        );
+        expect(window.alert).toHaveBeenCalledWith(
+          expect.stringContaining('⚠️ 2 file(s) failed to transcode')
+        );
+      });
+    });
+
+    it('should show both transcode and EXIF warnings when both issues exist', async () => {
+      mockSelectFolder.mockResolvedValue('/path/to/proxies');
+      mockGenerateProxies.mockResolvedValue({
+        success: false,
+        completedCount: 3,
+        failedCount: 1,
+        failedFiles: [
+          { filename: 'video5.mov', error: 'Codec not supported' },
+        ],
+        verificationFailures: [
+          { proxyPath: '/path/proxy1.MOV', rawDate: '2024:11:29 10:30:00', proxyDate: undefined, matches: false },
+        ],
+      });
+
+      render(
+        <BatchOperationsPanel
+          availableFiles={[
+            { id: '/path/video1.mov', filename: 'video1.mov', processedByAI: false },
+            { id: '/path/video2.mov', filename: 'video2.mov', processedByAI: false },
+            { id: '/path/video3.mov', filename: 'video3.mov', processedByAI: false },
+            { id: '/path/video4.mov', filename: 'video4.mov', processedByAI: false },
+            { id: '/path/video5.mov', filename: 'video5.mov', processedByAI: false },
+          ]}
+          currentFolderPath="/path"
+          onBatchComplete={vi.fn()}
+        />
+      );
+
+      const proxyButton = screen.getByRole('button', { name: /generate proxies for 5 videos/i });
+      proxyButton.click();
+
+      await vi.waitFor(() => {
+        expect(window.alert).toHaveBeenCalledWith(
+          expect.stringMatching(/Proxy generation.*3\/5.*completed/)
+        );
+        expect(window.alert).toHaveBeenCalledWith(
+          expect.stringContaining('⚠️ 1 file(s) failed to transcode')
+        );
+        expect(window.alert).toHaveBeenCalledWith(
+          expect.stringContaining('⚠️ 1 file(s) have EXIF timestamp issues')
+        );
+      });
+    });
+  });
+
+  /**
    * Proxy Folder Path Wiring (Bug Fix)
    *
    * Purpose: Fix ZodError - rawVideoFolder and proxyOutputFolder are empty strings
