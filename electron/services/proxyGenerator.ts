@@ -2,16 +2,18 @@ import { spawn } from 'child_process';
 import ffmpeg from '@ffmpeg-installer/ffmpeg';
 import * as path from 'path';
 import * as fs from 'fs';
+import { getPresetById } from './proxyPresets';
 
 /**
- * ProxyGenerator - Generates 2560x1440 ProRes Proxy files for editing workflow
+ * ProxyGenerator - Generates proxy files with configurable formats
  *
- * Features (Phase 1b B2.1):
+ * Features (Phase 1b B2.1 + Configurable Presets):
  * - ffmpeg stderr `time=` parsing for progress (not 17.5% heuristic)
  * - Duration extraction via ffprobe
  * - Progress percentage calculation (currentTime / duration * 100)
  * - 10-minute timeout per video
- * - 2560x1440 ProRes Proxy profile
+ * - Configurable proxy formats (5 presets: 2K/1080p/4K ProRes, 2K/1080p H.264)
+ * - Extension tied to codec (ProRes → .MOV, H.264 → .mp4)
  *
  * B0 Condition 1 Compliance: Progress tracking via ffmpeg stderr parsing
  */
@@ -23,6 +25,7 @@ export interface ProxyGeneratorOptions {
 export interface GenerateProxyOptions {
   onProgress?: (timeString: string, percentage: number) => void;
   outputFilename?: string; // Custom filename (default: {basename}_proxy.{ext})
+  presetId?: string; // Proxy format preset ID (default: '2k-prores-proxy')
 }
 
 export class ProxyGenerator {
@@ -84,7 +87,7 @@ export class ProxyGenerator {
   }
 
   /**
-   * Generate 2560x1440 ProRes Proxy for source video
+   * Generate proxy file using configured preset format
    * Returns path to generated proxy file
    */
   async generateProxy(
@@ -92,7 +95,10 @@ export class ProxyGenerator {
     outputDir: string,
     options: GenerateProxyOptions = {}
   ): Promise<string> {
-    const { onProgress, outputFilename } = options;
+    const { onProgress, outputFilename, presetId } = options;
+
+    // Get preset configuration (defaults to 2k-prores-proxy)
+    const preset = getPresetById(presetId);
 
     // B2.4: Preflight Validation
     // 1. Check source file exists
@@ -108,8 +114,9 @@ export class ProxyGenerator {
     }
 
     // Determine output filename
+    // BUG FIX: Use preset extension, NOT source extension
     const basename = path.basename(sourceFile, path.extname(sourceFile));
-    const defaultFilename = `${basename}_proxy${ext}`;
+    const defaultFilename = `${basename}_proxy${preset.extension.toLowerCase()}`;
     const finalFilename = outputFilename || defaultFilename;
     const outputPath = path.join(outputDir, finalFilename);
 
@@ -122,19 +129,37 @@ export class ProxyGenerator {
       // Continue without duration - progress will show 0%
     }
 
-    // Build ffmpeg args for 2560x1440 ProRes Proxy
+    // Build ffmpeg args dynamically from preset
     const args = [
       '-hide_banner',
       '-y', // Overwrite output file
-      '-i', sourceFile,
-      '-vf', 'scale=2560:1440',
-      '-c:v', 'prores_ks',
-      '-profile:v', '0', // ProRes Proxy profile
-      '-vendor', 'apl0',
-      '-pix_fmt', 'yuv422p10le',
-      '-c:a', 'pcm_s16le',
-      outputPath
+      '-i', sourceFile
     ];
+
+    // Add scaling filter if scale is specified (null = keep original resolution)
+    if (preset.scale) {
+      args.push('-vf', `scale=${preset.scale}`);
+    }
+
+    // Add video codec args based on preset
+    if (preset.codec === 'prores_ks') {
+      // ProRes codec args
+      args.push('-c:v', 'prores_ks');
+      args.push('-profile:v', preset.profile!.toString());
+      args.push('-vendor', 'apl0');
+      args.push('-pix_fmt', 'yuv422p10le');
+      args.push('-c:a', 'pcm_s16le');
+    } else if (preset.codec === 'libx264') {
+      // H.264 codec args
+      args.push('-c:v', 'libx264');
+      args.push('-preset', 'medium');
+      args.push('-crf', preset.crf!.toString());
+      args.push('-pix_fmt', 'yuv422p10le');
+      args.push('-c:a', 'aac');
+    }
+
+    // Add output path
+    args.push(outputPath);
 
     console.log('[ProxyGenerator] Starting proxy generation:', sourceFile);
     console.log('[ProxyGenerator] Output:', outputPath);
