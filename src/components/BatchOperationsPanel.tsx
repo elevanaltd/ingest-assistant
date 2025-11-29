@@ -277,11 +277,19 @@ export function BatchOperationsPanel({ availableFiles, selectedFileIds, filename
         videoFilenames: videoFilenames,
       });
 
-      if (result.success) {
-        alert(`Proxy generation complete: ${result.completedCount} succeeded, ${result.failedCount} failed`);
-      } else {
-        alert(`Proxy generation failed: ${result.failedCount} files failed`);
+      // Build informative message showing all outcomes
+      const totalFiles = videoFilenames.length;
+      let message = `Proxy generation: ${result.completedCount}/${totalFiles} completed`;
+
+      if (result.failedCount > 0) {
+        message += `\n\n⚠️ ${result.failedCount} file(s) failed to transcode`;
       }
+
+      if (result.verificationFailures && result.verificationFailures.length > 0) {
+        message += `\n\n⚠️ ${result.verificationFailures.length} file(s) have EXIF timestamp issues (I1 compliance)`;
+      }
+
+      alert(message);
     } catch (error) {
       console.error('[BatchPanel] Failed to generate proxies:', error);
       alert('Failed to generate proxies: ' + (error instanceof Error ? error.message : 'Unknown error'));
