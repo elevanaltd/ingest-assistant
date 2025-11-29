@@ -621,6 +621,28 @@ describe('ProxyGenerator', () => {
       vi.mocked(fs.unlinkSync).mockImplementation(() => undefined);
     });
 
+    it('should cleanup partial proxy when disk space exhausted', async () => {
+      const mockFfmpegProcess = new EventEmitter() as any;
+      mockFfmpegProcess.stderr = new EventEmitter();
+      mockFfmpegProcess.kill = vi.fn();
+      vi.mocked(spawn).mockReturnValue(mockFfmpegProcess);
+
+      const generatePromise = generator.generateProxy(
+        mockSourceFile,
+        mockOutputDir
+      );
+
+      // Simulate disk space error from ffmpeg
+      setTimeout(() => {
+        mockFfmpegProcess.stderr.emit('data', Buffer.from('No space left on device'));
+        mockFfmpegProcess.emit('close', 1); // Non-zero exit
+      }, 10);
+
+      await expect(generatePromise).rejects.toThrow();
+      // Verify cleanup was attempted
+      expect(fs.unlinkSync).toHaveBeenCalled();
+    });
+
     it('should remove partial proxy file on transcode failure', async () => {
       const mockProcess = new EventEmitter() as any;
       mockProcess.stderr = new EventEmitter();
