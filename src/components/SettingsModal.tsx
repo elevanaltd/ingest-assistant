@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import type { LexiconConfig, CfexConfig } from '../types';
+import { PROXY_PRESETS } from '../../electron/services/proxyPresets';
 
 // Default CFEx paths
 const DEFAULT_CFEX_CONFIG: CfexConfig = {
@@ -71,6 +72,9 @@ export function SettingsModal({
   const filenameRewrite = onFilenameRewriteChange ? filenameRewriteProp : filenameRewriteLocal;
   const setFilenameRewrite = onFilenameRewriteChange || setFilenameRewriteLocal;
   const [filenameTemplate, setFilenameTemplate] = useState('{location}-{subject}-{action}-{shotType}');
+
+  // Proxy format state
+  const [proxyPresetId, setProxyPresetId] = useState('2k-prores-proxy');
 
   // Ingestion settings save state
   const [isSavingIngestion, setIsSavingIngestion] = useState(false);
@@ -192,6 +196,7 @@ export function SettingsModal({
             // Session-ephemeral: filenameRewrite ALWAYS defaults to false on load (I7 Human Primacy)
             setFilenameRewrite(false);
             setFilenameTemplate(config.cfex.filenameTemplate || '{location}-{subject}-{action}-{shotType}');
+            setProxyPresetId(config.cfex.proxyPresetId || '2k-prores-proxy');
           } else {
             // Use defaults if no cfex config exists
             setCfexSource(DEFAULT_CFEX_CONFIG.defaultSource);
@@ -201,6 +206,7 @@ export function SettingsModal({
             setMetadataWrite(false);
             setFilenameRewrite(false);
             setFilenameTemplate('{location}-{subject}-{action}-{shotType}');
+            setProxyPresetId('2k-prores-proxy');
           }
         })
         .catch(err => {
@@ -481,7 +487,9 @@ export function SettingsModal({
           metadataWrite,
           // Session-ephemeral: filenameRewrite ALWAYS saved as false (I7 Human Primacy)
           filenameRewrite: false,
-          filenameTemplate
+          filenameTemplate,
+          // Save proxy preset selection
+          proxyPresetId
         }
       };
 
@@ -1076,6 +1084,35 @@ export function SettingsModal({
                     </small>
                   </div>
                 )}
+              </div>
+            </div>
+
+            {/* Proxy Format Selection */}
+            <div>
+              <h3 style={{ marginTop: 0, marginBottom: '16px', fontSize: '16px' }}>Proxy Format</h3>
+              <p style={{ color: '#666', fontSize: '14px', marginBottom: '16px' }}>
+                Select the format for generated proxy files (used for editing workflow).
+              </p>
+
+              <div>
+                <label htmlFor="proxyFormat" style={{ display: 'block', marginBottom: '4px', fontWeight: 'bold' }}>
+                  Proxy Format
+                </label>
+                <select
+                  id="proxyFormat"
+                  value={proxyPresetId}
+                  onChange={(e) => setProxyPresetId(e.target.value)}
+                  style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
+                >
+                  {PROXY_PRESETS.map((preset) => (
+                    <option key={preset.id} value={preset.id}>
+                      {preset.name}
+                    </option>
+                  ))}
+                </select>
+                <small style={{ color: '#666', display: 'block', marginTop: '4px' }}>
+                  {PROXY_PRESETS.find(p => p.id === proxyPresetId)?.description}
+                </small>
               </div>
             </div>
 

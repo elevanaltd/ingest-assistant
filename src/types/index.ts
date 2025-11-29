@@ -171,6 +171,8 @@ export interface CfexConfig {
   filenameRewrite?: boolean;
   /** Filename template for rewriting (default: '{location}-{subject}-{action}-{shotType}') */
   filenameTemplate?: string;
+  /** Selected proxy format preset ID (default: '2k-prores-proxy') */
+  proxyPresetId?: string;
 }
 
 export interface AppConfig {
