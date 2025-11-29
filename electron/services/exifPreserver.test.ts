@@ -340,6 +340,149 @@ describe('ExifPreserver', () => {
     });
   });
 
+  describe('Proxy Path Matching (Cross-Platform)', () => {
+    it('should match proxy with lowercase .mov extension', async () => {
+      const mockProcess = new EventEmitter() as any;
+      mockProcess.stdout = new EventEmitter();
+      mockProcess.stderr = new EventEmitter();
+
+      vi.mocked(spawn).mockReturnValue(mockProcess);
+
+      const rawDateMap = new Map([
+        ['/Volumes/EAV_Video_RAW/project/video1.mov', '2024:11:20 14:30:45']
+      ]);
+
+      const proxyPaths = [
+        '/Volumes/videos-current/project/video1_proxy.mov'
+      ];
+
+      const verifyPromise = preserver.verifyBatch(rawDateMap, proxyPaths);
+
+      setTimeout(() => {
+        const jsonOutput = JSON.stringify([
+          {
+            SourceFile: '/Volumes/videos-current/project/video1_proxy.mov',
+            DateTimeOriginal: '2024:11:20 14:30:45'
+          }
+        ]);
+        mockProcess.stdout.emit('data', Buffer.from(jsonOutput));
+        mockProcess.emit('close', 0);
+      }, 10);
+
+      const results = await verifyPromise;
+
+      expect(results).toHaveLength(1);
+      expect(results[0].proxyPath).toBe('/Volumes/videos-current/project/video1_proxy.mov');
+      expect(results[0].matches).toBe(true);
+    });
+
+    it('should match proxy with .mp4 extension', async () => {
+      const mockProcess = new EventEmitter() as any;
+      mockProcess.stdout = new EventEmitter();
+      mockProcess.stderr = new EventEmitter();
+
+      vi.mocked(spawn).mockReturnValue(mockProcess);
+
+      const rawDateMap = new Map([
+        ['/Volumes/EAV_Video_RAW/project/video1.mp4', '2024:11:20 14:30:45']
+      ]);
+
+      const proxyPaths = [
+        '/Volumes/videos-current/project/video1_proxy.mp4'
+      ];
+
+      const verifyPromise = preserver.verifyBatch(rawDateMap, proxyPaths);
+
+      setTimeout(() => {
+        const jsonOutput = JSON.stringify([
+          {
+            SourceFile: '/Volumes/videos-current/project/video1_proxy.mp4',
+            DateTimeOriginal: '2024:11:20 14:30:45'
+          }
+        ]);
+        mockProcess.stdout.emit('data', Buffer.from(jsonOutput));
+        mockProcess.emit('close', 0);
+      }, 10);
+
+      const results = await verifyPromise;
+
+      expect(results).toHaveLength(1);
+      expect(results[0].proxyPath).toBe('/Volumes/videos-current/project/video1_proxy.mp4');
+      expect(results[0].matches).toBe(true);
+    });
+
+    it('should match proxy with .m4v extension', async () => {
+      const mockProcess = new EventEmitter() as any;
+      mockProcess.stdout = new EventEmitter();
+      mockProcess.stderr = new EventEmitter();
+
+      vi.mocked(spawn).mockReturnValue(mockProcess);
+
+      const rawDateMap = new Map([
+        ['/Volumes/EAV_Video_RAW/project/video1.m4v', '2024:11:20 14:30:45']
+      ]);
+
+      const proxyPaths = [
+        '/Volumes/videos-current/project/video1_proxy.m4v'
+      ];
+
+      const verifyPromise = preserver.verifyBatch(rawDateMap, proxyPaths);
+
+      setTimeout(() => {
+        const jsonOutput = JSON.stringify([
+          {
+            SourceFile: '/Volumes/videos-current/project/video1_proxy.m4v',
+            DateTimeOriginal: '2024:11:20 14:30:45'
+          }
+        ]);
+        mockProcess.stdout.emit('data', Buffer.from(jsonOutput));
+        mockProcess.emit('close', 0);
+      }, 10);
+
+      const results = await verifyPromise;
+
+      expect(results).toHaveLength(1);
+      expect(results[0].proxyPath).toBe('/Volumes/videos-current/project/video1_proxy.m4v');
+      expect(results[0].matches).toBe(true);
+    });
+
+    it('should match proxy with mixed-case .Mov extension', async () => {
+      const mockProcess = new EventEmitter() as any;
+      mockProcess.stdout = new EventEmitter();
+      mockProcess.stderr = new EventEmitter();
+
+      vi.mocked(spawn).mockReturnValue(mockProcess);
+
+      const rawDateMap = new Map([
+        ['/Volumes/EAV_Video_RAW/project/video1.Mov', '2024:11:20 14:30:45']
+      ]);
+
+      const proxyPaths = [
+        '/Volumes/videos-current/project/video1_proxy.Mov'
+      ];
+
+      const verifyPromise = preserver.verifyBatch(rawDateMap, proxyPaths);
+
+      setTimeout(() => {
+        const jsonOutput = JSON.stringify([
+          {
+            SourceFile: '/Volumes/videos-current/project/video1_proxy.Mov',
+            DateTimeOriginal: '2024:11:20 14:30:45'
+          }
+        ]);
+        mockProcess.stdout.emit('data', Buffer.from(jsonOutput));
+        mockProcess.emit('close', 0);
+      }, 10);
+
+      const results = await verifyPromise;
+
+      expect(results).toHaveLength(1);
+      expect(results[0].proxyPath).toBe('/Volumes/videos-current/project/video1_proxy.Mov');
+      expect(results[0].matches).toBe(true);
+    });
+
+  });
+
   describe('Full Workflow Coordinator', () => {
     it('should execute complete preserve-and-verify workflow', async () => {
       // Mock extract (Phase 1)
@@ -471,6 +614,71 @@ describe('ExifPreserver', () => {
       expect(results[0].matches).toBe(false);
       expect(results[0].rawDate).toBe('2024:11:20 14:30:45');
       expect(results[0].proxyDate).toBe('2024:11:20 15:00:00');
+    });
+
+    it('should handle lowercase .mov files in full workflow', async () => {
+      // Mock extract
+      const mockExtractProcess = new EventEmitter() as any;
+      mockExtractProcess.stdout = new EventEmitter();
+      mockExtractProcess.stderr = new EventEmitter();
+
+      // Mock write
+      const mockWriteProcess = new EventEmitter() as any;
+      mockWriteProcess.stdout = new EventEmitter();
+      mockWriteProcess.stderr = new EventEmitter();
+
+      // Mock verify
+      const mockVerifyProcess = new EventEmitter() as any;
+      mockVerifyProcess.stdout = new EventEmitter();
+      mockVerifyProcess.stderr = new EventEmitter();
+
+      let callCount = 0;
+      vi.mocked(spawn).mockImplementation(() => {
+        callCount++;
+        if (callCount === 1) return mockExtractProcess;
+        if (callCount === 2) return mockWriteProcess;
+        return mockVerifyProcess;
+      });
+
+      const rawPaths = ['/Volumes/EAV_Video_RAW/project/video1.mov'];
+      const proxyPaths = ['/Volumes/videos-current/project/video1_proxy.mov'];
+
+      const workflowPromise = preserver.preserveAndVerify(rawPaths, proxyPaths);
+
+      // Extract
+      setTimeout(() => {
+        const extractJson = JSON.stringify([
+          {
+            SourceFile: '/Volumes/EAV_Video_RAW/project/video1.mov',
+            DateTimeOriginal: '2024:11:20 14:30:45'
+          }
+        ]);
+        mockExtractProcess.stdout.emit('data', Buffer.from(extractJson));
+        mockExtractProcess.emit('close', 0);
+      }, 10);
+
+      // Write
+      setTimeout(() => {
+        mockWriteProcess.emit('close', 0);
+      }, 50);
+
+      // Verify
+      setTimeout(() => {
+        const verifyJson = JSON.stringify([
+          {
+            SourceFile: '/Volumes/videos-current/project/video1_proxy.mov',
+            DateTimeOriginal: '2024:11:20 14:30:45'
+          }
+        ]);
+        mockVerifyProcess.stdout.emit('data', Buffer.from(verifyJson));
+        mockVerifyProcess.emit('close', 0);
+      }, 100);
+
+      const results = await workflowPromise;
+
+      // Should successfully match lowercase .mov file
+      expect(results).toHaveLength(1);
+      expect(results[0].matches).toBe(true);
     });
   });
 });
