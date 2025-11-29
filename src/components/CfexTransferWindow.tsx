@@ -552,6 +552,7 @@ export function CfexTransferWindow() {
         filesCompleted: result.filesTransferred,
         filesTotal: result.filesTotal,
         bytesTransferred: result.bytesTransferred,
+        percentComplete: result.success ? 100 : prev.percentComplete,
         warnings: result.validationWarnings || [],
         errors: result.errors || []
       }))
