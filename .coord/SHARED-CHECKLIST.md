@@ -536,29 +536,27 @@
 ---
 
 ## Last Updated
-2025-11-27 (Phase 1b B2.7 UI Design Complete - holistic-orchestrator)
-**Tests:** 965/972 passing + 7 skipped (+64 Phase 1b tests)
-**Branch:** main (Phase 1b B2.7 UI in progress)
+2025-11-29 (Phase 1b B2.7 COMPLETE - holistic-orchestrator)
+**Tests:** 1032/1040 passing + 8 skipped
+**Branch:** feat/b2.7-proxy-ui-and-presets
 **Lint:** 0 errors, 0 warnings
 
-**Phase 1b Backend COMPLETE (B2.1-B2.6):**
+**Phase 1b COMPLETE (B2.1-B2.7):**
 - ✅ B2.1::ProxyGenerator→21_tests
-- ✅ B2.2::ExifPreserver→12_tests
+- ✅ B2.2::ExifPreserver→18_tests (P1 bug fixed: cross-platform path matching)
 - ✅ B2.3::ProxyOrchestrator→11_tests
 - ✅ B2.4::SecurityValidator→4_tests
 - ✅ B2.5::Cleanup→3_tests
 - ✅ B2.6::IPC_Handlers→8_tests
+- ✅ B2.7::UI_Components→proxy_progress+result_messages→13_tests
 - ✅ B2.8::Integration_test_plans→5_skipped
 
-**Phase 1b UI PENDING (B2.7):**
-- ⏳ D3 Blueprint created: `.coord/workflow-docs/009-PHASE1B-B2.7-UI-DESIGN.md`
-- ⏳ B2.7_00::main.ts_registration[5_min][BLOCKING]
-- ⏳ B2.7_03::BatchPanel_button_rename[30_min]
-- ⏳ B2.7_04::BatchPanel_proxy_button[1-2_hr]
-- ⏳ B2.7_01::CFEx_proxy_destination_UI[2-3_hr]
-- ⏳ B2.7_02::CFEx_backend_integration[1-2_hr]
+**Session 2025-11-29 (TDD Evidence):**
+- c1ee176→379f8d6: EXIF cross-platform fix (RED→GREEN)
+- aa24169→a6f594f: Proxy progress UI (RED→GREEN)
+- 4695bd6→3386874: Result message fix (RED→GREEN)
 
-**Next:** implementation-lead delegation with TDD (TRACED protocol)
+**Next:** B3 Integration Testing OR PR merge to main
 
 ---
 

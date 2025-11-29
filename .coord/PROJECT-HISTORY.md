@@ -6,6 +6,29 @@
 
 ---
 
+## 2025-11-29 Session: P1 EXIF Bug Fix + Proxy Progress UI
+**Status:** COMPLETE | **Tests:** 1032/1040 | **Branch:** feat/b2.7-proxy-ui-and-presets
+
+### Completed
+- P1_BUG::EXIF_verification→path_module_cross_platform→.mov/.mp4/.m4v+Windows→I1_compliance_restored
+- FEATURE::proxy_progress_UI→BatchPanel+CfexWindow→subscription_to_proxy:progress_events
+- BUG_FIX::result_message→shows_EXIF_verification_failures→"0 files failed"_confusion_eliminated
+
+### Decisions
+- [2025-11-29] path_handling→path.basename()+extname()[vs string_split]→cross_platform⊗Node_API_standard
+- [2025-11-29] progress_ui→reuse_existing_subscription_pattern[vs dedicated_component]→consistency⊗minimal_code
+
+### Problems Solved
+- EXIF_silent_skip⇒path_module+case_insensitive⇒all_video_formats_verified
+- misleading_error_"0_failed"⇒granular_result_message⇒transcode_vs_EXIF_failures_distinguished
+
+### Quality
+TRACED: T✅ R✅ E✅ D✅
+code-review-specialist: GO(0.93) | quality-observer: 9.8/10
+QG: Lint✅(0/0) Typecheck✅ Tests1032/1040✅
+
+---
+
 ## 2025-11-29 Session: B2.7 Proxy UI + Configurable Presets + Bug Fixes
 **Status:** COMPLETE | **Tests:** 1017/1025 | **PR:** #98
 
@@ -31,13 +54,6 @@
 | 4K ProRes Proxy | prores_ks -profile:v 0 | 3840×2160 | .MOV | 363 MB |
 | 2K H.264 CRF 23 | libx264 -crf 23 | 2560×1440 | .mp4 | ~25 MB |
 | 1080p H.264 CRF 18 | libx264 -crf 18 | 1920×1080 | .mp4 | ~15 MB |
-
-### Known Issue (Deferred)
-**P1: EXIF verification misses most proxy files** (electron/services/exifPreserver.ts:170-174)
-- Current code: `rawPath.split('/').pop()?.replace('.MOV', '')`
-- Only strips uppercase ".MOV" - misses .mov/.mp4/Windows paths
-- Impact: EXIF verification silently skipped, I1 compliance gap for non-.MOV sources
-- Status: DEFERRED to next session (see continuation prompt below)
 
 ### Quality
 TRACED: T✅ R✅ E✅ D✅
