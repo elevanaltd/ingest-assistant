@@ -1,5 +1,6 @@
 import React, { ReactNode } from 'react';
 import { IngestSettingsProvider } from '../contexts/IngestSettingsContext';
+import { BatchQueueProvider } from '../contexts/BatchQueueContext';
 
 /**
  * AppProviders Component
@@ -29,9 +30,9 @@ import { IngestSettingsProvider } from '../contexts/IngestSettingsContext';
  *
  * CONTEXT PROVIDERS (Condition A - Volatile State Partition):
  * - IngestSettingsProvider: CONFIG state (low-frequency updates) - AI config, lexicon, CFEx paths, toggles
+ * - BatchQueueProvider: VOLATILE state (high-frequency progress updates) - batch queue, IPC subscriptions
  *
- * FUTURE CONTEXT ADDITIONS (Phase 3-4):
- * - BatchQueueProvider: VOLATILE state (high-frequency progress updates)
+ * FUTURE CONTEXT ADDITIONS (Phase 4):
  * - FolderProvider: CONFIG state (current folder metadata)
  */
 
@@ -51,9 +52,13 @@ export const AppProviders: React.FC<AppProvidersProps> = ({ children }) => {
 
   // Phase 2: IngestSettingsProvider (CONFIG state - low frequency)
   // Manages AI config, lexicon, CFEx paths, power feature toggles
+  // Phase 3: BatchQueueProvider (VOLATILE state - high frequency)
+  // Manages batch queue state, progress updates, IPC subscriptions
   return (
     <IngestSettingsProvider>
-      {children}
+      <BatchQueueProvider>
+        {children}
+      </BatchQueueProvider>
     </IngestSettingsProvider>
   );
 };

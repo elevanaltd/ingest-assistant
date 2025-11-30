@@ -34,7 +34,8 @@ interface BatchQueueProviderProps {
 export function BatchQueueProvider({ children }: BatchQueueProviderProps) {
   const [queueState, setQueueState] = useState<BatchQueueState>({
     items: [],
-    status: 'idle'
+    status: 'idle',
+    currentFile: null
   });
   const [progress, setProgress] = useState<BatchProgress | null>(null);
 
