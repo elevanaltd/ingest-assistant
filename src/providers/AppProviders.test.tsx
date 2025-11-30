@@ -36,22 +36,25 @@ describe('AppProviders', () => {
     // This test documents the Safe Fallback requirement (Condition C)
     // Delete window.electronAPI to simulate browser environment
     const originalElectronAPI = (window as any).electronAPI;
-    delete (window as any).electronAPI;
 
-    // Should not throw error
-    expect(() => {
-      render(
-        <AppProviders>
-          <div>Browser mode content</div>
-        </AppProviders>
-      );
-    }).not.toThrow();
+    try {
+      delete (window as any).electronAPI;
 
-    expect(screen.getByText('Browser mode content')).toBeInTheDocument();
+      // Should not throw error
+      expect(() => {
+        render(
+          <AppProviders>
+            <div>Browser mode content</div>
+          </AppProviders>
+        );
+      }).not.toThrow();
 
-    // Restore
-    if (originalElectronAPI) {
-      (window as any).electronAPI = originalElectronAPI;
+      expect(screen.getByText('Browser mode content')).toBeInTheDocument();
+    } finally {
+      // Guaranteed restoration to prevent test pollution
+      if (originalElectronAPI) {
+        (window as any).electronAPI = originalElectronAPI;
+      }
     }
   });
 });
