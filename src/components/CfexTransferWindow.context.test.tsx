@@ -65,7 +65,9 @@ describe('CfexTransferWindow - Context Integration (Phase 5.4)', () => {
           completedFiles: [],
           failedFiles: []
         })
-      }
+      },
+      // Phase 5.7: Mock getShotTypes for MetadataFormContext
+      getShotTypes: vi.fn().mockResolvedValue(['WS', 'MID', 'CU'])
     };
   });
 

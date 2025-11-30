@@ -8,6 +8,7 @@ import { BatchOperationsPanel } from './components/BatchOperationsPanel';
 import { CfexTransferWindow } from './components/CfexTransferWindow';
 import { useIngestSettings } from './contexts/IngestSettingsContext';
 import { useFileList } from './contexts/FileListContext';
+import { useMetadataForm } from './contexts/MetadataFormContext';
 import './App.css';
 
 function App() {
@@ -32,24 +33,28 @@ function App() {
     setCurrentFileIndex,
   } = useFileList();
 
+  // Phase 5.7: Consume MetadataFormContext
+  const {
+    location,
+    subject,
+    action,
+    shotType,
+    keywords,
+    isLoading: isFormLoading,
+    shotTypes,
+    setLocation,
+    setSubject,
+    setAction,
+    setShotType,
+    setKeywords,
+    handleSave: handleFormSave,
+    handleAIAssist: handleFormAIAssist,
+  } = useMetadataForm();
+
   // Tab navigation state
   const [currentTab, setCurrentTab] = useState<'ingest' | 'cfex'>('ingest');
 
   const skipNextVideoLoadRef = useRef<boolean>(false);
-
-  // Structured naming fields
-  const [location, setLocation] = useState<string>('');
-  const [subject, setSubject] = useState<string>('');
-  const [action, setAction] = useState<string>('');
-  const [shotType, setShotType] = useState<ShotType | ''>('');
-  const [shotTypes, setShotTypes] = useState<string[]>([]);
-
-  // Legacy field (still used for backward compatibility when loading existing files)
-  // @ts-expect-error - shotName is set but not directly read (used for legacy data migration)
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [shotName, setShotName] = useState<string>('');
-  const [keywords, setKeywords] = useState<string>('');
-  const [isLoading, setIsLoading] = useState(false);
   const [isLoadingMedia, setIsLoadingMedia] = useState(false);
   const [transcodeProgress, setTranscodeProgress] = useState<string>('');
   const [transcodePercentage, setTranscodePercentage] = useState<number>(0);
@@ -76,18 +81,9 @@ function App() {
     }
   }, [statusMessage]);
 
-  // Load shot types and setup transcode progress listener
+  // Setup transcode progress listener
   useEffect(() => {
     if (window.electronAPI) {
-      // Load shot types for dropdown
-      window.electronAPI.getShotTypes()
-        .then(setShotTypes)
-        .catch(error => {
-          console.error('Failed to load shot types:', error);
-          // Fallback to default shot types
-          setShotTypes(['WS', 'MID', 'CU', 'UNDER', 'FP', 'TRACK', 'ESTAB']);
-        });
-
       // Listen for transcode progress events
       const cleanup = window.electronAPI.onTranscodeProgress((progress) => {
         setTranscodeProgress(progress.time);
@@ -114,63 +110,8 @@ function App() {
     };
   }, []);
 
-  // Effect 1: Update form fields when current file data changes
-  // Memoized currentFile ensures this re-runs on cache reload (new file objects, same index)
-  useEffect(() => {
-    if (!currentFile) {
-      setLocation('');
-      setSubject('');
-      setAction('');
-      setShotType('');
-      setShotName('');
-      setKeywords('');
-      return;
-    }
-
-    // Parse structured naming if available
-    if (currentFile.location && currentFile.subject && currentFile.shotType) {
-      setLocation(currentFile.location);
-      setSubject(currentFile.subject);
-      setAction(currentFile.action || '');
-      setShotType(currentFile.shotType as ShotType);
-      setShotName(currentFile.shotName);
-    } else if (currentFile.shotName) {
-      // Try parsing shotName pattern: {location}-{subject}-{shotType} or {location}-{subject}-{action}-{shotType}
-      const parts = currentFile.shotName.split('-');
-      if (parts.length === 4 && shotTypes.includes(parts[3].toUpperCase())) {
-        // 4-part video format
-        setLocation(parts[0]);
-        setSubject(parts[1]);
-        setAction(parts[2]);
-        setShotType(parts[3].toUpperCase() as ShotType);
-        setShotName(currentFile.shotName);
-      } else if (parts.length === 3 && shotTypes.includes(parts[2].toUpperCase())) {
-        // 3-part photo format
-        setLocation(parts[0]);
-        setSubject(parts[1]);
-        setAction('');
-        setShotType(parts[2].toUpperCase() as ShotType);
-        setShotName(currentFile.shotName);
-      } else {
-        // Legacy format - populate shotName directly
-        setLocation('');
-        setSubject('');
-        setAction('');
-        setShotType('');
-        setShotName(currentFile.shotName);
-      }
-    } else {
-      setLocation('');
-      setSubject('');
-      setAction('');
-      setShotType('');
-      setShotName('');
-    }
-
-    setKeywords(currentFile.keywords?.join(', ') || '');
-  }, [currentFile, shotTypes]);
-
-  // Effect 2: Load media preview when file changes
+  // Load media preview when file changes
+  // (Form sync now handled by MetadataFormContext)
   // Depends on currentFile to handle cache reload scenario (new file objects, same index)
   // Separated from form sync to prevent unnecessary media reloads when only form data updates
   useEffect(() => {
@@ -183,6 +124,7 @@ function App() {
     }
 
     // Start loading
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setIsLoadingMedia(true);
     setTranscodeProgress('');
     setTranscodePercentage(0);
@@ -226,78 +168,15 @@ function App() {
       });
   }, [currentFile]);
 
+  // Wrapper to add status messages and skip video reload
   const handleSave = async () => {
-    if (!currentFile) return;
-
-    setIsLoading(true);
-    const currentFileId = currentFile.id; // Remember the current file ID
-
     try {
-      // Build title from structured components
-      let generatedTitle = '';
-      if (location && subject && shotType) {
-        // Structured naming: 4-part for videos (with action), 3-part for photos (without action)
-        if (currentFile.fileType === 'video' && action) {
-          generatedTitle = `${location}-${subject}-${action}-${shotType}`;
-        } else {
-          generatedTitle = `${location}-${subject}-${shotType}`;
-        }
-        setShotName(generatedTitle); // Update shotName state for consistency
-      }
-
-      // Build metadata tags array
-      const metadataTags = keywords
-        .split(',')
-        .map((tag) => tag.trim())
-        .filter((tag) => tag.length > 0);
-
-      // Save title and metadata with structured components
-      const structuredData = location && subject && shotType ? { location, subject, action, shotType } : undefined;
-
-      // Save everything via updateStructuredMetadata (file renaming disabled)
-      if (structuredData) {
-        console.log('[App] Saving title and metadata as XMP only (file not renamed)');
-        await window.electronAPI.updateStructuredMetadata(
-          currentFile.id,
-          structuredData,
-          currentFile.filePath,
-          currentFile.fileType as 'image' | 'video'
-        );
-        // Update metadata tags
-        await window.electronAPI.updateMetadata(currentFile.id, metadataTags);
-      } else {
-        // Legacy path: Just update metadata if no structured data
-        await window.electronAPI.updateMetadata(currentFile.id, metadataTags);
-      }
-
-      // File not renamed - update in place without reloading to avoid re-transcoding video
-      {
-        skipNextVideoLoadRef.current = true;
-
-        const updatedFiles = files.map(f => {
-          if (f.id === currentFileId) {
-            return {
-              ...f,
-              // Preserve shotName with timestamp (backend is authoritative source)
-              // Backend adds timestamp during save, don't overwrite with client-side generatedTitle
-              keywords: metadataTags,
-              location,
-              subject,
-              action: action || '',
-              shotType: shotType as ShotType || '',
-            };
-          }
-          return f;
-        });
-        setFiles(updatedFiles);
-      }
-
+      skipNextVideoLoadRef.current = true;
+      await handleFormSave();
       setStatusMessage('✓ Saved successfully');
     } catch (error) {
       console.error('Save failed:', error);
       setStatusMessage('✗ Save failed: ' + (error instanceof Error ? error.message : error));
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -322,40 +201,15 @@ function App() {
     }
   };
 
+  // Wrapper to add status message
   const handleAIAssist = async () => {
-    if (!currentFile) return;
-
-    setIsLoading(true);
     try {
-      const result = await window.electronAPI.analyzeFile(currentFile.filePath);
-      console.log('[App] AI result received:', result);
-
-      // Populate structured fields if available
-      if (result.location && result.subject && result.shotType) {
-        console.log('[App] Populating structured fields:', {
-          location: result.location,
-          subject: result.subject,
-          action: result.action,
-          shotType: result.shotType
-        });
-        setLocation(result.location);
-        setSubject(result.subject);
-        setAction(result.action || '');
-        setShotType(result.shotType);
-        setShotName(result.shotName);
-      } else {
-        // Legacy format - populate shotName directly
-        console.log('[App] Using legacy format, shotName only:', result.shotName);
-        setShotName(result.shotName);
-      }
-
-      setKeywords(result.keywords?.join(', ') || '');
-      setStatusMessage(`✓ AI Analysis complete! Confidence: ${(result.confidence * 100).toFixed(0)}%`);
+      await handleFormAIAssist();
+      // Success message with confidence would require AI result return value
+      setStatusMessage('✓ AI Analysis complete!');
     } catch (error) {
       console.error('AI analysis failed:', error);
       setStatusMessage('✗ AI analysis failed: ' + (error instanceof Error ? error.message : error));
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -385,7 +239,7 @@ function App() {
         console.error('Failed to reload files after batch:', error);
       }
     }
-  }, [folderPath]); // Only recreate if folderPath changes
+  }, [folderPath, setFiles]);
 
   // Define command palette commands (after all handlers are declared)
   const commands: Command[] = [
@@ -428,7 +282,7 @@ function App() {
     onNext: handleNext,
     onPrevious: handlePrevious,
     onCommandPalette: () => setShowCommandPalette(true),
-    isLoading,
+    isLoading: isFormLoading,
     canSave,
   });
 
@@ -799,12 +653,12 @@ function App() {
                 <label style={{ fontSize: '13px' }}>&nbsp;</label>
                 <button
                   onClick={handleSave}
-                  disabled={isLoading || (!location || !subject || !shotType) || isFolderCompleted}
+                  disabled={isFormLoading || (!location || !subject || !shotType) || isFolderCompleted}
                   className="btn-primary"
                   style={{ width: '100%', fontSize: '13px', padding: '5px 8px' }}
                   title={isFolderCompleted ? 'Folder is locked - click REOPEN to edit' : ''}
                 >
-                  {isLoading ? 'Saving...' : 'Save'}
+                  {isFormLoading ? 'Saving...' : 'Save'}
                 </button>
               </div>
 
@@ -813,12 +667,12 @@ function App() {
                   <label style={{ fontSize: '13px' }}>&nbsp;</label>
                   <button
                     onClick={handleAIAssist}
-                    disabled={isLoading || isFolderCompleted}
+                    disabled={isFormLoading || isFolderCompleted}
                     className="btn-secondary"
                     style={{ width: '100%', fontSize: '13px', padding: '5px 8px' }}
                     title={isFolderCompleted ? 'Folder is locked - click REOPEN to edit' : ''}
                   >
-                    {isLoading ? 'Analyzing...' : 'AI Assist'}
+                    {isFormLoading ? 'Analyzing...' : 'AI Assist'}
                   </button>
                 </div>
               )}

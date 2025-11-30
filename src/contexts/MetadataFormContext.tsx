@@ -31,7 +31,8 @@ const MetadataFormContext = createContext<MetadataFormContextValue | undefined>(
 export function MetadataFormProvider({ children }: { children: ReactNode }) {
   // Dependencies from other contexts
   const { files, currentFileIndex, setFiles } = useFileList();
-  const { lexiconConfig } = useIngestSettings();
+  // Note: lexiconConfig available for future use (e.g., dropdown autocomplete)
+  const { lexiconConfig: _lexiconConfig } = useIngestSettings();
 
   // Memoize currentFile to stabilize dependencies for useEffect hooks
   const currentFile = useMemo(() => files[currentFileIndex], [files, currentFileIndex]);

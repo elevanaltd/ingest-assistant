@@ -11,6 +11,8 @@ const mockElectronAPI = {
   batchGetStatus: vi.fn(),
   onBatchProgress: vi.fn(() => () => {}),
   onTranscodeProgress: vi.fn(() => () => {}),
+  // Phase 5.7: Mock getShotTypes for MetadataFormContext
+  getShotTypes: vi.fn(async () => ['WS', 'MID', 'CU']),
 };
 
 beforeEach(() => {

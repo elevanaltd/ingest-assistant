@@ -19,6 +19,8 @@ describe('BatchOperationsPanel', () => {
       }),
       onBatchProgress: vi.fn().mockReturnValue(() => {}),
       onTranscodeProgress: vi.fn().mockReturnValue(() => {}),
+      // Phase 5.7: Mock getShotTypes for MetadataFormContext
+      getShotTypes: vi.fn().mockResolvedValue(['WS', 'MID', 'CU']),
     };
   });
 

@@ -3,6 +3,7 @@ import { IngestSettingsProvider } from '../contexts/IngestSettingsContext';
 import { BatchQueueProvider } from '../contexts/BatchQueueContext';
 import { CfexTransferProvider } from '../contexts/CfexTransferContext';
 import { FileListProvider } from '../contexts/FileListContext';
+import { MetadataFormProvider } from '../contexts/MetadataFormContext';
 
 /**
  * AppProviders Component
@@ -59,12 +60,16 @@ export const AppProviders: React.FC<AppProvidersProps> = ({ children }) => {
   // Manages CFEx file transfer workflow, persists across tab switches
   // Phase 5.6: FileListProvider (VOLATILE state - high frequency)
   // Manages file list, navigation, selection, folder completion state
+  // Phase 5.7: MetadataFormProvider (VOLATILE state - high frequency)
+  // Manages metadata form fields, AI assist, save handlers
   return (
     <IngestSettingsProvider>
       <BatchQueueProvider>
         <CfexTransferProvider>
           <FileListProvider>
-            {children}
+            <MetadataFormProvider>
+              {children}
+            </MetadataFormProvider>
           </FileListProvider>
         </CfexTransferProvider>
       </BatchQueueProvider>

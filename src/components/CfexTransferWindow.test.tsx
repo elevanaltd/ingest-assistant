@@ -76,8 +76,13 @@ describe('CfexTransferWindow', () => {
       cfex: cfexMock,
       proxy: {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        generateProxies: mockGenerateProxies as any
-      }
+        generateProxies: mockGenerateProxies as any,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        onProxyProgress: vi.fn(() => () => {}) as any
+      },
+      // Mock getShotTypes for MetadataFormContext (Phase 5.7)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      getShotTypes: vi.fn().mockResolvedValue(['WS', 'MID', 'CU']) as any
     } as Partial<ElectronAPI>
   })
 
