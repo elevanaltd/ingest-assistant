@@ -1,4 +1,5 @@
 import React, { ReactNode } from 'react';
+import { IngestSettingsProvider } from '../contexts/IngestSettingsContext';
 
 /**
  * AppProviders Component
@@ -26,10 +27,12 @@ import React, { ReactNode } from 'react';
  * }
  * ```
  *
- * FUTURE CONTEXT ADDITIONS (Phase 2-4):
- * - Add new context providers below with clear comments
- * - Respect volatile state partition (Condition A)
- * - High-frequency state separate from config state
+ * CONTEXT PROVIDERS (Condition A - Volatile State Partition):
+ * - IngestSettingsProvider: CONFIG state (low-frequency updates) - AI config, lexicon, CFEx paths, toggles
+ *
+ * FUTURE CONTEXT ADDITIONS (Phase 3-4):
+ * - BatchQueueProvider: VOLATILE state (high-frequency progress updates)
+ * - FolderProvider: CONFIG state (current folder metadata)
  */
 
 interface AppProvidersProps {
@@ -46,16 +49,13 @@ export const AppProviders: React.FC<AppProvidersProps> = ({ children }) => {
     console.warn('[AppProviders] Running in browser mode - window.electronAPI not available');
   }
 
-  // Phase 1 (Scaffold): Minimal passthrough
-  // Phase 2-4 will add context providers here:
-  // Example structure for future:
-  // <ConfigContext.Provider>
-  //   <VolatileStateContext.Provider>
-  //     {children}
-  //   </VolatileStateContext.Provider>
-  // </ConfigContext.Provider>
-
-  return <>{children}</>;
+  // Phase 2: IngestSettingsProvider (CONFIG state - low frequency)
+  // Manages AI config, lexicon, CFEx paths, power feature toggles
+  return (
+    <IngestSettingsProvider>
+      {children}
+    </IngestSettingsProvider>
+  );
 };
 
 // Export type for test-utils
