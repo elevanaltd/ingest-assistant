@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import type { BatchQueueState, BatchProgress } from '../types';
+import { useBatchQueue } from '../contexts/BatchQueueContext';
 
 interface BatchOperationsPanelProps {
   /** Available files that can be batched */
@@ -15,8 +15,10 @@ interface BatchOperationsPanelProps {
 }
 
 export function BatchOperationsPanel({ availableFiles, selectedFileIds, filenameRewrite = false, onBatchComplete, currentFolderPath }: BatchOperationsPanelProps) {
-  const [queueState, setQueueState] = useState<BatchQueueState | null>(null);
-  const [currentProgress, setCurrentProgress] = useState<BatchProgress | null>(null);
+  // Consume BatchQueueContext instead of local IPC subscriptions
+  const { state: queueState, progress: currentProgress } = useBatchQueue();
+
+  // UI-only local state (NOT managed by context)
   const [isExpanded, setIsExpanded] = useState(false);
   const [previousStatus, setPreviousStatus] = useState<string | null>(null);
   const [proxyProgress, setProxyProgress] = useState<{
@@ -27,18 +29,6 @@ export function BatchOperationsPanel({ availableFiles, selectedFileIds, filename
     percentage?: number;
     timeString?: string;
   } | null>(null);
-
-  // Subscribe to progress events
-  useEffect(() => {
-    if (!window.electronAPI) return;
-
-    const cleanup = window.electronAPI.onBatchProgress((progress) => {
-      setCurrentProgress(progress);
-    });
-
-    // Cleanup on unmount
-    return cleanup;
-  }, []);
 
   // Subscribe to proxy generation progress events
   useEffect(() => {
@@ -52,39 +42,30 @@ export function BatchOperationsPanel({ availableFiles, selectedFileIds, filename
     return cleanup;
   }, []);
 
-  // Poll for queue status every 2 seconds when queue exists
+  // Monitor queue status changes for UI updates and completion callback
+  // Note: queueState comes from BatchQueueContext (already polling)
   useEffect(() => {
-    if (!window.electronAPI) return;
-
-    const interval = setInterval(async () => {
-      try {
-        const status = await window.electronAPI.batchGetStatus();
-        setQueueState(status);
-
-        // Auto-expand when processing
-        if (status.status === 'processing') {
-          setIsExpanded(true);
-          // Reset previousStatus when a new batch starts (allows next completion to be detected)
-          if (previousStatus === 'completed' || previousStatus === 'cancelled') {
-            setPreviousStatus('processing');
-          }
-        }
-
-        // Call completion callback when batch finishes (only on status CHANGE, not every poll)
-        if ((status.status === 'completed' || status.status === 'cancelled') &&
-            status.status !== previousStatus) {
-          setPreviousStatus(status.status);
-          if (onBatchComplete) {
-            onBatchComplete();
-          }
-        }
-      } catch (error) {
-        console.error('Failed to get batch status:', error);
+    // Auto-expand when processing
+    if (queueState.status === 'processing') {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setIsExpanded(true);
+      // Reset previousStatus when a new batch starts (allows next completion to be detected)
+      if (previousStatus === 'completed' || previousStatus === 'cancelled') {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setPreviousStatus('processing');
       }
-    }, 2000);
+    }
 
-    return () => clearInterval(interval);
-  }, [onBatchComplete, previousStatus]);
+    // Call completion callback when batch finishes (only on status CHANGE, not every poll)
+    if ((queueState.status === 'completed' || queueState.status === 'cancelled') &&
+        queueState.status !== previousStatus) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setPreviousStatus(queueState.status);
+      if (onBatchComplete) {
+        onBatchComplete();
+      }
+    }
+  }, [queueState.status, previousStatus, onBatchComplete]);
 
   const handleStartBatch = async () => {
     if (!window.electronAPI) return;
@@ -307,7 +288,7 @@ export function BatchOperationsPanel({ availableFiles, selectedFileIds, filename
   };
 
   const getProgressPercentage = (): number => {
-    if (!queueState || queueState.items.length === 0) return 0;
+    if (queueState.items.length === 0) return 0;
     const completed = queueState.items.filter(item =>
       item.status === 'completed' || item.status === 'error' || item.status === 'cancelled'
     ).length;
@@ -480,7 +461,7 @@ export function BatchOperationsPanel({ availableFiles, selectedFileIds, filename
           Batch Operations
         </span>
 
-        {queueState && (
+        {queueState.status !== 'idle' && (
           <span style={{
             fontSize: '11px',
             padding: '3px 8px',
@@ -509,7 +490,7 @@ export function BatchOperationsPanel({ availableFiles, selectedFileIds, filename
       </div>
 
       {/* Expanded Details */}
-      {isExpanded && queueState && queueState.items.length > 0 && (
+      {isExpanded && queueState.items.length > 0 && (
         <div style={{ marginTop: '12px' }}>
           {/* Progress Bar */}
           <div style={{ marginBottom: '12px' }}>

@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, act } from '@testing-library/react';
+import { act } from '@testing-library/react';
+import { renderWithProviders as render } from '../test/test-utils';
 import { BatchOperationsPanel } from './BatchOperationsPanel';
 import type { BatchQueueState } from '../types';
 
