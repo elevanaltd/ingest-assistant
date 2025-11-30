@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import type { LexiconConfig, CfexConfig } from '../types';
 import { PROXY_PRESETS } from '../../electron/services/proxyPresets';
+import { useIngestSettings } from '../contexts/IngestSettingsContext';
 
 // Default CFEx paths
 const DEFAULT_CFEX_CONFIG: CfexConfig = {
@@ -21,14 +22,18 @@ interface SettingsModalProps {
 export function SettingsModal({
   onClose,
   onSave,
-  initialConfig,
+  initialConfig: _initialConfig, // Phase 5.2: deprecated, context is source of truth
   filenameRewrite: filenameRewriteProp = false,
   onFilenameRewriteChange
 }: SettingsModalProps) {
+  // Consume context (Phase 5.2: context consumption)
+  // Note: updateSettings will be used in future for direct context updates
+  const { settings, updateSettings: _updateSettings } = useIngestSettings();
+
   // Tab state
   const [activeTab, setActiveTab] = useState<'lexicon' | 'ai' | 'cfex' | 'ingestion'>('lexicon');
 
-  // Lexicon state - simple text fields
+  // Lexicon state - synced from context, local for immediate UI updates
   const [pattern, setPattern] = useState('{location}-{subject}-{shotType}');
   const [commonLocations, setCommonLocations] = useState('');
   const [commonSubjects, setCommonSubjects] = useState('');
@@ -121,19 +126,33 @@ export function SettingsModal({
     };
   }, []);
 
-  // Load initial lexicon config
+  // Sync context settings to local state (Phase 5.2: hybrid approach for compatibility)
   useEffect(() => {
-    if (initialConfig) {
-      setPattern(initialConfig.pattern || '{location}-{subject}-{shotType}');
-      setCommonLocations(initialConfig.commonLocations || '');
-      setCommonSubjects(initialConfig.commonSubjects || '');
-      setCommonActions(initialConfig.commonActions || '');
-      setWordPreferences(initialConfig.wordPreferences || '');
-      setAiInstructions(initialConfig.aiInstructions || '');
-      setGoodExamples(initialConfig.goodExamples || '');
-      setBadExamples(initialConfig.badExamples || '');
-    }
-  }, [initialConfig]);
+    // Lexicon settings from context
+    setPattern(settings.pattern);
+    setCommonLocations(settings.commonLocations);
+    setCommonSubjects(settings.commonSubjects);
+    setCommonActions(settings.commonActions);
+    setWordPreferences(settings.wordPreferences);
+    setAiInstructions(settings.aiInstructions);
+    setGoodExamples(settings.goodExamples);
+    setBadExamples(settings.badExamples);
+
+    // AI settings from context
+    setAiProvider(settings.aiProvider);
+    setAiModel(settings.aiModel);
+
+    // CFEx paths from context
+    setCfexSource(settings.cfexSource);
+    setCfexPhotos(settings.cfexPhotos);
+    setCfexVideos(settings.cfexVideos);
+
+    // Power feature toggles from context
+    setAiAutoAnalyze(settings.aiAutoAnalyze);
+    setMetadataWrite(settings.metadataWrite);
+    setFilenameTemplate(settings.filenameTemplate);
+    setProxyPresetId(settings.proxyPresetId);
+  }, [settings]);
 
   // Load AI config when switching to AI tab
   useEffect(() => {

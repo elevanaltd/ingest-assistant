@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { screen, fireEvent, waitFor } from '@testing-library/react';
+import { renderWithProviders } from '../test/test-utils'; // Phase 5.2: Use renderWithProviders for context
 import { SettingsModal } from './SettingsModal';
 import type { LexiconConfig } from '../types';
 
@@ -11,6 +12,24 @@ describe('SettingsModal', () => {
     mockOnClose.mockClear();
     mockOnSave.mockClear();
     mockOnSave.mockResolvedValue(undefined);
+
+    // Phase 5.2: Add minimal electronAPI mocks for context provider
+    window.electronAPI = {
+      getAIConfig: vi.fn().mockResolvedValue({
+        provider: 'openrouter',
+        model: ''
+      }),
+      isAIConfigured: vi.fn().mockResolvedValue(false),
+      getAIModels: vi.fn().mockResolvedValue([]),
+      lexicon: {
+        load: vi.fn().mockResolvedValue({}),
+        save: vi.fn().mockResolvedValue(true)
+      },
+      loadConfig: vi.fn().mockResolvedValue({ cfex: {} }),
+      saveConfig: vi.fn().mockResolvedValue(true),
+      getShotTypes: vi.fn().mockResolvedValue(['WS', 'MID', 'CU', 'UNDER', 'FP', 'TRACK', 'ESTAB']),
+      updateAIConfig: vi.fn().mockResolvedValue({ success: true })
+    } as any;
   });
 
   afterEach(() => {
@@ -18,12 +37,12 @@ describe('SettingsModal', () => {
   });
 
   it('renders modal with title', () => {
-    render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
+    renderWithProviders(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
     expect(screen.getByText('Settings')).toBeInTheDocument();
   });
 
   it('renders lexicon form with all fields', () => {
-    render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
+    renderWithProviders(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
 
     // Pattern field
     expect(screen.getByPlaceholderText(/\{location\}-\{subject\}-\{shotType\}/i)).toBeInTheDocument();
@@ -42,7 +61,9 @@ describe('SettingsModal', () => {
     expect(textareas.length).toBeGreaterThanOrEqual(5); // wordPreferences, aiInstructions, goodExamples, badExamples
   });
 
-  it('loads initial config data', () => {
+  it('loads initial config data', async () => {
+    // Phase 5.2: Context is now the source of truth, not initialConfig prop
+    // Mock the lexicon.load to return initial values
     const initialConfig: LexiconConfig = {
       pattern: '{location}-{subject}-{shotType}',
       commonLocations: 'kitchen, bathroom',
@@ -54,13 +75,21 @@ describe('SettingsModal', () => {
       badExamples: 'Kitchen-Oven-CU (mixed case)',
     };
 
-    render(
+    // Override the default mock to return initial config values
+    window.electronAPI.lexicon.load = vi.fn().mockResolvedValue(initialConfig);
+
+    renderWithProviders(
       <SettingsModal
         onClose={mockOnClose}
         onSave={mockOnSave}
         initialConfig={initialConfig}
       />
     );
+
+    // Wait for context to load and sync to component state
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('kitchen, bathroom')).toBeInTheDocument();
+    });
 
     // Input fields
     expect(screen.getByDisplayValue('{location}-{subject}-{shotType}')).toBeInTheDocument();
@@ -83,7 +112,7 @@ describe('SettingsModal', () => {
   });
 
   it('updates field values when user types', () => {
-    render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
+    renderWithProviders(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
 
     const patternInput = screen.getByPlaceholderText(/\{location\}-\{subject\}-\{shotType\}/i) as HTMLInputElement;
     fireEvent.change(patternInput, { target: { value: '{location}-{subject}-{action}-{shotType}' } });
@@ -99,15 +128,13 @@ describe('SettingsModal', () => {
   });
 
   it('calls onClose when cancel button clicked', () => {
-    render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
+    renderWithProviders(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
 
     fireEvent.click(screen.getByText('Cancel'));
     expect(mockOnClose).toHaveBeenCalledTimes(1);
   });
-
-
   it('does not close when backdrop clicked', () => {
-    render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
+    renderWithProviders(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
 
     // Click on the backdrop (not the modal content)
     const backdrop = screen.getByText('Settings').closest('.modal-backdrop');
@@ -119,6 +146,7 @@ describe('SettingsModal', () => {
   });
 
   it('saves lexicon config when save button clicked', async () => {
+    // Phase 5.2: Context is now the source of truth
     const initialConfig: LexiconConfig = {
       pattern: '{location}-{subject}-{shotType}',
       commonLocations: 'kitchen, bathroom',
@@ -130,13 +158,21 @@ describe('SettingsModal', () => {
       badExamples: 'Kitchen-Oven-CU (mixed case)',
     };
 
-    render(
+    // Override the default mock to return initial config values
+    window.electronAPI.lexicon.load = vi.fn().mockResolvedValue(initialConfig);
+
+    renderWithProviders(
       <SettingsModal
         onClose={mockOnClose}
         onSave={mockOnSave}
         initialConfig={initialConfig}
       />
     );
+
+    // Wait for context to load and sync to component state
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('kitchen, bathroom')).toBeInTheDocument();
+    });
 
     fireEvent.click(screen.getByText('Save Lexicon'));
 
@@ -156,7 +192,7 @@ describe('SettingsModal', () => {
   });
 
   it('trims whitespace when saving', async () => {
-    render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
+    renderWithProviders(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
 
     const patternInput = screen.getByPlaceholderText(/\{location\}-\{subject\}-\{shotType\}/i);
     const locationsInput = screen.getByPlaceholderText(/kitchen, hall, utility/i);
@@ -174,12 +210,10 @@ describe('SettingsModal', () => {
     expect(savedConfig.pattern).toBe('{location}-{subject}');
     expect(savedConfig.commonLocations).toBe('kitchen, bathroom');
   });
-
-
   it('shows error message when save fails', async () => {
     mockOnSave.mockRejectedValue(new Error('Network error'));
 
-    render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
+    renderWithProviders(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
 
     fireEvent.click(screen.getByText('Save Lexicon'));
 
@@ -194,7 +228,7 @@ describe('SettingsModal', () => {
   it('disables save button while saving', async () => {
     mockOnSave.mockImplementation(() => new Promise(resolve => setTimeout(resolve, 100)));
 
-    render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
+    renderWithProviders(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
 
     const saveButton = screen.getByText('Save Lexicon');
 
@@ -206,7 +240,7 @@ describe('SettingsModal', () => {
   });
 
   it('shows success message after save', async () => {
-    render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
+    renderWithProviders(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
 
     fireEvent.click(screen.getByText('Save Lexicon'));
 
@@ -257,14 +291,14 @@ describe('SettingsModal', () => {
     });
 
     it('should render tabs for Lexicon and AI Connection', () => {
-      render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
+      renderWithProviders(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
 
       expect(screen.getByText('Lexicon')).toBeInTheDocument();
       expect(screen.getByText('AI Connection')).toBeInTheDocument();
     });
 
     it('should switch to AI Connection tab when clicked', () => {
-      render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
+      renderWithProviders(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
 
       const aiTab = screen.getByText('AI Connection');
       fireEvent.click(aiTab);
@@ -277,7 +311,7 @@ describe('SettingsModal', () => {
     });
 
     it('should load existing AI config when switching to AI tab', async () => {
-      render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
+      renderWithProviders(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
 
       const aiTab = screen.getByText('AI Connection');
       fireEvent.click(aiTab);
@@ -297,7 +331,7 @@ describe('SettingsModal', () => {
     });
 
     it('should test connection successfully', async () => {
-      render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
+      renderWithProviders(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
 
       fireEvent.click(screen.getByText('AI Connection'));
 
@@ -329,7 +363,7 @@ describe('SettingsModal', () => {
         error: 'Invalid API key'
       });
 
-      render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
+      renderWithProviders(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
 
       fireEvent.click(screen.getByText('AI Connection'));
 
@@ -350,7 +384,7 @@ describe('SettingsModal', () => {
     });
 
     it('should save AI configuration successfully', async () => {
-      render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
+      renderWithProviders(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
 
       fireEvent.click(screen.getByText('AI Connection'));
 
@@ -405,7 +439,7 @@ describe('SettingsModal', () => {
         error: 'Failed to save configuration'
       });
 
-      render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
+      renderWithProviders(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
 
       fireEvent.click(screen.getByText('AI Connection'));
 
@@ -433,7 +467,7 @@ describe('SettingsModal', () => {
     });
 
     it('should show "Test Saved Connection" when saved key exists', async () => {
-      render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
+      renderWithProviders(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
 
       fireEvent.click(screen.getByText('AI Connection'));
 
@@ -452,7 +486,7 @@ describe('SettingsModal', () => {
       // Mock scenario where NO key is saved
       window.electronAPI.isAIConfigured = vi.fn().mockResolvedValue(false);
 
-      render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
+      renderWithProviders(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
 
       fireEvent.click(screen.getByText('AI Connection'));
 
@@ -465,14 +499,12 @@ describe('SettingsModal', () => {
       const testButton = screen.getByText('Test Connection');
       expect(testButton).toBeDisabled();
     });
-
-
     it('should disable buttons while testing connection', async () => {
       window.electronAPI.testAIConnection = vi.fn().mockImplementation(
         () => new Promise(resolve => setTimeout(() => resolve({ success: true }), 100))
       );
 
-      render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
+      renderWithProviders(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
 
       fireEvent.click(screen.getByText('AI Connection'));
 
@@ -501,7 +533,7 @@ describe('SettingsModal', () => {
         () => new Promise(resolve => setTimeout(() => resolve({ success: true }), 100))
       );
 
-      render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
+      renderWithProviders(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
 
       fireEvent.click(screen.getByText('AI Connection'));
 
@@ -546,7 +578,7 @@ describe('SettingsModal', () => {
         return Promise.resolve([]);
       });
 
-      render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
+      renderWithProviders(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
 
       fireEvent.click(screen.getByText('AI Connection'));
 
@@ -588,7 +620,7 @@ describe('SettingsModal', () => {
       // Mock getAIConfig to reject
       window.electronAPI.getAIConfig = vi.fn().mockRejectedValue(new Error('Failed to load config'));
 
-      render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
+      renderWithProviders(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
 
       fireEvent.click(screen.getByText('AI Connection'));
 
@@ -642,7 +674,7 @@ describe('SettingsModal', () => {
     });
 
     it('should render CFEx Transfer tab alongside Lexicon and AI tabs', () => {
-      render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
+      renderWithProviders(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
 
       expect(screen.getByText('Lexicon')).toBeInTheDocument();
       expect(screen.getByText('AI Connection')).toBeInTheDocument();
@@ -650,7 +682,7 @@ describe('SettingsModal', () => {
     });
 
     it('should switch to CFEx Transfer tab when clicked', async () => {
-      render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
+      renderWithProviders(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
 
       const cfexTab = screen.getByText('CFEx Transfer');
       fireEvent.click(cfexTab);
@@ -664,7 +696,7 @@ describe('SettingsModal', () => {
     });
 
     it('should load saved CFEx config when switching to CFEx tab', async () => {
-      render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
+      renderWithProviders(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
 
       fireEvent.click(screen.getByText('CFEx Transfer'));
 
@@ -681,7 +713,7 @@ describe('SettingsModal', () => {
     });
 
     it('should have Browse buttons for each path field', async () => {
-      render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
+      renderWithProviders(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
 
       fireEvent.click(screen.getByText('CFEx Transfer'));
 
@@ -695,7 +727,7 @@ describe('SettingsModal', () => {
     });
 
     it('should open folder picker when Browse button clicked', async () => {
-      render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
+      renderWithProviders(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
 
       fireEvent.click(screen.getByText('CFEx Transfer'));
 
@@ -714,7 +746,7 @@ describe('SettingsModal', () => {
     it('should update input when folder selected via Browse', async () => {
       window.electronAPI.selectFolder = vi.fn().mockResolvedValue('/Volumes/NewCard/DCIM');
 
-      render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
+      renderWithProviders(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
 
       fireEvent.click(screen.getByText('CFEx Transfer'));
 
@@ -731,7 +763,7 @@ describe('SettingsModal', () => {
     });
 
     it('should save CFEx configuration when Save button clicked', async () => {
-      render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
+      renderWithProviders(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
 
       fireEvent.click(screen.getByText('CFEx Transfer'));
 
@@ -760,7 +792,7 @@ describe('SettingsModal', () => {
     });
 
     it('should show success message after saving CFEx config', async () => {
-      render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
+      renderWithProviders(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
 
       fireEvent.click(screen.getByText('CFEx Transfer'));
 
@@ -779,7 +811,7 @@ describe('SettingsModal', () => {
     it('should show error message when save fails', async () => {
       window.electronAPI.saveConfig = vi.fn().mockResolvedValue(false);
 
-      render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
+      renderWithProviders(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
 
       fireEvent.click(screen.getByText('CFEx Transfer'));
 
@@ -801,7 +833,7 @@ describe('SettingsModal', () => {
         // No cfex property - should use defaults
       });
 
-      render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
+      renderWithProviders(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
 
       fireEvent.click(screen.getByText('CFEx Transfer'));
 
@@ -818,7 +850,7 @@ describe('SettingsModal', () => {
     });
 
     it('should prevent saving empty CFEx paths', async () => {
-      render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
+      renderWithProviders(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
 
       fireEvent.click(screen.getByText('CFEx Transfer'));
 
@@ -896,7 +928,7 @@ describe('SettingsModal', () => {
     });
 
     it('should render AI Auto-Analyze toggle checkbox', async () => {
-      render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
+      renderWithProviders(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
 
       fireEvent.click(screen.getByText('File Ingestion'));
 
@@ -909,7 +941,7 @@ describe('SettingsModal', () => {
     });
 
     it('should render Metadata Write toggle checkbox', async () => {
-      render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
+      renderWithProviders(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
 
       fireEvent.click(screen.getByText('File Ingestion'));
 
@@ -922,7 +954,7 @@ describe('SettingsModal', () => {
     });
 
     it('should render Filename Rewrite toggle checkbox', async () => {
-      render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
+      renderWithProviders(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
 
       fireEvent.click(screen.getByText('File Ingestion'));
 
@@ -937,7 +969,7 @@ describe('SettingsModal', () => {
     it('should show filename template input only when filenameRewrite is enabled', async () => {
       window.confirm = vi.fn().mockReturnValue(true); // User confirms the warning
 
-      render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
+      renderWithProviders(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
 
       fireEvent.click(screen.getByText('File Ingestion'));
 
@@ -962,7 +994,7 @@ describe('SettingsModal', () => {
     });
 
     it('should load toggle state from config (all OFF by default per I7)', async () => {
-      render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
+      renderWithProviders(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
 
       fireEvent.click(screen.getByText('File Ingestion'));
 
@@ -981,7 +1013,7 @@ describe('SettingsModal', () => {
     });
 
     it('should update toggle state when checkboxes clicked', async () => {
-      render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
+      renderWithProviders(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
 
       fireEvent.click(screen.getByText('File Ingestion'));
 
@@ -1006,7 +1038,7 @@ describe('SettingsModal', () => {
     });
 
     it('should save toggle state when Save Ingestion Settings clicked', async () => {
-      render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
+      renderWithProviders(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
 
       fireEvent.click(screen.getByText('File Ingestion'));
 
@@ -1042,7 +1074,7 @@ describe('SettingsModal', () => {
     it('should save filename template when filenameRewrite enabled', async () => {
       window.confirm = vi.fn().mockReturnValue(true); // User confirms the warning
 
-      render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
+      renderWithProviders(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
 
       fireEvent.click(screen.getByText('File Ingestion'));
 
@@ -1097,7 +1129,7 @@ describe('SettingsModal', () => {
         }
       });
 
-      render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
+      renderWithProviders(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
 
       fireEvent.click(screen.getByText('File Ingestion'));
 
@@ -1170,7 +1202,7 @@ describe('SettingsModal', () => {
     });
 
     it('should render File Ingestion tab alongside other tabs', () => {
-      render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
+      renderWithProviders(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
 
       expect(screen.getByText('Lexicon')).toBeInTheDocument();
       expect(screen.getByText('AI Connection')).toBeInTheDocument();
@@ -1179,7 +1211,7 @@ describe('SettingsModal', () => {
     });
 
     it('should show power feature toggles when File Ingestion tab is clicked', async () => {
-      render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
+      renderWithProviders(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
 
       fireEvent.click(screen.getByText('File Ingestion'));
 
@@ -1194,7 +1226,7 @@ describe('SettingsModal', () => {
     });
 
     it('should NOT show power feature toggles in CFEx Transfer tab', async () => {
-      render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
+      renderWithProviders(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
 
       fireEvent.click(screen.getByText('CFEx Transfer'));
 
@@ -1209,7 +1241,7 @@ describe('SettingsModal', () => {
     });
 
     it('should save toggle state when Save Ingestion Settings clicked', async () => {
-      render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
+      renderWithProviders(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
 
       fireEvent.click(screen.getByText('File Ingestion'));
 
@@ -1293,7 +1325,7 @@ describe('SettingsModal', () => {
     });
 
     it('shows confirmation dialog when filenameRewrite checkbox clicked', async () => {
-      render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
+      renderWithProviders(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
 
       fireEvent.click(screen.getByText('File Ingestion'));
 
@@ -1321,7 +1353,7 @@ describe('SettingsModal', () => {
     it('enables filenameRewrite when user confirms dialog', async () => {
       (window.confirm as ReturnType<typeof vi.fn>).mockReturnValue(true); // User clicks OK
 
-      render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
+      renderWithProviders(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
 
       fireEvent.click(screen.getByText('File Ingestion'));
 
@@ -1349,7 +1381,7 @@ describe('SettingsModal', () => {
     it('keeps filenameRewrite disabled when user cancels dialog', async () => {
       (window.confirm as ReturnType<typeof vi.fn>).mockReturnValue(false); // User clicks Cancel
 
-      render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
+      renderWithProviders(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
 
       fireEvent.click(screen.getByText('File Ingestion'));
 
@@ -1415,7 +1447,7 @@ describe('SettingsModal', () => {
     });
 
     it('filenameRewrite defaults to false on mount regardless of config', async () => {
-      render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
+      renderWithProviders(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
 
       fireEvent.click(screen.getByText('File Ingestion'));
 
@@ -1434,7 +1466,7 @@ describe('SettingsModal', () => {
     it('filenameRewrite not persisted to config on save', async () => {
       window.confirm = vi.fn().mockReturnValue(true); // Allow enabling checkbox
 
-      render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
+      renderWithProviders(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
 
       fireEvent.click(screen.getByText('File Ingestion'));
 
@@ -1484,7 +1516,7 @@ describe('SettingsModal', () => {
     });
 
     it('should render proxy format dropdown in File Ingestion tab', async () => {
-      render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
+      renderWithProviders(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
 
       // Switch to File Ingestion tab
       const ingestionTab = screen.getByText('File Ingestion');
@@ -1499,7 +1531,7 @@ describe('SettingsModal', () => {
     });
 
     it('should show all 5 proxy preset options', async () => {
-      render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
+      renderWithProviders(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
 
       // Switch to File Ingestion tab
       const ingestionTab = screen.getByText('File Ingestion');
@@ -1539,7 +1571,7 @@ describe('SettingsModal', () => {
         }
       });
 
-      render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
+      renderWithProviders(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
 
       // Switch to File Ingestion tab
       const ingestionTab = screen.getByText('File Ingestion');
@@ -1560,7 +1592,7 @@ describe('SettingsModal', () => {
         }
       });
 
-      render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
+      renderWithProviders(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
 
       // Switch to File Ingestion tab
       const ingestionTab = screen.getByText('File Ingestion');
@@ -1575,7 +1607,7 @@ describe('SettingsModal', () => {
     });
 
     it('should save proxy preset selection when Save button clicked', async () => {
-      render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
+      renderWithProviders(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
 
       // Switch to File Ingestion tab
       const ingestionTab = screen.getByText('File Ingestion');
@@ -1604,7 +1636,7 @@ describe('SettingsModal', () => {
     });
 
     it('should show preset description below dropdown', async () => {
-      render(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
+      renderWithProviders(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
 
       // Switch to File Ingestion tab
       const ingestionTab = screen.getByText('File Ingestion');
@@ -1616,6 +1648,158 @@ describe('SettingsModal', () => {
 
       // Should show description for default preset (2k-prores-proxy)
       expect(screen.getByText(/Sweet spot: 10-bit 4:2:2, low CPU/i)).toBeInTheDocument();
+    });
+  });
+
+  /**
+   * Phase 5.2: Context Consumption Tests
+   *
+   * TDD RED Phase - Tests for SettingsModal consuming IngestSettingsContext
+   * Feature: Replace local useState with useIngestSettings() hook
+   */
+  describe('Context Consumption (Phase 5.2)', () => {
+    beforeEach(() => {
+      // Full mock for IngestSettingsContext to load properly
+      window.electronAPI = {
+        // AI config
+        getAIConfig: vi.fn().mockResolvedValue({
+          provider: 'openrouter',
+          model: 'anthropic/claude-3.5-sonnet'
+        }),
+        isAIConfigured: vi.fn().mockResolvedValue(true),
+        getAIModels: vi.fn().mockResolvedValue([
+          { id: 'anthropic/claude-3.5-sonnet', name: 'Claude 3.5 Sonnet' }
+        ]),
+        updateAIConfig: vi.fn().mockResolvedValue({ success: true }),
+
+        // Lexicon config - loaded by IngestSettingsContext
+        lexicon: {
+          load: vi.fn().mockResolvedValue({
+            pattern: '{location}-{subject}-{shotType}',
+            commonLocations: 'kitchen, bathroom',
+            commonSubjects: 'oven, sink',
+            commonActions: 'cleaning',
+            wordPreferences: 'faucet → tap',
+            aiInstructions: 'Use lowercase',
+            goodExamples: 'kitchen-oven-CU',
+            badExamples: 'Kitchen-Oven-CU'
+          }),
+          save: vi.fn().mockResolvedValue(true)
+        },
+
+        // App config - loaded by IngestSettingsContext
+        loadConfig: vi.fn().mockResolvedValue({
+          cfex: {
+            defaultSource: '/Volumes/Untitled/DCIM/100_FUJI',
+            defaultPhotos: '/Volumes/videos-current/2. WORKING PROJECTS/',
+            defaultVideos: '/Volumes/EAV_Video_RAW/',
+            aiAutoAnalyze: false,
+            metadataWrite: false,
+            filenameRewrite: false,
+            filenameTemplate: '{location}-{subject}-{action}-{shotType}',
+            proxyPresetId: '2k-prores-proxy'
+          }
+        }),
+        saveConfig: vi.fn().mockResolvedValue(true),
+
+        // Shot types
+        getShotTypes: vi.fn().mockResolvedValue(['WS', 'MID', 'CU', 'UNDER', 'FP', 'TRACK', 'ESTAB'])
+      } as any;
+    });
+
+    it('should consume IngestSettingsContext for lexicon settings', async () => {
+      renderWithProviders(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
+
+      await waitFor(() => {
+        expect(window.electronAPI.loadConfig).toHaveBeenCalled();
+      });
+
+      // Lexicon fields should be populated from context
+      expect(screen.getByDisplayValue('kitchen, bathroom')).toBeInTheDocument();
+      expect(screen.getByDisplayValue('oven, sink')).toBeInTheDocument();
+      expect(screen.getByDisplayValue('cleaning')).toBeInTheDocument();
+    });
+
+    it('should consume IngestSettingsContext for AI model settings', async () => {
+
+      renderWithProviders(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
+
+      // Switch to AI Connection tab
+      fireEvent.click(screen.getByText('AI Connection'));
+
+      await waitFor(() => {
+        expect(window.electronAPI.loadConfig).toHaveBeenCalled();
+      });
+
+      // AI model should be populated from context (check via select value)
+      const selects = screen.getAllByRole('combobox');
+      await waitFor(() => {
+        expect(selects[1]).toHaveValue('anthropic/claude-3.5-sonnet');
+      });
+    });
+
+    it('should consume IngestSettingsContext for CFEx paths', async () => {
+
+      renderWithProviders(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
+
+      // Switch to CFEx Transfer tab
+      fireEvent.click(screen.getByText('CFEx Transfer'));
+
+      await waitFor(() => {
+        expect(window.electronAPI.loadConfig).toHaveBeenCalled();
+      });
+
+      // CFEx paths should be populated from context
+      expect(screen.getByDisplayValue('/Volumes/Untitled/DCIM/100_FUJI')).toBeInTheDocument();
+      expect(screen.getByDisplayValue('/Volumes/videos-current/2. WORKING PROJECTS/')).toBeInTheDocument();
+    });
+
+    it('should consume IngestSettingsContext for power feature toggles', async () => {
+
+      renderWithProviders(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
+
+      // Switch to File Ingestion tab
+      fireEvent.click(screen.getByText('File Ingestion'));
+
+      await waitFor(() => {
+        expect(window.electronAPI.loadConfig).toHaveBeenCalled();
+      });
+
+      // Toggles should be populated from context
+      const aiAutoAnalyze = screen.getByLabelText(/AI Auto-Analyze after transfer/i) as HTMLInputElement;
+      const metadataWrite = screen.getByLabelText(/Write metadata to files/i) as HTMLInputElement;
+
+      expect(aiAutoAnalyze.checked).toBe(false);
+      expect(metadataWrite.checked).toBe(false);
+    });
+
+    it('should update context when saving lexicon settings', async () => {
+      renderWithProviders(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
+
+      // Wait for context to load
+      await waitFor(() => {
+        expect(window.electronAPI.loadConfig).toHaveBeenCalled();
+      });
+
+      // Wait for lexicon values to be populated from context
+      await waitFor(() => {
+        expect(screen.getByDisplayValue('kitchen, bathroom')).toBeInTheDocument();
+      });
+
+      // Update lexicon field
+      const locationsInput = screen.getByPlaceholderText(/kitchen, hall, utility/i);
+      fireEvent.change(locationsInput, { target: { value: 'kitchen, garage' } });
+
+      // Save (calls onSave prop, not saveConfig directly)
+      fireEvent.click(screen.getByText('Save Lexicon'));
+
+      await waitFor(() => {
+        expect(mockOnSave).toHaveBeenCalledWith(
+          expect.objectContaining({
+            commonLocations: 'kitchen, garage'
+          })
+        );
+      });
     });
   });
 });
