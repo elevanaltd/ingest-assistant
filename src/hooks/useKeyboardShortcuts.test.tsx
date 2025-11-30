@@ -14,14 +14,16 @@ const mockElectronAPI = {
   isAIConfigured: vi.fn(),
   analyzeFile: vi.fn(),
   batchProcess: vi.fn(),
-  loadConfig: vi.fn(),
-  saveConfig: vi.fn(),
+  getAIConfig: vi.fn(async () => ({ provider: 'openrouter', model: '', apiKey: '' })),
+  updateAIConfig: vi.fn(async () => {}),
+  loadConfig: vi.fn(async () => ({ cfex: {} })),
+  saveConfig: vi.fn(async () => {}),
   getLexicon: vi.fn(),
   getShotTypes: vi.fn(),
   readFileAsDataUrl: vi.fn(),
   lexicon: {
-    load: vi.fn(),
-    save: vi.fn(),
+    load: vi.fn(async () => ({})),
+    save: vi.fn(async () => {}),
   },
   // Batch operations methods
   batchStart: vi.fn(async () => 'mock-queue-id'),
@@ -33,6 +35,10 @@ const mockElectronAPI = {
   })),
   onBatchProgress: vi.fn(() => () => {}), // Returns cleanup function
   onTranscodeProgress: vi.fn(() => () => {}), // Returns cleanup function
+  // CFEx Transfer methods
+  onCfexProgress: vi.fn(() => () => {}), // Returns cleanup function
+  getFolderCompleted: vi.fn(async () => false),
+  setFolderCompleted: vi.fn(async () => {}),
 };
 
 const createMockFile = (overrides: Partial<FileMetadata> = {}): FileMetadata => ({
