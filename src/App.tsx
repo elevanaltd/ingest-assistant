@@ -6,7 +6,6 @@ import { CommandPalette, type Command } from './components/CommandPalette';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { BatchOperationsPanel } from './components/BatchOperationsPanel';
 import { CfexTransferWindow } from './components/CfexTransferWindow';
-import { AppProviders } from './providers/AppProviders';
 import { useIngestSettings } from './contexts/IngestSettingsContext';
 import './App.css';
 
@@ -488,7 +487,6 @@ function App() {
   }
 
   return (
-    <AppProviders>
       <div className="app">
       {/* Folder loading overlay */}
       {isFolderLoading && (
@@ -1059,7 +1057,6 @@ function App() {
         commands={commands}
       />
     </div>
-    </AppProviders>
   );
 }
 
