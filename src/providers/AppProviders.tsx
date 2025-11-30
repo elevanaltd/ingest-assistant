@@ -2,6 +2,7 @@ import React, { ReactNode } from 'react';
 import { IngestSettingsProvider } from '../contexts/IngestSettingsContext';
 import { BatchQueueProvider } from '../contexts/BatchQueueContext';
 import { CfexTransferProvider } from '../contexts/CfexTransferContext';
+import { FileListProvider } from '../contexts/FileListContext';
 
 /**
  * AppProviders Component
@@ -33,9 +34,7 @@ import { CfexTransferProvider } from '../contexts/CfexTransferContext';
  * - IngestSettingsProvider: CONFIG state (low-frequency updates) - AI config, lexicon, CFEx paths, toggles
  * - BatchQueueProvider: VOLATILE state (high-frequency progress updates) - batch queue, IPC subscriptions
  * - CfexTransferProvider: MIXED state (config + transfer progress) - CFEx file transfer workflow
- *
- * FUTURE CONTEXT ADDITIONS:
- * - FolderProvider: CONFIG state (current folder metadata)
+ * - FileListProvider: VOLATILE state (high-frequency navigation) - file list, selection, folder state
  */
 
 interface AppProvidersProps {
@@ -58,11 +57,15 @@ export const AppProviders: React.FC<AppProvidersProps> = ({ children }) => {
   // Manages batch queue state, progress updates, IPC subscriptions
   // Phase 4: CfexTransferProvider (MIXED state - config + transfer progress)
   // Manages CFEx file transfer workflow, persists across tab switches
+  // Phase 5.6: FileListProvider (VOLATILE state - high frequency)
+  // Manages file list, navigation, selection, folder completion state
   return (
     <IngestSettingsProvider>
       <BatchQueueProvider>
         <CfexTransferProvider>
-          {children}
+          <FileListProvider>
+            {children}
+          </FileListProvider>
         </CfexTransferProvider>
       </BatchQueueProvider>
     </IngestSettingsProvider>

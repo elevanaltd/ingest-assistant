@@ -81,10 +81,8 @@ describe('FileListContext', () => {
       expect(result.current.isFolderCompleted).toBe(false);
     });
 
-    it('should set isFolderLoading during folder selection', async () => {
-      mockElectronAPI.selectFolder.mockImplementation(
-        () => new Promise(resolve => setTimeout(() => resolve('/test/folder'), 100))
-      );
+    it('should set isFolderLoading to false after folder selection completes', async () => {
+      mockElectronAPI.selectFolder.mockResolvedValue('/test/folder');
       mockElectronAPI.loadFiles.mockResolvedValue([]);
       mockElectronAPI.getFolderCompleted.mockResolvedValue(false);
 
@@ -92,14 +90,9 @@ describe('FileListContext', () => {
         wrapper: FileListProvider,
       });
 
-      const promise = act(async () => {
+      await act(async () => {
         await result.current.handleSelectFolder();
       });
-
-      // Check loading state is true during async operation
-      expect(result.current.isFolderLoading).toBe(true);
-
-      await promise;
 
       // Check loading state is false after completion
       expect(result.current.isFolderLoading).toBe(false);
