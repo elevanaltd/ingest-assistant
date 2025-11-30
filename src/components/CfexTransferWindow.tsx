@@ -571,6 +571,15 @@ export function CfexTransferWindow() {
         </div>
       )}
 
+      {/* Error Display */}
+      {ctxState.lastError && (
+        <div style={{ marginBottom: '20px', padding: '12px', backgroundColor: '#fee', borderRadius: '4px', border: '1px solid #fcc' }}>
+          <div style={{ fontSize: '13px', fontWeight: '500', color: '#c00' }}>
+            {ctxState.lastError}
+          </div>
+        </div>
+      )}
+
       {/* Proxy Generation Progress */}
       {proxyProgress && proxyProgress.type === 'transcode_progress' && (
         <div style={{ marginBottom: '20px', padding: '12px', backgroundColor: '#f0f9ff', borderRadius: '4px', border: '1px solid #bfdbfe' }}>
