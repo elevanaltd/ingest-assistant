@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, waitFor } from '@testing-library/react';
+import { waitFor } from '@testing-library/react';
+import { renderWithProviders } from './test/test-utils';
 import App from './App';
 
 /**
@@ -59,7 +60,7 @@ describe('App - Window Resize Responsiveness', () => {
   });
 
   it('should register window resize listener on mount', () => {
-    render(<App />);
+    renderWithProviders(<App />);
 
     // Verify resize listener was registered
     expect(window.addEventListener).toHaveBeenCalledWith(
@@ -69,7 +70,7 @@ describe('App - Window Resize Responsiveness', () => {
   });
 
   it('should respond to window resize events during normal operation', async () => {
-    const { container } = render(<App />);
+    const { container } = renderWithProviders(<App />);
 
     // Get initial layout
     const appElement = container.querySelector('.app');
@@ -89,7 +90,7 @@ describe('App - Window Resize Responsiveness', () => {
   });
 
   it('should respond to window resize after batch processing starts', async () => {
-    const { container } = render(<App />);
+    const { container } = renderWithProviders(<App />);
 
     // Simulate batch processing state
     const batchStatus = {
@@ -123,7 +124,7 @@ describe('App - Window Resize Responsiveness', () => {
   });
 
   it('should respond to window resize after batch processing completes', async () => {
-    const { container } = render(<App />);
+    const { container } = renderWithProviders(<App />);
 
     // Simulate batch completion state
     const batchStatus = {
@@ -158,7 +159,7 @@ describe('App - Window Resize Responsiveness', () => {
   });
 
   it('should cleanup resize listener on unmount', () => {
-    const { unmount } = render(<App />);
+    const { unmount } = renderWithProviders(<App />);
 
     // Mock removeEventListener to verify cleanup
     const removeEventListener = vi.spyOn(window, 'removeEventListener');

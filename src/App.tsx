@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import type { FileMetadata, LexiconConfig, ShotType } from './types';
+import type { FileMetadata, ShotType } from './types';
 import { SettingsModal } from './components/SettingsModal';
 import { Sidebar } from './components/Sidebar';
 import { CommandPalette, type Command } from './components/CommandPalette';
@@ -7,9 +7,12 @@ import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { BatchOperationsPanel } from './components/BatchOperationsPanel';
 import { CfexTransferWindow } from './components/CfexTransferWindow';
 import { AppProviders } from './providers/AppProviders';
+import { useIngestSettings } from './contexts/IngestSettingsContext';
 import './App.css';
 
 function App() {
+  // Phase 5.5: Consume extended context values
+  const { isAIConfigured, lexiconConfig, filenameRewrite, setFilenameRewrite } = useIngestSettings();
   // Tab navigation state
   const [currentTab, setCurrentTab] = useState<'ingest' | 'cfex'>('ingest');
 
@@ -31,7 +34,6 @@ function App() {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [shotName, setShotName] = useState<string>('');
   const [keywords, setKeywords] = useState<string>('');
-  const [isAIConfigured, setIsAIConfigured] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingMedia, setIsLoadingMedia] = useState(false);
   const [transcodeProgress, setTranscodeProgress] = useState<string>('');
@@ -41,13 +43,8 @@ function App() {
   const [statusMessage, setStatusMessage] = useState<string>('');
   const [showSettings, setShowSettings] = useState(false);
   const [showCommandPalette, setShowCommandPalette] = useState(false);
-  const [lexiconConfig, setLexiconConfig] = useState<LexiconConfig | undefined>();
   const [isFolderCompleted, setIsFolderCompleted] = useState(false);
   const [isFolderLoading, setIsFolderLoading] = useState(false);
-
-  // Session-ephemeral: filenameRewrite always starts as false (I7 Human Primacy)
-  // User must consciously enable each session
-  const [filenameRewrite, setFilenameRewrite] = useState(false);
 
   // Force re-render on window resize to ensure UI layout recalculates
   // Fixes issue where batch processing causes UI to stop responding to window resize
@@ -66,11 +63,9 @@ function App() {
     }
   }, [statusMessage]);
 
-  // Check if AI is configured and load shot types on mount
+  // Load shot types and setup transcode progress listener
   useEffect(() => {
     if (window.electronAPI) {
-      window.electronAPI.isAIConfigured().then(setIsAIConfigured);
-
       // Load shot types for dropdown
       window.electronAPI.getShotTypes()
         .then(setShotTypes)
@@ -409,28 +404,19 @@ function App() {
   };
 
   const handleOpenSettings = async () => {
-    try {
-      const config = await window.electronAPI.lexicon.load();
-      setLexiconConfig(config);
-      setShowSettings(true);
-    } catch (error) {
-      console.error('Failed to load lexicon:', error);
-      setStatusMessage('✗ Failed to load settings');
-    }
+    // lexiconConfig now sourced from IngestSettingsContext (already loaded)
+    setShowSettings(true);
   };
 
-  const handleSaveLexicon = async (config: LexiconConfig) => {
+  const handleSaveLexicon = async (config: import('./types').LexiconConfig) => {
     await window.electronAPI.lexicon.save(config);
     setStatusMessage('✓ Lexicon settings saved');
   };
 
   const handleSettingsClose = async () => {
     setShowSettings(false);
-    // Refresh AI configuration status
-    if (window.electronAPI) {
-      const configured = await window.electronAPI.isAIConfigured();
-      setIsAIConfigured(configured);
-    }
+    // Note: isAIConfigured now sourced from IngestSettingsContext
+    // Context auto-refreshes on settings updates, no manual refresh needed
   };
 
   const handleBatchComplete = useCallback(async () => {
