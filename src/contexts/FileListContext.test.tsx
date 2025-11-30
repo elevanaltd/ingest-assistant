@@ -343,7 +343,7 @@ describe('FileListContext', () => {
       expect(mockElectronAPI.setFolderCompleted).not.toHaveBeenCalled();
     });
 
-    it('should handle errors gracefully', async () => {
+    it('should re-throw errors for UI error handling', async () => {
       mockElectronAPI.selectFolder.mockResolvedValue('/test/folder');
       mockElectronAPI.loadFiles.mockResolvedValue([]);
       mockElectronAPI.getFolderCompleted.mockResolvedValue(false);
@@ -357,9 +357,12 @@ describe('FileListContext', () => {
         await result.current.handleSelectFolder();
       });
 
-      await act(async () => {
-        await result.current.handleCompleteFolder();
-      });
+      // Error should propagate to caller (App.tsx)
+      await expect(
+        act(async () => {
+          await result.current.handleCompleteFolder();
+        })
+      ).rejects.toThrow('API Error');
 
       // State should remain unchanged on error
       expect(result.current.isFolderCompleted).toBe(false);
@@ -403,7 +406,7 @@ describe('FileListContext', () => {
       expect(mockElectronAPI.setFolderCompleted).not.toHaveBeenCalled();
     });
 
-    it('should handle errors gracefully', async () => {
+    it('should re-throw errors for UI error handling', async () => {
       mockElectronAPI.selectFolder.mockResolvedValue('/test/folder');
       mockElectronAPI.loadFiles.mockResolvedValue([]);
       mockElectronAPI.getFolderCompleted.mockResolvedValue(true);
@@ -417,9 +420,12 @@ describe('FileListContext', () => {
         await result.current.handleSelectFolder();
       });
 
-      await act(async () => {
-        await result.current.handleReopenFolder();
-      });
+      // Error should propagate to caller (App.tsx)
+      await expect(
+        act(async () => {
+          await result.current.handleReopenFolder();
+        })
+      ).rejects.toThrow('API Error');
 
       // State should remain unchanged on error
       expect(result.current.isFolderCompleted).toBe(true);

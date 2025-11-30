@@ -89,7 +89,7 @@ export function FileListProvider({ children }: { children: React.ReactNode }) {
       setIsFolderCompleted(true);
     } catch (error) {
       console.error('Failed to complete folder:', error);
-      // Don't update state on error - leave as-is
+      throw error; // Re-throw for UI error handling
     }
   };
 
@@ -101,7 +101,7 @@ export function FileListProvider({ children }: { children: React.ReactNode }) {
       setIsFolderCompleted(false);
     } catch (error) {
       console.error('Failed to reopen folder:', error);
-      // Don't update state on error - leave as-is
+      throw error; // Re-throw for UI error handling
     }
   };
 
