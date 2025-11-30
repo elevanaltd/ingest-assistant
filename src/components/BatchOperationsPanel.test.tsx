@@ -7,6 +7,10 @@ import { BatchOperationsPanel } from './BatchOperationsPanel';
  * Test suite for BatchOperationsPanel component
  * Tests layout, button visibility, and user interactions
  */
+
+// Shared mock for getShotTypes (required by MetadataFormContext)
+const mockGetShotTypes = vi.fn().mockResolvedValue(['WS', 'MID', 'CU', 'UNDER', 'FP', 'TRACK', 'ESTAB']);
+
 describe('BatchOperationsPanel', () => {
   beforeEach(() => {
     // Mock window.electronAPI for batch operations
@@ -20,7 +24,7 @@ describe('BatchOperationsPanel', () => {
       onBatchProgress: vi.fn().mockReturnValue(() => {}),
       onTranscodeProgress: vi.fn().mockReturnValue(() => {}),
       // Phase 5.7: Mock getShotTypes for MetadataFormContext
-      getShotTypes: vi.fn().mockResolvedValue(['WS', 'MID', 'CU']),
+      getShotTypes: mockGetShotTypes,
     };
   });
 
@@ -321,6 +325,7 @@ describe('BatchOperationsPanel', () => {
         batchStart: vi.fn().mockResolvedValue('mock-queue-id'),
         onBatchProgress: vi.fn().mockReturnValue(() => {}),
         onTranscodeProgress: vi.fn().mockReturnValue(() => {}),
+        getShotTypes: mockGetShotTypes,
       };
     });
 
@@ -514,6 +519,7 @@ describe('BatchOperationsPanel', () => {
           onProxyProgress: vi.fn().mockReturnValue(() => {}),
         },
         selectFolder: vi.fn().mockResolvedValue('/mock/proxy/output'),
+        getShotTypes: mockGetShotTypes,
       };
       window.alert = vi.fn(); // Mock alert for all tests
     });
@@ -652,6 +658,7 @@ describe('BatchOperationsPanel', () => {
           onProxyProgress: vi.fn().mockReturnValue(() => {}),
         },
         selectFolder: vi.fn().mockResolvedValue('/mock/proxy/output'),
+        getShotTypes: mockGetShotTypes,
       };
       window.alert = vi.fn(); // Mock alert for all tests
     });
@@ -809,6 +816,7 @@ describe('BatchOperationsPanel', () => {
           onProxyProgress: vi.fn().mockReturnValue(() => {}),
         },
         selectFolder: mockSelectFolder,
+        getShotTypes: mockGetShotTypes,
       };
       window.alert = vi.fn();
     });
@@ -1093,6 +1101,7 @@ describe('BatchOperationsPanel', () => {
           onProxyProgress: vi.fn().mockReturnValue(() => {}),
         },
         selectFolder: mockSelectFolder,
+        getShotTypes: mockGetShotTypes,
       };
     });
 

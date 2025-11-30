@@ -4,6 +4,9 @@ import { renderWithProviders } from '../test/test-utils'; // Phase 5.2: Use rend
 import { SettingsModal } from './SettingsModal';
 import type { LexiconConfig } from '../types';
 
+// Shared mock for getShotTypes (required by MetadataFormContext)
+const mockGetShotTypes = vi.fn().mockResolvedValue(['WS', 'MID', 'CU', 'UNDER', 'FP', 'TRACK', 'ESTAB']);
+
 describe('SettingsModal', () => {
   const mockOnClose = vi.fn();
   const mockOnSave = vi.fn();
@@ -27,7 +30,7 @@ describe('SettingsModal', () => {
       },
       loadConfig: vi.fn().mockResolvedValue({ cfex: {} }),
       saveConfig: vi.fn().mockResolvedValue(true),
-      getShotTypes: vi.fn().mockResolvedValue(['WS', 'MID', 'CU', 'UNDER', 'FP', 'TRACK', 'ESTAB']),
+      getShotTypes: mockGetShotTypes,
       updateAIConfig: vi.fn().mockResolvedValue({ success: true })
     } as any;
   });
@@ -288,7 +291,7 @@ describe('SettingsModal', () => {
         },
         loadConfig: vi.fn().mockResolvedValue({ cfex: {} }),
         saveConfig: vi.fn().mockResolvedValue(true),
-        getShotTypes: vi.fn().mockResolvedValue(['WS', 'MID', 'CU', 'UNDER', 'FP', 'TRACK', 'ESTAB']),
+        getShotTypes: mockGetShotTypes,
         // Batch operations methods
         batchStart: vi.fn(async () => 'mock-queue-id'),
         batchCancel: vi.fn(async () => ({ success: true })),
@@ -714,7 +717,7 @@ describe('SettingsModal', () => {
           }
         }),
         saveConfig: vi.fn().mockResolvedValue(true),
-        getShotTypes: vi.fn().mockResolvedValue(['WS', 'MID', 'CU', 'UNDER', 'FP', 'TRACK', 'ESTAB']),
+        getShotTypes: mockGetShotTypes,
         selectFolder: vi.fn().mockResolvedValue('/selected/path'),
         batchStart: vi.fn(async () => 'mock-queue-id'),
         batchCancel: vi.fn(async () => ({ success: true })),
@@ -975,7 +978,7 @@ describe('SettingsModal', () => {
           }
         }),
         saveConfig: vi.fn().mockResolvedValue(true),
-        getShotTypes: vi.fn().mockResolvedValue(['WS', 'MID', 'CU', 'UNDER', 'FP', 'TRACK', 'ESTAB']),
+        getShotTypes: mockGetShotTypes,
         selectFolder: vi.fn().mockResolvedValue('/selected/path'),
         batchStart: vi.fn(async () => 'mock-queue-id'),
         batchCancel: vi.fn(async () => ({ success: true })),
@@ -1255,7 +1258,7 @@ describe('SettingsModal', () => {
           }
         }),
         saveConfig: vi.fn().mockResolvedValue(true),
-        getShotTypes: vi.fn().mockResolvedValue(['WS', 'MID', 'CU', 'UNDER', 'FP', 'TRACK', 'ESTAB']),
+        getShotTypes: mockGetShotTypes,
         selectFolder: vi.fn().mockResolvedValue('/selected/path'),
         batchStart: vi.fn(async () => 'mock-queue-id'),
         batchCancel: vi.fn(async () => ({ success: true })),
@@ -1375,6 +1378,11 @@ describe('SettingsModal', () => {
           }
         }),
         saveConfig: vi.fn().mockResolvedValue(true),
+        getShotTypes: mockGetShotTypes,
+        lexicon: {
+          load: vi.fn().mockResolvedValue({}),
+          save: vi.fn().mockResolvedValue(true)
+        },
         selectFolder: vi.fn().mockResolvedValue('/selected/path'),
         batchStart: vi.fn(async () => 'mock-queue-id'),
         batchCancel: vi.fn(async () => ({ success: true })),
@@ -1386,10 +1394,6 @@ describe('SettingsModal', () => {
         onBatchProgress: vi.fn(() => () => {}),
         onTranscodeProgress: vi.fn(() => () => {}),
       } as Partial<typeof window.electronAPI> as typeof window.electronAPI;
-    });
-
-    afterEach(() => {
-      vi.restoreAllMocks();
     });
 
     it('shows confirmation dialog when filenameRewrite checkbox clicked', async () => {
@@ -1507,7 +1511,7 @@ describe('SettingsModal', () => {
           }
         }),
         saveConfig: vi.fn().mockResolvedValue(true),
-        getShotTypes: vi.fn().mockResolvedValue(['WS', 'MID', 'CU', 'UNDER', 'FP', 'TRACK', 'ESTAB']),
+        getShotTypes: mockGetShotTypes,
         selectFolder: vi.fn().mockResolvedValue('/selected/path'),
         batchStart: vi.fn(async () => 'mock-queue-id'),
         batchCancel: vi.fn(async () => ({ success: true })),
@@ -1598,7 +1602,7 @@ describe('SettingsModal', () => {
           }
         }),
         saveConfig: vi.fn().mockResolvedValue(true),
-        getShotTypes: vi.fn().mockResolvedValue(['WS', 'MID', 'CU', 'UNDER', 'FP', 'TRACK', 'ESTAB']),
+        getShotTypes: mockGetShotTypes,
         updateAIConfig: vi.fn().mockResolvedValue({ success: true })
       } as any;
     });

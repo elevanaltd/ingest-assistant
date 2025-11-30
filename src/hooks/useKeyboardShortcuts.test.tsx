@@ -20,7 +20,7 @@ const mockElectronAPI = {
   loadConfig: vi.fn(async () => ({ cfex: {} })),
   saveConfig: vi.fn(async () => {}),
   getLexicon: vi.fn(),
-  getShotTypes: vi.fn(),
+  getShotTypes: vi.fn(async () => ['WS', 'MID', 'CU', 'UNDER', 'FP', 'TRACK', 'ESTAB']),
   readFileAsDataUrl: vi.fn(),
   lexicon: {
     load: vi.fn(async () => ({})),
