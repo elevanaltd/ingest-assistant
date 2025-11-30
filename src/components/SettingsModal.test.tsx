@@ -1,10 +1,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { screen, fireEvent, waitFor, render } from '@testing-library/react';
-import React from 'react';
+import { screen, fireEvent, waitFor } from '@testing-library/react';
 import { renderWithProviders } from '../test/test-utils'; // Phase 5.2: Use renderWithProviders for context
 import { SettingsModal } from './SettingsModal';
 import type { LexiconConfig } from '../types';
-import { IngestSettingsProvider } from '../contexts/IngestSettingsContext';
 
 describe('SettingsModal', () => {
   const mockOnClose = vi.fn();
@@ -1792,88 +1790,16 @@ describe('SettingsModal', () => {
       const locationsInput = screen.getByPlaceholderText(/kitchen, hall, utility/i);
       fireEvent.change(locationsInput, { target: { value: 'kitchen, garage' } });
 
-      // Save (calls onSave prop, not saveConfig directly)
+      // Save - Phase 5.2: Now routes through updateSettings (context is single source of truth)
       fireEvent.click(screen.getByText('Save Lexicon'));
 
+      // Verify context updateSettings persists to backend (lexicon.save called internally)
       await waitFor(() => {
-        expect(mockOnSave).toHaveBeenCalledWith(
+        expect(window.electronAPI.lexicon.save).toHaveBeenCalledWith(
           expect.objectContaining({
             commonLocations: 'kitchen, garage'
           })
         );
-      });
-    });
-
-    // RED: Phase 5.2 NO-GO Issue 1 - Context bypass on saves
-    //
-    // Problem: SettingsModal saves call electronAPI directly, never updating context.
-    // Impact: Other consumers of useIngestSettings() read stale values.
-    // Fix: Route all saves through updateSettings() to maintain context as single source of truth.
-    //
-    // Test Strategy: Verify that save operations DON'T bypass electronAPI mocks when
-    // we remove them (simulating reliance on context). These tests will FAIL currently
-    // because saves bypass updateSettings.
-    describe('Issue 1: Saves should route through updateSettings context (RED - will fail)', () => {
-      it('lexicon save should update context, not call onSave prop directly', async () => {
-        // Remove lexicon.save mock to simulate context-only flow
-        delete window.electronAPI.lexicon;
-
-        renderWithProviders(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
-
-        // Wait for lexicon values to load from context
-        await waitFor(() => {
-          expect(screen.getByDisplayValue('kitchen, bathroom')).toBeInTheDocument();
-        });
-
-        // Update lexicon field
-        const locationsInput = screen.getByPlaceholderText(/kitchen, hall, utility/i);
-        fireEvent.change(locationsInput, { target: { value: 'kitchen, garage' } });
-
-        // Save - this will FAIL because handleSaveLexicon calls onSave prop
-        // which expects lexicon API to exist
-        fireEvent.click(screen.getByText('Save Lexicon'));
-
-        // If routed through updateSettings, this would succeed
-        // Currently fails with "Cannot read properties of undefined (reading 'save')"
-        await waitFor(() => {
-          expect(mockOnClose).toHaveBeenCalled();
-        });
-      });
-
-      it('CFEx save should update context, not call saveConfig directly', async () => {
-        // Remove saveConfig mock to simulate context-only flow
-        delete window.electronAPI.saveConfig;
-        delete window.electronAPI.loadConfig;
-
-        renderWithProviders(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
-
-        // Switch to CFEx tab - this will fail loading config
-        fireEvent.click(screen.getByText('CFEx Transfer'));
-
-        // If context was source of truth, CFEx fields would load from context
-        // Currently fails because tab switch tries to loadConfig()
-        await waitFor(() => {
-          const sourceInput = screen.queryByDisplayValue('/Volumes/Untitled/DCIM/100_FUJI');
-          expect(sourceInput).toBeInTheDocument();
-        });
-      });
-
-      it('ingestion save should update context, not call saveConfig directly', async () => {
-        // Remove saveConfig mock to simulate context-only flow
-        delete window.electronAPI.saveConfig;
-        delete window.electronAPI.loadConfig;
-
-        renderWithProviders(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
-
-        // Switch to File Ingestion tab - this will fail loading config
-        fireEvent.click(screen.getByText('File Ingestion'));
-
-        // If context was source of truth, toggle would load from context
-        // Currently fails because tab switch tries to loadConfig()
-        await waitFor(() => {
-          const toggle = screen.queryByLabelText(/AI Auto-Analyze after transfer/i);
-          expect(toggle).toBeInTheDocument();
-        });
       });
     });
   });

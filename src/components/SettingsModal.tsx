@@ -12,8 +12,8 @@ const DEFAULT_CFEX_CONFIG: CfexConfig = {
 
 interface SettingsModalProps {
   onClose: () => void;
-  onSave: (config: LexiconConfig) => Promise<void>;
-  initialConfig?: LexiconConfig;
+  onSave: (config: LexiconConfig) => Promise<void>; // Phase 5.2: Deprecated (kept for backward compat), saves route through updateSettings
+  initialConfig?: LexiconConfig; // Phase 5.2: Deprecated, context is source of truth
   // Session-ephemeral filenameRewrite state (lifted to App.tsx)
   filenameRewrite?: boolean;
   onFilenameRewriteChange?: (enabled: boolean) => void;
@@ -21,14 +21,13 @@ interface SettingsModalProps {
 
 export function SettingsModal({
   onClose,
-  onSave,
-  initialConfig: _initialConfig, // Phase 5.2: deprecated, context is source of truth
+  onSave: _onSave, // Phase 5.2: Deprecated, saves route through updateSettings
+  initialConfig: _initialConfig, // Phase 5.2: Deprecated, context is source of truth
   filenameRewrite: filenameRewriteProp = false,
   onFilenameRewriteChange
 }: SettingsModalProps) {
   // Consume context (Phase 5.2: context consumption)
-  // Note: updateSettings will be used in future for direct context updates
-  const { settings, updateSettings: _updateSettings } = useIngestSettings();
+  const { settings, updateSettings } = useIngestSettings();
 
   // Tab state
   const [activeTab, setActiveTab] = useState<'lexicon' | 'ai' | 'cfex' | 'ingestion'>('lexicon');
@@ -154,23 +153,8 @@ export function SettingsModal({
     setProxyPresetId(settings.proxyPresetId);
   }, [settings]);
 
-  // Load AI config when switching to AI tab
-  useEffect(() => {
-    if (activeTab === 'ai' && window.electronAPI) {
-      Promise.all([
-        window.electronAPI.getAIConfig(),
-        window.electronAPI.isAIConfigured()
-      ]).then(([config, isConfigured]) => {
-        if (config.provider) {
-          setAiProvider(config.provider);
-        }
-        if (config.model) setAiModel(config.model);
-        setHasSavedKey(isConfigured);
-      }).catch(error => {
-        setAiErrorMessage(`Failed to load AI configuration: ${error.message}`);
-      });
-    }
-  }, [activeTab]);
+  // Phase 5.2 NO-GO Fix: Removed AI config loading on tab switch
+  // Context is single source of truth - tab switches should trust context, not re-fetch
 
   // Fetch available models when provider changes
   useEffect(() => {
@@ -200,46 +184,8 @@ export function SettingsModal({
     }
   }, [aiProvider, activeTab]);
 
-  // Load CFEx config when switching to CFEx or Ingestion tab
-  useEffect(() => {
-    if ((activeTab === 'cfex' || activeTab === 'ingestion') && window.electronAPI?.loadConfig) {
-      window.electronAPI.loadConfig()
-        .then(config => {
-          if (config.cfex) {
-            setCfexSource(config.cfex.defaultSource || DEFAULT_CFEX_CONFIG.defaultSource);
-            setCfexPhotos(config.cfex.defaultPhotos || DEFAULT_CFEX_CONFIG.defaultPhotos);
-            setCfexVideos(config.cfex.defaultVideos || DEFAULT_CFEX_CONFIG.defaultVideos);
-            // Load toggle states (default to false per I7 Human Primacy)
-            setAiAutoAnalyze(config.cfex.aiAutoAnalyze ?? false);
-            setMetadataWrite(config.cfex.metadataWrite ?? false);
-            // Session-ephemeral: filenameRewrite ALWAYS defaults to false on load (I7 Human Primacy)
-            setFilenameRewrite(false);
-            setFilenameTemplate(config.cfex.filenameTemplate || '{location}-{subject}-{action}-{shotType}');
-            setProxyPresetId(config.cfex.proxyPresetId || '2k-prores-proxy');
-          } else {
-            // Use defaults if no cfex config exists
-            setCfexSource(DEFAULT_CFEX_CONFIG.defaultSource);
-            setCfexPhotos(DEFAULT_CFEX_CONFIG.defaultPhotos);
-            setCfexVideos(DEFAULT_CFEX_CONFIG.defaultVideos);
-            setAiAutoAnalyze(false);
-            setMetadataWrite(false);
-            setFilenameRewrite(false);
-            setFilenameTemplate('{location}-{subject}-{action}-{shotType}');
-            setProxyPresetId('2k-prores-proxy');
-          }
-        })
-        .catch(err => {
-          console.error('Failed to load config:', err);
-          const errorMsg = `Failed to load configuration: ${err.message}`;
-          // Set error on the appropriate tab
-          if (activeTab === 'cfex') {
-            setCfexError(errorMsg);
-          } else if (activeTab === 'ingestion') {
-            setIngestionError(errorMsg);
-          }
-        });
-    }
-  }, [activeTab, setFilenameRewrite]);
+  // Phase 5.2 NO-GO Fix: Removed CFEx/Ingestion config loading on tab switch
+  // Context is single source of truth - tab switches should trust context, not re-fetch
 
   const handleSaveLexicon = async () => {
     try {
@@ -247,7 +193,8 @@ export function SettingsModal({
       setIsSaving(true);
       setLexiconSaveSuccess(false);
 
-      const config: LexiconConfig = {
+      // Phase 5.2 NO-GO Fix: Route save through updateSettings (context is single source of truth)
+      await updateSettings({
         pattern: pattern.trim(),
         commonLocations: commonLocations.trim(),
         commonSubjects: commonSubjects.trim(),
@@ -256,9 +203,8 @@ export function SettingsModal({
         aiInstructions: aiInstructions.trim(),
         goodExamples: goodExamples.trim(),
         badExamples: badExamples.trim(),
-      };
+      });
 
-      await onSave(config);
       setLexiconSaveSuccess(true);
 
       // Clear any existing timeout
@@ -398,11 +344,6 @@ export function SettingsModal({
   };
 
   const handleSaveCfex = async () => {
-    if (!window.electronAPI?.loadConfig || !window.electronAPI?.saveConfig) {
-      setCfexError('Configuration API not available');
-      return;
-    }
-
     // Validate paths before save (empty string check)
     const validationErrors: string[] = [];
     if (!cfexSource.trim()) validationErrors.push('Source path cannot be empty');
@@ -419,39 +360,27 @@ export function SettingsModal({
     setCfexSaveSuccess(false);
 
     try {
-      // Load existing config first to preserve other settings
-      const existingConfig = await window.electronAPI.loadConfig();
+      // Phase 5.2 NO-GO Fix: Route save through updateSettings (context is single source of truth)
+      await updateSettings({
+        cfexSource: cfexSource,
+        cfexPhotos: cfexPhotos,
+        cfexVideos: cfexVideos,
+        aiAutoAnalyze,
+        metadataWrite,
+        filenameTemplate
+      });
 
-      const updatedConfig = {
-        ...existingConfig,
-        cfex: {
-          defaultSource: cfexSource,
-          defaultPhotos: cfexPhotos,
-          defaultVideos: cfexVideos,
-          aiAutoAnalyze,
-          metadataWrite,
-          filenameRewrite,
-          filenameTemplate
-        }
-      };
+      setCfexSaveSuccess(true);
 
-      const result = await window.electronAPI.saveConfig(updatedConfig);
-
-      if (result) {
-        setCfexSaveSuccess(true);
-
-        // Clear any existing timeout
-        if (cfexCloseTimeoutRef.current) {
-          clearTimeout(cfexCloseTimeoutRef.current);
-        }
-
-        // Auto-close modal after brief delay to show success message
-        cfexCloseTimeoutRef.current = setTimeout(() => {
-          onClose();
-        }, 1500);
-      } else {
-        setCfexError('Failed to save CFEx settings');
+      // Clear any existing timeout
+      if (cfexCloseTimeoutRef.current) {
+        clearTimeout(cfexCloseTimeoutRef.current);
       }
+
+      // Auto-close modal after brief delay to show success message
+      cfexCloseTimeoutRef.current = setTimeout(() => {
+        onClose();
+      }, 1500);
     } catch (err) {
       setCfexError(err instanceof Error ? err.message : 'Failed to save CFEx settings');
     } finally {
@@ -481,54 +410,30 @@ export function SettingsModal({
   };
 
   const handleSaveIngestion = async () => {
-    if (!window.electronAPI?.loadConfig || !window.electronAPI?.saveConfig) {
-      setIngestionError('Configuration API not available');
-      return;
-    }
-
     setIsSavingIngestion(true);
     setIngestionError('');
     setIngestionSaveSuccess(false);
 
     try {
-      // Load existing config first to preserve other settings
-      const existingConfig = await window.electronAPI.loadConfig();
+      // Phase 5.2 NO-GO Fix: Route save through updateSettings (context is single source of truth)
+      await updateSettings({
+        aiAutoAnalyze,
+        metadataWrite,
+        filenameTemplate,
+        proxyPresetId
+      });
 
-      const updatedConfig = {
-        ...existingConfig,
-        cfex: {
-          // Preserve existing path config (or defaults)
-          defaultSource: existingConfig.cfex?.defaultSource || DEFAULT_CFEX_CONFIG.defaultSource,
-          defaultPhotos: existingConfig.cfex?.defaultPhotos || DEFAULT_CFEX_CONFIG.defaultPhotos,
-          defaultVideos: existingConfig.cfex?.defaultVideos || DEFAULT_CFEX_CONFIG.defaultVideos,
-          // Update toggle states
-          aiAutoAnalyze,
-          metadataWrite,
-          // Session-ephemeral: filenameRewrite ALWAYS saved as false (I7 Human Primacy)
-          filenameRewrite: false,
-          filenameTemplate,
-          // Save proxy preset selection
-          proxyPresetId
-        }
-      };
+      setIngestionSaveSuccess(true);
 
-      const result = await window.electronAPI.saveConfig(updatedConfig);
-
-      if (result) {
-        setIngestionSaveSuccess(true);
-
-        // Clear any existing timeout
-        if (ingestionCloseTimeoutRef.current) {
-          clearTimeout(ingestionCloseTimeoutRef.current);
-        }
-
-        // Auto-close modal after brief delay to show success message
-        ingestionCloseTimeoutRef.current = setTimeout(() => {
-          onClose();
-        }, 1500);
-      } else {
-        setIngestionError('Failed to save ingestion settings');
+      // Clear any existing timeout
+      if (ingestionCloseTimeoutRef.current) {
+        clearTimeout(ingestionCloseTimeoutRef.current);
       }
+
+      // Auto-close modal after brief delay to show success message
+      ingestionCloseTimeoutRef.current = setTimeout(() => {
+        onClose();
+      }, 1500);
     } catch (err) {
       setIngestionError(err instanceof Error ? err.message : 'Failed to save ingestion settings');
     } finally {
