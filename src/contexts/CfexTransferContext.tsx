@@ -158,9 +158,9 @@ export function CfexTransferProvider({ children }: CfexTransferProviderProps) {
       estimatedTimeRemaining: number;
     }) => {
       setState(prev => {
-        // Guard: Ignore progress updates if transfer was cancelled
-        // Prevents "resurrection" of cancelled transfers (code-review finding)
-        if (!prev.isTransferring && prev.transferStatus === 'idle') {
+        // Guard: Ignore progress updates if not actively transferring
+        // Prevents "resurrection" of cancelled/completed transfers (code-review finding)
+        if (!prev.isTransferring) {
           return prev;
         }
 
@@ -230,7 +230,8 @@ export function CfexTransferProvider({ children }: CfexTransferProviderProps) {
     }));
 
     try {
-      await window.electronAPI.cfex.startTransfer({
+      // IPC returns result with success, filesTransferred, filesTotal, etc.
+      const result = await window.electronAPI.cfex.startTransfer({
         source: state.sourcePath,
         destinations: {
           photos: state.photosEnabled ? state.photosDestination : '',
@@ -241,6 +242,21 @@ export function CfexTransferProvider({ children }: CfexTransferProviderProps) {
           rawVideos: state.videosEnabled,
         },
       });
+
+      // Update state with completion result (Finding 1 fix)
+      // This handles cases where backend completes without emitting progress events
+      setState(prev => ({
+        ...prev,
+        isTransferring: false,
+        transferStatus: result.success ? 'complete' : 'error',
+        filesCompleted: result.filesTransferred,
+        filesTotal: result.filesTotal,
+        bytesTransferred: result.bytesTransferred,
+        transferProgress: 100,
+        lastError: result.errors?.length > 0
+          ? result.errors.map(e => `${e.file}: ${e.error}`).join(', ')
+          : null,
+      }));
     } catch (error) {
       setState(prev => ({
         ...prev,

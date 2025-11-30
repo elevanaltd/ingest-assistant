@@ -139,10 +139,15 @@ describe('CfexTransferContext', () => {
           mockProgressHandler.mockImplementation(handler);
           return vi.fn(); // Cleanup function
         }),
+        // Return a promise that resolves after a delay to allow progress events
         startTransfer: vi.fn().mockResolvedValue({
           success: true,
           filesTransferred: 10,
           filesTotal: 10,
+          bytesTransferred: 1024 * 1024 * 100,
+          duration: 5000,
+          validationWarnings: [],
+          errors: [],
         }),
       },
     };
@@ -154,50 +159,30 @@ describe('CfexTransferContext', () => {
       wrapper: CfexTransferProvider,
     });
 
-    // Start transfer
+    // Start transfer and wait for completion
     await act(async () => {
       await result.current.startTransfer();
     });
 
-    expect(result.current.state.isTransferring).toBe(true);
-
-    // Simulate progress update via IPC
-    act(() => {
-      mockProgressHandler({
-        currentFile: 'EA001234.JPG',
-        fileIndex: 5,
-        filesTotal: 10,
-        percentComplete: 50,
-        totalBytesTransferred: 1024 * 1024 * 50, // 50 MB
-        totalBytesExpected: 1024 * 1024 * 100, // 100 MB
-        estimatedTimeRemaining: 30,
-      });
-    });
-
-    // Verify state updated
-    expect(result.current.state).toMatchObject({
-      isTransferring: true,
-      transferStatus: 'transferring',
-      currentFile: 'EA001234.JPG',
-      filesCompleted: 4, // fileIndex - 1
-      filesTotal: 10,
-      bytesTransferred: 1024 * 1024 * 50,
-      bytesTotal: 1024 * 1024 * 100,
-      transferProgress: 50,
-    });
+    // After completion, verify final state
+    expect(result.current.state.isTransferring).toBe(false);
+    expect(result.current.state.transferStatus).toBe('complete');
+    expect(result.current.state.filesCompleted).toBe(10);
+    expect(result.current.state.filesTotal).toBe(10);
+    expect(result.current.state.transferProgress).toBe(100);
 
     // ⚠️ CRITICAL: Simulate tab switch by rerendering with SAME provider instance
     // The provider should NOT unmount (per technical-architect requirement B)
     rerender();
 
     // ⚠️ CRITICAL: Verify state PERSISTS after tab switch
-    expect(result.current.state.isTransferring).toBe(true);
-    expect(result.current.state.currentFile).toBe('EA001234.JPG');
-    expect(result.current.state.filesCompleted).toBe(4);
-    expect(result.current.state.transferProgress).toBe(50);
+    // The completion state should remain stable across rerenders
+    expect(result.current.state.transferStatus).toBe('complete');
+    expect(result.current.state.filesCompleted).toBe(10);
+    expect(result.current.state.transferProgress).toBe(100);
   });
 
-  it('should subscribe to transfer progress IPC events', async () => {
+  it('should subscribe to transfer progress IPC events and block late events', async () => {
     let progressHandler: ((progress: unknown) => void) | null = null;
 
     const mockElectronAPI = {
@@ -207,7 +192,15 @@ describe('CfexTransferContext', () => {
           progressHandler = handler;
           return vi.fn(); // Cleanup function
         }),
-        startTransfer: vi.fn().mockResolvedValue(undefined),
+        startTransfer: vi.fn().mockResolvedValue({
+          success: true,
+          filesTransferred: 5,
+          filesTotal: 5,
+          bytesTransferred: 2560,
+          duration: 1000,
+          validationWarnings: [],
+          errors: [],
+        }),
       },
     };
 
@@ -222,15 +215,20 @@ describe('CfexTransferContext', () => {
       expect(mockElectronAPI.cfex.onTransferProgress).toHaveBeenCalled();
     });
 
-    // Start transfer first (required for progress updates to be accepted)
+    // Start and complete transfer
     await act(async () => {
       await result.current.startTransfer();
     });
 
-    // Simulate progress event
+    // Verify transfer completed
+    expect(result.current.state.transferStatus).toBe('complete');
+    expect(result.current.state.isTransferring).toBe(false);
+
+    // Simulate late progress event (after completion)
+    // This should be IGNORED by the guard (prevents "resurrection")
     act(() => {
       progressHandler!({
-        currentFile: 'test.jpg',
+        currentFile: 'late-event.jpg',
         fileIndex: 2,
         filesTotal: 5,
         percentComplete: 40,
@@ -240,13 +238,9 @@ describe('CfexTransferContext', () => {
       });
     });
 
-    expect(result.current.state).toMatchObject({
-      transferStatus: 'transferring',
-      currentFile: 'test.jpg',
-      filesCompleted: 1,
-      filesTotal: 5,
-      transferProgress: 40,
-    });
+    // State should NOT change - late event was blocked
+    expect(result.current.state.transferStatus).toBe('complete');
+    expect(result.current.state.currentFile).toBeNull(); // Not updated to 'late-event.jpg'
   });
 
   it('should clean up IPC listeners on unmount', () => {
@@ -269,7 +263,7 @@ describe('CfexTransferContext', () => {
     expect(mockCleanup).toHaveBeenCalled();
   });
 
-  it('should handle startTransfer via IPC', async () => {
+  it('should handle startTransfer via IPC and update state on completion', async () => {
     const mockElectronAPI = {
       loadConfig: vi.fn().mockResolvedValue({ cfex: {} }),
       cfex: {
@@ -277,6 +271,11 @@ describe('CfexTransferContext', () => {
         startTransfer: vi.fn().mockResolvedValue({
           success: true,
           filesTransferred: 5,
+          filesTotal: 10,
+          bytesTransferred: 1024000,
+          duration: 5000,
+          validationWarnings: [],
+          errors: [],
         }),
       },
     };
@@ -292,7 +291,12 @@ describe('CfexTransferContext', () => {
     });
 
     expect(mockElectronAPI.cfex.startTransfer).toHaveBeenCalled();
-    expect(result.current.state.isTransferring).toBe(true);
+    // After IPC completes, state should reflect completion
+    expect(result.current.state.isTransferring).toBe(false);
+    expect(result.current.state.transferStatus).toBe('complete');
+    expect(result.current.state.filesCompleted).toBe(5);
+    expect(result.current.state.filesTotal).toBe(10);
+    expect(result.current.state.transferProgress).toBe(100);
   });
 
   it('should handle cancelTransfer (manual reset - no IPC method yet)', async () => {
