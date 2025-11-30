@@ -1,8 +1,29 @@
 # Ingest Assistant - Shared Checklist
 
-## Current Status (2025-11-29 Updated)
+## Current Status (2025-11-30 Updated)
 
-### ✅ v2.3.0 Release Ready (Nov 29, 2025)
+### 🔄 Feature-Context Architecture Refactor (Issue #102)
+
+**Status:** VALIDATED → Ready for Implementation
+**GitHub:** https://github.com/elevanaltd/ingest-assistant/issues/102
+**Validation:** technical-architect CONDITIONAL GO (2025-11-30)
+
+**Implementation Phases:**
+- [ ] **Phase 1: Scaffold** (2-3h) - directories + AppProviders + test-utils
+- [ ] **Phase 2: IngestSettingsContext** (6-8h) - LOW RISK - lexicon, AI config, toggles
+- [ ] **Phase 3: BatchQueueContext** (4-6h) - MEDIUM RISK - queue, progress, IPC
+- [ ] **Phase 4: CfexTransferContext** (6-8h) - HIGH RISK - transfer state, tab persistence
+- [ ] **Phase 5: App.tsx Cleanup** (4-6h) - pure tab router (~200 LOC target)
+- [ ] **Phase 6: Validation** (4-6h) - all 1034+ tests + code review
+
+**Mandatory Conditions:**
+- [ ] Volatile State Partition (separate progress from config)
+- [ ] IPC Singleton Safety (providers at App root, never unmounted)
+- [ ] Safe Fallback (window.electronAPI check in providers)
+
+---
+
+### ✅ v2.3.0 Released (Nov 30, 2025)
 
 **Phase 1b Proxy Generation: COMPLETE**
 - ✅ B2 Implementation: All 8 phases complete (B2.1-B2.8)
@@ -13,8 +34,11 @@
   - universal-test-engineer: 2 HIGH priority tests added
 - ✅ Quality Gates: 1034/1042 tests, 0 lint errors, 0 type errors
 - ✅ Features: ProRes 2K proxy, EXIF preservation, progress UI, fail-log-continue
+- ✅ GitHub Release: v2.3.0 created
 
-**Next:** Version bump to v2.3.0 → GitHub Release
+**Issues Closed (Nov 30):**
+- ✅ #54 - XMP Field Alignment (SUPERSEDED by JSON architecture)
+- ✅ #30 - Lazy Loading/Pagination (COMPLETE - virtual scrolling implemented)
 
 ---
 
