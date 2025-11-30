@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, useMemo, type ReactNode } from 'react';
 
 // Ingest settings interface - config state only (low frequency updates)
 interface IngestSettings {
@@ -109,7 +109,7 @@ export function IngestSettingsProvider({ children }: IngestSettingsProviderProps
     }
   }, []);
 
-  const updateSettings = async (updates: Partial<IngestSettings>) => {
+  const updateSettings = useCallback(async (updates: Partial<IngestSettings>) => {
     setSettings(prev => ({ ...prev, ...updates }));
 
     // Persist to backend if electronAPI available
@@ -160,12 +160,12 @@ export function IngestSettingsProvider({ children }: IngestSettingsProviderProps
         });
       }
     }
-  };
+  }, [settings]);
 
-  const value: IngestSettingsContextValue = {
+  const value = useMemo<IngestSettingsContextValue>(() => ({
     settings,
     updateSettings,
-  };
+  }), [settings, updateSettings]);
 
   return (
     <IngestSettingsContext.Provider value={value}>
