@@ -288,6 +288,13 @@ export function SettingsModal({
     setAiSaveSuccess(false);
 
     try {
+      // Update context with AI provider/model (keeps context synchronized)
+      await updateSettings({
+        aiProvider: aiProvider,
+        aiModel: aiModel
+      });
+
+      // Update API key separately (security-sensitive, not exposed in context)
       const result = await window.electronAPI.updateAIConfig({
         provider: aiProvider,
         model: aiModel,
