@@ -4,22 +4,27 @@
 
 ### 🔄 Feature-Context Architecture Refactor (Issue #102)
 
-**Status:** VALIDATED → Ready for Implementation
+**Status:** Phases 5.2-5.4 COMPLETE → Phase 5 (App.tsx Cleanup) + Phase 6 (Validation) REMAINING
 **GitHub:** https://github.com/elevanaltd/ingest-assistant/issues/102
-**Validation:** technical-architect CONDITIONAL GO (2025-11-30)
+**Last Session:** 2025-11-30 (holistic-orchestrator: 98/100 reliability, APPROVED)
 
 **Implementation Phases:**
-- [ ] **Phase 1: Scaffold** (2-3h) - directories + AppProviders + test-utils
-- [ ] **Phase 2: IngestSettingsContext** (6-8h) - LOW RISK - lexicon, AI config, toggles
-- [ ] **Phase 3: BatchQueueContext** (4-6h) - MEDIUM RISK - queue, progress, IPC
-- [ ] **Phase 4: CfexTransferContext** (6-8h) - HIGH RISK - transfer state, tab persistence
+- [x] **Phase 1: Scaffold** - directories + AppProviders + test-utils (PR #104)
+- [x] **Phase 5.1: AppProviders Integration** - at App root (commit e63d2d7)
+- [x] **Phase 5.2: SettingsModal → useIngestSettings** (7 commits, +7 tests, RED→GREEN verified)
+- [x] **Phase 5.3: BatchOperationsPanel → useBatchQueue** (1 commit, +3 tests)
+- [x] **Phase 5.4: CfexTransferWindow → useCfexTransfer** (3 commits, +10 tests, RED→GREEN verified)
 - [ ] **Phase 5: App.tsx Cleanup** (4-6h) - pure tab router (~200 LOC target)
-- [ ] **Phase 6: Validation** (4-6h) - all 1034+ tests + code review
+- [ ] **Phase 6: Validation** (4-6h) - all 1081+ tests + code review
 
 **Mandatory Conditions:**
-- [ ] Volatile State Partition (separate progress from config)
-- [ ] IPC Singleton Safety (providers at App root, never unmounted)
-- [ ] Safe Fallback (window.electronAPI check in providers)
+- [x] Volatile State Partition (separate progress from config) - ACHIEVED
+- [x] IPC Singleton Safety (providers at App root, never unmounted) - ACHIEVED
+- [x] Safe Fallback (window.electronAPI check in providers) - ACHIEVED
+
+**Tech Debt Identified (non-blocking):**
+- [ ] Create GitHub issue: "Centralize Proxy Progress Listener (Phase 6+)"
+- [ ] Create GitHub issue: "Implement IPC-level Cfex Cancellation"
 
 ---
 

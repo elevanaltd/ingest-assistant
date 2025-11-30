@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/react';
+import { renderWithProviders } from './test/test-utils';
 import userEvent from '@testing-library/user-event';
 import App from './App';
 import type { FileMetadata, AIAnalysisResult } from './types';
@@ -19,7 +20,7 @@ const mockElectronAPI = {
   loadConfig: vi.fn(async () => ({ cfex: {} })),
   saveConfig: vi.fn(async () => {}),
   getLexicon: vi.fn(),
-  getShotTypes: vi.fn(),
+  getShotTypes: vi.fn(async () => ['WS', 'MID', 'CU', 'UNDER', 'FP', 'TRACK', 'ESTAB']),
   readFileAsDataUrl: vi.fn(),
   lexicon: {
     load: vi.fn(async () => ({})),
@@ -60,14 +61,14 @@ afterEach(() => {
 
 describe('App', () => {
   it('should render the app header', async () => {
-    render(<App />);
+    renderWithProviders(<App />);
     await waitFor(() => {
       expect(screen.getByText('Ingest Assistant')).toBeInTheDocument();
     });
   });
 
   it('should render sidebar with folder selection button', async () => {
-    render(<App />);
+    renderWithProviders(<App />);
     // Wait for async effects to complete
     await waitFor(() => {
       // Folder selection button is now in the sidebar
@@ -77,7 +78,7 @@ describe('App', () => {
   });
 
   it('should show empty state when no folder selected', async () => {
-    render(<App />);
+    renderWithProviders(<App />);
     await waitFor(() => {
       expect(screen.getByText(/Select a folder to get started/i)).toBeInTheDocument();
     });
@@ -114,7 +115,7 @@ describe('Action Field Feature', () => {
       mockElectronAPI.loadFiles.mockResolvedValue([videoFile]);
       mockElectronAPI.selectFolder.mockResolvedValue('/test/folder');
 
-      render(<App />);
+      renderWithProviders(<App />);
 
       // Trigger folder selection
       const selectButton = screen.getByRole('button', { name: /select folder/i });
@@ -135,7 +136,7 @@ describe('Action Field Feature', () => {
       mockElectronAPI.loadFiles.mockResolvedValue([photoFile]);
       mockElectronAPI.selectFolder.mockResolvedValue('/test/folder');
 
-      render(<App />);
+      renderWithProviders(<App />);
 
       const selectButton = screen.getByRole('button', { name: /select folder/i });
       await userEvent.click(selectButton);
@@ -152,7 +153,7 @@ describe('Action Field Feature', () => {
       mockElectronAPI.loadFiles.mockResolvedValue([videoFile]);
       mockElectronAPI.selectFolder.mockResolvedValue('/test/folder');
 
-      render(<App />);
+      renderWithProviders(<App />);
 
       const selectButton = screen.getByRole('button', { name: /select folder/i });
       await userEvent.click(selectButton);
@@ -171,7 +172,7 @@ describe('Action Field Feature', () => {
       mockElectronAPI.loadFiles.mockResolvedValue([videoFile]);
       mockElectronAPI.selectFolder.mockResolvedValue('/test/folder');
 
-      render(<App />);
+      renderWithProviders(<App />);
 
       const selectButton = screen.getByRole('button', { name: /select folder/i });
       await userEvent.click(selectButton);
@@ -210,7 +211,7 @@ describe('Action Field Feature', () => {
       mockElectronAPI.loadFiles.mockResolvedValue([videoFile, photoFile]);
       mockElectronAPI.selectFolder.mockResolvedValue('/test/folder');
 
-      render(<App />);
+      renderWithProviders(<App />);
 
       const selectButton = screen.getByRole('button', { name: /select folder/i });
       await userEvent.click(selectButton);
@@ -257,7 +258,7 @@ describe('Action Field Feature', () => {
       mockElectronAPI.loadFiles.mockResolvedValue([video1, video2]);
       mockElectronAPI.selectFolder.mockResolvedValue('/test/folder');
 
-      render(<App />);
+      renderWithProviders(<App />);
 
       const selectButton = screen.getByRole('button', { name: /select folder/i });
       await userEvent.click(selectButton);
@@ -298,7 +299,7 @@ describe('Action Field Feature', () => {
       };
       mockElectronAPI.analyzeFile.mockResolvedValue(aiResult);
 
-      render(<App />);
+      renderWithProviders(<App />);
 
       const selectButton = screen.getByRole('button', { name: /select folder/i });
       await userEvent.click(selectButton);
@@ -343,7 +344,7 @@ describe('Action Field Feature', () => {
       };
       mockElectronAPI.analyzeFile.mockResolvedValue(aiResult);
 
-      render(<App />);
+      renderWithProviders(<App />);
 
       const selectButton = screen.getByRole('button', { name: /select folder/i });
       await userEvent.click(selectButton);
@@ -380,7 +381,7 @@ describe('Action Field Feature', () => {
       };
       mockElectronAPI.analyzeFile.mockResolvedValue(aiResult);
 
-      render(<App />);
+      renderWithProviders(<App />);
 
       const selectButton = screen.getByRole('button', { name: /select folder/i });
       await userEvent.click(selectButton);
@@ -418,7 +419,7 @@ describe('Action Field Feature', () => {
       mockElectronAPI.loadFiles.mockResolvedValue([videoFile]);
       mockElectronAPI.selectFolder.mockResolvedValue('/test/folder');
 
-      render(<App />);
+      renderWithProviders(<App />);
 
       const selectButton = screen.getByRole('button', { name: /select folder/i });
       await userEvent.click(selectButton);
@@ -443,7 +444,7 @@ describe('Action Field Feature', () => {
       mockElectronAPI.loadFiles.mockResolvedValue([videoFile]);
       mockElectronAPI.selectFolder.mockResolvedValue('/test/folder');
 
-      render(<App />);
+      renderWithProviders(<App />);
 
       const selectButton = screen.getByRole('button', { name: /select folder/i });
       await userEvent.click(selectButton);
@@ -471,7 +472,7 @@ describe('Action Field Feature', () => {
       mockElectronAPI.loadFiles.mockResolvedValue([photoFile]);
       mockElectronAPI.selectFolder.mockResolvedValue('/test/folder');
 
-      render(<App />);
+      renderWithProviders(<App />);
 
       const selectButton = screen.getByRole('button', { name: /select folder/i });
       await userEvent.click(selectButton);
@@ -498,7 +499,7 @@ describe('Action Field Feature', () => {
       mockElectronAPI.loadFiles.mockResolvedValue([videoFile]);
       mockElectronAPI.selectFolder.mockResolvedValue('/test/folder');
 
-      render(<App />);
+      renderWithProviders(<App />);
 
       const selectButton = screen.getByRole('button', { name: /select folder/i });
       await userEvent.click(selectButton);

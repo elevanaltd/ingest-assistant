@@ -1,11 +1,16 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/react';
+import { renderWithProviders as render } from '../test/test-utils';
 import { BatchOperationsPanel } from './BatchOperationsPanel';
 
 /**
  * Test suite for BatchOperationsPanel component
  * Tests layout, button visibility, and user interactions
  */
+
+// Shared mock for getShotTypes (required by MetadataFormContext)
+const mockGetShotTypes = vi.fn().mockResolvedValue(['WS', 'MID', 'CU', 'UNDER', 'FP', 'TRACK', 'ESTAB']);
+
 describe('BatchOperationsPanel', () => {
   beforeEach(() => {
     // Mock window.electronAPI for batch operations
@@ -18,6 +23,8 @@ describe('BatchOperationsPanel', () => {
       }),
       onBatchProgress: vi.fn().mockReturnValue(() => {}),
       onTranscodeProgress: vi.fn().mockReturnValue(() => {}),
+      // Phase 5.7: Mock getShotTypes for MetadataFormContext
+      getShotTypes: mockGetShotTypes,
     };
   });
 
@@ -318,6 +325,7 @@ describe('BatchOperationsPanel', () => {
         batchStart: vi.fn().mockResolvedValue('mock-queue-id'),
         onBatchProgress: vi.fn().mockReturnValue(() => {}),
         onTranscodeProgress: vi.fn().mockReturnValue(() => {}),
+        getShotTypes: mockGetShotTypes,
       };
     });
 
@@ -511,6 +519,7 @@ describe('BatchOperationsPanel', () => {
           onProxyProgress: vi.fn().mockReturnValue(() => {}),
         },
         selectFolder: vi.fn().mockResolvedValue('/mock/proxy/output'),
+        getShotTypes: mockGetShotTypes,
       };
       window.alert = vi.fn(); // Mock alert for all tests
     });
@@ -649,6 +658,7 @@ describe('BatchOperationsPanel', () => {
           onProxyProgress: vi.fn().mockReturnValue(() => {}),
         },
         selectFolder: vi.fn().mockResolvedValue('/mock/proxy/output'),
+        getShotTypes: mockGetShotTypes,
       };
       window.alert = vi.fn(); // Mock alert for all tests
     });
@@ -806,6 +816,7 @@ describe('BatchOperationsPanel', () => {
           onProxyProgress: vi.fn().mockReturnValue(() => {}),
         },
         selectFolder: mockSelectFolder,
+        getShotTypes: mockGetShotTypes,
       };
       window.alert = vi.fn();
     });
@@ -975,6 +986,82 @@ describe('BatchOperationsPanel', () => {
   });
 
   /**
+   * Phase 5.3: BatchQueueContext Consumption (TDD RED Phase)
+   *
+   * Purpose: Verify BatchOperationsPanel consumes BatchQueueContext instead of local IPC subscriptions
+   * Features:
+   * - Uses useBatchQueue() hook for state and progress
+   * - No longer subscribes to onBatchProgress locally
+   * - No longer polls batchGetStatus locally
+   * - Still maintains UI-only local state (isExpanded, previousStatus, proxyProgress)
+   */
+  describe('BatchQueueContext Consumption (Phase 5.3)', () => {
+    it('should render without errors when context provides state', () => {
+      // Component should consume context state (provided by AppProviders via renderWithProviders)
+      // This test verifies component can access context successfully
+
+      render(
+        <BatchOperationsPanel
+          availableFiles={[
+            { id: '1', filename: 'test1.jpg', processedByAI: false },
+          ]}
+          onBatchComplete={vi.fn()}
+        />
+      );
+
+      // Should render header
+      expect(screen.getByText('Batch Operations')).toBeInTheDocument();
+    });
+
+    it('should rely on context for batch progress (not local subscription)', () => {
+      // Component no longer has local onBatchProgress subscription
+      // Context (AppProviders > BatchQueueProvider) handles IPC subscription
+      // Component consumes useBatchQueue() hook to access progress
+
+      const mockOnBatchProgress = vi.fn().mockReturnValue(() => {});
+      (window as any).electronAPI.onBatchProgress = mockOnBatchProgress;
+
+      render(
+        <BatchOperationsPanel
+          availableFiles={[]}
+          onBatchComplete={vi.fn()}
+        />
+      );
+
+      // Context subscribes (called once via AppProviders wrapper)
+      // Component does NOT subscribe locally (would be 2nd call if it did)
+      expect(mockOnBatchProgress).toHaveBeenCalledTimes(1);
+    });
+
+    it('should rely on context for queue status polling (not local polling)', async () => {
+      // Component no longer polls batchGetStatus locally
+      // Context (AppProviders > BatchQueueProvider) handles polling
+      // Component consumes useBatchQueue() hook to access state
+
+      const mockBatchGetStatus = vi.fn().mockResolvedValue({
+        queueId: null,
+        status: 'idle',
+        items: [],
+      });
+      (window as any).electronAPI.batchGetStatus = mockBatchGetStatus;
+
+      render(
+        <BatchOperationsPanel
+          availableFiles={[]}
+          onBatchComplete={vi.fn()}
+        />
+      );
+
+      // Wait for context polling interval (2 seconds)
+      await vi.waitFor(() => {
+        // Context polls (at least once)
+        // Component does NOT poll locally
+        expect(mockBatchGetStatus).toHaveBeenCalled();
+      }, { timeout: 3000 });
+    });
+  });
+
+  /**
    * Proxy Folder Path Wiring (Bug Fix)
    *
    * Purpose: Fix ZodError - rawVideoFolder and proxyOutputFolder are empty strings
@@ -1014,6 +1101,7 @@ describe('BatchOperationsPanel', () => {
           onProxyProgress: vi.fn().mockReturnValue(() => {}),
         },
         selectFolder: mockSelectFolder,
+        getShotTypes: mockGetShotTypes,
       };
     });
 

@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/react';
+import { renderWithProviders } from '../test/test-utils';
 import userEvent from '@testing-library/user-event';
 import App from '../App';
 import type { FileMetadata } from '../types';
@@ -19,7 +20,7 @@ const mockElectronAPI = {
   loadConfig: vi.fn(async () => ({ cfex: {} })),
   saveConfig: vi.fn(async () => {}),
   getLexicon: vi.fn(),
-  getShotTypes: vi.fn(),
+  getShotTypes: vi.fn(async () => ['WS', 'MID', 'CU', 'UNDER', 'FP', 'TRACK', 'ESTAB']),
   readFileAsDataUrl: vi.fn(),
   lexicon: {
     load: vi.fn(async () => ({})),
@@ -89,7 +90,7 @@ describe('Keyboard Shortcuts', () => {
       mockElectronAPI.loadFiles.mockResolvedValue([file]);
       mockElectronAPI.selectFolder.mockResolvedValue('/test/folder');
 
-      render(<App />);
+      renderWithProviders(<App />);
 
       // Load files
       const selectButton = screen.getByRole('button', { name: /select folder/i });
@@ -113,7 +114,7 @@ describe('Keyboard Shortcuts', () => {
       mockElectronAPI.loadFiles.mockResolvedValue([file]);
       mockElectronAPI.selectFolder.mockResolvedValue('/test/folder');
 
-      render(<App />);
+      renderWithProviders(<App />);
 
       const selectButton = screen.getByRole('button', { name: /select folder/i });
       await userEvent.click(selectButton);
@@ -136,7 +137,7 @@ describe('Keyboard Shortcuts', () => {
       mockElectronAPI.loadFiles.mockResolvedValue([file]);
       mockElectronAPI.selectFolder.mockResolvedValue('/test/folder');
 
-      render(<App />);
+      renderWithProviders(<App />);
 
       const selectButton = screen.getByRole('button', { name: /select folder/i });
       await userEvent.click(selectButton);
@@ -173,7 +174,7 @@ describe('Keyboard Shortcuts', () => {
         shotType: 'WS',
       });
 
-      render(<App />);
+      renderWithProviders(<App />);
 
       const selectButton = screen.getByRole('button', { name: /select folder/i });
       await userEvent.click(selectButton);
@@ -201,7 +202,7 @@ describe('Keyboard Shortcuts', () => {
         () => new Promise(resolve => setTimeout(resolve, 5000))
       );
 
-      render(<App />);
+      renderWithProviders(<App />);
 
       const selectButton = screen.getByRole('button', { name: /select folder/i });
       await userEvent.click(selectButton);
@@ -235,7 +236,7 @@ describe('Keyboard Shortcuts', () => {
       mockElectronAPI.loadFiles.mockResolvedValue(files);
       mockElectronAPI.selectFolder.mockResolvedValue('/test/folder');
 
-      render(<App />);
+      renderWithProviders(<App />);
 
       const selectButton = screen.getByRole('button', { name: /select folder/i });
       await userEvent.click(selectButton);
@@ -263,7 +264,7 @@ describe('Keyboard Shortcuts', () => {
       mockElectronAPI.loadFiles.mockResolvedValue(files);
       mockElectronAPI.selectFolder.mockResolvedValue('/test/folder');
 
-      render(<App />);
+      renderWithProviders(<App />);
 
       const selectButton = screen.getByRole('button', { name: /select folder/i });
       await userEvent.click(selectButton);
@@ -291,7 +292,7 @@ describe('Keyboard Shortcuts', () => {
       mockElectronAPI.loadFiles.mockResolvedValue(files);
       mockElectronAPI.selectFolder.mockResolvedValue('/test/folder');
 
-      render(<App />);
+      renderWithProviders(<App />);
 
       const selectButton = screen.getByRole('button', { name: /select folder/i });
       await userEvent.click(selectButton);
@@ -327,7 +328,7 @@ describe('Keyboard Shortcuts', () => {
       mockElectronAPI.loadFiles.mockResolvedValue(files);
       mockElectronAPI.selectFolder.mockResolvedValue('/test/folder');
 
-      render(<App />);
+      renderWithProviders(<App />);
 
       const selectButton = screen.getByRole('button', { name: /select folder/i });
       await userEvent.click(selectButton);
@@ -362,7 +363,7 @@ describe('Keyboard Shortcuts', () => {
       mockElectronAPI.loadFiles.mockResolvedValue(files);
       mockElectronAPI.selectFolder.mockResolvedValue('/test/folder');
 
-      render(<App />);
+      renderWithProviders(<App />);
 
       const selectButton = screen.getByRole('button', { name: /select folder/i });
       await userEvent.click(selectButton);
@@ -398,7 +399,7 @@ describe('Keyboard Shortcuts', () => {
       mockElectronAPI.loadFiles.mockResolvedValue([file]);
       mockElectronAPI.selectFolder.mockResolvedValue('/test/folder');
 
-      render(<App />);
+      renderWithProviders(<App />);
 
       const selectButton = screen.getByRole('button', { name: /select folder/i });
       await userEvent.click(selectButton);
@@ -421,7 +422,7 @@ describe('Keyboard Shortcuts', () => {
       mockElectronAPI.loadFiles.mockResolvedValue([file]);
       mockElectronAPI.selectFolder.mockResolvedValue('/test/folder');
 
-      render(<App />);
+      renderWithProviders(<App />);
 
       const selectButton = screen.getByRole('button', { name: /select folder/i });
       await userEvent.click(selectButton);
@@ -451,7 +452,7 @@ describe('Keyboard Shortcuts', () => {
       mockElectronAPI.loadFiles.mockResolvedValue([file]);
       mockElectronAPI.selectFolder.mockResolvedValue('/test/folder');
 
-      render(<App />);
+      renderWithProviders(<App />);
 
       const selectButton = screen.getByRole('button', { name: /select folder/i });
       await userEvent.click(selectButton);
@@ -489,7 +490,7 @@ describe('Keyboard Shortcuts', () => {
         actions: [],
       });
 
-      render(<App />);
+      renderWithProviders(<App />);
 
       // Open settings (button has emoji so search by title)
       const settingsButton = screen.getByTitle(/settings/i);

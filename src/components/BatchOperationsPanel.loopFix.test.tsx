@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, act } from '@testing-library/react';
+import { act } from '@testing-library/react';
+import { renderWithProviders as render } from '../test/test-utils';
 import { BatchOperationsPanel } from './BatchOperationsPanel';
 import type { BatchQueueState } from '../types';
 
@@ -10,6 +11,8 @@ const mockElectronAPI = {
   batchGetStatus: vi.fn(),
   onBatchProgress: vi.fn(() => () => {}),
   onTranscodeProgress: vi.fn(() => () => {}),
+  // Phase 5.7: Mock getShotTypes for MetadataFormContext
+  getShotTypes: vi.fn(async () => ['WS', 'MID', 'CU']),
 };
 
 beforeEach(() => {

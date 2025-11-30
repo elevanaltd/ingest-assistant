@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect, useCallback, useMemo, type ReactNode } from 'react';
+import type { LexiconConfig } from '../types';
 
 // Ingest settings interface - config state only (low frequency updates)
 interface IngestSettings {
@@ -34,6 +35,12 @@ interface IngestSettings {
 interface IngestSettingsContextValue {
   settings: IngestSettings;
   updateSettings: (updates: Partial<IngestSettings>) => Promise<void>;
+
+  // Phase 5.5: Extended context values
+  isAIConfigured: boolean;
+  lexiconConfig: LexiconConfig | undefined;
+  filenameRewrite: boolean;
+  setFilenameRewrite: (value: boolean) => void;
 }
 
 const IngestSettingsContext = createContext<IngestSettingsContextValue | undefined>(undefined);
@@ -67,6 +74,11 @@ interface IngestSettingsProviderProps {
 export function IngestSettingsProvider({ children }: IngestSettingsProviderProps) {
   const [settings, setSettings] = useState<IngestSettings>(DEFAULT_SETTINGS);
 
+  // Phase 5.5: Extended state
+  const [isAIConfigured, setIsAIConfigured] = useState<boolean>(false);
+  const [lexiconConfig, setLexiconConfig] = useState<LexiconConfig | undefined>();
+  const [filenameRewrite, setFilenameRewrite] = useState<boolean>(false);
+
   // Load settings on mount (if electronAPI available)
   useEffect(() => {
     if (window.electronAPI?.getAIConfig && window.electronAPI?.lexicon?.load && window.electronAPI?.loadConfig && window.electronAPI?.getShotTypes) {
@@ -75,21 +87,22 @@ export function IngestSettingsProvider({ children }: IngestSettingsProviderProps
         window.electronAPI.lexicon.load(),
         window.electronAPI.loadConfig(),
         window.electronAPI.getShotTypes(),
-      ]).then(([aiConfig, lexiconConfig, appConfig, shotTypes]) => {
+        window.electronAPI.isAIConfigured?.() || Promise.resolve(false),
+      ]).then(([aiConfig, lexiconConfigData, appConfig, shotTypes, aiConfigured]) => {
         setSettings({
           // AI config
           aiProvider: aiConfig.provider || DEFAULT_SETTINGS.aiProvider,
           aiModel: aiConfig.model || DEFAULT_SETTINGS.aiModel,
 
           // Lexicon config
-          pattern: lexiconConfig?.pattern || DEFAULT_SETTINGS.pattern,
-          commonLocations: lexiconConfig?.commonLocations || DEFAULT_SETTINGS.commonLocations,
-          commonSubjects: lexiconConfig?.commonSubjects || DEFAULT_SETTINGS.commonSubjects,
-          commonActions: lexiconConfig?.commonActions || DEFAULT_SETTINGS.commonActions,
-          wordPreferences: lexiconConfig?.wordPreferences || DEFAULT_SETTINGS.wordPreferences,
-          aiInstructions: lexiconConfig?.aiInstructions || DEFAULT_SETTINGS.aiInstructions,
-          goodExamples: lexiconConfig?.goodExamples || DEFAULT_SETTINGS.goodExamples,
-          badExamples: lexiconConfig?.badExamples || DEFAULT_SETTINGS.badExamples,
+          pattern: lexiconConfigData?.pattern || DEFAULT_SETTINGS.pattern,
+          commonLocations: lexiconConfigData?.commonLocations || DEFAULT_SETTINGS.commonLocations,
+          commonSubjects: lexiconConfigData?.commonSubjects || DEFAULT_SETTINGS.commonSubjects,
+          commonActions: lexiconConfigData?.commonActions || DEFAULT_SETTINGS.commonActions,
+          wordPreferences: lexiconConfigData?.wordPreferences || DEFAULT_SETTINGS.wordPreferences,
+          aiInstructions: lexiconConfigData?.aiInstructions || DEFAULT_SETTINGS.aiInstructions,
+          goodExamples: lexiconConfigData?.goodExamples || DEFAULT_SETTINGS.goodExamples,
+          badExamples: lexiconConfigData?.badExamples || DEFAULT_SETTINGS.badExamples,
 
           // CFEx config
           cfexSource: appConfig.cfex?.defaultSource || DEFAULT_SETTINGS.cfexSource,
@@ -103,6 +116,10 @@ export function IngestSettingsProvider({ children }: IngestSettingsProviderProps
           // Shot types
           shotTypes: shotTypes || DEFAULT_SETTINGS.shotTypes,
         });
+
+        // Phase 5.5: Set extended state
+        setIsAIConfigured(aiConfigured);
+        setLexiconConfig(lexiconConfigData);
       }).catch(error => {
         console.error('Failed to load ingest settings:', error);
       });
@@ -165,7 +182,12 @@ export function IngestSettingsProvider({ children }: IngestSettingsProviderProps
   const value = useMemo<IngestSettingsContextValue>(() => ({
     settings,
     updateSettings,
-  }), [settings, updateSettings]);
+    // Phase 5.5: Extended values
+    isAIConfigured,
+    lexiconConfig,
+    filenameRewrite,
+    setFilenameRewrite,
+  }), [settings, updateSettings, isAIConfigured, lexiconConfig, filenameRewrite]);
 
   return (
     <IngestSettingsContext.Provider value={value}>
