@@ -1890,5 +1890,55 @@ describe('SettingsModal', () => {
         );
       });
     });
+
+    it('should update context when saving AI settings', async () => {
+      // Clear the mock to track calls from this test only
+      vi.mocked(window.electronAPI.updateAIConfig).mockClear();
+
+      renderWithProviders(<SettingsModal onClose={mockOnClose} onSave={mockOnSave} />);
+
+      // Switch to AI Connection tab
+      fireEvent.click(screen.getByText('AI Connection'));
+
+      // Wait for config to load
+      await waitFor(() => {
+        expect(window.electronAPI.loadConfig).toHaveBeenCalled();
+      });
+
+      // Change AI provider and model
+      const selects = screen.getAllByRole('combobox');
+      const providerSelect = selects[0]; // First select is Provider
+      const modelSelect = selects[1]; // Second select is Model
+      const apiKeyInput = screen.getByPlaceholderText(/Enter API key|Leave empty/i);
+
+      fireEvent.change(providerSelect, { target: { value: 'openai' } });
+
+      // Wait for models to reload after provider change
+      await waitFor(() => {
+        expect(window.electronAPI.getAIModels).toHaveBeenCalledWith('openai');
+      });
+
+      fireEvent.change(modelSelect, { target: { value: 'openai/gpt-4' } });
+      fireEvent.change(apiKeyInput, { target: { value: 'test-api-key' } });
+
+      // Save AI config
+      const saveButton = screen.getByText('Save AI Config');
+      fireEvent.click(saveButton);
+
+      // Critical: Verify context was updated (via updateAIConfig called TWICE)
+      // This test fails if handleSaveAI bypasses context
+      // Expected flow:
+      //   1. updateSettings({ aiProvider, aiModel }) → updateAIConfig (from context)
+      //   2. updateAIConfig({ provider, model, apiKey }) → updateAIConfig (from handleSaveAI for API key)
+      // If bypassed, only 1 call happens (from handleSaveAI)
+      await waitFor(() => {
+        expect(window.electronAPI.updateAIConfig).toHaveBeenCalledTimes(2);
+      });
+
+      // Verify both calls have correct provider/model
+      const calls = vi.mocked(window.electronAPI.updateAIConfig).mock.calls;
+      expect(calls[0][0]).toMatchObject({ provider: 'openai', model: 'openai/gpt-4' });
+      expect(calls[1][0]).toMatchObject({ provider: 'openai', model: 'openai/gpt-4' });
+    });
   });
 });
