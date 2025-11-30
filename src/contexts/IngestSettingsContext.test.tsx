@@ -128,8 +128,12 @@ describe('IngestSettingsContext', () => {
     const mockUpdateAIConfig = vi.fn().mockResolvedValue({ success: true });
     const mockElectronAPI = {
       getAIConfig: vi.fn().mockResolvedValue({ provider: 'openrouter', model: '' }),
-      lexicon: { load: vi.fn().mockResolvedValue({}) },
+      lexicon: {
+        load: vi.fn().mockResolvedValue({}),
+        save: vi.fn().mockResolvedValue(true),
+      },
       loadConfig: vi.fn().mockResolvedValue({ cfex: {} }),
+      saveConfig: vi.fn().mockResolvedValue(true),
       getShotTypes: vi.fn().mockResolvedValue([]),
       updateAIConfig: mockUpdateAIConfig,
     };
@@ -160,11 +164,13 @@ describe('IngestSettingsContext', () => {
     const mockSaveLexicon = vi.fn().mockResolvedValue(undefined);
     const mockElectronAPI = {
       getAIConfig: vi.fn().mockResolvedValue({ provider: 'openrouter', model: '' }),
+      updateAIConfig: vi.fn().mockResolvedValue(true),
       lexicon: {
         load: vi.fn().mockResolvedValue({}),
         save: mockSaveLexicon,
       },
       loadConfig: vi.fn().mockResolvedValue({ cfex: {} }),
+      saveConfig: vi.fn().mockResolvedValue(true),
       getShotTypes: vi.fn().mockResolvedValue([]),
     };
 
@@ -198,7 +204,11 @@ describe('IngestSettingsContext', () => {
     const mockSaveConfig = vi.fn().mockResolvedValue(true);
     const mockElectronAPI = {
       getAIConfig: vi.fn().mockResolvedValue({ provider: 'openrouter', model: '' }),
-      lexicon: { load: vi.fn().mockResolvedValue({}) },
+      updateAIConfig: vi.fn().mockResolvedValue(true),
+      lexicon: {
+        load: vi.fn().mockResolvedValue({}),
+        save: vi.fn().mockResolvedValue(true),
+      },
       loadConfig: vi.fn().mockResolvedValue({ cfex: {} }),
       getShotTypes: vi.fn().mockResolvedValue([]),
       saveConfig: mockSaveConfig,

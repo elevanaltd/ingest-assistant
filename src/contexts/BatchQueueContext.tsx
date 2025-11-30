@@ -41,7 +41,7 @@ export function BatchQueueProvider({ children }: BatchQueueProviderProps) {
 
   // Subscribe to IPC progress events
   useEffect(() => {
-    if (!window.electronAPI) return;
+    if (!window.electronAPI?.onBatchProgress) return;
 
     const cleanup = window.electronAPI.onBatchProgress((progressData) => {
       setProgress(progressData);
@@ -52,7 +52,7 @@ export function BatchQueueProvider({ children }: BatchQueueProviderProps) {
 
   // Poll for queue status every 2 seconds
   useEffect(() => {
-    if (!window.electronAPI) return;
+    if (!window.electronAPI?.batchGetStatus) return;
 
     const interval = setInterval(async () => {
       try {
@@ -68,14 +68,14 @@ export function BatchQueueProvider({ children }: BatchQueueProviderProps) {
 
   // Actions
   const startBatchProcessing = useCallback(async (fileIds: string[]) => {
-    if (!window.electronAPI) {
+    if (!window.electronAPI?.batchStart) {
       throw new Error('Electron API not available');
     }
     return window.electronAPI.batchStart(fileIds);
   }, []);
 
   const cancelBatchProcessing = useCallback(async () => {
-    if (!window.electronAPI) {
+    if (!window.electronAPI?.batchCancel) {
       throw new Error('Electron API not available');
     }
     return window.electronAPI.batchCancel();

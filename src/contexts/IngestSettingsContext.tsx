@@ -69,7 +69,7 @@ export function IngestSettingsProvider({ children }: IngestSettingsProviderProps
 
   // Load settings on mount (if electronAPI available)
   useEffect(() => {
-    if (window.electronAPI) {
+    if (window.electronAPI?.getAIConfig && window.electronAPI?.lexicon?.load && window.electronAPI?.loadConfig && window.electronAPI?.getShotTypes) {
       Promise.all([
         window.electronAPI.getAIConfig(),
         window.electronAPI.lexicon.load(),
@@ -113,7 +113,7 @@ export function IngestSettingsProvider({ children }: IngestSettingsProviderProps
     setSettings(prev => ({ ...prev, ...updates }));
 
     // Persist to backend if electronAPI available
-    if (window.electronAPI) {
+    if (window.electronAPI?.updateAIConfig && window.electronAPI?.lexicon?.save && window.electronAPI?.loadConfig && window.electronAPI?.saveConfig) {
       // Determine which settings changed and save to appropriate storage
       if ('aiProvider' in updates || 'aiModel' in updates) {
         // AI config changes
