@@ -1,6 +1,7 @@
 import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import { userEvent } from '@testing-library/user-event'
+import { renderWithProviders } from '../test/test-utils'
 import { CfexTransferWindow } from './CfexTransferWindow'
 import type { ElectronAPI } from '../types/electron'
 
@@ -87,7 +88,7 @@ describe('CfexTransferWindow', () => {
   describe('Initial Rendering (Idle State)', () => {
     test('renders folder picker when idle', () => {
       // ARRANGE: Component with no active transfer
-      render(<CfexTransferWindow />)
+      renderWithProviders(<CfexTransferWindow />)
 
       // ASSERT: Folder picker inputs visible (use more specific selectors to avoid checkbox/input ambiguity)
       expect(screen.getByLabelText(/source.*folder/i)).toBeInTheDocument()
@@ -98,7 +99,7 @@ describe('CfexTransferWindow', () => {
 
     test('renders start transfer button when idle', () => {
       // ARRANGE
-      render(<CfexTransferWindow />)
+      renderWithProviders(<CfexTransferWindow />)
 
       // ASSERT: Start button exists
       expect(screen.getByRole('button', { name: /start transfer/i })).toBeInTheDocument()
@@ -106,7 +107,7 @@ describe('CfexTransferWindow', () => {
 
     test('start button enabled when default source path set', async () => {
       // ARRANGE
-      render(<CfexTransferWindow />)
+      renderWithProviders(<CfexTransferWindow />)
 
       // Wait for auto-detection to complete
       await waitFor(() => {
@@ -128,7 +129,7 @@ describe('CfexTransferWindow', () => {
         return new Promise(() => {}) // Intentionally unresolved
       })
 
-      render(<CfexTransferWindow />)
+      renderWithProviders(<CfexTransferWindow />)
 
       const user = userEvent.setup()
 
@@ -173,7 +174,7 @@ describe('CfexTransferWindow', () => {
         errors: []
       })
 
-      render(<CfexTransferWindow />)
+      renderWithProviders(<CfexTransferWindow />)
 
       const user = userEvent.setup()
 
@@ -219,7 +220,7 @@ describe('CfexTransferWindow', () => {
         errors: []
       })
 
-      render(<CfexTransferWindow />)
+      renderWithProviders(<CfexTransferWindow />)
 
       // Verify listener registered
       expect(mockOnTransferProgress).toHaveBeenCalledWith(expect.any(Function))
@@ -263,7 +264,7 @@ describe('CfexTransferWindow', () => {
         errors: []
       })
 
-      render(<CfexTransferWindow />)
+      renderWithProviders(<CfexTransferWindow />)
 
       const user = userEvent.setup()
 
@@ -295,7 +296,7 @@ describe('CfexTransferWindow', () => {
         new Error('Source path not accessible')
       )
 
-      render(<CfexTransferWindow />)
+      renderWithProviders(<CfexTransferWindow />)
 
       const user = userEvent.setup()
 
@@ -328,7 +329,7 @@ describe('CfexTransferWindow', () => {
 
       mockOnTransferProgress.mockReturnValue(mockCleanup)
 
-      const { unmount } = render(<CfexTransferWindow />)
+      const { unmount } = renderWithProviders(<CfexTransferWindow />)
 
       // ACT: Unmount component
       unmount()
@@ -358,7 +359,7 @@ describe('CfexTransferWindow', () => {
         selectFolder: mockSelectFolder
       }
 
-      render(<CfexTransferWindow />)
+      renderWithProviders(<CfexTransferWindow />)
       const user = userEvent.setup()
 
       // ACT: Click Browse button for source folder
@@ -396,7 +397,7 @@ describe('CfexTransferWindow', () => {
         selectFolder: mockSelectFolder
       }
 
-      render(<CfexTransferWindow />)
+      renderWithProviders(<CfexTransferWindow />)
       const user = userEvent.setup()
 
       // ACT: Click Browse button
@@ -429,7 +430,7 @@ describe('CfexTransferWindow', () => {
         selectFolder: mockSelectFolder
       }
 
-      render(<CfexTransferWindow />)
+      renderWithProviders(<CfexTransferWindow />)
       const user = userEvent.setup()
 
       // ACT: Click Browse button
@@ -467,7 +468,7 @@ describe('CfexTransferWindow', () => {
           selectFolder: mockSelectFolder
         }
 
-        render(<CfexTransferWindow />)
+        renderWithProviders(<CfexTransferWindow />)
         const user = userEvent.setup()
 
         // ACT: Click Browse button
@@ -505,7 +506,7 @@ describe('CfexTransferWindow', () => {
         selectFolder: mockSelectFolder
       }
 
-      render(<CfexTransferWindow />)
+      renderWithProviders(<CfexTransferWindow />)
       const user = userEvent.setup()
 
       // ACT: Click Browse button
@@ -535,7 +536,7 @@ describe('CfexTransferWindow', () => {
   describe('Destination Enable/Disable Checkboxes', () => {
     test('renders checkbox for photos destination', () => {
       // ARRANGE
-      render(<CfexTransferWindow />)
+      renderWithProviders(<CfexTransferWindow />)
 
       // ASSERT: Photos checkbox exists and is checked by default
       const photosCheckbox = screen.getByRole('checkbox', { name: /photos destination/i })
@@ -545,7 +546,7 @@ describe('CfexTransferWindow', () => {
 
     test('renders checkbox for raw videos destination', () => {
       // ARRANGE
-      render(<CfexTransferWindow />)
+      renderWithProviders(<CfexTransferWindow />)
 
       // ASSERT: Videos checkbox exists and is checked by default
       const videosCheckbox = screen.getByRole('checkbox', { name: /raw videos destination/i })
@@ -555,7 +556,7 @@ describe('CfexTransferWindow', () => {
 
     test('disables photos input when photos checkbox unchecked', async () => {
       // ARRANGE
-      render(<CfexTransferWindow />)
+      renderWithProviders(<CfexTransferWindow />)
       const user = userEvent.setup()
 
       // Wait for auto-detection to complete
@@ -581,7 +582,7 @@ describe('CfexTransferWindow', () => {
 
     test('disables raw videos input when videos checkbox unchecked', async () => {
       // ARRANGE
-      render(<CfexTransferWindow />)
+      renderWithProviders(<CfexTransferWindow />)
       const user = userEvent.setup()
 
       // Wait for auto-detection to complete
@@ -617,7 +618,7 @@ describe('CfexTransferWindow', () => {
         errors: []
       })
 
-      render(<CfexTransferWindow />)
+      renderWithProviders(<CfexTransferWindow />)
       const user = userEvent.setup()
 
       // Wait for auto-detection to complete
@@ -659,7 +660,7 @@ describe('CfexTransferWindow', () => {
         errors: []
       })
 
-      render(<CfexTransferWindow />)
+      renderWithProviders(<CfexTransferWindow />)
       const user = userEvent.setup()
 
       // Wait for auto-detection to complete
@@ -705,7 +706,7 @@ describe('CfexTransferWindow', () => {
         errors: []
       })
 
-      render(<CfexTransferWindow />)
+      renderWithProviders(<CfexTransferWindow />)
       const user = userEvent.setup()
 
       // Wait for auto-detection to complete
@@ -749,7 +750,7 @@ describe('CfexTransferWindow', () => {
   describe('Proxy Videos Destination UI', () => {
     test('renders checkbox for proxy videos destination', () => {
       // ARRANGE
-      render(<CfexTransferWindow />)
+      renderWithProviders(<CfexTransferWindow />)
 
       // ASSERT: Proxy videos checkbox exists and is unchecked by default
       const proxyCheckbox = screen.getByRole('checkbox', { name: /proxy videos destination.*lucidlink/i })
@@ -759,7 +760,7 @@ describe('CfexTransferWindow', () => {
 
     test('renders input for proxy videos destination path', () => {
       // ARRANGE
-      render(<CfexTransferWindow />)
+      renderWithProviders(<CfexTransferWindow />)
 
       // ASSERT: Proxy videos input exists with correct placeholder
       const proxyInput = screen.getByPlaceholderText(/LucidLink.*proxy/i)
@@ -768,7 +769,7 @@ describe('CfexTransferWindow', () => {
 
     test('proxy input disabled when checkbox unchecked by default', async () => {
       // ARRANGE
-      render(<CfexTransferWindow />)
+      renderWithProviders(<CfexTransferWindow />)
 
       // Wait for auto-detection to complete
       await waitFor(() => {
@@ -782,7 +783,7 @@ describe('CfexTransferWindow', () => {
 
     test('enables proxy input when checkbox checked', async () => {
       // ARRANGE
-      render(<CfexTransferWindow />)
+      renderWithProviders(<CfexTransferWindow />)
       const user = userEvent.setup()
 
       // Wait for auto-detection to complete
@@ -804,7 +805,7 @@ describe('CfexTransferWindow', () => {
 
     test('proxy input is editable when checkbox checked', async () => {
       // ARRANGE
-      render(<CfexTransferWindow />)
+      renderWithProviders(<CfexTransferWindow />)
       const user = userEvent.setup()
 
       // Wait for auto-detection to complete
@@ -833,7 +834,7 @@ describe('CfexTransferWindow', () => {
         selectFolder: mockSelectFolder
       }
 
-      render(<CfexTransferWindow />)
+      renderWithProviders(<CfexTransferWindow />)
       const user = userEvent.setup()
 
       // Wait for auto-detection to complete
@@ -876,7 +877,7 @@ describe('CfexTransferWindow', () => {
       }
       Object.defineProperty(window, 'localStorage', { value: mockLocalStorage, writable: true })
 
-      render(<CfexTransferWindow />)
+      renderWithProviders(<CfexTransferWindow />)
       const user = userEvent.setup()
 
       // Wait for auto-detection to complete
@@ -915,7 +916,7 @@ describe('CfexTransferWindow', () => {
       // ARRANGE - Mock already set up in beforeEach
 
       // ACT
-      render(<CfexTransferWindow />)
+      renderWithProviders(<CfexTransferWindow />)
 
       // ASSERT
       await waitFor(() => {
@@ -937,7 +938,7 @@ describe('CfexTransferWindow', () => {
       )
 
       // ACT
-      render(<CfexTransferWindow />)
+      renderWithProviders(<CfexTransferWindow />)
 
       // ASSERT - Should show loading indicator
       expect(screen.getByText(/detecting cfex cards/i)).toBeInTheDocument()
@@ -957,7 +958,7 @@ describe('CfexTransferWindow', () => {
       )
 
       // ACT
-      render(<CfexTransferWindow />)
+      renderWithProviders(<CfexTransferWindow />)
 
       // ASSERT - Source input should be disabled during detection
       const sourceInput = screen.getByLabelText(/source folder/i)
@@ -974,7 +975,7 @@ describe('CfexTransferWindow', () => {
       })
 
       // ACT
-      render(<CfexTransferWindow />)
+      renderWithProviders(<CfexTransferWindow />)
 
       // ASSERT
       await waitFor(() => {
@@ -993,7 +994,7 @@ describe('CfexTransferWindow', () => {
       })
 
       // ACT
-      render(<CfexTransferWindow />)
+      renderWithProviders(<CfexTransferWindow />)
 
       // ASSERT: Use specific placeholder text to avoid checkbox/input ambiguity
       await waitFor(() => {
@@ -1014,7 +1015,7 @@ describe('CfexTransferWindow', () => {
       })
 
       // ACT
-      render(<CfexTransferWindow />)
+      renderWithProviders(<CfexTransferWindow />)
 
       // Wait for detection to complete
       await waitFor(() => {
@@ -1031,7 +1032,7 @@ describe('CfexTransferWindow', () => {
       mockDetectSources.mockRejectedValue(new Error('Detection failed'))
 
       // ACT
-      render(<CfexTransferWindow />)
+      renderWithProviders(<CfexTransferWindow />)
 
       // ASSERT - Should not crash, should clear detecting state
       await waitFor(() => {
@@ -1050,7 +1051,7 @@ describe('CfexTransferWindow', () => {
       })
 
       // ACT
-      render(<CfexTransferWindow />)
+      renderWithProviders(<CfexTransferWindow />)
 
       // ASSERT - After detection completes, loading indicator should be gone
       await waitFor(() => {
@@ -1066,7 +1067,7 @@ describe('CfexTransferWindow', () => {
       }))
 
       // ACT
-      render(<CfexTransferWindow />)
+      renderWithProviders(<CfexTransferWindow />)
 
       // ASSERT: Button disabled during detection
       const startButton = screen.getByRole('button', { name: /start transfer/i })
@@ -1111,7 +1112,7 @@ describe('CfexTransferWindow', () => {
         }
       })
 
-      render(<CfexTransferWindow />)
+      renderWithProviders(<CfexTransferWindow />)
       const user = userEvent.setup()
 
       // Wait for auto-detection to complete
@@ -1158,7 +1159,7 @@ describe('CfexTransferWindow', () => {
         }
       })
 
-      render(<CfexTransferWindow />)
+      renderWithProviders(<CfexTransferWindow />)
       const user = userEvent.setup()
 
       // Wait for auto-detection to complete
@@ -1196,7 +1197,7 @@ describe('CfexTransferWindow', () => {
         }
       })
 
-      render(<CfexTransferWindow />)
+      renderWithProviders(<CfexTransferWindow />)
       const user = userEvent.setup()
 
       // Wait for auto-detection to complete
@@ -1249,7 +1250,7 @@ describe('CfexTransferWindow', () => {
         }
       })
 
-      render(<CfexTransferWindow />)
+      renderWithProviders(<CfexTransferWindow />)
       const user = userEvent.setup()
 
       // Wait for auto-detection to complete
@@ -1307,7 +1308,7 @@ describe('CfexTransferWindow', () => {
       })
 
       const user = userEvent.setup()
-      render(<CfexTransferWindow />)
+      renderWithProviders(<CfexTransferWindow />)
 
       // ACT: Enable proxies and start transfer
       const proxyCheckbox = screen.getByRole('checkbox', { name: /proxy videos destination.*lucidlink/i })
@@ -1355,7 +1356,7 @@ describe('CfexTransferWindow', () => {
         onProxyProgress: mockOnProxyProgress
       }
 
-      render(<CfexTransferWindow />)
+      renderWithProviders(<CfexTransferWindow />)
 
       // ACT: Simulate proxy progress events
       if (proxyProgressCallback) {
@@ -1385,7 +1386,7 @@ describe('CfexTransferWindow', () => {
         onProxyProgress: mockOnProxyProgress
       }
 
-      const { unmount } = render(<CfexTransferWindow />)
+      const { unmount } = renderWithProviders(<CfexTransferWindow />)
 
       // ACT: Unmount component
       unmount()
