@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import type { FileMetadata, ShotType } from './types';
+import type { ShotType } from './types';
 import { SettingsModal } from './components/SettingsModal';
 import { Sidebar } from './components/Sidebar';
 import { CommandPalette, type Command } from './components/CommandPalette';
@@ -7,18 +7,34 @@ import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { BatchOperationsPanel } from './components/BatchOperationsPanel';
 import { CfexTransferWindow } from './components/CfexTransferWindow';
 import { useIngestSettings } from './contexts/IngestSettingsContext';
+import { useFileList } from './contexts/FileListContext';
 import './App.css';
 
 function App() {
   // Phase 5.5: Consume extended context values
   const { isAIConfigured, lexiconConfig, filenameRewrite, setFilenameRewrite } = useIngestSettings();
+
+  // Phase 5.6: Consume FileListContext
+  const {
+    folderPath,
+    files,
+    currentFileIndex,
+    selectedFileIds,
+    isFolderCompleted,
+    isFolderLoading,
+    handleSelectFolder,
+    handleToggleSelection,
+    handleNext,
+    handlePrevious,
+    handleCompleteFolder,
+    handleReopenFolder,
+    setFiles,
+    setCurrentFileIndex,
+  } = useFileList();
+
   // Tab navigation state
   const [currentTab, setCurrentTab] = useState<'ingest' | 'cfex'>('ingest');
 
-  const [folderPath, setFolderPath] = useState<string>('');
-  const [files, setFiles] = useState<FileMetadata[]>([]);
-  const [currentFileIndex, setCurrentFileIndex] = useState<number>(0);
-  const [selectedFileIds, setSelectedFileIds] = useState<Set<string>>(new Set());
   const skipNextVideoLoadRef = useRef<boolean>(false);
 
   // Structured naming fields
@@ -42,8 +58,6 @@ function App() {
   const [statusMessage, setStatusMessage] = useState<string>('');
   const [showSettings, setShowSettings] = useState(false);
   const [showCommandPalette, setShowCommandPalette] = useState(false);
-  const [isFolderCompleted, setIsFolderCompleted] = useState(false);
-  const [isFolderLoading, setIsFolderLoading] = useState(false);
 
   // Force re-render on window resize to ensure UI layout recalculates
   // Fixes issue where batch processing causes UI to stop responding to window resize
@@ -212,46 +226,6 @@ function App() {
       });
   }, [currentFile]);
 
-  const handleSelectFolder = async () => {
-    if (!window.electronAPI) return;
-    const path = await window.electronAPI.selectFolder();
-    if (path) {
-      setIsFolderLoading(true);
-      try {
-        setFolderPath(path);
-        const loadedFiles = await window.electronAPI.loadFiles();
-        setFiles(loadedFiles);
-        setCurrentFileIndex(0);
-        // Clear selection when switching folders
-        setSelectedFileIds(new Set());
-
-        // Load folder completion status
-        try {
-          const completed = await window.electronAPI.getFolderCompleted();
-          setIsFolderCompleted(completed);
-        } catch (error) {
-          console.error('Failed to load folder completion status:', error);
-          // Default to false (editable) if there's an error
-          setIsFolderCompleted(false);
-        }
-      } finally {
-        setIsFolderLoading(false);
-      }
-    }
-  };
-
-  const handleToggleSelection = (fileId: string, selected: boolean) => {
-    setSelectedFileIds(prev => {
-      const newSelection = new Set(prev);
-      if (selected) {
-        newSelection.add(fileId);
-      } else {
-        newSelection.delete(fileId);
-      }
-      return newSelection;
-    });
-  };
-
   const handleSave = async () => {
     if (!currentFile) return;
 
@@ -327,24 +301,10 @@ function App() {
     }
   };
 
-  const handleNext = () => {
-    if (currentFileIndex < files.length - 1) {
-      setCurrentFileIndex(currentFileIndex + 1);
-    }
-  };
-
-  const handlePrevious = () => {
-    if (currentFileIndex > 0) {
-      setCurrentFileIndex(currentFileIndex - 1);
-    }
-  };
-
-  const handleCompleteFolder = async () => {
-    if (!folderPath) return;
-
+  // Wrapped handlers to add status messages (context handlers don't manage UI feedback)
+  const handleCompleteFolderWithStatus = async () => {
     try {
-      await window.electronAPI.setFolderCompleted(true);
-      setIsFolderCompleted(true);
+      await handleCompleteFolder();
       setStatusMessage('✓ Folder marked as COMPLETED (locked)');
     } catch (error) {
       console.error('Failed to complete folder:', error);
@@ -352,12 +312,9 @@ function App() {
     }
   };
 
-  const handleReopenFolder = async () => {
-    if (!folderPath) return;
-
+  const handleReopenFolderWithStatus = async () => {
     try {
-      await window.electronAPI.setFolderCompleted(false);
-      setIsFolderCompleted(false);
+      await handleReopenFolder();
       setStatusMessage('✓ Folder reopened for editing');
     } catch (error) {
       console.error('Failed to reopen folder:', error);
@@ -999,7 +956,7 @@ function App() {
               <div>
                 {isFolderCompleted ? (
                   <button
-                    onClick={handleReopenFolder}
+                    onClick={handleReopenFolderWithStatus}
                     className="btn"
                     style={{
                       width: '100%',
@@ -1015,7 +972,7 @@ function App() {
                   </button>
                 ) : (
                   <button
-                    onClick={handleCompleteFolder}
+                    onClick={handleCompleteFolderWithStatus}
                     className="btn"
                     style={{
                       width: '100%',

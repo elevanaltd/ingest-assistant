@@ -11,6 +11,32 @@ const mockElectronAPI = {
   setFolderCompleted: vi.fn(),
 };
 
+// Helper to create complete FileMetadata objects
+function createMockFile(partial: Partial<FileMetadata>): FileMetadata {
+  return {
+    id: 'test-id',
+    originalFilename: 'test.jpg',
+    currentFilename: 'test.jpg',
+    filePath: '/test/test.jpg',
+    extension: 'jpg',
+    fileType: 'image',
+    shotName: '',
+    keywords: [],
+    lockedFields: [],
+    location: '',
+    subject: '',
+    action: '',
+    shotType: '',
+    processedByAI: false,
+    createdAt: new Date(),
+    createdBy: 'test',
+    modifiedAt: new Date(),
+    modifiedBy: 'test',
+    version: '1.0.0',
+    ...partial,
+  };
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
   (window as any).electronAPI = mockElectronAPI;
@@ -35,32 +61,8 @@ describe('FileListContext', () => {
   describe('handleSelectFolder', () => {
     it('should load folder and files when path is selected', async () => {
       const mockFiles: FileMetadata[] = [
-        {
-          id: 'test-1',
-          filePath: '/test/file1.jpg',
-          fileName: 'file1.jpg',
-          fileType: 'image',
-          shotName: '',
-          keywords: [],
-          location: '',
-          subject: '',
-          action: '',
-          shotType: '',
-          shotNumber: 1,
-        },
-        {
-          id: 'test-2',
-          filePath: '/test/file2.jpg',
-          fileName: 'file2.jpg',
-          fileType: 'image',
-          shotName: '',
-          keywords: [],
-          location: '',
-          subject: '',
-          action: '',
-          shotType: '',
-          shotNumber: 2,
-        },
+        createMockFile({ id: 'test-1', filePath: '/test/file1.jpg', originalFilename: 'file1.jpg', currentFilename: 'file1.jpg', shotNumber: 1 }),
+        createMockFile({ id: 'test-2', filePath: '/test/file2.jpg', originalFilename: 'file2.jpg', currentFilename: 'file2.jpg', shotNumber: 2 }),
       ];
 
       mockElectronAPI.selectFolder.mockResolvedValue('/test/folder');
@@ -209,8 +211,8 @@ describe('FileListContext', () => {
   describe('handleNext', () => {
     it('should increment currentFileIndex', async () => {
       const mockFiles: FileMetadata[] = [
-        { id: '1', filePath: '/test/1.jpg', fileName: '1.jpg', fileType: 'image', shotName: '', keywords: [], location: '', subject: '', action: '', shotType: '', shotNumber: 1 },
-        { id: '2', filePath: '/test/2.jpg', fileName: '2.jpg', fileType: 'image', shotName: '', keywords: [], location: '', subject: '', action: '', shotType: '', shotNumber: 2 },
+        createMockFile({ id: '1', filePath: '/test/1.jpg', originalFilename: '1.jpg', currentFilename: '1.jpg', shotNumber: 1 }),
+        createMockFile({ id: '2', filePath: '/test/2.jpg', originalFilename: '2.jpg', currentFilename: '2.jpg', shotNumber: 2 }),
       ];
 
       mockElectronAPI.selectFolder.mockResolvedValue('/test');
@@ -236,7 +238,7 @@ describe('FileListContext', () => {
 
     it('should not increment beyond last file', async () => {
       const mockFiles: FileMetadata[] = [
-        { id: '1', filePath: '/test/1.jpg', fileName: '1.jpg', fileType: 'image', shotName: '', keywords: [], location: '', subject: '', action: '', shotType: '', shotNumber: 1 },
+        createMockFile({ id: '1', filePath: '/test/1.jpg', originalFilename: '1.jpg', currentFilename: '1.jpg', shotNumber: 1 }),
       ];
 
       mockElectronAPI.selectFolder.mockResolvedValue('/test');
@@ -262,8 +264,8 @@ describe('FileListContext', () => {
   describe('handlePrevious', () => {
     it('should decrement currentFileIndex', async () => {
       const mockFiles: FileMetadata[] = [
-        { id: '1', filePath: '/test/1.jpg', fileName: '1.jpg', fileType: 'image', shotName: '', keywords: [], location: '', subject: '', action: '', shotType: '', shotNumber: 1 },
-        { id: '2', filePath: '/test/2.jpg', fileName: '2.jpg', fileType: 'image', shotName: '', keywords: [], location: '', subject: '', action: '', shotType: '', shotNumber: 2 },
+        createMockFile({ id: '1', filePath: '/test/1.jpg', originalFilename: '1.jpg', currentFilename: '1.jpg', shotNumber: 1 }),
+        createMockFile({ id: '2', filePath: '/test/2.jpg', originalFilename: '2.jpg', currentFilename: '2.jpg', shotNumber: 2 }),
       ];
 
       mockElectronAPI.selectFolder.mockResolvedValue('/test');
@@ -431,7 +433,7 @@ describe('FileListContext', () => {
       });
 
       const newFiles: FileMetadata[] = [
-        { id: '1', filePath: '/test/1.jpg', fileName: '1.jpg', fileType: 'image', shotName: '', keywords: [], location: '', subject: '', action: '', shotType: '', shotNumber: 1 },
+        createMockFile({ id: '1', filePath: '/test/1.jpg', originalFilename: '1.jpg', currentFilename: '1.jpg', shotNumber: 1 }),
       ];
 
       act(() => {
