@@ -97,4 +97,132 @@ describe('BatchQueueContext', () => {
       expect(screen.getByTestId('queue-items')).toBeInTheDocument();
     });
   });
+
+  describe('IPC Integration', () => {
+    it('subscribes to batch progress on mount', () => {
+      render(
+        <BatchQueueProvider>
+          <div>Test</div>
+        </BatchQueueProvider>
+      );
+
+      expect(mockElectronAPI.onBatchProgress).toHaveBeenCalledTimes(1);
+      expect(mockElectronAPI.onBatchProgress).toHaveBeenCalledWith(expect.any(Function));
+    });
+
+    it('cleans up progress subscription on unmount', () => {
+      const mockCleanup = vi.fn();
+      mockElectronAPI.onBatchProgress.mockReturnValue(mockCleanup);
+
+      const { unmount } = render(
+        <BatchQueueProvider>
+          <div>Test</div>
+        </BatchQueueProvider>
+      );
+
+      expect(mockCleanup).not.toHaveBeenCalled();
+
+      unmount();
+
+      expect(mockCleanup).toHaveBeenCalledTimes(1);
+    });
+
+    it('provides startBatchProcessing action', async () => {
+      function ActionConsumer() {
+        const { startBatchProcessing } = useBatchQueue();
+
+        return (
+          <button
+            data-testid="start-btn"
+            onClick={() => startBatchProcessing(['file1', 'file2'])}
+          >
+            Start
+          </button>
+        );
+      }
+
+      render(
+        <BatchQueueProvider>
+          <ActionConsumer />
+        </BatchQueueProvider>
+      );
+
+      const button = screen.getByTestId('start-btn');
+      button.click();
+
+      // Wait for async action
+      await vi.waitFor(() => {
+        expect(mockElectronAPI.batchStart).toHaveBeenCalledWith(['file1', 'file2']);
+      });
+    });
+
+    it('provides cancelBatchProcessing action', async () => {
+      function ActionConsumer() {
+        const { cancelBatchProcessing } = useBatchQueue();
+
+        return (
+          <button
+            data-testid="cancel-btn"
+            onClick={() => cancelBatchProcessing()}
+          >
+            Cancel
+          </button>
+        );
+      }
+
+      render(
+        <BatchQueueProvider>
+          <ActionConsumer />
+        </BatchQueueProvider>
+      );
+
+      const button = screen.getByTestId('cancel-btn');
+      button.click();
+
+      // Wait for async action
+      await vi.waitFor(() => {
+        expect(mockElectronAPI.batchCancel).toHaveBeenCalledTimes(1);
+      });
+    });
+
+    it('throws error when starting batch without electronAPI', async () => {
+      delete (window as any).electronAPI;
+
+      let thrownError: Error | null = null;
+
+      function ActionConsumer() {
+        const { startBatchProcessing } = useBatchQueue();
+
+        return (
+          <button
+            data-testid="start-btn"
+            onClick={async () => {
+              try {
+                await startBatchProcessing(['file1']);
+              } catch (error) {
+                thrownError = error as Error;
+              }
+            }}
+          >
+            Start
+          </button>
+        );
+      }
+
+      render(
+        <BatchQueueProvider>
+          <ActionConsumer />
+        </BatchQueueProvider>
+      );
+
+      const button = screen.getByTestId('start-btn');
+      button.click();
+
+      // Wait for the async operation and error capture
+      await vi.waitFor(() => {
+        expect(thrownError).toBeTruthy();
+        expect(thrownError?.message).toBe('Electron API not available');
+      });
+    });
+  });
 });
