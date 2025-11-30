@@ -157,23 +157,57 @@ export function CfexTransferProvider({ children }: CfexTransferProviderProps) {
       totalBytesExpected: number;
       estimatedTimeRemaining: number;
     }) => {
-      setState(prev => ({
-        ...prev,
-        transferStatus: 'transferring',
-        currentFile: progress.currentFile,
-        filesCompleted: progress.fileIndex - 1, // fileIndex is 1-based
-        filesTotal: progress.filesTotal,
-        bytesTransferred: progress.totalBytesTransferred,
-        bytesTotal: progress.totalBytesExpected,
-        transferProgress: progress.percentComplete,
-      }));
+      setState(prev => {
+        // Guard: Ignore progress updates if transfer was cancelled
+        // Prevents "resurrection" of cancelled transfers (code-review finding)
+        if (!prev.isTransferring && prev.transferStatus === 'idle') {
+          return prev;
+        }
+
+        return {
+          ...prev,
+          transferStatus: 'transferring',
+          currentFile: progress.currentFile,
+          filesCompleted: progress.fileIndex - 1, // fileIndex is 1-based
+          filesTotal: progress.filesTotal,
+          bytesTransferred: progress.totalBytesTransferred,
+          bytesTotal: progress.totalBytesExpected,
+          transferProgress: progress.percentComplete,
+        };
+      });
     };
 
     // Subscribe to IPC events
-    const cleanup = window.electronAPI.cfex.onTransferProgress(progressHandler);
+    const cleanupProgress = window.electronAPI.cfex.onTransferProgress(progressHandler);
+
+    // Subscribe to transfer completion event (if available)
+    // Note: onTransferComplete may not exist yet - check dynamically
+    let cleanupComplete: (() => void) | undefined;
+    const cfexApi = window.electronAPI.cfex as Record<string, unknown>;
+    if (typeof cfexApi.onTransferComplete === 'function') {
+      cleanupComplete = (cfexApi.onTransferComplete as (callback: (result: {
+        success: boolean;
+        filesTransferred: number;
+        totalFiles: number;
+        errors?: string[];
+      }) => void) => () => void)((result) => {
+        setState(prev => ({
+          ...prev,
+          isTransferring: false,
+          transferStatus: result.success ? 'complete' : 'error',
+          filesCompleted: result.filesTransferred,
+          filesTotal: result.totalFiles,
+          transferProgress: 100,
+          lastError: result.errors?.join(', ') || null,
+        }));
+      });
+    }
 
     // Cleanup on unmount
-    return cleanup;
+    return () => {
+      cleanupProgress();
+      cleanupComplete?.();
+    };
   }, []);
 
   // Config update action
@@ -217,15 +251,29 @@ export function CfexTransferProvider({ children }: CfexTransferProviderProps) {
     }
   }, [state.sourcePath, state.photosDestination, state.videosDestination, state.photosEnabled, state.videosEnabled]);
 
-  // Cancel transfer action (manual reset since no IPC cancelTransfer exists)
+  /**
+   * Cancel transfer action
+   *
+   * ⚠️ LIMITATION (code-review-specialist + quality-observer finding):
+   * This is a UI-ONLY reset. The backend transfer process continues running.
+   * No IPC cancelTransfer method exists yet in electron/services/cfexTransferHandlers.ts.
+   *
+   * RISK: User may believe transfer stopped when backend continues.
+   * MITIGATION:
+   * 1. Guard in progressHandler ignores updates after cancel (prevents "resurrection")
+   * 2. UI should show warning: "Transfer will complete in background"
+   * 3. Future: Implement IPC cancel signal (GitHub Issue TBD)
+   *
+   * DO NOT expose "Cancel" button in CfexTransferWindow until backend support exists.
+   */
   const cancelTransfer = useCallback(async () => {
-    // Note: No IPC cancelTransfer method exists yet - this is a manual reset
-    console.warn('[CfexTransferContext] cancelTransfer not implemented in IPC - performing manual reset');
+    console.warn('[CfexTransferContext] cancelTransfer: UI-only reset - backend continues running');
 
     setState(prev => ({
       ...prev,
       isTransferring: false,
       transferStatus: 'idle',
+      currentFile: null,
     }));
   }, []);
 

@@ -207,6 +207,7 @@ describe('CfexTransferContext', () => {
           progressHandler = handler;
           return vi.fn(); // Cleanup function
         }),
+        startTransfer: vi.fn().mockResolvedValue(undefined),
       },
     };
 
@@ -219,6 +220,11 @@ describe('CfexTransferContext', () => {
     // Wait for mount
     await waitFor(() => {
       expect(mockElectronAPI.cfex.onTransferProgress).toHaveBeenCalled();
+    });
+
+    // Start transfer first (required for progress updates to be accepted)
+    await act(async () => {
+      await result.current.startTransfer();
     });
 
     // Simulate progress event
