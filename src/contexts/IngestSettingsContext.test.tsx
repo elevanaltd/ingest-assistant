@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import { renderHook } from '@testing-library/react';
 import { IngestSettingsProvider, useIngestSettings } from './IngestSettingsContext';
+import type { LexiconConfig } from '../types';
 
 describe('IngestSettingsContext', () => {
   beforeEach(() => {
@@ -240,6 +241,178 @@ describe('IngestSettingsContext', () => {
         filenameTemplate: '{location}-{subject}-{action}-{shotType}',
         proxyPresetId: '2k-prores-proxy',
       },
+    });
+  });
+});
+
+// Phase 5.5: Extended context values (isAIConfigured, lexiconConfig, filenameRewrite)
+describe('IngestSettingsContext - Phase 5.5 Extensions', () => {
+  // Test component to access extended context values
+  function TestConsumer() {
+    const { settings, isAIConfigured, lexiconConfig, filenameRewrite, setFilenameRewrite } = useIngestSettings();
+
+    return (
+      <div>
+        <div data-testid="ai-configured">{String(isAIConfigured)}</div>
+        <div data-testid="lexicon-pattern">{lexiconConfig?.pattern || 'none'}</div>
+        <div data-testid="filename-rewrite">{String(filenameRewrite)}</div>
+        <div data-testid="ai-provider">{settings.aiProvider}</div>
+        <button onClick={() => setFilenameRewrite(true)}>Enable Rewrite</button>
+      </div>
+    );
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    delete (window as { electronAPI?: unknown }).electronAPI;
+  });
+
+  describe('isAIConfigured', () => {
+    it('should default to false when electronAPI unavailable', () => {
+      render(
+        <IngestSettingsProvider>
+          <TestConsumer />
+        </IngestSettingsProvider>
+      );
+
+      expect(screen.getByTestId('ai-configured')).toHaveTextContent('false');
+    });
+
+    it('should load isAIConfigured from electronAPI on mount', async () => {
+      (window as { electronAPI: unknown }).electronAPI = {
+        isAIConfigured: vi.fn().mockResolvedValue(true),
+        getAIConfig: vi.fn().mockResolvedValue({ provider: 'openrouter', model: 'test' }),
+        lexicon: {
+          load: vi.fn().mockResolvedValue({ pattern: '{location}-{subject}-{shotType}' }),
+          save: vi.fn().mockResolvedValue(undefined),
+        },
+        loadConfig: vi.fn().mockResolvedValue({ cfex: {} }),
+        getShotTypes: vi.fn().mockResolvedValue(['WS', 'MID', 'CU']),
+      };
+
+      render(
+        <IngestSettingsProvider>
+          <TestConsumer />
+        </IngestSettingsProvider>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId('ai-configured')).toHaveTextContent('true');
+      });
+    });
+  });
+
+  describe('lexiconConfig', () => {
+    it('should default to undefined when electronAPI unavailable', () => {
+      render(
+        <IngestSettingsProvider>
+          <TestConsumer />
+        </IngestSettingsProvider>
+      );
+
+      expect(screen.getByTestId('lexicon-pattern')).toHaveTextContent('none');
+    });
+
+    it('should load lexiconConfig from electronAPI on mount', async () => {
+      const mockLexicon: LexiconConfig = {
+        pattern: '{location}-{subject}-{action}-{shotType}',
+        commonLocations: 'kitchen,office',
+        commonSubjects: 'oven,desk',
+        commonActions: 'cleaning,typing',
+        wordPreferences: 'color',
+        aiInstructions: 'Be concise',
+        goodExamples: 'kitchen-oven-cleaning-CU',
+        badExamples: 'bad-example',
+      };
+
+      (window as { electronAPI: unknown }).electronAPI = {
+        isAIConfigured: vi.fn().mockResolvedValue(false),
+        getAIConfig: vi.fn().mockResolvedValue({ provider: 'openrouter', model: 'test' }),
+        lexicon: {
+          load: vi.fn().mockResolvedValue(mockLexicon),
+          save: vi.fn().mockResolvedValue(undefined),
+        },
+        loadConfig: vi.fn().mockResolvedValue({ cfex: {} }),
+        getShotTypes: vi.fn().mockResolvedValue(['WS']),
+      };
+
+      render(
+        <IngestSettingsProvider>
+          <TestConsumer />
+        </IngestSettingsProvider>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId('lexicon-pattern')).toHaveTextContent(mockLexicon.pattern);
+      });
+    });
+  });
+
+  describe('filenameRewrite (session-ephemeral)', () => {
+    it('should default to false', () => {
+      render(
+        <IngestSettingsProvider>
+          <TestConsumer />
+        </IngestSettingsProvider>
+      );
+
+      expect(screen.getByTestId('filename-rewrite')).toHaveTextContent('false');
+    });
+
+    it('should allow setFilenameRewrite to update state', async () => {
+      render(
+        <IngestSettingsProvider>
+          <TestConsumer />
+        </IngestSettingsProvider>
+      );
+
+      expect(screen.getByTestId('filename-rewrite')).toHaveTextContent('false');
+
+      screen.getByRole('button', { name: /enable rewrite/i }).click();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('filename-rewrite')).toHaveTextContent('true');
+      });
+    });
+
+    it('should remain false after settings updates (never persisted)', async () => {
+      (window as { electronAPI: unknown }).electronAPI = {
+        isAIConfigured: vi.fn().mockResolvedValue(false),
+        getAIConfig: vi.fn().mockResolvedValue({ provider: 'openrouter', model: 'test' }),
+        updateAIConfig: vi.fn().mockResolvedValue(undefined),
+        lexicon: {
+          load: vi.fn().mockResolvedValue({ pattern: '{location}-{subject}-{shotType}' }),
+          save: vi.fn().mockResolvedValue(undefined),
+        },
+        loadConfig: vi.fn().mockResolvedValue({ cfex: {} }),
+        saveConfig: vi.fn().mockResolvedValue(undefined),
+        getShotTypes: vi.fn().mockResolvedValue(['WS']),
+      };
+
+      const TestUpdater = () => {
+        const { updateSettings, filenameRewrite } = useIngestSettings();
+        return (
+          <div>
+            <div data-testid="filename-rewrite">{String(filenameRewrite)}</div>
+            <button onClick={() => updateSettings({ aiProvider: 'anthropic' })}>Update Settings</button>
+          </div>
+        );
+      };
+
+      render(
+        <IngestSettingsProvider>
+          <TestUpdater />
+        </IngestSettingsProvider>
+      );
+
+      screen.getByRole('button', { name: /update settings/i }).click();
+
+      await waitFor(() => {
+        expect((window as { electronAPI: { updateAIConfig: unknown } }).electronAPI.updateAIConfig).toHaveBeenCalled();
+      });
+
+      // filenameRewrite should still be false (never persisted)
+      expect(screen.getByTestId('filename-rewrite')).toHaveTextContent('false');
     });
   });
 });

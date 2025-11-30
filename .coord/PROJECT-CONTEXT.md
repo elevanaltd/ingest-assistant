@@ -214,9 +214,9 @@ D0→D1→D2→D3→B0(Phase 1a)→B2(1a COMPLETE)→1c COMPLETE→Phase 1b(B2.1
 
 ### 🔄 Active Work: Feature-Context Architecture (Issue #102)
 
-**Status:** VALIDATED → Ready for Implementation
+**Status:** Phases 5.2-5.4 COMPLETE → Phase 5 (App.tsx Cleanup) + Phase 6 (Validation) REMAINING
 **GitHub:** https://github.com/elevanaltd/ingest-assistant/issues/102
-**Validation:** technical-architect CONDITIONAL GO (2025-11-30)
+**Last Session:** 2025-11-30 (holistic-orchestrator: 98/100 reliability, APPROVED)
 
 **Problem:** God components with scattered state
 - SettingsModal.tsx: 1146 LOC (37 useState)
@@ -231,19 +231,23 @@ src/hooks/        → useIngestSettings, useCfexTransfer, useBatchQueue
 ```
 
 **Phases:**
-1. Scaffold (2-3h) - directories + AppProviders + test-utils
-2. IngestSettingsContext (6-8h) - LOW RISK
-3. BatchQueueContext (4-6h) - MEDIUM RISK
-4. CfexTransferContext (6-8h) - HIGH RISK (tab state persistence critical)
-5. App.tsx Cleanup (4-6h) - pure tab router
-6. Validation (4-6h) - all 1034+ tests + code review
+- ✅ Phase 1: Scaffold - AppProviders + test-utils (COMPLETE - PR #104)
+- ✅ Phase 5.1: AppProviders integration at App root (COMPLETE)
+- ✅ Phase 5.2: SettingsModal → useIngestSettings (7 commits, +7 tests)
+- ✅ Phase 5.3: BatchOperationsPanel → useBatchQueue (1 commit, +3 tests)
+- ✅ Phase 5.4: CfexTransferWindow → useCfexTransfer (3 commits, +10 tests)
+- [ ] Phase 5: App.tsx Cleanup (4-6h) - pure tab router (~200 LOC target)
+- [ ] Phase 6: Validation (4-6h) - all 1081+ tests + code review
 
-**Mandatory Conditions:**
-- Volatile State Partition (separate progress from config)
-- IPC Singleton Safety (providers at App root, never unmounted)
-- Safe Fallback (window.electronAPI check)
+**Achievements (2025-11-30):**
+- Tab persistence verified (state survives tab switches)
+- IPC subscriptions centralized (no duplication for main features)
+- TDD discipline maintained (RED→GREEN commits: 16c30d1→c04d105, 3438d47→36ffd16)
+- Architecture: AppProviders (root singleton) → IngestSettingsProvider + BatchQueueProvider + CfexTransferProvider
 
-**Estimated:** ~30-40 hours (1.5-2 weeks)
+**Tech Debt Identified (non-blocking):**
+- A: Proxy progress duplication → create ProxyProvider (future Phase 6+)
+- B: UI-only cancellation → implement IPC cancel (feature card)
 
 ---
 
