@@ -1,6 +1,6 @@
 # Ingest Assistant - Project Context
 
-**Last Updated:** 2025-11-29 | **Version:** v2.3.0 | **Branch:** main (Phase 1b COMPLETE)
+**Last Updated:** 2025-11-30 | **Version:** v2.3.0 | **Branch:** main (Phase 1b COMPLETE)
 
 ---
 
@@ -211,6 +211,39 @@ D0→D1→D2→D3→B0(Phase 1a)→B2(1a COMPLETE)→1c COMPLETE→Phase 1b(B2.1
 
 ### Future Phases
 - **Issue #63:** Reference Catalog (3-6 months)
+
+### 🔄 Active Work: Feature-Context Architecture (Issue #102)
+
+**Status:** VALIDATED → Ready for Implementation
+**GitHub:** https://github.com/elevanaltd/ingest-assistant/issues/102
+**Validation:** technical-architect CONDITIONAL GO (2025-11-30)
+
+**Problem:** God components with scattered state
+- SettingsModal.tsx: 1146 LOC (37 useState)
+- App.tsx: 1077 LOC (28 useState)
+- Cross-tab coupling, CFEx config drift risk
+
+**Solution:** Feature-Context Architecture
+```
+src/contexts/     → IngestSettings, CfexTransfer, BatchQueue
+src/providers/    → AppProviders.tsx (composition point)
+src/hooks/        → useIngestSettings, useCfexTransfer, useBatchQueue
+```
+
+**Phases:**
+1. Scaffold (2-3h) - directories + AppProviders + test-utils
+2. IngestSettingsContext (6-8h) - LOW RISK
+3. BatchQueueContext (4-6h) - MEDIUM RISK
+4. CfexTransferContext (6-8h) - HIGH RISK (tab state persistence critical)
+5. App.tsx Cleanup (4-6h) - pure tab router
+6. Validation (4-6h) - all 1034+ tests + code review
+
+**Mandatory Conditions:**
+- Volatile State Partition (separate progress from config)
+- IPC Singleton Safety (providers at App root, never unmounted)
+- Safe Fallback (window.electronAPI check)
+
+**Estimated:** ~30-40 hours (1.5-2 weeks)
 
 ---
 

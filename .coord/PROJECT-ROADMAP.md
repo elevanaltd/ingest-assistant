@@ -101,6 +101,37 @@
 
 ---
 
+## Current Work
+
+### Issue #102: Feature-Context Architecture (ACTIVE)
+
+**Timeline:** ~30-40 hours (1.5-2 weeks) | **Status:** VALIDATED → Ready for Implementation
+**GitHub:** https://github.com/elevanaltd/ingest-assistant/issues/102
+
+**Problem:** God components with scattered state
+- SettingsModal.tsx: 1146 LOC (37 useState) - mixes lexicon+AI+CFEx+ingestion
+- App.tsx: 1077 LOC (28 useState) - state orchestration + UI
+- Cross-tab coupling, CFEx config drift risk
+
+**Solution:** Feature-Context Architecture
+```
+src/contexts/     → IngestSettings, CfexTransfer, BatchQueue
+src/providers/    → AppProviders.tsx (composition point)
+src/hooks/        → useIngestSettings, useCfexTransfer, useBatchQueue
+```
+
+**Implementation Phases:**
+- [ ] Phase 1: Scaffold (2-3h) - directories + AppProviders + test-utils
+- [ ] Phase 2: IngestSettingsContext (6-8h) - LOW RISK
+- [ ] Phase 3: BatchQueueContext (4-6h) - MEDIUM RISK
+- [ ] Phase 4: CfexTransferContext (6-8h) - HIGH RISK
+- [ ] Phase 5: App.tsx Cleanup (4-6h) - pure tab router
+- [ ] Phase 6: Validation (4-6h) - all tests + code review
+
+**Validation:** technical-architect CONDITIONAL GO (2025-11-30)
+
+---
+
 ## Future Work
 
 ### Issue #63: Reference Catalog (DEFERRED)
@@ -126,10 +157,10 @@
 
 ### Tier 4 Enhancements (Backlog)
 
-**Component Decomposition:**
-- [ ] Extract App.tsx into smaller components (currently 800+ lines)
-- [ ] Create domain-specific components (MetadataForm, FileViewer)
-- [ ] Improve component testability
+**Component Decomposition:** → **SUPERSEDED by Issue #102**
+- [x] Extract App.tsx into smaller components → Feature-Context Architecture
+- [x] Create domain-specific components → Context-based extraction
+- [x] Improve component testability → render-with-providers pattern
 
 **Error Handling:**
 - [ ] Standardize error boundaries
