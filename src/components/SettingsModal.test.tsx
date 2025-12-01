@@ -1694,8 +1694,11 @@ describe('SettingsModal', () => {
         expect(window.electronAPI.loadConfig).toHaveBeenCalled();
       });
 
-      const proxySelect = screen.getByLabelText(/Proxy Format/i) as HTMLSelectElement;
-      expect(proxySelect.value).toBe('1080p-h264-crf18');
+      // Wait for context to propagate the loaded value
+      await waitFor(() => {
+        const proxySelect = screen.getByLabelText(/Proxy Format/i) as HTMLSelectElement;
+        expect(proxySelect.value).toBe('1080p-h264-crf18');
+      });
     });
 
     it('should save proxy preset selection when Save button clicked', async () => {
@@ -1806,8 +1809,10 @@ describe('SettingsModal', () => {
         expect(window.electronAPI.loadConfig).toHaveBeenCalled();
       });
 
-      // Lexicon fields should be populated from context
-      expect(screen.getByDisplayValue('kitchen, bathroom')).toBeInTheDocument();
+      // Wait for lexicon values to propagate from context
+      await waitFor(() => {
+        expect(screen.getByDisplayValue('kitchen, bathroom')).toBeInTheDocument();
+      });
       expect(screen.getByDisplayValue('oven, sink')).toBeInTheDocument();
       expect(screen.getByDisplayValue('cleaning')).toBeInTheDocument();
     });
