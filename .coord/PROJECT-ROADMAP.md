@@ -1,6 +1,6 @@
 # Ingest Assistant - Project Roadmap
 
-**Last Updated:** 2025-12-01 | **Current Phase:** Issue #102 COMPLETE (PR #107)
+**Last Updated:** 2025-12-01 | **Current Phase:** Issue #102 Phase 7 COMPLETE
 
 ---
 
@@ -17,7 +17,7 @@
 | Phase 1c | CFEx Power Features (+104 tests) | Nov 26, 2025 |
 | Bug Fix | Filename ID Stability (PR #93, +5 tests) | Nov 27, 2025 |
 | Phase 1b | CFEx Proxy Generation (B3 validated, +80 tests) | Nov 29, 2025 |
-| Issue #102 | Feature-Context Architecture (PR #107, +24 tests) | Dec 1, 2025 |
+| Issue #102 | Feature-Context Architecture Phase 7 (+128 tests) | Dec 1, 2025 |
 
 **Full history:** [`PROJECT-HISTORY.md`](PROJECT-HISTORY.md)
 
@@ -102,17 +102,19 @@
 
 ---
 
-## Recently Completed
+## Current Work
 
-### Issue #102: Feature-Context Architecture - ✅ COMPLETE
+### Issue #102: Feature-Context Architecture - Phase 7 COMPLETE
 
-**Timeline:** Dec 1, 2025 | **Status:** COMPLETE (PR #107 merged)
+**Timeline:** Dec 1, 2025 | **Status:** Phase 7 COMPLETE, Phase 8 REMAINING
 **GitHub:** https://github.com/elevanaltd/ingest-assistant/issues/102
 
 **Problem Solved:** God components with scattered state
-- SettingsModal.tsx: 1146 LOC → 537 LOC (53% reduction)
-- App.tsx: 1081 LOC → 874 LOC (19% reduction)
-- Tests: 1088 → 1112 (+24 new context tests)
+- App.tsx: 875 → 242 LOC (72% reduction) ✅
+- SettingsModal: 1077 LOC (monolithic) → modular directory (5 components) ✅
+- IngestTabContent.tsx: extracted (591 LOC) ✅
+- MediaViewer.tsx: extracted (137 LOC) ✅
+- Tests: 1034 → 1162 (+128 new tests) ✅
 
 **Architecture Delivered:**
 ```
@@ -122,18 +124,27 @@ main.tsx → AppProviders (root singleton)
   ├─ CfexTransferProvider (transfer + tab persistence)
   ├─ FileListProvider (file navigation)
   └─ MetadataFormProvider (form state)
-       └─ App.tsx (tab routing + global UI)
+       └─ App.tsx (pure tab router, 242 LOC)
+
+src/components/SettingsModal/
+  ├─ index.tsx (640 LOC) - state container + tab shell
+  ├─ LexiconTab.tsx (189 LOC) - presentational
+  ├─ AITab.tsx (157 LOC) - presentational
+  ├─ CfexTab.tsx (150 LOC) - presentational
+  └─ IngestionTab.tsx (169 LOC) - presentational
 ```
 
-**Implementation Phases (All Complete):**
+**Phases Completed:**
 - [x] Phase 1: Scaffold - AppProviders + test-utils (PR #104)
-- [x] Phase 5.1-5.4: SettingsModal, BatchOps, CfexWindow migrations
-- [x] Phase 5.5: IngestSettingsContext extension
-- [x] Phase 5.6: FileListContext extraction
-- [x] Phase 5.7: MetadataFormContext extraction
-- [x] Phase 5.8: Final cleanup (MIP decision)
+- [x] Phase 5.1-5.7: Context extractions
+- [x] Phase 5.8: App.tsx cleanup (875→242 LOC)
+- [x] Phase 7: SettingsModal decomposition (1077 LOC → 5 tab components)
 
-**Validation:** code-review-specialist 8.5/10 GO | QG: Tests 1112✅ Lint 0✅ Types 0✅
+**Phase 8 Remaining (MEDIUM priority):**
+- [ ] CfexTransferWindow.tsx presentational cleanup (614→~300 LOC)
+- [ ] BatchOperationsPanel.tsx presentational cleanup (595→~300 LOC)
+
+**Validation:** code-review-specialist 8/10 GO | QG: Tests 1162✅ Lint 0✅ Types 0✅
 
 **Tech Debt Created:**
 - Issue #105: Centralize Proxy Progress Listener
