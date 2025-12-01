@@ -1,6 +1,6 @@
 # Ingest Assistant - Project Context
 
-**Last Updated:** 2025-11-30 | **Version:** v2.3.0 | **Branch:** main (Phase 1b COMPLETE)
+**Last Updated:** 2025-12-01 | **Version:** v2.3.0 | **Branch:** main (Issue #102 COMPLETE)
 
 ---
 
@@ -24,7 +24,7 @@
 - **Runtime:** Electron (main + renderer)
 - **Frontend:** React 18, TypeScript
 - **Build:** Vite
-- **Testing:** Vitest (1034 tests, 64 files)
+- **Testing:** Vitest (1112 tests, 64 files)
 - **AI:** OpenRouter, Anthropic Claude, OpenAI APIs
 - **Database:** Supabase (shared with EAV Monorepo)
 
@@ -35,7 +35,7 @@
 ### Branch Status
 ```
 Branch: main (v2.3.0 release)
-Tests:  1034/1042 passing + 8 skipped
+Tests:  1112/1112 passing
 Lint:   0 errors
 Types:  0 errors
 Security: 6 moderate vulns (HIGH eliminated)
@@ -75,7 +75,7 @@ D0→D1→D2→D3→B0(Phase 1a)→B2(1a COMPLETE)→1c COMPLETE→Phase 1b(B2.1
 |------|--------|---------|
 | Lint | PASS (0 errors) | `npm run lint` |
 | Typecheck | PASS (0 errors) | `npm run typecheck` |
-| Tests | PASS (1034/1042) | `npm test` |
+| Tests | PASS (1112/1112) | `npm test` |
 
 ---
 
@@ -212,42 +212,45 @@ D0→D1→D2→D3→B0(Phase 1a)→B2(1a COMPLETE)→1c COMPLETE→Phase 1b(B2.1
 ### Future Phases
 - **Issue #63:** Reference Catalog (3-6 months)
 
-### 🔄 Active Work: Feature-Context Architecture (Issue #102)
+### ✅ Feature-Context Architecture (Issue #102 COMPLETE)
 
-**Status:** Phases 5.2-5.4 COMPLETE → Phase 5 (App.tsx Cleanup) + Phase 6 (Validation) REMAINING
+**Status:** COMPLETE (2025-12-01 - PR #107 merged)
 **GitHub:** https://github.com/elevanaltd/ingest-assistant/issues/102
-**Last Session:** 2025-11-30 (holistic-orchestrator: 98/100 reliability, APPROVED)
+**Final Session:** 2025-12-01 (code-review-specialist: 8.5/10 GO)
 
-**Problem:** God components with scattered state
-- SettingsModal.tsx: 1146 LOC (37 useState)
-- App.tsx: 1077 LOC (28 useState)
-- Cross-tab coupling, CFEx config drift risk
+**Problem Solved:** God components with scattered state
+- SettingsModal.tsx: 1146 LOC → 537 LOC (53% reduction)
+- App.tsx: 1081 LOC → 874 LOC (19% reduction)
+- Tests: 1088 → 1112 (+24 new context tests)
 
-**Solution:** Feature-Context Architecture
+**Architecture Delivered:**
 ```
-src/contexts/     → IngestSettings, CfexTransfer, BatchQueue
-src/providers/    → AppProviders.tsx (composition point)
-src/hooks/        → useIngestSettings, useCfexTransfer, useBatchQueue
+main.tsx → AppProviders (root singleton)
+  ├─ IngestSettingsProvider (config)
+  ├─ BatchQueueProvider (volatile)
+  ├─ CfexTransferProvider (transfer + tab persistence)
+  ├─ FileListProvider (file navigation)
+  └─ MetadataFormProvider (form state)
+       └─ App.tsx (tab routing + global UI)
 ```
 
-**Phases:**
-- ✅ Phase 1: Scaffold - AppProviders + test-utils (COMPLETE - PR #104)
-- ✅ Phase 5.1: AppProviders integration at App root (COMPLETE)
+**Phases Completed:**
+- ✅ Phase 1: Scaffold - AppProviders + test-utils (PR #104)
+- ✅ Phase 5.1: AppProviders at App root (commit e63d2d7)
 - ✅ Phase 5.2: SettingsModal → useIngestSettings (7 commits, +7 tests)
 - ✅ Phase 5.3: BatchOperationsPanel → useBatchQueue (1 commit, +3 tests)
 - ✅ Phase 5.4: CfexTransferWindow → useCfexTransfer (3 commits, +10 tests)
-- [ ] Phase 5: App.tsx Cleanup (4-6h) - pure tab router (~200 LOC target)
-- [ ] Phase 6: Validation (4-6h) - all 1081+ tests + code review
+- ✅ Phase 5.5: IngestSettingsContext extension (isAIConfigured, lexiconConfig, filenameRewrite)
+- ✅ Phase 5.6: FileListContext extraction (folder, files, navigation, completion)
+- ✅ Phase 5.7: MetadataFormContext extraction (form fields, save, AI assist)
+- ✅ Phase 5.8: Final cleanup (MIP decision - accepted 874 LOC)
 
-**Achievements (2025-11-30):**
-- Tab persistence verified (state survives tab switches)
-- IPC subscriptions centralized (no duplication for main features)
-- TDD discipline maintained (RED→GREEN commits: 16c30d1→c04d105, 3438d47→36ffd16)
-- Architecture: AppProviders (root singleton) → IngestSettingsProvider + BatchQueueProvider + CfexTransferProvider
+**TDD Evidence:** RED→GREEN commits verified throughout (6cb4ad6→17d17bf, f6be088→96ddcc4)
+**QG:** Tests 1112✅ Lint 0✅ Types 0✅
 
-**Tech Debt Identified (non-blocking):**
-- A: Proxy progress duplication → create ProxyProvider (future Phase 6+)
-- B: UI-only cancellation → implement IPC cancel (feature card)
+**Tech Debt Created (deferred to future issues):**
+- Issue #105: Centralize Proxy Progress Listener
+- Issue #106: Implement IPC-level CFEx Cancellation
 
 ---
 

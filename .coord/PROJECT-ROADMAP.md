@@ -1,6 +1,6 @@
 # Ingest Assistant - Project Roadmap
 
-**Last Updated:** 2025-11-29 | **Current Phase:** CFEx Phase 1 COMPLETE (v2.3.0)
+**Last Updated:** 2025-12-01 | **Current Phase:** Issue #102 COMPLETE (PR #107)
 
 ---
 
@@ -17,6 +17,7 @@
 | Phase 1c | CFEx Power Features (+104 tests) | Nov 26, 2025 |
 | Bug Fix | Filename ID Stability (PR #93, +5 tests) | Nov 27, 2025 |
 | Phase 1b | CFEx Proxy Generation (B3 validated, +80 tests) | Nov 29, 2025 |
+| Issue #102 | Feature-Context Architecture (PR #107, +24 tests) | Dec 1, 2025 |
 
 **Full history:** [`PROJECT-HISTORY.md`](PROJECT-HISTORY.md)
 
@@ -101,34 +102,42 @@
 
 ---
 
-## Current Work
+## Recently Completed
 
-### Issue #102: Feature-Context Architecture (ACTIVE)
+### Issue #102: Feature-Context Architecture - ✅ COMPLETE
 
-**Timeline:** ~30-40 hours (1.5-2 weeks) | **Status:** VALIDATED → Ready for Implementation
+**Timeline:** Dec 1, 2025 | **Status:** COMPLETE (PR #107 merged)
 **GitHub:** https://github.com/elevanaltd/ingest-assistant/issues/102
 
-**Problem:** God components with scattered state
-- SettingsModal.tsx: 1146 LOC (37 useState) - mixes lexicon+AI+CFEx+ingestion
-- App.tsx: 1077 LOC (28 useState) - state orchestration + UI
-- Cross-tab coupling, CFEx config drift risk
+**Problem Solved:** God components with scattered state
+- SettingsModal.tsx: 1146 LOC → 537 LOC (53% reduction)
+- App.tsx: 1081 LOC → 874 LOC (19% reduction)
+- Tests: 1088 → 1112 (+24 new context tests)
 
-**Solution:** Feature-Context Architecture
+**Architecture Delivered:**
 ```
-src/contexts/     → IngestSettings, CfexTransfer, BatchQueue
-src/providers/    → AppProviders.tsx (composition point)
-src/hooks/        → useIngestSettings, useCfexTransfer, useBatchQueue
+main.tsx → AppProviders (root singleton)
+  ├─ IngestSettingsProvider (config)
+  ├─ BatchQueueProvider (volatile)
+  ├─ CfexTransferProvider (transfer + tab persistence)
+  ├─ FileListProvider (file navigation)
+  └─ MetadataFormProvider (form state)
+       └─ App.tsx (tab routing + global UI)
 ```
 
-**Implementation Phases:**
-- [ ] Phase 1: Scaffold (2-3h) - directories + AppProviders + test-utils
-- [ ] Phase 2: IngestSettingsContext (6-8h) - LOW RISK
-- [ ] Phase 3: BatchQueueContext (4-6h) - MEDIUM RISK
-- [ ] Phase 4: CfexTransferContext (6-8h) - HIGH RISK
-- [ ] Phase 5: App.tsx Cleanup (4-6h) - pure tab router
-- [ ] Phase 6: Validation (4-6h) - all tests + code review
+**Implementation Phases (All Complete):**
+- [x] Phase 1: Scaffold - AppProviders + test-utils (PR #104)
+- [x] Phase 5.1-5.4: SettingsModal, BatchOps, CfexWindow migrations
+- [x] Phase 5.5: IngestSettingsContext extension
+- [x] Phase 5.6: FileListContext extraction
+- [x] Phase 5.7: MetadataFormContext extraction
+- [x] Phase 5.8: Final cleanup (MIP decision)
 
-**Validation:** technical-architect CONDITIONAL GO (2025-11-30)
+**Validation:** code-review-specialist 8.5/10 GO | QG: Tests 1112✅ Lint 0✅ Types 0✅
+
+**Tech Debt Created:**
+- Issue #105: Centralize Proxy Progress Listener
+- Issue #106: Implement IPC-level CFEx Cancellation
 
 ---
 
