@@ -31,13 +31,14 @@
 - [ ] Update index.tsx (~341 LOC) - main component only
 - [ ] Tests passing after extraction
 
-**Phase 8b: BatchOperationsPanel (MEDIUM RISK)**
-- [ ] Create directory src/components/BatchOperationsPanel/
-- [ ] Extract BatchActionButtons.tsx (~150 LOC) - button group L319-437
-- [ ] Extract BatchProgressDetails.tsx (~100 LOC) - expanded view L493-567
-- [ ] Extract ProxyProgressCard.tsx (~30 LOC) - proxy progress L569-592
-- [ ] Update index.tsx (~315 LOC) - state + handlers + shell
-- [ ] Tests passing after extraction
+**Phase 8b: BatchOperationsPanel (MEDIUM RISK) - ✅ COMPLETE**
+- [x] Create directory src/components/BatchOperationsPanel/
+- [x] Extract BatchActionButtons.tsx (173 LOC) - button group with 15 tests
+- [x] Extract BatchProgressDetails.tsx (117 LOC) - progress view with 9 tests
+- [x] Extract ProxyProgressCard.tsx (50 LOC) - proxy progress with 7 tests
+- [x] Update BatchOperationsPanel.tsx (595 → 403 LOC, 32% reduction)
+- [x] Tests passing after extraction (1222 tests, all green)
+- [x] Quality gates: Tests 1222✅ | Lint 0✅ | Types 0✅
 
 **Results (Phase 7):**
 - App.tsx: 875 → 242 LOC (72% reduction) ✅
