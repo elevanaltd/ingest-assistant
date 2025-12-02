@@ -164,12 +164,64 @@ describe('ExifPreserver', () => {
   });
 
   describe('Phase 3a: Batch Write DateTimeOriginal', () => {
-    it('should write DateTimeOriginal to multiple proxy videos via exiftool', async () => {
-      const mockProcess = new EventEmitter() as any;
-      mockProcess.stdout = new EventEmitter();
-      mockProcess.stderr = new EventEmitter();
+    it('should write DIFFERENT DateTimeOriginal values to each proxy file (I1 bug fix)', async () => {
+      // GREEN PHASE: Fixed implementation calls exiftool separately for each file
+      // This ensures per-file timestamp preservation (I1 compliance)
+      const mockProcesses: any[] = [];
 
-      vi.mocked(spawn).mockReturnValue(mockProcess);
+      vi.mocked(spawn).mockImplementation(() => {
+        const mockProcess = new EventEmitter() as any;
+        mockProcess.stdout = new EventEmitter();
+        mockProcess.stderr = new EventEmitter();
+        mockProcesses.push(mockProcess);
+        return mockProcess;
+      });
+
+      const proxyDateMap = new Map([
+        ['/Volumes/videos-current/project/video1_proxy.MOV', '2024:11:20 14:30:45'],
+        ['/Volumes/videos-current/project/video2_proxy.MOV', '2024:11:20 14:32:10']
+      ]);
+
+      const writePromise = preserver.writeBatch(proxyDateMap);
+
+      // Complete all spawned processes
+      setTimeout(() => {
+        mockProcesses.forEach(process => process.emit('close', 0));
+      }, 10);
+
+      await writePromise;
+
+      // CRITICAL: Should call exiftool separately for each file to preserve per-file timestamps
+      const spawnCalls = vi.mocked(spawn).mock.calls;
+
+      // Expected behavior: Each file gets its own exiftool call with its specific timestamp
+      expect(spawnCalls.length).toBe(2); // Should be 2 separate calls (1 per file)
+
+      // First call: video1_proxy.MOV with 14:30:45
+      expect(spawnCalls[0][0]).toBe('exiftool');
+      expect(spawnCalls[0][1]).toContain('-overwrite_original');
+      expect(spawnCalls[0][1]).toContain('-QuickTime:DateTimeOriginal=2024:11:20 14:30:45');
+      expect(spawnCalls[0][1]).toContain('/Volumes/videos-current/project/video1_proxy.MOV');
+      expect(spawnCalls[0][1]).not.toContain('video2_proxy.MOV'); // Should NOT include other files
+
+      // Second call: video2_proxy.MOV with 14:32:10
+      expect(spawnCalls[1][0]).toBe('exiftool');
+      expect(spawnCalls[1][1]).toContain('-overwrite_original');
+      expect(spawnCalls[1][1]).toContain('-QuickTime:DateTimeOriginal=2024:11:20 14:32:10');
+      expect(spawnCalls[1][1]).toContain('/Volumes/videos-current/project/video2_proxy.MOV');
+      expect(spawnCalls[1][1]).not.toContain('video1_proxy.MOV'); // Should NOT include other files
+    });
+
+    it('should write DateTimeOriginal to multiple proxy videos via exiftool', async () => {
+      const mockProcesses: any[] = [];
+
+      vi.mocked(spawn).mockImplementation(() => {
+        const mockProcess = new EventEmitter() as any;
+        mockProcess.stdout = new EventEmitter();
+        mockProcess.stderr = new EventEmitter();
+        mockProcesses.push(mockProcess);
+        return mockProcess;
+      });
 
       const proxyDateMap = new Map([
         ['/Volumes/videos-current/project/video1_proxy.MOV', '2024:11:20 14:30:45'],
@@ -179,18 +231,25 @@ describe('ExifPreserver', () => {
       const writePromise = preserver.writeBatch(proxyDateMap);
 
       setTimeout(() => {
-        mockProcess.emit('close', 0);
+        mockProcesses.forEach(process => process.emit('close', 0));
       }, 10);
 
       await writePromise;
 
-      // Should call exiftool with -overwrite_original and DateTimeOriginal tags
+      // Should call exiftool separately for each file with its specific timestamp
+      expect(spawn).toHaveBeenCalledTimes(2);
       expect(spawn).toHaveBeenCalledWith(
         'exiftool',
         expect.arrayContaining([
           '-overwrite_original',
           '-QuickTime:DateTimeOriginal=2024:11:20 14:30:45',
-          '/Volumes/videos-current/project/video1_proxy.MOV',
+          '/Volumes/videos-current/project/video1_proxy.MOV'
+        ])
+      );
+      expect(spawn).toHaveBeenCalledWith(
+        'exiftool',
+        expect.arrayContaining([
+          '-overwrite_original',
           '-QuickTime:DateTimeOriginal=2024:11:20 14:32:10',
           '/Volumes/videos-current/project/video2_proxy.MOV'
         ])
