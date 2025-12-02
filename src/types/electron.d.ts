@@ -74,6 +74,7 @@ export interface ElectronAPI {
         phase: 'scan' | 'transfer' | 'validation';
       }>;
     }>;
+    cancel: () => Promise<{ success: boolean }>;
     onTransferProgress: (callback: (progress: {
       currentFile: string;
       fileIndex: number;

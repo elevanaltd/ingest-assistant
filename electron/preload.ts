@@ -126,6 +126,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
     }> =>
       ipcRenderer.invoke('cfex:start-transfer', config),
 
+    cancel: (): Promise<{ success: boolean }> =>
+      ipcRenderer.invoke('cfex:cancel'),
+
     getTransferState: (): Promise<{
       status: 'idle' | 'scanning' | 'transferring' | 'validating' | 'complete' | 'error';
       filesCompleted: number;

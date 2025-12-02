@@ -66,6 +66,8 @@ describe('CfexTransferWindow', () => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       startTransfer: mockStartTransfer as any,
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      cancel: vi.fn().mockResolvedValue({ success: true }) as any,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       onTransferProgress: mockOnTransferProgress as any,
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       getTransferState: mockGetTransferState as any
