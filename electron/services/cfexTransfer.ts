@@ -249,6 +249,9 @@ export async function transferFile(
   // Ensure destination directory exists
   await fs.mkdir(path.dirname(task.destination), { recursive: true });
 
+  // Capture source timestamps BEFORE transfer (reading file updates atime)
+  const sourceStats = await fs.stat(task.source);
+
   // Stream with 64KB chunks (per D3 Blueprint L265)
   const readStream = createReadStream(task.source, {
     highWaterMark: 64 * 1024, // 64KB chunks
@@ -291,6 +294,10 @@ export async function transferFile(
   // Transfer with error handling
   try {
     await pipeline(readStream, writeStream);
+
+    // Preserve source file timestamps on destination (Issue #119)
+    // Without this, destination gets current timestamp instead of original capture time
+    await fs.utimes(task.destination, sourceStats.atime, sourceStats.mtime);
   } catch (error) {
     // Clean up partial file on error (per D3 Blueprint L291-296)
     try {
