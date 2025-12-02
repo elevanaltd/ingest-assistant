@@ -1,6 +1,6 @@
 # Ingest Assistant - Project Context
 
-**Last Updated:** 2025-12-02 | **Version:** v2.3.0 | **Branch:** main (Issue #102 COMPLETE + Tech Debt Resolved)
+**Last Updated:** 2025-12-02 | **Version:** v2.3.0 | **Branch:** main (Issue #112 COMPLETE + All Major Gaps Resolved)
 
 ---
 
@@ -24,7 +24,7 @@
 - **Runtime:** Electron (main + renderer)
 - **Frontend:** React 18, TypeScript
 - **Build:** Vite
-- **Testing:** Vitest (1233 tests, 78 files)
+- **Testing:** Vitest (1241 tests, 85 files)
 - **AI:** OpenRouter, Anthropic Claude, OpenAI APIs
 - **Database:** Supabase (shared with EAV Monorepo)
 
@@ -34,8 +34,8 @@
 
 ### Branch Status
 ```
-Branch: main (v2.3.0 + Issue #102 COMPLETE + Tech Debt #105/#106 Resolved)
-Tests:  1237 passing (+199 tests from Issue #102, +11 from tech debt, +4 from Issue #112)
+Branch: main (v2.3.0 + All Major Gaps Resolved)
+Tests:  1241 passing (+199 from #102, +11 tech debt, +8 from #112)
 Lint:   0 errors
 Types:  0 errors
 Security: 6 moderate vulns (HIGH eliminated)
@@ -260,18 +260,19 @@ src/components/
 - ✅ Phase 8a: CfexTransferWindow decomposition (+29 tests)
 - ✅ Phase 8b: BatchOperationsPanel decomposition (+31 tests)
 
-**QG:** Tests 1237✅ Lint 0✅ Types 0✅
+**QG:** Tests 1241✅ Lint 0✅ Types 0✅
 
-**Architectural Gaps Discovered (pre-existing, now tracked):**
-- Issue #111: CFEx Cancel button is no-op (HIGH) - **RESOLVED via #106**
-- Issue #112: CFEx Proxies settings not propagated (HIGH) - **RESOLVED**
+**Issues Closed (2025-12-02):**
+- ✅ #102: Feature-Context Architecture (COMPLETE)
+- ✅ #105: Centralize Proxy Progress Listener → `useProxyProgress` hook
+- ✅ #106: IPC-level CFEx Cancellation → `cfex:cancel` handler
+- ✅ #111: CFEx Cancel button (resolved via #106)
+- ✅ #112: CFEx Proxy settings propagation (PR #118)
+
+**Remaining Open Issues:**
 - Issue #113: BatchOperationsPanel bypasses context (MEDIUM)
-
-**Tech Debt Resolved (2025-12-02):**
-- ✅ Issue #105: Centralize Proxy Progress Listener → `useProxyProgress` hook
-- ✅ Issue #106: Implement IPC-level CFEx Cancellation → `cfex:cancel` handler
-- ✅ Issue #112: Propagate CFEx proxy settings through IPC chain
-- ✅ Issue #117: Tech debt tracked (main.ts extraction - LOW priority)
+- Issue #116: Reset transfer counters on cancel/start (LOW)
+- Issue #117: main.ts tech debt extraction (LOW)
 
 ---
 
