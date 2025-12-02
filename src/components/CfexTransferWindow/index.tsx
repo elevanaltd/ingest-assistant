@@ -229,12 +229,6 @@ export function CfexTransferWindow() {
         )}
       </div>
 
-      {isTransferring && (
-        <div style={{ marginBottom: '12px', padding: '8px', backgroundColor: '#fff3cd', borderRadius: '4px', fontSize: '12px', color: '#856404' }}>
-          <strong>Note:</strong> Cancel currently stops UI updates only. Full graceful cancellation (stopping file operations) coming in Week 2.
-        </div>
-      )}
-
       {/* Error Display */}
       {ctxState.lastError && (
         <div style={{ marginBottom: '20px', padding: '12px', backgroundColor: '#fee', borderRadius: '4px', border: '1px solid #fcc' }}>
