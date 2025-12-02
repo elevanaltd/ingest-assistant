@@ -257,6 +257,15 @@ export function registerCfexTransferHandlers(mainWindow: BrowserWindow) {
         })
       }
 
+      // Issue #112 P1: Trigger proxy generation if enabled and transfer succeeded
+      if (validated.enabledDestinations?.proxies && result.success && validated.destinations.proxies) {
+        mainWindow.webContents.send('cfex:trigger-proxy-generation', {
+          rawVideoFolder: validated.destinations.rawVideos,
+          proxyOutputFolder: validated.destinations.proxies,
+          proxyPresetId: validated.proxyPresetId || '2k-prores-proxy'
+        })
+      }
+
       return result
 
     } catch (error) {
