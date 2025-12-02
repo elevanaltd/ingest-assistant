@@ -191,6 +191,63 @@ describe('transferFile', () => {
   });
 
   /**
+   * TIMESTAMP PRESERVATION TEST: Source file timestamps preserved on destination
+   *
+   * Validates:
+   * - Destination file mtime matches source file mtime
+   * - Destination file atime matches source file atime
+   * - Timestamps not overwritten with current time
+   *
+   * Reference: Issue #119 - CFEx transfer was creating files with current
+   * timestamps instead of preserving original capture timestamps.
+   */
+  test('preserves source file timestamps on destination (mtime/atime)', async () => {
+    // ARRANGE: Create test file with specific timestamp (1 week ago)
+    const sourceFile = path.join(SOURCE_DIR, 'test-timestamp.jpg');
+    const destFile = path.join(DEST_DIR, 'test-timestamp.jpg');
+
+    // Create test file
+    const testData = Buffer.alloc(1024, 't'); // 1KB
+    await fs.writeFile(sourceFile, testData);
+
+    // Set source file timestamp to 1 week ago (clearly different from now)
+    const oneWeekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    await fs.utimes(sourceFile, oneWeekAgo, oneWeekAgo);
+
+    // Verify source timestamp was set correctly
+    const sourceStats = await fs.stat(sourceFile);
+    expect(Math.abs(sourceStats.mtime.getTime() - oneWeekAgo.getTime())).toBeLessThan(1000);
+
+    const mockTask: FileTransferTask = {
+      source: sourceFile,
+      destination: destFile,
+      size: 1024,
+      mediaType: 'photo',
+      enqueued: Date.now(),
+    };
+
+    // ACT: Transfer file
+    const result = await transferFile(mockTask);
+
+    // ASSERT: Transfer succeeded
+    expect(result.success).toBe(true);
+
+    // ASSERT: Destination timestamps match source
+    const destStats = await fs.stat(destFile);
+
+    // mtime should match (within 1 second tolerance for filesystem precision)
+    expect(Math.abs(destStats.mtime.getTime() - sourceStats.mtime.getTime())).toBeLessThan(1000);
+
+    // atime should match (within 1 second tolerance)
+    expect(Math.abs(destStats.atime.getTime() - sourceStats.atime.getTime())).toBeLessThan(1000);
+
+    // Verify timestamps are NOT current time (would indicate bug)
+    const now = Date.now();
+    const mtimeDiffFromNow = Math.abs(destStats.mtime.getTime() - now);
+    expect(mtimeDiffFromNow).toBeGreaterThan(6 * 24 * 60 * 60 * 1000); // More than 6 days ago
+  });
+
+  /**
    * PROGRESS THROTTLING TEST: Progress updates throttled to prevent UI flooding
    *
    * Validates:
