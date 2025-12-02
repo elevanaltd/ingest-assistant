@@ -61,7 +61,9 @@ let transferState: TransferState = {
  * - source: string (CFEx card mount path)
  * - destinations.photos: string (LucidLink path)
  * - destinations.rawVideos: string (Ubuntu path)
- * - enabledDestinations: optional flags to skip photo or video transfer
+ * - destinations.proxies: string (optional, LucidLink proxy path)
+ * - enabledDestinations: optional flags to skip photo, video, or proxy transfer
+ * - proxyPresetId: string (optional, e.g., '2k-prores-proxy')
  * - options.skipValidation: boolean (optional, deferred to Week 2)
  * - aiAutoAnalyze: boolean (Phase 1c-5: trigger AI analysis after transfer)
  */
@@ -69,12 +71,15 @@ const TransferConfigSchema = z.object({
   source: z.string().min(1, 'Source path required'),
   destinations: z.object({
     photos: z.string().min(1, 'Photos destination required'),
-    rawVideos: z.string().min(1, 'Raw videos destination required')
+    rawVideos: z.string().min(1, 'Raw videos destination required'),
+    proxies: z.string().optional()
   }),
   enabledDestinations: z.object({
     photos: z.boolean(),
-    rawVideos: z.boolean()
+    rawVideos: z.boolean(),
+    proxies: z.boolean().optional()
   }).optional(),
+  proxyPresetId: z.string().optional(),
   options: z.object({
     skipValidation: z.boolean().optional()
   }).optional(),

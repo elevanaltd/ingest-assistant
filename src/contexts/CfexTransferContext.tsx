@@ -236,11 +236,14 @@ export function CfexTransferProvider({ children }: CfexTransferProviderProps) {
         destinations: {
           photos: state.photosEnabled ? state.photosDestination : '',
           rawVideos: state.videosEnabled ? state.videosDestination : '',
+          proxies: state.proxiesEnabled ? state.proxiesDestination : '',
         },
         enabledDestinations: {
           photos: state.photosEnabled,
           rawVideos: state.videosEnabled,
+          proxies: state.proxiesEnabled,
         },
+        proxyPresetId: state.proxyPresetId,
       });
 
       // Update state with completion result (Finding 1 fix)
@@ -265,7 +268,7 @@ export function CfexTransferProvider({ children }: CfexTransferProviderProps) {
         lastError: error instanceof Error ? error.message : 'Transfer failed',
       }));
     }
-  }, [state.sourcePath, state.photosDestination, state.videosDestination, state.photosEnabled, state.videosEnabled]);
+  }, [state.sourcePath, state.photosDestination, state.videosDestination, state.photosEnabled, state.videosEnabled, state.proxiesEnabled, state.proxiesDestination, state.proxyPresetId]);
 
   /**
    * Cancel transfer action
