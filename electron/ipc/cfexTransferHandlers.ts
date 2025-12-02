@@ -333,7 +333,22 @@ export function registerCfexTransferHandlers(mainWindow: BrowserWindow) {
     }
   })
 
-  // Note: Pause/resume/cancel handlers deferred to Week 2 (error handling phase)
+  /**
+   * Handler: cfex:cancel
+   *
+   * Cancel the current transfer operation.
+   * Graceful shutdown: finishes current file, then stops.
+   *
+   * RESPONSE:
+   * {
+   *   success: boolean  // true if transfer was in progress, false otherwise
+   * }
+   */
+  ipcMain.handle('cfex:cancel', async (_event) => {
+    const service = getTransferService()
+    const result = service.cancel()
+    return result
+  })
 }
 
 /**
@@ -345,6 +360,7 @@ export function unregisterCfexTransferHandlers() {
   ipcMain.removeHandler('cfex:start-transfer')
   ipcMain.removeHandler('cfex:get-transfer-state')
   ipcMain.removeHandler('cfex:detect-sources')
+  ipcMain.removeHandler('cfex:cancel')
 }
 
 /**

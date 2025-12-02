@@ -420,9 +420,29 @@ export interface FileTransferResultEnhanced extends FileTransferResult {
  */
 export class CfexTransferService {
   private integrityValidator: IntegrityValidator;
+  private isCancelled: boolean = false;
+  private isProcessing: boolean = false;
 
   constructor() {
     this.integrityValidator = new IntegrityValidator();
+  }
+
+  /**
+   * Cancel the current transfer operation
+   *
+   * Graceful shutdown: finishes current file, then stops.
+   * Follows batch:cancel pattern from batchQueueManager.
+   *
+   * @returns { success: boolean } - true if transfer was in progress, false otherwise
+   */
+  cancel(): { success: boolean } {
+    if (!this.isProcessing) {
+      return { success: false };
+    }
+
+    this.isCancelled = true;
+
+    return { success: true };
   }
 
   /**
@@ -445,6 +465,10 @@ export class CfexTransferService {
   async startTransfer(config: TransferConfig): Promise<TransferResult> {
     const startTime = Date.now();
 
+    // Reset cancellation flag and set processing state
+    this.isCancelled = false;
+    this.isProcessing = true;
+
     // PHASE 1: Scan source files
     const tasks = await scanSourceFiles(
       config.source,
@@ -465,6 +489,11 @@ export class CfexTransferService {
     let bytesTransferred = 0;
 
     for (let i = 0; i < tasks.length; i++) {
+      // Check for cancellation before processing next file
+      if (this.isCancelled) {
+        break;
+      }
+
       const task = tasks[i];
 
       try {
@@ -546,8 +575,11 @@ export class CfexTransferService {
       }
     }
 
+    // Reset processing state
+    this.isProcessing = false;
+
     return {
-      success: errors.length === 0,
+      success: errors.length === 0 && !this.isCancelled,
       filesTransferred,
       filesTotal: tasks.length,
       bytesTransferred,

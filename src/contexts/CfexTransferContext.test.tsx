@@ -330,6 +330,38 @@ describe('CfexTransferContext', () => {
     expect(result.current.state.transferStatus).toBe('idle');
   });
 
+  // RED: Test that cancelTransfer calls IPC handler
+  it('should call window.electronAPI.cfex.cancel when cancelTransfer is invoked', async () => {
+    const mockCancelFn = vi.fn().mockResolvedValue({ success: true });
+    const mockElectronAPI = {
+      loadConfig: vi.fn().mockResolvedValue({ cfex: {} }),
+      cfex: {
+        onTransferProgress: vi.fn(() => vi.fn()),
+        cancel: mockCancelFn,
+      },
+    };
+
+    (window as { electronAPI?: unknown }).electronAPI = mockElectronAPI;
+
+    const { result } = renderHook(() => useCfexTransfer(), {
+      wrapper: CfexTransferProvider,
+    });
+
+    // Set transferring state
+    act(() => {
+      result.current.updateConfig({ isTransferring: true } as never);
+    });
+
+    // Cancel should call IPC
+    await act(async () => {
+      await result.current.cancelTransfer();
+    });
+
+    expect(mockCancelFn).toHaveBeenCalled();
+    expect(result.current.state.isTransferring).toBe(false);
+    expect(result.current.state.transferStatus).toBe('idle');
+  });
+
   it('should reset transfer state via resetTransfer', () => {
     const { result } = renderHook(() => useCfexTransfer(), {
       wrapper: CfexTransferProvider,

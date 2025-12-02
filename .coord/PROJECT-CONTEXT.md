@@ -1,6 +1,6 @@
 # Ingest Assistant - Project Context
 
-**Last Updated:** 2025-12-02 | **Version:** v2.3.0 | **Branch:** main (Issue #102 COMPLETE)
+**Last Updated:** 2025-12-02 | **Version:** v2.3.0 | **Branch:** main (Issue #102 COMPLETE + Tech Debt Resolved)
 
 ---
 
@@ -24,7 +24,7 @@
 - **Runtime:** Electron (main + renderer)
 - **Frontend:** React 18, TypeScript
 - **Build:** Vite
-- **Testing:** Vitest (1222 tests, 78 files)
+- **Testing:** Vitest (1233 tests, 78 files)
 - **AI:** OpenRouter, Anthropic Claude, OpenAI APIs
 - **Database:** Supabase (shared with EAV Monorepo)
 
@@ -34,8 +34,8 @@
 
 ### Branch Status
 ```
-Branch: main (v2.3.0 + Issue #102 COMPLETE)
-Tests:  1222 passing (Issue #102 added +188 tests)
+Branch: main (v2.3.0 + Issue #102 COMPLETE + Tech Debt #105/#106 Resolved)
+Tests:  1233 passing (+199 tests from Issue #102, +11 from tech debt)
 Lint:   0 errors
 Types:  0 errors
 Security: 6 moderate vulns (HIGH eliminated)
@@ -75,7 +75,7 @@ D0→D1→D2→D3→B0(Phase 1a)→B2(1a COMPLETE)→1c COMPLETE→Phase 1b(B2.1
 |------|--------|---------|
 | Lint | PASS (0 errors) | `npm run lint` |
 | Typecheck | PASS (0 errors) | `npm run typecheck` |
-| Tests | PASS (1222 passing) | `npm test` |
+| Tests | PASS (1233 passing) | `npm test` |
 
 ---
 
@@ -223,7 +223,7 @@ D0→D1→D2→D3→B0(Phase 1a)→B2(1a COMPLETE)→1c COMPLETE→Phase 1b(B2.1
 - SettingsModal: 1077 LOC → modular directory (5 components)
 - CfexTransferWindow: 614 LOC → 304 LOC (51% reduction)
 - BatchOperationsPanel: 595 LOC → 403 LOC (32% reduction)
-- Tests: 1034 → 1222 (+188 new tests)
+- Tests: 1034 → 1233 (+199 new tests)
 
 **Architecture Delivered:**
 ```
@@ -260,16 +260,16 @@ src/components/
 - ✅ Phase 8a: CfexTransferWindow decomposition (+29 tests)
 - ✅ Phase 8b: BatchOperationsPanel decomposition (+31 tests)
 
-**QG:** Tests 1222✅ Lint 0✅ Types 0✅
+**QG:** Tests 1233✅ Lint 0✅ Types 0✅
 
 **Architectural Gaps Discovered (pre-existing, now tracked):**
-- Issue #111: CFEx Cancel button is no-op (HIGH)
+- Issue #111: CFEx Cancel button is no-op (HIGH) - **RESOLVED via #106**
 - Issue #112: CFEx Proxies settings not propagated (HIGH)
 - Issue #113: BatchOperationsPanel bypasses context (MEDIUM)
 
-**Tech Debt (deferred):**
-- Issue #105: Centralize Proxy Progress Listener
-- Issue #106: Implement IPC-level CFEx Cancellation
+**Tech Debt Resolved (2025-12-02):**
+- ✅ Issue #105: Centralize Proxy Progress Listener → `useProxyProgress` hook
+- ✅ Issue #106: Implement IPC-level CFEx Cancellation → `cfex:cancel` handler
 
 ---
 

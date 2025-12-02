@@ -66,6 +66,8 @@ describe('CfexTransferWindow', () => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       startTransfer: mockStartTransfer as any,
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      cancel: vi.fn().mockResolvedValue({ success: true }) as any,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       onTransferProgress: mockOnTransferProgress as any,
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       getTransferState: mockGetTransferState as any
@@ -1305,6 +1307,45 @@ describe('CfexTransferWindow', () => {
       })
     })
   })
+
+  // RED: Test that Cancel button calls context.cancelTransfer
+  describe('Cancel Button Integration', () => {
+    test('should call context.cancelTransfer when Cancel button clicked', async () => {
+      // ARRANGE: Mock cancel function to track invocations
+      const mockCancelFn = vi.fn().mockResolvedValue({ success: true });
+      (window as any).electronAPI.cfex.cancel = mockCancelFn;
+
+      // Mock transfer that never completes (simulates in-progress state)
+      mockStartTransfer.mockImplementation(() => new Promise(() => {}));
+
+      renderWithProviders(<CfexTransferWindow />);
+      const user = userEvent.setup();
+
+      // Wait for auto-detection to complete
+      await waitFor(() => {
+        expect(mockDetectSources).toHaveBeenCalled();
+      });
+
+      // Start transfer to enable Cancel button
+      const startButton = await screen.findByRole('button', { name: /start transfer/i });
+      await waitFor(() => {
+        expect(startButton).not.toBeDisabled();
+      });
+      await user.click(startButton);
+
+      // Wait for transfer to start
+      await waitFor(() => {
+        expect(mockStartTransfer).toHaveBeenCalled();
+      });
+
+      // ACT: Click Cancel button
+      const cancelButton = await screen.findByRole('button', { name: /cancel/i });
+      await user.click(cancelButton);
+
+      // ASSERT: IPC cancel method was called
+      expect(mockCancelFn).toHaveBeenCalled();
+    });
+  });
 
   describe('Proxy Generation Progress (TDD - RED phase)', () => {
     test('should display proxy progress section after transfer completes with proxies enabled', async () => {

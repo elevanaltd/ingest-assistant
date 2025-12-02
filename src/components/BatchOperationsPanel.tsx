@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useBatchQueue } from '../contexts/BatchQueueContext';
+import { useProxyProgress } from '../hooks/useProxyProgress';
 import { BatchActionButtons } from './BatchOperationsPanel/BatchActionButtons';
 import { BatchProgressDetails } from './BatchOperationsPanel/BatchProgressDetails';
 import { ProxyProgressCard } from './BatchOperationsPanel/ProxyProgressCard';
@@ -21,29 +22,12 @@ export function BatchOperationsPanel({ availableFiles, selectedFileIds, filename
   // Consume BatchQueueContext instead of local IPC subscriptions
   const { state: queueState, progress: currentProgress } = useBatchQueue();
 
+  // Subscribe to proxy generation progress events via hook
+  const proxyProgress = useProxyProgress();
+
   // UI-only local state (NOT managed by context)
   const [isExpanded, setIsExpanded] = useState(false);
   const [previousStatus, setPreviousStatus] = useState<string | null>(null);
-  const [proxyProgress, setProxyProgress] = useState<{
-    type: string;
-    filename?: string;
-    index?: number;
-    total?: number;
-    percentage?: number;
-    timeString?: string;
-  } | null>(null);
-
-  // Subscribe to proxy generation progress events
-  useEffect(() => {
-    if (!window.electronAPI?.proxy?.onProxyProgress) return;
-
-    const cleanup = window.electronAPI.proxy.onProxyProgress((progress) => {
-      setProxyProgress(progress);
-    });
-
-    // Cleanup on unmount
-    return cleanup;
-  }, []);
 
   // Monitor queue status changes for UI updates and completion callback
   // Note: queueState comes from BatchQueueContext (already polling)
