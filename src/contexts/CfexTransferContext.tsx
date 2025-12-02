@@ -270,27 +270,31 @@ export function CfexTransferProvider({ children }: CfexTransferProviderProps) {
   /**
    * Cancel transfer action
    *
-   * ⚠️ LIMITATION (code-review-specialist + quality-observer finding):
-   * This is a UI-ONLY reset. The backend transfer process continues running.
-   * No IPC cancelTransfer method exists yet in electron/services/cfexTransferHandlers.ts.
-   *
-   * RISK: User may believe transfer stopped when backend continues.
-   * MITIGATION:
-   * 1. Guard in progressHandler ignores updates after cancel (prevents "resurrection")
-   * 2. UI should show warning: "Transfer will complete in background"
-   * 3. Future: Implement IPC cancel signal (GitHub Issue TBD)
-   *
-   * DO NOT expose "Cancel" button in CfexTransferWindow until backend support exists.
+   * Calls IPC handler to stop backend transfer process, then resets UI state.
    */
   const cancelTransfer = useCallback(async () => {
-    console.warn('[CfexTransferContext] cancelTransfer: UI-only reset - backend continues running');
+    try {
+      // Call IPC handler to cancel backend transfer
+      const result = await window.electronAPI.cfex.cancel();
+      console.log('[CfexTransferContext] cancelTransfer IPC result:', result);
 
-    setState(prev => ({
-      ...prev,
-      isTransferring: false,
-      transferStatus: 'idle',
-      currentFile: null,
-    }));
+      // Reset UI state after IPC call
+      setState(prev => ({
+        ...prev,
+        isTransferring: false,
+        transferStatus: 'idle',
+        currentFile: null,
+      }));
+    } catch (error) {
+      console.error('[CfexTransferContext] cancelTransfer IPC error:', error);
+      // Reset state even if IPC fails (UI should reflect cancellation intent)
+      setState(prev => ({
+        ...prev,
+        isTransferring: false,
+        transferStatus: 'idle',
+        currentFile: null,
+      }));
+    }
   }, []);
 
   // Reset transfer state

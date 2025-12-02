@@ -55,7 +55,7 @@ interface TransferError {
  */
 export function CfexTransferWindow() {
   // Consume context for transfer state and actions
-  const { state: ctxState, updateConfig, startTransfer } = useCfexTransfer()
+  const { state: ctxState, updateConfig, startTransfer, cancelTransfer } = useCfexTransfer()
 
   // Subscribe to proxy generation progress events via hook
   const proxyProgress = useProxyProgress()
@@ -132,14 +132,11 @@ export function CfexTransferWindow() {
   const canStart = Boolean(ctxState.sourcePath) && ctxState.transferStatus === 'idle' && !isDetecting
   const isTransferring = ctxState.transferStatus !== 'idle' && ctxState.transferStatus !== 'complete' && ctxState.transferStatus !== 'error'
 
-  // Basic cancel handler (Week 1 - UI only)
-  // Note: Full graceful cancellation with IPC handler deferred to Week 2
-  // TODO: Context has cancelTransfer action - use that instead
+  // Cancel handler - calls context to trigger IPC cancellation
   function handleCancel() {
     setWarnings([])
     setErrors([])
-    // Note: proxyProgress state managed by useProxyProgress hook (read-only from component perspective)
-    // Context reset handled separately (not called here to avoid confusion)
+    cancelTransfer() // Calls context which triggers IPC handler
   }
 
   return (
