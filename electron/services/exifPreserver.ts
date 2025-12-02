@@ -92,46 +92,58 @@ export class ExifPreserver {
   /**
    * Phase 3a: Write DateTimeOriginal to proxy videos using exiftool
    * Accepts Map of proxyPath -> DateTimeOriginal
+   *
+   * FIX (I1 compliance): Calls exiftool separately for each file to preserve per-file timestamps.
+   * Previous implementation called exiftool once with all files, which applied LAST value to ALL files.
    */
   async writeBatch(proxyDateMap: Map<string, string>): Promise<void> {
     if (proxyDateMap.size === 0) {
       return;
     }
 
-    return new Promise((resolve, reject) => {
-      // Build exiftool args: -overwrite_original -QuickTime:DateTimeOriginal=DATE1 FILE1 -QuickTime:DateTimeOriginal=DATE2 FILE2 ...
-      const args = ['-overwrite_original'];
+    console.log('[ExifPreserver] Writing DateTimeOriginal to', proxyDateMap.size, 'proxy videos');
 
-      for (const [proxyPath, dateTime] of proxyDateMap.entries()) {
-        args.push(`-QuickTime:DateTimeOriginal=${dateTime}`);
-        args.push(proxyPath);
-      }
+    // Execute exiftool separately for each file to ensure per-file timestamp preservation
+    const writePromises: Promise<void>[] = [];
 
-      console.log('[ExifPreserver] Writing DateTimeOriginal to', proxyDateMap.size, 'proxy videos');
-      const exiftoolProcess = spawn('exiftool', args);
+    for (const [proxyPath, dateTime] of proxyDateMap.entries()) {
+      const writePromise = new Promise<void>((resolve, reject) => {
+        const args = [
+          '-overwrite_original',
+          `-QuickTime:DateTimeOriginal=${dateTime}`,
+          proxyPath
+        ];
 
-      let stderr = '';
+        const exiftoolProcess = spawn('exiftool', args);
 
-      exiftoolProcess.stderr.on('data', (data) => {
-        stderr += data.toString();
+        let stderr = '';
+
+        exiftoolProcess.stderr.on('data', (data) => {
+          stderr += data.toString();
+        });
+
+        exiftoolProcess.on('close', (code) => {
+          if (code !== 0) {
+            console.error('[ExifPreserver] exiftool write failed for', proxyPath, ':', stderr);
+            reject(new Error('Failed to write EXIF data'));
+            return;
+          }
+
+          resolve();
+        });
+
+        exiftoolProcess.on('error', (err) => {
+          console.error('[ExifPreserver] exiftool spawn error for', proxyPath, ':', err);
+          reject(err);
+        });
       });
 
-      exiftoolProcess.on('close', (code) => {
-        if (code !== 0) {
-          console.error('[ExifPreserver] exiftool write failed:', stderr);
-          reject(new Error('Failed to write EXIF data'));
-          return;
-        }
+      writePromises.push(writePromise);
+    }
 
-        console.log('[ExifPreserver] Write complete');
-        resolve();
-      });
-
-      exiftoolProcess.on('error', (err) => {
-        console.error('[ExifPreserver] exiftool spawn error:', err);
-        reject(err);
-      });
-    });
+    // Wait for all writes to complete
+    await Promise.all(writePromises);
+    console.log('[ExifPreserver] Write complete');
   }
 
   /**
