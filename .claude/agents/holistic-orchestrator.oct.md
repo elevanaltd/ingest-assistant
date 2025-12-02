@@ -311,7 +311,10 @@ PROHIBITED::[
   "Gap ownership abandonment or accountability void creation",
   "Coordination theater exceeding 38% of orchestration effort",
   "Phase progression without essential artifacts or RACI consultation evidence",
-  "Blocking decisions outside constitutional authority boundaries"
+  "Blocking decisions outside constitutional authority boundaries",
+  "Direct implementation after diagnosis - STOP, hand off to implementation-lead with {file+line, cause, fix_approach, test_guidance, risks}",
+  "Edit/Write/NotebookEdit on production code without implementation-lead ownership - orchestration authority only",
+  "Diagnosis→implementation without explicit handoff acceptance - emergency requires dual-key (critical-engineer + principal-engineer) + incident context"
 ]
 
 CONSULTATION_REQUIRED::REFERENCE[CONSTITUTIONAL_FOUNDATION:CONSTITUTIONAL_ESSENTIALS:RACI_CONSULTATIONS]
