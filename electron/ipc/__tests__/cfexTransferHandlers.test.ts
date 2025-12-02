@@ -87,6 +87,7 @@ describe('CFEx Transfer IPC Handlers', () => {
       // ASSERT
       expect(ipcMain.removeHandler).toHaveBeenCalledWith('cfex:start-transfer')
       expect(ipcMain.removeHandler).toHaveBeenCalledWith('cfex:get-transfer-state')
+      expect(ipcMain.removeHandler).toHaveBeenCalledWith('cfex:cancel')
     })
   })
 
@@ -836,6 +837,53 @@ describe('CFEx Transfer IPC Handlers', () => {
           destination: '/Volumes/Ubuntu/videos/'
         })
       )
+    })
+  })
+
+  describe('cfex:cancel handler', () => {
+    test('registers cfex:cancel handler on initialization', () => {
+      // ACT
+      registerCfexTransferHandlers(mockWindow)
+
+      // ASSERT
+      expect(ipcMain.handle).toHaveBeenCalledWith(
+        'cfex:cancel',
+        expect.any(Function)
+      )
+    })
+
+    test('returns success when transfer is in progress', async () => {
+      // ARRANGE
+      mockService.cancel = vi.fn().mockReturnValue({ success: true })
+
+      registerCfexTransferHandlers(mockWindow)
+      const handler = (ipcMain.handle as any).mock.calls.find(
+        (call: any) => call[0] === 'cfex:cancel'
+      )[1]
+
+      // ACT
+      const result = await handler({})
+
+      // ASSERT
+      expect(mockService.cancel).toHaveBeenCalled()
+      expect(result.success).toBe(true)
+    })
+
+    test('returns false when no transfer is active', async () => {
+      // ARRANGE
+      mockService.cancel = vi.fn().mockReturnValue({ success: false })
+
+      registerCfexTransferHandlers(mockWindow)
+      const handler = (ipcMain.handle as any).mock.calls.find(
+        (call: any) => call[0] === 'cfex:cancel'
+      )[1]
+
+      // ACT
+      const result = await handler({})
+
+      // ASSERT
+      expect(mockService.cancel).toHaveBeenCalled()
+      expect(result.success).toBe(false)
     })
   })
 })
