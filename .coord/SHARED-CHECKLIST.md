@@ -2,33 +2,38 @@
 
 ## Current Status (2025-12-01 Updated)
 
-### ✅ Feature-Context Architecture Refactor (Issue #102 COMPLETE)
+### 🔄 Feature-Context Architecture (Issue #102) - Phase 7 COMPLETE
 
-**Status:** COMPLETE (2025-12-01 - PR #107 merged to main)
+**Status:** Phase 7 COMPLETE, Phase 8 REMAINING
 **GitHub:** https://github.com/elevanaltd/ingest-assistant/issues/102
-**Final Session:** 2025-12-01 (code-review-specialist: 8.5/10 GO)
+**Last Session:** 2025-12-01 (code-review-specialist: 8/10 GO)
 
 **Implementation Phases:**
 - [x] **Phase 1: Scaffold** - directories + AppProviders + test-utils (PR #104)
-- [x] **Phase 5.1: AppProviders Integration** - at App root (commit e63d2d7)
-- [x] **Phase 5.2: SettingsModal → useIngestSettings** (7 commits, +7 tests, RED→GREEN verified)
-- [x] **Phase 5.3: BatchOperationsPanel → useBatchQueue** (1 commit, +3 tests)
-- [x] **Phase 5.4: CfexTransferWindow → useCfexTransfer** (3 commits, +10 tests, RED→GREEN verified)
-- [x] **Phase 5.5: IngestSettingsContext extension** (isAIConfigured, lexiconConfig, filenameRewrite)
-- [x] **Phase 5.6: FileListContext extraction** (folder, files, navigation, completion)
-- [x] **Phase 5.7: MetadataFormContext extraction** (form fields, save, AI assist)
-- [x] **Phase 5.8: Final cleanup** (MIP decision - accepted 874 LOC)
+- [x] **Phase 5.1-5.7: Context extractions** - IngestSettings, BatchQueue, CfexTransfer, FileList, MetadataForm
+- [x] **Phase 5.8: App.tsx cleanup** - 875→242 LOC (72% reduction)
+- [x] **Phase 7: SettingsModal decomposition** - 1077 LOC → 5 tab components
+  - [x] index.tsx (640 LOC) - state container + tab shell
+  - [x] LexiconTab.tsx (189 LOC) - presentational
+  - [x] AITab.tsx (157 LOC) - presentational
+  - [x] CfexTab.tsx (150 LOC) - presentational
+  - [x] IngestionTab.tsx (169 LOC) - presentational
+  - [x] Tests for all tabs (+35 tests)
+- [ ] **Phase 8: Presentational cleanup** (MEDIUM priority - deferred)
+  - [ ] CfexTransferWindow.tsx (614→~300 LOC)
+  - [ ] BatchOperationsPanel.tsx (595→~300 LOC)
 
 **Results:**
-- App.tsx: 1081 → 874 LOC (19% reduction)
-- SettingsModal.tsx: 1146 → 537 LOC (53% reduction)
-- Tests: 1088 → 1112 (+24 new context tests)
-- TDD: RED→GREEN commits verified (6cb4ad6→17d17bf, f6be088→96ddcc4)
-- QG: Tests 1112✅ Lint 0✅ Types 0✅
+- App.tsx: 875 → 242 LOC (72% reduction) ✅
+- SettingsModal: monolithic → modular directory (5 components) ✅
+- IngestTabContent.tsx: extracted (591 LOC) ✅
+- MediaViewer.tsx: extracted (137 LOC) ✅
+- Tests: 1034 → 1162 (+128 new tests) ✅
+- QG: Tests 1162✅ Lint 0✅ Types 0✅
 
-**Tech Debt Created (deferred to future issues):**
-- [x] Created GitHub issue #105: "Centralize Proxy Progress Listener"
-- [x] Created GitHub issue #106: "Implement IPC-level CFEx Cancellation"
+**Tech Debt (deferred to future issues):**
+- Issue #105: Centralize Proxy Progress Listener
+- Issue #106: Implement IPC-level CFEx Cancellation
 
 ---
 
