@@ -1,9 +1,9 @@
 import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest'
 import { screen, waitFor } from '@testing-library/react'
 import { userEvent } from '@testing-library/user-event'
-import { renderWithProviders } from '../test/test-utils'
-import { CfexTransferWindow } from './CfexTransferWindow'
-import type { ElectronAPI } from '../types/electron'
+import { renderWithProviders } from '../../test/test-utils'
+import { CfexTransferWindow } from './index'
+import type { ElectronAPI } from '../../types/electron'
 
 /**
  * Test suite for CfexTransferWindow component
