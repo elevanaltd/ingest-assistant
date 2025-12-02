@@ -2,53 +2,40 @@
 
 ## Current Status (2025-12-02 Updated)
 
-### 🔄 Feature-Context Architecture (Issue #102) - Phase 8 IN PROGRESS
+### ✅ Feature-Context Architecture (Issue #102) - COMPLETE
 
-**Status:** Phase 8 IN PROGRESS
-**Branch:** feat/issue-102-phase-8-presentational-cleanup
+**Status:** ALL PHASES COMPLETE (PR #110 merged 2025-12-02)
 **GitHub:** https://github.com/elevanaltd/ingest-assistant/issues/102
-**Last Session:** 2025-12-02 (PR #109 merged, Phase 8 branch created)
+**Architectural Review:** code-review-specialist CONDITIONAL (6/10) - pre-existing gaps identified
 
-**Completed Phases:**
+**All Phases Completed:**
 - [x] **Phase 1: Scaffold** - directories + AppProviders + test-utils (PR #104)
 - [x] **Phase 5.1-5.7: Context extractions** - IngestSettings, BatchQueue, CfexTransfer, FileList, MetadataForm
 - [x] **Phase 5.8: App.tsx cleanup** - 875→242 LOC (72% reduction)
-- [x] **Phase 7: SettingsModal decomposition** - 1077 LOC → 5 tab components (PR #109 merged)
-  - [x] index.tsx (640 LOC) - state container + tab shell
-  - [x] LexiconTab.tsx (189 LOC) - presentational
-  - [x] AITab.tsx (157 LOC) - presentational
-  - [x] CfexTab.tsx (150 LOC) - presentational
-  - [x] IngestionTab.tsx (169 LOC) - presentational
-  - [x] Tests for all tabs (+35 tests)
+- [x] **Phase 7: SettingsModal decomposition** - 1077 LOC → 5 tab components (PR #109)
+- [x] **Phase 8a: CfexTransferWindow decomposition** - 614→304 LOC (51% reduction, +29 tests)
+  - [x] FolderPicker.tsx (283 LOC)
+  - [x] TransferProgress.tsx (51 LOC)
+  - [x] ValidationResults.tsx (65 LOC)
+- [x] **Phase 8b: BatchOperationsPanel decomposition** - 595→403 LOC (32% reduction, +31 tests)
+  - [x] BatchActionButtons.tsx (173 LOC)
+  - [x] BatchProgressDetails.tsx (117 LOC)
+  - [x] ProxyProgressCard.tsx (50 LOC)
 
-**Phase 8: Presentational Cleanup - IN PROGRESS**
-
-**Phase 8a: CfexTransferWindow (LOW RISK)**
-- [ ] Create directory src/components/CfexTransferWindow/
-- [ ] Extract FolderPicker.tsx (~231 LOC) - already defined inline L64-295
-- [ ] Extract TransferProgress.tsx (~14 LOC) - already defined inline L308-322
-- [ ] Extract ValidationResults.tsx (~28 LOC) - already defined inline L329-357
-- [ ] Update index.tsx (~341 LOC) - main component only
-- [ ] Tests passing after extraction
-
-**Phase 8b: BatchOperationsPanel (MEDIUM RISK) - ✅ COMPLETE**
-- [x] Create directory src/components/BatchOperationsPanel/
-- [x] Extract BatchActionButtons.tsx (173 LOC) - button group with 15 tests
-- [x] Extract BatchProgressDetails.tsx (117 LOC) - progress view with 9 tests
-- [x] Extract ProxyProgressCard.tsx (50 LOC) - proxy progress with 7 tests
-- [x] Update BatchOperationsPanel.tsx (595 → 403 LOC, 32% reduction)
-- [x] Tests passing after extraction (1222 tests, all green)
-- [x] Quality gates: Tests 1222✅ | Lint 0✅ | Types 0✅
-
-**Results (Phase 7):**
+**Final Results:**
 - App.tsx: 875 → 242 LOC (72% reduction) ✅
-- SettingsModal: monolithic → modular directory (5 components) ✅
-- IngestTabContent.tsx: extracted (591 LOC) ✅
-- MediaViewer.tsx: extracted (137 LOC) ✅
-- Tests: 1034 → 1162 (+128 new tests) ✅
-- QG: Tests 1162✅ Lint 0✅ Types 0✅
+- SettingsModal: 1077 → modular directory ✅
+- CfexTransferWindow: 614 → 304 LOC (51% reduction) ✅
+- BatchOperationsPanel: 595 → 403 LOC (32% reduction) ✅
+- Tests: 1034 → 1222 (+188 new tests) ✅
+- QG: Tests 1222✅ Lint 0✅ Types 0✅
 
-**Tech Debt (deferred to future issues):**
+**Architectural Gaps Discovered (pre-existing, now tracked):**
+- Issue #111: CFEx Cancel button is no-op (HIGH)
+- Issue #112: CFEx Proxies settings not propagated (HIGH)
+- Issue #113: BatchOperationsPanel bypasses context (MEDIUM)
+
+**Tech Debt (deferred):**
 - Issue #105: Centralize Proxy Progress Listener
 - Issue #106: Implement IPC-level CFEx Cancellation
 

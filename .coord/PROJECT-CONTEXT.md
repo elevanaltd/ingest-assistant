@@ -1,6 +1,6 @@
 # Ingest Assistant - Project Context
 
-**Last Updated:** 2025-12-02 | **Version:** v2.3.0 | **Branch:** feat/issue-102-phase-8-presentational-cleanup (Phase 8 IN PROGRESS)
+**Last Updated:** 2025-12-02 | **Version:** v2.3.0 | **Branch:** main (Issue #102 COMPLETE)
 
 ---
 
@@ -24,7 +24,7 @@
 - **Runtime:** Electron (main + renderer)
 - **Frontend:** React 18, TypeScript
 - **Build:** Vite
-- **Testing:** Vitest (1162 tests, 78 files)
+- **Testing:** Vitest (1222 tests, 78 files)
 - **AI:** OpenRouter, Anthropic Claude, OpenAI APIs
 - **Database:** Supabase (shared with EAV Monorepo)
 
@@ -34,8 +34,8 @@
 
 ### Branch Status
 ```
-Branch: main (v2.3.0 release)
-Tests:  1162/1177 passing (15 skipped)
+Branch: main (v2.3.0 + Issue #102 COMPLETE)
+Tests:  1222 passing (Issue #102 added +188 tests)
 Lint:   0 errors
 Types:  0 errors
 Security: 6 moderate vulns (HIGH eliminated)
@@ -75,7 +75,7 @@ D0→D1→D2→D3→B0(Phase 1a)→B2(1a COMPLETE)→1c COMPLETE→Phase 1b(B2.1
 |------|--------|---------|
 | Lint | PASS (0 errors) | `npm run lint` |
 | Typecheck | PASS (0 errors) | `npm run typecheck` |
-| Tests | PASS (1162/1177) | `npm test` |
+| Tests | PASS (1222 passing) | `npm test` |
 
 ---
 
@@ -212,16 +212,18 @@ D0→D1→D2→D3→B0(Phase 1a)→B2(1a COMPLETE)→1c COMPLETE→Phase 1b(B2.1
 ### Future Phases
 - **Issue #63:** Reference Catalog (3-6 months)
 
-### ✅ Feature-Context Architecture (Issue #102) - Phase 7 COMPLETE
+### ✅ Feature-Context Architecture (Issue #102) - COMPLETE (2025-12-02)
 
-**Status:** Phase 7 COMPLETE (2025-12-01)
+**Status:** ALL PHASES COMPLETE (PR #110 merged)
 **GitHub:** https://github.com/elevanaltd/ingest-assistant/issues/102
-**Code Review:** code-review-specialist: 8/10 GO
+**Architectural Review:** code-review-specialist: CONDITIONAL (6/10) - pre-existing gaps identified
 
 **Problem Solved:** God components with scattered state
 - App.tsx: 875 LOC → 242 LOC (72% reduction)
-- SettingsModal: 1077 LOC (monolithic) → modular directory (5 components)
-- Tests: 1034 → 1162 (+128 new tests)
+- SettingsModal: 1077 LOC → modular directory (5 components)
+- CfexTransferWindow: 614 LOC → 304 LOC (51% reduction)
+- BatchOperationsPanel: 595 LOC → 403 LOC (32% reduction)
+- Tests: 1034 → 1222 (+188 new tests)
 
 **Architecture Delivered:**
 ```
@@ -235,50 +237,37 @@ main.tsx → AppProviders (root singleton)
 
 src/components/SettingsModal/
   ├─ index.tsx (640 LOC) - state container + tab shell
-  ├─ LexiconTab.tsx (189 LOC) - presentational
-  ├─ AITab.tsx (157 LOC) - presentational
-  ├─ CfexTab.tsx (150 LOC) - presentational
-  └─ IngestionTab.tsx (169 LOC) - presentational
+  ├─ LexiconTab.tsx, AITab.tsx, CfexTab.tsx, IngestionTab.tsx
+
+src/components/CfexTransferWindow/
+  ├─ index.tsx (304 LOC) - state + handlers
+  ├─ FolderPicker.tsx, TransferProgress.tsx, ValidationResults.tsx
+
+src/components/BatchOperationsPanel/
+  ├─ index.tsx (403 LOC) - state + handlers
+  ├─ BatchActionButtons.tsx, BatchProgressDetails.tsx, ProxyProgressCard.tsx
 
 src/components/
   ├─ IngestTabContent.tsx (591 LOC) - ingest tab UI
   └─ MediaViewer.tsx (137 LOC) - media preview
 ```
 
-**Phases Completed:**
+**All Phases Completed:**
 - ✅ Phase 1: Scaffold - AppProviders + test-utils (PR #104)
-- ✅ Phase 5.1-5.7: Context extractions (IngestSettings, BatchQueue, CfexTransfer, FileList, MetadataForm)
+- ✅ Phase 5.1-5.7: Context extractions (5 contexts)
 - ✅ Phase 5.8: App.tsx cleanup (875→242 LOC)
-- ✅ Phase 7: SettingsModal decomposition (1077 LOC → 5 tab components)
+- ✅ Phase 7: SettingsModal decomposition (PR #109)
+- ✅ Phase 8a: CfexTransferWindow decomposition (+29 tests)
+- ✅ Phase 8b: BatchOperationsPanel decomposition (+31 tests)
 
-### 🔄 Phase 8: Presentational Cleanup - IN PROGRESS (2025-12-02)
+**QG:** Tests 1222✅ Lint 0✅ Types 0✅
 
-**Status:** IN PROGRESS
-**Branch:** feat/issue-102-phase-8-presentational-cleanup
-**GitHub:** https://github.com/elevanaltd/ingest-assistant/issues/102
+**Architectural Gaps Discovered (pre-existing, now tracked):**
+- Issue #111: CFEx Cancel button is no-op (HIGH)
+- Issue #112: CFEx Proxies settings not propagated (HIGH)
+- Issue #113: BatchOperationsPanel bypasses context (MEDIUM)
 
-**Targets:**
-| Component | Current | Target | Reduction | Risk |
-|-----------|---------|--------|-----------|------|
-| CfexTransferWindow.tsx | 614 LOC | ~341 LOC | 45% | LOW |
-| BatchOperationsPanel.tsx | 595 LOC | ~315 LOC | 47% | MEDIUM |
-
-**Phase 8a: CfexTransferWindow Decomposition (LOW RISK)**
-- [ ] Extract FolderPicker.tsx (~231 LOC) - already defined inline L64-295
-- [ ] Extract TransferProgress.tsx (~14 LOC) - already defined inline L308-322
-- [ ] Extract ValidationResults.tsx (~28 LOC) - already defined inline L329-357
-- [ ] Create directory structure src/components/CfexTransferWindow/
-
-**Phase 8b: BatchOperationsPanel Decomposition (MEDIUM RISK)**
-- [ ] Extract BatchActionButtons.tsx (~150 LOC) - button group L319-437
-- [ ] Extract BatchProgressDetails.tsx (~100 LOC) - expanded view L493-567
-- [ ] Extract ProxyProgressCard.tsx (~30 LOC) - proxy progress L569-592
-- [ ] Create directory structure src/components/BatchOperationsPanel/
-
-**TDD Evidence:** RED→GREEN commits throughout all phases
-**QG:** Tests 1162✅ Lint 0✅ Types 0✅
-
-**Tech Debt Created (deferred to future issues):**
+**Tech Debt (deferred):**
 - Issue #105: Centralize Proxy Progress Listener
 - Issue #106: Implement IPC-level CFEx Cancellation
 
@@ -319,14 +308,14 @@ src/components/
 ## Recent Commits (Last 10)
 
 ```
+93db11c Merge pull request #110 from elevanaltd/feat/issue-102-phase-8-presentational-cleanup
+a9cad52 docs: update SHARED-CHECKLIST for Phase 8b completion
+d12aebd refactor: integrate extracted components into BatchOperationsPanel
+18e1c8e refactor: extract ProxyProgressCard from BatchOperationsPanel (GREEN)
+56095d6 refactor: extract BatchProgressDetails from BatchOperationsPanel (GREEN)
+15ff9fb test: add FolderPicker extraction tests (RED)
 e32680e Merge pull request #109 from elevanaltd/feat/issue-102-phase-7-settings-decomposition
 91569ae fix: align SettingsModal test assertions with async context loading
 fa36bbd refactor(settings): decompose SettingsModal into tab components (Phase 7)
 4a92d97 fix: prevent stale media from rendering on rapid navigation
-1d4a3f5 Merge pull request #108 from elevanaltd/docs/sync-coord-issue-102
-10c55e0 chore: Add /sync-coord command for clean docs PRs
-a6bed1c docs: sync-coord Issue #102 complete (FOUR-LAYER pattern)
-e689c76 Merge pull request #107 from elevanaltd/feat/issue-102-context-architecture-phase5
-f2d4172 fix: re-throw folder lock/unlock errors for UI feedback (PR #107 review)
-74690f3 fix: add getShotTypes mock to test files for MetadataFormContext
 ```
