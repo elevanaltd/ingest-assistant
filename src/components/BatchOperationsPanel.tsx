@@ -1,5 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useBatchQueue } from '../contexts/BatchQueueContext';
+import { BatchActionButtons } from './BatchOperationsPanel/BatchActionButtons';
+import { BatchProgressDetails } from './BatchOperationsPanel/BatchProgressDetails';
+import { ProxyProgressCard } from './BatchOperationsPanel/ProxyProgressCard';
 
 interface BatchOperationsPanelProps {
   /** Available files that can be batched */
@@ -156,8 +159,8 @@ export function BatchOperationsPanel({ availableFiles, selectedFileIds, filename
     }
   };
 
-  const handleReprocess = async () => {
-    console.log('[BatchPanel] Reprocess button clicked');
+  const handleReprocess = async (e: React.MouseEvent) => {
+    console.log('[BatchPanel] Reprocess button clicked', e);
 
     if (!window.electronAPI) {
       console.error('[BatchPanel] window.electronAPI is not available');
@@ -307,7 +310,6 @@ export function BatchOperationsPanel({ availableFiles, selectedFileIds, filename
 
   const isProcessing = queueState?.status === 'processing';
   const selectedCount = selectedFileIds?.size || 0;
-  const hasSelection = selectedCount > 0;
 
   return (
     <div style={{
@@ -315,126 +317,19 @@ export function BatchOperationsPanel({ availableFiles, selectedFileIds, filename
       borderBottom: '1px solid #e5e7eb',
       padding: '16px',
     }}>
-      {/* Action Buttons - At Top */}
-      {!isProcessing && (
-        <>
-          {/* Show "Process Selected" button when files are selected, otherwise show regular batch button */}
-          {hasSelection ? (
-            <button
-              onClick={handleProcessSelected}
-              style={{
-                width: '100%',
-                padding: '10px 16px',
-                fontSize: '14px',
-                borderRadius: '6px',
-                border: 'none',
-                backgroundColor: '#3b82f6',
-                color: 'white',
-                cursor: 'pointer',
-                fontWeight: '600',
-                marginBottom: '8px',
-              }}
-            >
-              {`Process Selected ${selectedCount} File${selectedCount !== 1 ? 's' : ''}`}
-            </button>
-          ) : (
-            <button
-              onClick={handleStartBatch}
-              disabled={unprocessedCount === 0}
-              style={{
-                width: '100%',
-                padding: '10px 16px',
-                fontSize: '14px',
-                borderRadius: '6px',
-                border: 'none',
-                backgroundColor: unprocessedCount > 0 ? '#3b82f6' : '#e5e7eb',
-                color: unprocessedCount > 0 ? 'white' : '#9ca3af',
-                cursor: unprocessedCount > 0 ? 'pointer' : 'not-allowed',
-                fontWeight: '600',
-                marginBottom: '8px',
-              }}
-            >
-              {unprocessedCount > 100
-                ? `AI Process First 100 Files`
-                : unprocessedCount > 0
-                ? `AI Process ${unprocessedCount} File${unprocessedCount !== 1 ? 's' : ''}`
-                : 'No Files to Process'
-              }
-            </button>
-          )}
-
-          {totalFiles > 0 && (
-            <button
-              onClick={(e) => {
-                console.log('[BatchPanel] Button click event:', e);
-                handleReprocess();
-              }}
-              style={{
-                width: '100%',
-                padding: '10px 16px',
-                fontSize: '14px',
-                borderRadius: '6px',
-                border: '1px solid #9ca3af',
-                backgroundColor: 'white',
-                color: '#374151',
-                cursor: 'pointer',
-                fontWeight: '600',
-                marginBottom: '8px',
-                position: 'relative',
-                zIndex: 1,
-              }}
-            >
-              {totalFiles > 100
-                ? `AI Reprocess First 100 Files`
-                : `AI Reprocess All ${totalFiles} File${totalFiles !== 1 ? 's' : ''}`
-              }
-            </button>
-          )}
-
-          {/* Generate Proxies Button (B2.7_04) */}
-          <button
-            onClick={handleGenerateProxies}
-            disabled={videoCount === 0}
-            style={{
-              width: '100%',
-              padding: '10px 16px',
-              fontSize: '14px',
-              borderRadius: '6px',
-              border: '1px solid #9ca3af',
-              backgroundColor: videoCount > 0 ? 'white' : '#e5e7eb',
-              color: videoCount > 0 ? '#374151' : '#9ca3af',
-              cursor: videoCount > 0 ? 'pointer' : 'not-allowed',
-              fontWeight: '600',
-              marginBottom: '16px',
-            }}
-          >
-            {videoCount > 0
-              ? `Generate Proxies for ${videoCount} Video${videoCount !== 1 ? 's' : ''}`
-              : 'No Videos to Process'
-            }
-          </button>
-        </>
-      )}
-
-      {isProcessing && (
-        <button
-          onClick={handleCancel}
-          style={{
-            width: '100%',
-            padding: '10px 16px',
-            fontSize: '14px',
-            borderRadius: '6px',
-            border: '1px solid #dc2626',
-            backgroundColor: '#fee2e2',
-            color: '#dc2626',
-            cursor: 'pointer',
-            fontWeight: '600',
-            marginBottom: '16px',
-          }}
-        >
-          Cancel Processing
-        </button>
-      )}
+      {/* Action Buttons */}
+      <BatchActionButtons
+        isProcessing={isProcessing}
+        selectedCount={selectedCount}
+        unprocessedCount={unprocessedCount}
+        totalFiles={totalFiles}
+        videoCount={videoCount}
+        onProcessSelected={handleProcessSelected}
+        onStartBatch={handleStartBatch}
+        onReprocess={handleReprocess}
+        onGenerateProxies={handleGenerateProxies}
+        onCancel={handleCancel}
+      />
 
       {/* Header - Compact */}
       <div style={{
@@ -491,104 +386,17 @@ export function BatchOperationsPanel({ availableFiles, selectedFileIds, filename
 
       {/* Expanded Details */}
       {isExpanded && queueState.items.length > 0 && (
-        <div style={{ marginTop: '12px' }}>
-          {/* Progress Bar */}
-          <div style={{ marginBottom: '12px' }}>
-            <div style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              fontSize: '12px',
-              marginBottom: '4px',
-              color: '#6b7280',
-            }}>
-              <span>Progress</span>
-              <span>{getProgressPercentage()}%</span>
-            </div>
-            <div style={{
-              width: '100%',
-              height: '8px',
-              backgroundColor: '#e5e7eb',
-              borderRadius: '4px',
-              overflow: 'hidden',
-            }}>
-              <div style={{
-                width: `${getProgressPercentage()}%`,
-                height: '100%',
-                backgroundColor: getStatusColor(queueState.status),
-                transition: 'width 0.3s ease',
-              }} />
-            </div>
-          </div>
-
-          {/* Current File */}
-          {currentProgress && (
-            <div style={{
-              fontSize: '12px',
-              padding: '8px',
-              backgroundColor: '#fff',
-              borderRadius: '4px',
-              border: '1px solid #e5e7eb',
-            }}>
-              <div style={{ fontWeight: '500', marginBottom: '4px' }}>
-                Processing: {currentProgress.fileId}
-              </div>
-              <div style={{ color: '#6b7280' }}>
-                {currentProgress.current} of {currentProgress.total} files
-                {currentProgress.error && (
-                  <span style={{ color: '#dc2626', marginLeft: '8px' }}>
-                    Error: {currentProgress.error}
-                  </span>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Queue Summary */}
-          <div style={{
-            marginTop: '8px',
-            fontSize: '12px',
-            color: '#6b7280',
-            display: 'flex',
-            gap: '16px',
-          }}>
-            <span>
-              ✓ Completed: {queueState.items.filter(i => i.status === 'completed').length}
-            </span>
-            <span>
-              ✗ Failed: {queueState.items.filter(i => i.status === 'error').length}
-            </span>
-            {queueState.items.filter(i => i.status === 'cancelled').length > 0 && (
-              <span>
-                ⊗ Cancelled: {queueState.items.filter(i => i.status === 'cancelled').length}
-              </span>
-            )}
-          </div>
-        </div>
+        <BatchProgressDetails
+          queueItems={queueState.items}
+          queueStatus={queueState.status}
+          currentProgress={currentProgress}
+          progressPercentage={getProgressPercentage()}
+        />
       )}
 
       {/* Proxy Generation Progress */}
       {proxyProgress && proxyProgress.type === 'transcode_progress' && (
-        <div style={{ marginTop: '12px', padding: '12px', backgroundColor: '#f0f9ff', borderRadius: '4px', border: '1px solid #bfdbfe' }}>
-          <div style={{ fontSize: '13px', fontWeight: '500', marginBottom: '8px', color: '#1e40af' }}>
-            Generating Proxies: {proxyProgress.filename || 'N/A'}
-          </div>
-          <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '8px' }}>
-            Progress: {proxyProgress.index || 0} / {proxyProgress.total || 0} videos ({proxyProgress.percentage || 0}%)
-          </div>
-          <div style={{ width: '100%', height: '8px', backgroundColor: '#e5e7eb', borderRadius: '4px', overflow: 'hidden' }}>
-            <div style={{
-              width: `${proxyProgress.percentage || 0}%`,
-              height: '100%',
-              backgroundColor: '#3b82f6',
-              transition: 'width 0.3s ease'
-            }} />
-          </div>
-          {proxyProgress.timeString && (
-            <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>
-              Encoding: {proxyProgress.percentage || 0}% | ETA: {proxyProgress.timeString}
-            </div>
-          )}
-        </div>
+        <ProxyProgressCard proxyProgress={proxyProgress} />
       )}
     </div>
   );

@@ -33,6 +33,7 @@ describe('BatchProgressDetails', () => {
           fileId: 'file3',
           current: 3,
           total: 5,
+          status: 'processing',
         }}
         progressPercentage={40}
       />
@@ -47,6 +48,7 @@ describe('BatchProgressDetails', () => {
       fileId: 'test-file.jpg',
       current: 3,
       total: 5,
+      status: 'processing',
     };
 
     render(
@@ -67,6 +69,7 @@ describe('BatchProgressDetails', () => {
       fileId: 'test-file.jpg',
       current: 3,
       total: 5,
+      status: 'error',
       error: 'File not found',
     };
 
