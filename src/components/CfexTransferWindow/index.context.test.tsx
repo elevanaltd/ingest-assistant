@@ -18,8 +18,8 @@
 import { describe, test, expect, vi, beforeEach } from 'vitest';
 import { screen, waitFor } from '@testing-library/react';
 import { userEvent } from '@testing-library/user-event';
-import { renderWithProviders } from '../test/test-utils';
-import { CfexTransferWindow } from './CfexTransferWindow';
+import { renderWithProviders } from '../../test/test-utils';
+import { CfexTransferWindow } from './index';
 
 describe('CfexTransferWindow - Context Integration (Phase 5.4)', () => {
   beforeEach(() => {

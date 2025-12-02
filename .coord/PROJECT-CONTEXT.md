@@ -1,6 +1,6 @@
 # Ingest Assistant - Project Context
 
-**Last Updated:** 2025-12-01 | **Version:** v2.3.0 | **Branch:** main (Phase 7 COMPLETE)
+**Last Updated:** 2025-12-02 | **Version:** v2.3.0 | **Branch:** feat/issue-102-phase-8-presentational-cleanup (Phase 8 IN PROGRESS)
 
 ---
 
@@ -251,9 +251,29 @@ src/components/
 - ✅ Phase 5.8: App.tsx cleanup (875→242 LOC)
 - ✅ Phase 7: SettingsModal decomposition (1077 LOC → 5 tab components)
 
-**Phase 8 Remaining (MEDIUM priority):**
-- [ ] CfexTransferWindow presentational cleanup (614→~300 LOC)
-- [ ] BatchOperationsPanel presentational cleanup (595→~300 LOC)
+### 🔄 Phase 8: Presentational Cleanup - IN PROGRESS (2025-12-02)
+
+**Status:** IN PROGRESS
+**Branch:** feat/issue-102-phase-8-presentational-cleanup
+**GitHub:** https://github.com/elevanaltd/ingest-assistant/issues/102
+
+**Targets:**
+| Component | Current | Target | Reduction | Risk |
+|-----------|---------|--------|-----------|------|
+| CfexTransferWindow.tsx | 614 LOC | ~341 LOC | 45% | LOW |
+| BatchOperationsPanel.tsx | 595 LOC | ~315 LOC | 47% | MEDIUM |
+
+**Phase 8a: CfexTransferWindow Decomposition (LOW RISK)**
+- [ ] Extract FolderPicker.tsx (~231 LOC) - already defined inline L64-295
+- [ ] Extract TransferProgress.tsx (~14 LOC) - already defined inline L308-322
+- [ ] Extract ValidationResults.tsx (~28 LOC) - already defined inline L329-357
+- [ ] Create directory structure src/components/CfexTransferWindow/
+
+**Phase 8b: BatchOperationsPanel Decomposition (MEDIUM RISK)**
+- [ ] Extract BatchActionButtons.tsx (~150 LOC) - button group L319-437
+- [ ] Extract BatchProgressDetails.tsx (~100 LOC) - expanded view L493-567
+- [ ] Extract ProxyProgressCard.tsx (~30 LOC) - proxy progress L569-592
+- [ ] Create directory structure src/components/BatchOperationsPanel/
 
 **TDD Evidence:** RED→GREEN commits throughout all phases
 **QG:** Tests 1162✅ Lint 0✅ Types 0✅
@@ -299,14 +319,14 @@ src/components/
 ## Recent Commits (Last 10)
 
 ```
-760b97b test: add HIGH priority validation tests for Phase 1b proxy generation (GREEN)
-bdae1ed Merge pull request #99 from elevanaltd/feat/b2.7-proxy-ui-and-presets
-3386874 fix: show EXIF verification failures in proxy result message (GREEN)
-4695bd6 test: add failing tests for proxy result messages (RED)
-a6f594f feat: implement proxy progress UI in BatchOperationsPanel and CfexTransferWindow (GREEN)
-aa24169 test: add failing tests for proxy progress UI (RED)
-379f8d6 fix: use path module for cross-platform proxy matching (GREEN)
-c1ee176 test: add failing tests for proxy path matching edge cases (RED)
-5a1c600 docs: update PROJECT-HISTORY with B2.7 session and known EXIF issue
-149af45 fix: set percentComplete to 100 on successful transfer completion
+e32680e Merge pull request #109 from elevanaltd/feat/issue-102-phase-7-settings-decomposition
+91569ae fix: align SettingsModal test assertions with async context loading
+fa36bbd refactor(settings): decompose SettingsModal into tab components (Phase 7)
+4a92d97 fix: prevent stale media from rendering on rapid navigation
+1d4a3f5 Merge pull request #108 from elevanaltd/docs/sync-coord-issue-102
+10c55e0 chore: Add /sync-coord command for clean docs PRs
+a6bed1c docs: sync-coord Issue #102 complete (FOUR-LAYER pattern)
+e689c76 Merge pull request #107 from elevanaltd/feat/issue-102-context-architecture-phase5
+f2d4172 fix: re-throw folder lock/unlock errors for UI feedback (PR #107 review)
+74690f3 fix: add getShotTypes mock to test files for MetadataFormContext
 ```

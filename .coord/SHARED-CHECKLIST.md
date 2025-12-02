@@ -1,29 +1,46 @@
 # Ingest Assistant - Shared Checklist
 
-## Current Status (2025-12-01 Updated)
+## Current Status (2025-12-02 Updated)
 
-### 🔄 Feature-Context Architecture (Issue #102) - Phase 7 COMPLETE
+### 🔄 Feature-Context Architecture (Issue #102) - Phase 8 IN PROGRESS
 
-**Status:** Phase 7 COMPLETE, Phase 8 REMAINING
+**Status:** Phase 8 IN PROGRESS
+**Branch:** feat/issue-102-phase-8-presentational-cleanup
 **GitHub:** https://github.com/elevanaltd/ingest-assistant/issues/102
-**Last Session:** 2025-12-01 (code-review-specialist: 8/10 GO)
+**Last Session:** 2025-12-02 (PR #109 merged, Phase 8 branch created)
 
-**Implementation Phases:**
+**Completed Phases:**
 - [x] **Phase 1: Scaffold** - directories + AppProviders + test-utils (PR #104)
 - [x] **Phase 5.1-5.7: Context extractions** - IngestSettings, BatchQueue, CfexTransfer, FileList, MetadataForm
 - [x] **Phase 5.8: App.tsx cleanup** - 875→242 LOC (72% reduction)
-- [x] **Phase 7: SettingsModal decomposition** - 1077 LOC → 5 tab components
+- [x] **Phase 7: SettingsModal decomposition** - 1077 LOC → 5 tab components (PR #109 merged)
   - [x] index.tsx (640 LOC) - state container + tab shell
   - [x] LexiconTab.tsx (189 LOC) - presentational
   - [x] AITab.tsx (157 LOC) - presentational
   - [x] CfexTab.tsx (150 LOC) - presentational
   - [x] IngestionTab.tsx (169 LOC) - presentational
   - [x] Tests for all tabs (+35 tests)
-- [ ] **Phase 8: Presentational cleanup** (MEDIUM priority - deferred)
-  - [ ] CfexTransferWindow.tsx (614→~300 LOC)
-  - [ ] BatchOperationsPanel.tsx (595→~300 LOC)
 
-**Results:**
+**Phase 8: Presentational Cleanup - IN PROGRESS**
+
+**Phase 8a: CfexTransferWindow (LOW RISK)**
+- [ ] Create directory src/components/CfexTransferWindow/
+- [ ] Extract FolderPicker.tsx (~231 LOC) - already defined inline L64-295
+- [ ] Extract TransferProgress.tsx (~14 LOC) - already defined inline L308-322
+- [ ] Extract ValidationResults.tsx (~28 LOC) - already defined inline L329-357
+- [ ] Update index.tsx (~341 LOC) - main component only
+- [ ] Tests passing after extraction
+
+**Phase 8b: BatchOperationsPanel (MEDIUM RISK) - ✅ COMPLETE**
+- [x] Create directory src/components/BatchOperationsPanel/
+- [x] Extract BatchActionButtons.tsx (173 LOC) - button group with 15 tests
+- [x] Extract BatchProgressDetails.tsx (117 LOC) - progress view with 9 tests
+- [x] Extract ProxyProgressCard.tsx (50 LOC) - proxy progress with 7 tests
+- [x] Update BatchOperationsPanel.tsx (595 → 403 LOC, 32% reduction)
+- [x] Tests passing after extraction (1222 tests, all green)
+- [x] Quality gates: Tests 1222✅ | Lint 0✅ | Types 0✅
+
+**Results (Phase 7):**
 - App.tsx: 875 → 242 LOC (72% reduction) ✅
 - SettingsModal: monolithic → modular directory (5 components) ✅
 - IngestTabContent.tsx: extracted (591 LOC) ✅
