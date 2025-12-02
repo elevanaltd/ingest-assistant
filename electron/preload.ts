@@ -115,7 +115,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
     }> =>
       ipcRenderer.invoke('cfex:detect-sources'),
 
-    startTransfer: (config: { source: string; destinations: { photos: string; rawVideos: string } }): Promise<{
+    startTransfer: (config: {
+      source: string;
+      destinations: { photos: string; rawVideos: string; proxies?: string };
+      enabledDestinations?: { photos: boolean; rawVideos: boolean; proxies?: boolean };
+      proxyPresetId?: string;
+    }): Promise<{
       success: boolean;
       filesTransferred: number;
       filesTotal: number;

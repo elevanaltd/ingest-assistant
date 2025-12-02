@@ -840,6 +840,180 @@ describe('CFEx Transfer IPC Handlers', () => {
     })
   })
 
+  describe('Proxy Generation Trigger (Issue #112 P1)', () => {
+    test('emits cfex:trigger-proxy-generation when proxies enabled and transfer succeeds', async () => {
+      // ARRANGE
+      mockService.startTransfer.mockResolvedValue({
+        success: true,
+        filesTransferred: 5,
+        filesTotal: 5,
+        bytesTransferred: 500000,
+        duration: 1000,
+        validationWarnings: [],
+        errors: []
+      })
+
+      registerCfexTransferHandlers(mockWindow)
+      const handler = (ipcMain.handle as any).mock.calls.find(
+        (call: any) => call[0] === 'cfex:start-transfer'
+      )[1]
+
+      const configWithProxies = {
+        source: '/Volumes/NO NAME/',
+        destinations: {
+          photos: '/Volumes/LucidLink/images/',
+          rawVideos: '/Volumes/Ubuntu/videos/',
+          proxies: '/Volumes/LucidLink/proxies/'
+        },
+        enabledDestinations: {
+          photos: true,
+          rawVideos: true,
+          proxies: true
+        },
+        proxyPresetId: '2k-prores-proxy'
+      }
+
+      // ACT
+      await handler({}, configWithProxies)
+
+      // ASSERT
+      expect(mockWindow.webContents.send).toHaveBeenCalledWith(
+        'cfex:trigger-proxy-generation',
+        expect.objectContaining({
+          rawVideoFolder: '/Volumes/Ubuntu/videos/',
+          proxyOutputFolder: '/Volumes/LucidLink/proxies/',
+          proxyPresetId: '2k-prores-proxy'
+        })
+      )
+    })
+
+    test('does NOT emit cfex:trigger-proxy-generation when proxies disabled', async () => {
+      // ARRANGE
+      mockService.startTransfer.mockResolvedValue({
+        success: true,
+        filesTransferred: 5,
+        filesTotal: 5,
+        bytesTransferred: 500000,
+        duration: 1000,
+        validationWarnings: [],
+        errors: []
+      })
+
+      registerCfexTransferHandlers(mockWindow)
+      const handler = (ipcMain.handle as any).mock.calls.find(
+        (call: any) => call[0] === 'cfex:start-transfer'
+      )[1]
+
+      const configWithoutProxies = {
+        source: '/Volumes/NO NAME/',
+        destinations: {
+          photos: '/Volumes/LucidLink/images/',
+          rawVideos: '/Volumes/Ubuntu/videos/'
+        },
+        enabledDestinations: {
+          photos: true,
+          rawVideos: true,
+          proxies: false
+        }
+      }
+
+      // ACT
+      await handler({}, configWithoutProxies)
+
+      // ASSERT
+      expect(mockWindow.webContents.send).not.toHaveBeenCalledWith(
+        'cfex:trigger-proxy-generation',
+        expect.anything()
+      )
+    })
+
+    test('does NOT emit cfex:trigger-proxy-generation when transfer fails', async () => {
+      // ARRANGE
+      mockService.startTransfer.mockResolvedValue({
+        success: false,
+        filesTransferred: 2,
+        filesTotal: 5,
+        bytesTransferred: 200000,
+        duration: 1000,
+        validationWarnings: [],
+        errors: [{ file: 'test.mov', error: new Error('Transfer failed'), phase: 'transfer' as const }]
+      })
+
+      registerCfexTransferHandlers(mockWindow)
+      const handler = (ipcMain.handle as any).mock.calls.find(
+        (call: any) => call[0] === 'cfex:start-transfer'
+      )[1]
+
+      const configWithProxies = {
+        source: '/Volumes/NO NAME/',
+        destinations: {
+          photos: '/Volumes/LucidLink/images/',
+          rawVideos: '/Volumes/Ubuntu/videos/',
+          proxies: '/Volumes/LucidLink/proxies/'
+        },
+        enabledDestinations: {
+          photos: true,
+          rawVideos: true,
+          proxies: true
+        },
+        proxyPresetId: '2k-prores-proxy'
+      }
+
+      // ACT
+      await handler({}, configWithProxies)
+
+      // ASSERT
+      expect(mockWindow.webContents.send).not.toHaveBeenCalledWith(
+        'cfex:trigger-proxy-generation',
+        expect.anything()
+      )
+    })
+
+    test('uses default preset when proxyPresetId not provided', async () => {
+      // ARRANGE
+      mockService.startTransfer.mockResolvedValue({
+        success: true,
+        filesTransferred: 5,
+        filesTotal: 5,
+        bytesTransferred: 500000,
+        duration: 1000,
+        validationWarnings: [],
+        errors: []
+      })
+
+      registerCfexTransferHandlers(mockWindow)
+      const handler = (ipcMain.handle as any).mock.calls.find(
+        (call: any) => call[0] === 'cfex:start-transfer'
+      )[1]
+
+      const configWithProxiesNoPreset = {
+        source: '/Volumes/NO NAME/',
+        destinations: {
+          photos: '/Volumes/LucidLink/images/',
+          rawVideos: '/Volumes/Ubuntu/videos/',
+          proxies: '/Volumes/LucidLink/proxies/'
+        },
+        enabledDestinations: {
+          photos: true,
+          rawVideos: true,
+          proxies: true
+        }
+        // No proxyPresetId - should default
+      }
+
+      // ACT
+      await handler({}, configWithProxiesNoPreset)
+
+      // ASSERT
+      expect(mockWindow.webContents.send).toHaveBeenCalledWith(
+        'cfex:trigger-proxy-generation',
+        expect.objectContaining({
+          proxyPresetId: '2k-prores-proxy' // Default preset
+        })
+      )
+    })
+  })
+
   describe('cfex:cancel handler', () => {
     test('registers cfex:cancel handler on initialization', () => {
       // ACT

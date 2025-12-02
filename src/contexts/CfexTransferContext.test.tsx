@@ -419,4 +419,131 @@ describe('CfexTransferContext', () => {
     // filenameRewrite should always be false (session-ephemeral)
     expect(result.current.state.filenameRewrite).toBe(false);
   });
+
+  /**
+   * RED PHASE (Issue #112): Test proxy settings propagation to IPC
+   *
+   * This test verifies that when proxies are enabled and configured,
+   * the startTransfer() method includes proxy settings in the IPC call.
+   *
+   * EXPECTED TO FAIL: Current implementation doesn't pass proxy settings to backend.
+   */
+  it('should include proxy settings in startTransfer IPC call when proxies enabled', async () => {
+    // ARRANGE: Mock electronAPI with startTransfer IPC handler
+    const mockStartTransfer = vi.fn().mockResolvedValue({
+      success: true,
+      filesTransferred: 5,
+      filesTotal: 5,
+      bytesTransferred: 1000000,
+      duration: 2000,
+      validationWarnings: [],
+      errors: [],
+      transferredFiles: {
+        photos: ['/dest/photo1.jpg'],
+        rawVideos: ['/dest/video1.MOV'],
+        proxies: ['/dest/proxy1.MOV']
+      }
+    });
+
+    const mockElectronAPI = {
+      loadConfig: vi.fn().mockResolvedValue({ cfex: {} }),
+      cfex: {
+        startTransfer: mockStartTransfer,
+        onTransferProgress: vi.fn(() => vi.fn()),
+      },
+    };
+
+    (window as { electronAPI?: unknown }).electronAPI = mockElectronAPI;
+
+    const { result } = renderHook(() => useCfexTransfer(), {
+      wrapper: CfexTransferProvider,
+    });
+
+    // ACT: Enable proxies and set proxy destination
+    act(() => {
+      result.current.updateConfig({
+        proxiesEnabled: true,
+        proxiesDestination: '/Volumes/videos-current/proxies',
+        proxyPresetId: '2k-prores-proxy',
+      });
+    });
+
+    // ACT: Start transfer
+    await act(async () => {
+      await result.current.startTransfer();
+    });
+
+    // ASSERT: startTransfer IPC called with proxy settings
+    expect(mockStartTransfer).toHaveBeenCalledWith(
+      expect.objectContaining({
+        destinations: expect.objectContaining({
+          photos: expect.any(String),
+          rawVideos: expect.any(String),
+          proxies: '/Volumes/videos-current/proxies', // Should include proxies destination
+        }),
+        enabledDestinations: expect.objectContaining({
+          photos: expect.any(Boolean),
+          rawVideos: expect.any(Boolean),
+          proxies: true, // Should include proxies enabled flag
+        }),
+        proxyPresetId: '2k-prores-proxy', // Should include proxy preset ID
+      })
+    );
+  });
+
+  /**
+   * RED PHASE (Issue #112): Test that proxy settings are NOT included when proxies disabled
+   */
+  it('should NOT include proxy settings in startTransfer when proxies disabled', async () => {
+    // ARRANGE
+    const mockStartTransfer = vi.fn().mockResolvedValue({
+      success: true,
+      filesTransferred: 2,
+      filesTotal: 2,
+      bytesTransferred: 500000,
+      duration: 1000,
+      validationWarnings: [],
+      errors: [],
+      transferredFiles: {
+        photos: ['/dest/photo1.jpg'],
+        rawVideos: ['/dest/video1.MOV']
+      }
+    });
+
+    const mockElectronAPI = {
+      loadConfig: vi.fn().mockResolvedValue({ cfex: {} }),
+      cfex: {
+        startTransfer: mockStartTransfer,
+        onTransferProgress: vi.fn(() => vi.fn()),
+      },
+    };
+
+    (window as { electronAPI?: unknown }).electronAPI = mockElectronAPI;
+
+    const { result } = renderHook(() => useCfexTransfer(), {
+      wrapper: CfexTransferProvider,
+    });
+
+    // ACT: Keep proxies disabled (default state), set destination anyway
+    act(() => {
+      result.current.updateConfig({
+        proxiesEnabled: false,
+        proxiesDestination: '/some/path', // Path set but disabled
+      });
+    });
+
+    await act(async () => {
+      await result.current.startTransfer();
+    });
+
+    // ASSERT: Proxy settings either omitted or empty/false
+    // (Implementation can choose whether to send with empty values or omit entirely)
+    expect(mockStartTransfer).toHaveBeenCalledWith(
+      expect.objectContaining({
+        enabledDestinations: expect.objectContaining({
+          proxies: false, // Proxies should be disabled
+        }),
+      })
+    );
+  });
 });
