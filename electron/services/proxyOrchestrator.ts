@@ -89,6 +89,8 @@ export class ProxyOrchestrator {
               progressCallback({
                 type: 'transcode_progress',
                 filename,
+                index: i,
+                total,
                 timeString,
                 percentage
               });
