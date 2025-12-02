@@ -1117,11 +1117,9 @@ describe('CfexTransferWindow', () => {
    * when proxy destination is enabled.
    */
   describe('Proxy Generation After Transfer (B2.7_02)', () => {
-    test.skip('triggers proxy generation when proxies enabled and transfer completes', async () => {
-      // SKIPPED: Proxy generation trigger logic not migrated to context yet
-      // Phase 5.4 focused on core state management
-      // Proxy generation orchestration deferred to Phase 5.5
-      // TODO: Move proxy generation trigger logic to context.startTransfer()
+    test('triggers proxy generation when proxies enabled and transfer completes', async () => {
+      // RED PHASE (Issue #112): Test that proxy settings are propagated to backend
+      // Expecting this to FAIL because context.startTransfer() doesn't pass proxy settings yet
       // ARRANGE
       const rawVideosPaths = ['/Volumes/EAV_Video_RAW/video1.MOV', '/Volumes/EAV_Video_RAW/video2.MOV']
 
