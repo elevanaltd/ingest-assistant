@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useCfexTransfer } from '../../contexts/CfexTransferContext'
+import { useProxyProgress } from '../../hooks/useProxyProgress'
 import { FolderPicker } from './FolderPicker'
 import { TransferProgress } from './TransferProgress'
 import { ValidationResults } from './ValidationResults'
@@ -56,43 +57,16 @@ export function CfexTransferWindow() {
   // Consume context for transfer state and actions
   const { state: ctxState, updateConfig, startTransfer } = useCfexTransfer()
 
+  // Subscribe to proxy generation progress events via hook
+  const proxyProgress = useProxyProgress()
+
   // Local UI-only state (not in context)
   const [isDetecting, setIsDetecting] = useState(false)
   const [warnings, setWarnings] = useState<ValidationWarning[]>([])
   const [errors, setErrors] = useState<TransferError[]>([])
-  const [proxyProgress, setProxyProgress] = useState<{
-    type: string
-    filename?: string
-    index?: number
-    total?: number
-    percentage?: number
-    timeString?: string
-  } | null>(null)
 
   // NOTE: Config loading and onTransferProgress subscription removed
   // Context (CfexTransferProvider) handles both (lines 117-211 in CfexTransferContext.tsx)
-
-  // Listen to proxy generation progress events (local UI state)
-  useEffect(() => {
-    if (!window.electronAPI?.proxy?.onProxyProgress) {
-      return
-    }
-
-    const proxyProgressHandler = (progress: {
-      type: string
-      filename?: string
-      index?: number
-      total?: number
-      percentage?: number
-      timeString?: string
-    }) => {
-      setProxyProgress(progress)
-    }
-
-    const cleanup = window.electronAPI.proxy.onProxyProgress(proxyProgressHandler)
-
-    return cleanup
-  }, [])
 
   // Auto-detect CFEx cards and destinations on mount
   useEffect(() => {
@@ -164,7 +138,7 @@ export function CfexTransferWindow() {
   function handleCancel() {
     setWarnings([])
     setErrors([])
-    setProxyProgress(null)
+    // Note: proxyProgress state managed by useProxyProgress hook (read-only from component perspective)
     // Context reset handled separately (not called here to avoid confusion)
   }
 
