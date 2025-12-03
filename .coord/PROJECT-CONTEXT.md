@@ -1,6 +1,6 @@
 # Ingest Assistant - Project Context
 
-**Last Updated:** 2025-12-02 | **Version:** v2.3.0 | **Branch:** main (Issue #112 COMPLETE + All Major Gaps Resolved)
+**Last Updated:** 2025-12-03 | **Version:** v2.3.1 | **Branch:** main (ExifPreserver I1 Fix - PR #122)
 
 ---
 
@@ -34,8 +34,8 @@
 
 ### Branch Status
 ```
-Branch: main (v2.3.0 + All Major Gaps Resolved)
-Tests:  1241 passing (+199 from #102, +11 tech debt, +8 from #112)
+Branch: main (v2.3.1 + ExifPreserver I1 Fix)
+Tests:  1245 passing (+4 from PR #122 ExifPreserver fix)
 Lint:   0 errors
 Types:  0 errors
 Security: 6 moderate vulns (HIGH eliminated)
@@ -75,7 +75,7 @@ D0→D1→D2→D3→B0(Phase 1a)→B2(1a COMPLETE)→1c COMPLETE→Phase 1b(B2.1
 |------|--------|---------|
 | Lint | PASS (0 errors) | `npm run lint` |
 | Typecheck | PASS (0 errors) | `npm run typecheck` |
-| Tests | PASS (1233 passing) | `npm test` |
+| Tests | PASS (1245 passing) | `npm test` |
 
 ---
 
@@ -274,6 +274,22 @@ src/components/
 - Issue #116: Reset transfer counters on cancel/start (LOW)
 - Issue #117: main.ts tech debt extraction (LOW)
 
+### ✅ ExifPreserver I1 Bug Fix - COMPLETE (PR #122 merged 2025-12-03)
+
+**Problem Discovered:** All proxy files received SAME DateTimeOriginal timestamp (14:42:43) instead of individual chronological timestamps. Root cause: `exiftool` command syntax doesn't support per-file tag values in single invocation.
+
+**Fix Applied (3 commits, TDD pattern):**
+1. **Per-file timestamp preservation** - separate exiftool call per file
+2. **Concurrency limiting** - CONCURRENCY_LIMIT=8 prevents EMFILE on 500+ file batches
+3. **Fail-continue behavior** - Promise.allSettled ensures all files attempted even if some fail
+
+**Quality Gates:**
+- code-review-specialist (Codex): GO (9/10)
+- critical-engineer (Gemini): GO (9/10) - MERGE_APPROVED
+- Tests: 1245 passing (+4 new ExifPreserver tests)
+
+**I1 Compliance:** ✅ Restored - per-file DateTimeOriginal now correctly preserved
+
 ---
 
 ## Assumptions to Validate
@@ -311,14 +327,14 @@ src/components/
 ## Recent Commits (Last 10)
 
 ```
-93db11c Merge pull request #110 from elevanaltd/feat/issue-102-phase-8-presentational-cleanup
-a9cad52 docs: update SHARED-CHECKLIST for Phase 8b completion
-d12aebd refactor: integrate extracted components into BatchOperationsPanel
-18e1c8e refactor: extract ProxyProgressCard from BatchOperationsPanel (GREEN)
-56095d6 refactor: extract BatchProgressDetails from BatchOperationsPanel (GREEN)
-15ff9fb test: add FolderPicker extraction tests (RED)
-e32680e Merge pull request #109 from elevanaltd/feat/issue-102-phase-7-settings-decomposition
-91569ae fix: align SettingsModal test assertions with async context loading
-fa36bbd refactor(settings): decompose SettingsModal into tab components (Phase 7)
-4a92d97 fix: prevent stale media from rendering on rapid navigation
+6e6b883 Merge pull request #122 from elevanaltd/fix/exif-preserver-i1-violation
+3e67540 feat: fix ExifPreserver fail-fast bug with Promise.allSettled (GREEN)
+51be02d test: add failing test for I1 best-effort fail-continue behavior (RED)
+3c761ce feat: implement concurrency limiting in ExifPreserver.writeBatch (GREEN)
+85c7306 test: add failing test for concurrency limiting in ExifPreserver.writeBatch (RED)
+2a62906 fix: preserve per-file DateTimeOriginal in ExifPreserver.writeBatch() (GREEN)
+be0a783 test: add failing test for per-file DateTimeOriginal preservation (RED)
+d5aec0c Merge pull request #121 from elevanaltd/ubuntu-amendments
+58152b6 fix: preserve file timestamps during CFEx transfer
+244ab83 Merge pull request #120 from elevanaltd/docs/sync-context-112
 ```

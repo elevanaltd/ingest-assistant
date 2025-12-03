@@ -1,6 +1,22 @@
 # Ingest Assistant - Shared Checklist
 
-## Current Status (2025-12-02 Updated)
+## Current Status (2025-12-03 Updated)
+
+### ✅ ExifPreserver I1 Bug Fix - COMPLETE (PR #122 merged 2025-12-03)
+
+**Problem:** All proxy files received SAME DateTimeOriginal timestamp instead of individual chronological timestamps. Root cause: `exiftool` command syntax doesn't support per-file tag values in single invocation.
+
+**Fix Applied (6 commits, TDD pattern):**
+- [x] Per-file timestamp preservation (separate exiftool call per file)
+- [x] Concurrency limiting (CONCURRENCY_LIMIT=8 prevents EMFILE)
+- [x] Fail-continue behavior (Promise.allSettled ensures all files attempted)
+
+**Quality Gates:**
+- code-review-specialist (Codex): GO (9/10)
+- critical-engineer (Gemini): GO (9/10) - MERGE_APPROVED
+- Tests: 1245 passing (+4 new ExifPreserver tests)
+
+---
 
 ### ✅ Feature-Context Architecture (Issue #102) - COMPLETE
 
@@ -73,7 +89,7 @@
 ---
 
 ## Last Updated
-2025-12-02 (Tech debt #105 + #106 resolved - holistic-orchestrator)
-**Tests:** 1233/1233 passing
+2025-12-03 (ExifPreserver I1 fix - PR #122 merged)
+**Tests:** 1245/1260 passing (15 skipped)
 **Branch:** main
 **Lint:** 0 errors, 6 warnings
