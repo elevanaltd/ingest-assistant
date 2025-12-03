@@ -601,6 +601,15 @@ ipcMain.handle('file:load-files', async () => {
       await store.updateFileMetadata(file.id, file);
     } else {
       // Use existing metadata (which may have been AI-processed)
+      // Stale Metadata Fix: Update currentFilename if actual disk filename differs
+      if (existingMetadata.currentFilename !== file.currentFilename) {
+        console.log(`[main] Updating stale currentFilename: ${existingMetadata.currentFilename} → ${file.currentFilename}`);
+        existingMetadata.currentFilename = file.currentFilename;
+        existingMetadata.filePath = file.filePath;
+        MetadataStore.updateAuditTrail(existingMetadata);
+        await store.updateFileMetadata(file.id, existingMetadata);
+      }
+
       // Bug #1 Fix: Fallback to mainName for legacy pre-R1.1 records, then to empty string if both missing
       file.shotName = existingMetadata.shotName || existingMetadata.mainName || '';
       file.keywords = existingMetadata.keywords;
