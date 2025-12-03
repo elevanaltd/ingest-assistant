@@ -75,8 +75,13 @@ export function registerConfigHandlers(
 
   // Lexicon operations (UI format)
   ipcMain.handle('lexicon:load', async () => {
-    const lexicon = await configManager.getLexicon();
-    return convertToUIFormat(lexicon);
+    try {
+      const lexicon = await configManager.getLexicon();
+      return convertToUIFormat(lexicon);
+    } catch (error) {
+      console.error('Failed to load lexicon:', error);
+      throw sanitizeError(error);
+    }
   });
 
   ipcMain.handle('lexicon:save', async (_event, uiConfig: LexiconConfig) => {
