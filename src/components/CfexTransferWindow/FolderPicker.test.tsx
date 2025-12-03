@@ -328,4 +328,128 @@ describe('FolderPicker (Phase 8a Extraction)', () => {
       expect(mockOnDestinationChange).toHaveBeenCalled()
     })
   })
+
+  describe('Create Folder Button (Linux folder creation)', () => {
+    test('renders Create Folder button for photos destination', () => {
+      // ARRANGE & ACT
+      render(<FolderPicker {...defaultProps} />)
+
+      // ASSERT
+      const createFolderButtons = screen.getAllByRole('button', { name: /create folder/i })
+      expect(createFolderButtons.length).toBeGreaterThan(0)
+    })
+
+    test('Create Folder button shows prompt and creates folder successfully', async () => {
+      // ARRANGE
+      const mockCreateFolder = vi.fn().mockResolvedValue({
+        success: true,
+        path: '/Volumes/LucidLink/photos/new-project'
+      })
+      ;(window as any).electronAPI.createFolder = mockCreateFolder
+
+      // Mock window.prompt
+      const promptSpy = vi.spyOn(window, 'prompt').mockReturnValue('new-project')
+
+      render(<FolderPicker {...defaultProps} />)
+      const user = userEvent.setup()
+
+      // ACT
+      const createFolderButtons = screen.getAllByRole('button', { name: /create folder/i })
+      const photosCreateBtn = createFolderButtons[0] // First is photos
+      await user.click(photosCreateBtn)
+
+      // ASSERT
+      await waitFor(() => {
+        expect(promptSpy).toHaveBeenCalledWith('Enter folder name:')
+        expect(mockCreateFolder).toHaveBeenCalledWith('/Volumes/LucidLink/photos', 'new-project')
+        expect(mockOnDestinationChange).toHaveBeenCalledWith({
+          photos: '/Volumes/LucidLink/photos/new-project',
+          rawVideos: '/Volumes/Ubuntu/videos-raw',
+          proxies: '/Volumes/LucidLink/proxies'
+        })
+      })
+
+      promptSpy.mockRestore()
+    })
+
+    test('Create Folder button handles user cancellation (empty input)', async () => {
+      // ARRANGE
+      const mockCreateFolder = vi.fn()
+      ;(window as any).electronAPI.createFolder = mockCreateFolder
+
+      // Mock window.prompt returning null (cancelled)
+      const promptSpy = vi.spyOn(window, 'prompt').mockReturnValue(null)
+
+      render(<FolderPicker {...defaultProps} />)
+      const user = userEvent.setup()
+
+      // ACT
+      const createFolderButtons = screen.getAllByRole('button', { name: /create folder/i })
+      await user.click(createFolderButtons[0])
+
+      // ASSERT
+      expect(promptSpy).toHaveBeenCalled()
+      expect(mockCreateFolder).not.toHaveBeenCalled()
+      expect(mockOnDestinationChange).not.toHaveBeenCalled()
+
+      promptSpy.mockRestore()
+    })
+
+    test('Create Folder button displays error when creation fails', async () => {
+      // ARRANGE
+      const mockCreateFolder = vi.fn().mockResolvedValue({
+        success: false,
+        error: 'Permission denied'
+      })
+      ;(window as any).electronAPI.createFolder = mockCreateFolder
+
+      const promptSpy = vi.spyOn(window, 'prompt').mockReturnValue('test-folder')
+
+      render(<FolderPicker {...defaultProps} />)
+      const user = userEvent.setup()
+
+      // ACT
+      const createFolderButtons = screen.getAllByRole('button', { name: /create folder/i })
+      await user.click(createFolderButtons[0])
+
+      // ASSERT
+      await waitFor(() => {
+        expect(screen.getByText(/create folder failed/i)).toBeInTheDocument()
+        expect(screen.getByText(/permission denied/i)).toBeInTheDocument()
+      })
+
+      promptSpy.mockRestore()
+    })
+
+    test('Create Folder button disabled when destination disabled', () => {
+      // ARRANGE
+      const props = {
+        ...defaultProps,
+        enabledDestinations: {
+          photos: false,
+          rawVideos: true,
+          proxies: false
+        }
+      }
+
+      // ACT
+      render(<FolderPicker {...props} />)
+
+      // ASSERT
+      const createFolderButtons = screen.getAllByRole('button', { name: /create folder/i })
+      // First button should be disabled (photos disabled)
+      expect(createFolderButtons[0]).toBeDisabled()
+    })
+
+    test('Create Folder button disabled when component disabled', () => {
+      // ARRANGE & ACT
+      render(<FolderPicker {...defaultProps} disabled={true} />)
+
+      // ASSERT
+      const createFolderButtons = screen.getAllByRole('button', { name: /create folder/i })
+      createFolderButtons.forEach(btn => {
+        expect(btn).toBeDisabled()
+      })
+    })
+  })
 })
