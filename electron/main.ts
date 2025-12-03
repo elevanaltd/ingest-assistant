@@ -476,6 +476,82 @@ ipcMain.handle('file:select-folder', async (_event, startPath?: string) => {
   return null;
 });
 
+// Create folder operation (Issue: Linux folder creation)
+// Security: Validates folderName for path traversal, validates constructed path via securityValidator
+ipcMain.handle('file:create-folder', async (_event, { basePath, folderName }: { basePath: string; folderName: string }) => {
+  console.log('[main.ts] file:create-folder - Creating folder', { basePath, folderName });
+
+  try {
+    // Validate inputs
+    if (!folderName || folderName.trim() === '') {
+      return {
+        success: false,
+        error: 'Folder name cannot be empty'
+      };
+    }
+
+    const trimmedName = folderName.trim();
+
+    // Security: Reject path traversal attempts
+    if (trimmedName.includes('..')) {
+      return {
+        success: false,
+        error: 'Invalid folder name: path traversal not allowed (..)'
+      };
+    }
+
+    // Security: Reject absolute paths (check BEFORE slash check)
+    // Check both Unix-style (/path) and Windows-style (C:\path or C:/path)
+    const isWindowsAbsolute = /^[a-zA-Z]:/.test(trimmedName);
+    if (path.isAbsolute(trimmedName) || isWindowsAbsolute) {
+      return {
+        success: false,
+        error: 'Invalid folder name: absolute paths not allowed'
+      };
+    }
+
+    // Security: Reject hidden folders (starting with .)
+    if (trimmedName.startsWith('.')) {
+      return {
+        success: false,
+        error: 'Invalid folder name: cannot start with dot (.)'
+      };
+    }
+
+    // Security: Reject paths with slashes (force single-level creation)
+    if (trimmedName.includes('/') || trimmedName.includes('\\')) {
+      return {
+        success: false,
+        error: 'Invalid folder name: invalid characters (/, \\)'
+      };
+    }
+
+    // Construct the full path
+    const fullPath = path.join(basePath, trimmedName);
+
+    // Security: Validate constructed path is within allowed base paths
+    const validatedPath = await securityValidator.validateFilePath(fullPath);
+
+    // Create the folder (recursive: true allows parent creation)
+    await fs.mkdir(validatedPath, { recursive: true });
+
+    console.log('[main.ts] Folder created successfully:', validatedPath);
+
+    return {
+      success: true,
+      path: validatedPath
+    };
+  } catch (error) {
+    console.error('[main.ts] Failed to create folder:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+
+    return {
+      success: false,
+      error: errorMessage
+    };
+  }
+});
+
 // Read file as base64 data URL for display in renderer
 // Note: For videos, returns file:// URL to avoid loading large files into memory
 ipcMain.handle('file:read-as-data-url', async (_event, filePath: string) => {

@@ -52,6 +52,7 @@ export function FolderPicker({
 }: FolderPickerProps) {
   const [isBrowsing, setIsBrowsing] = useState(false)
   const [browseError, setBrowseError] = useState<string | null>(null)
+  const [createFolderError, setCreateFolderError] = useState<string | null>(null)
 
   async function handleBrowseWithTimeout(onSelect: (path: string) => void, startPath?: string) {
     setIsBrowsing(true)
@@ -110,12 +111,48 @@ export function FolderPicker({
     await handleBrowseWithTimeout((path) => onDestinationChange({ ...destinationPaths, proxies: path }), destinationPaths.proxies)
   }
 
+  async function handleCreateFolder(
+    basePath: string,
+    onPathUpdate: (newPath: string) => void
+  ) {
+    setCreateFolderError(null)
+
+    // Prompt user for folder name
+    const folderName = window.prompt('Enter folder name:')
+
+    // User cancelled
+    if (!folderName) {
+      return
+    }
+
+    try {
+      const result = await window.electronAPI.createFolder(basePath, folderName)
+
+      if (result.success && result.path) {
+        // Success: Update the destination path to the newly created folder
+        onPathUpdate(result.path)
+        setCreateFolderError(null)
+      } else {
+        // Failed: Display error
+        setCreateFolderError(result.error || 'Unknown error')
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to create folder'
+      setCreateFolderError(message)
+    }
+  }
+
   return (
     <div style={{ marginBottom: '20px' }}>
       {browseError && (
         <div style={{ marginBottom: '12px', padding: '8px', backgroundColor: '#f8d7da', borderRadius: '4px', fontSize: '13px', color: '#721c24' }}>
           <strong>Browse failed:</strong> {browseError}<br />
           <span style={{ fontSize: '12px' }}>Please type the path manually instead.</span>
+        </div>
+      )}
+      {createFolderError && (
+        <div style={{ marginBottom: '12px', padding: '8px', backgroundColor: '#f8d7da', borderRadius: '4px', fontSize: '13px', color: '#721c24' }}>
+          <strong>Create folder failed:</strong> {createFolderError}
         </div>
       )}
       <div style={{ marginBottom: '12px' }}>
@@ -190,6 +227,21 @@ export function FolderPicker({
           >
             {isBrowsing ? 'Opening...' : 'Browse...'}
           </button>
+          <button
+            onClick={() => handleCreateFolder(destinationPaths.photos, (path) => onDestinationChange({ ...destinationPaths, photos: path }))}
+            disabled={disabled || !enabledDestinations.photos}
+            style={{
+              padding: '6px 16px',
+              fontSize: '13px',
+              backgroundColor: '#e0f7fa',
+              border: '1px solid #00acc1',
+              borderRadius: '4px',
+              cursor: (disabled || !enabledDestinations.photos) ? 'not-allowed' : 'pointer',
+              opacity: enabledDestinations.photos ? 1 : 0.6
+            }}
+          >
+            Create Folder
+          </button>
         </div>
       </div>
 
@@ -233,6 +285,21 @@ export function FolderPicker({
           >
             {isBrowsing ? 'Opening...' : 'Browse...'}
           </button>
+          <button
+            onClick={() => handleCreateFolder(destinationPaths.rawVideos, (path) => onDestinationChange({ ...destinationPaths, rawVideos: path }))}
+            disabled={disabled || !enabledDestinations.rawVideos}
+            style={{
+              padding: '6px 16px',
+              fontSize: '13px',
+              backgroundColor: '#e0f7fa',
+              border: '1px solid #00acc1',
+              borderRadius: '4px',
+              cursor: (disabled || !enabledDestinations.rawVideos) ? 'not-allowed' : 'pointer',
+              opacity: enabledDestinations.rawVideos ? 1 : 0.6
+            }}
+          >
+            Create Folder
+          </button>
         </div>
       </div>
 
@@ -275,6 +342,21 @@ export function FolderPicker({
             }}
           >
             {isBrowsing ? 'Opening...' : 'Browse...'}
+          </button>
+          <button
+            onClick={() => handleCreateFolder(destinationPaths.proxies, (path) => onDestinationChange({ ...destinationPaths, proxies: path }))}
+            disabled={disabled || !enabledDestinations.proxies}
+            style={{
+              padding: '6px 16px',
+              fontSize: '13px',
+              backgroundColor: '#e0f7fa',
+              border: '1px solid #00acc1',
+              borderRadius: '4px',
+              cursor: (disabled || !enabledDestinations.proxies) ? 'not-allowed' : 'pointer',
+              opacity: enabledDestinations.proxies ? 1 : 0.6
+            }}
+          >
+            Create Folder
           </button>
         </div>
       </div>

@@ -8,6 +8,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   selectFolder: (startPath?: string): Promise<string | null> =>
     ipcRenderer.invoke('file:select-folder', startPath),
 
+  createFolder: (basePath: string, folderName: string): Promise<{ success: boolean; path?: string; error?: string }> =>
+    ipcRenderer.invoke('file:create-folder', { basePath, folderName }),
+
   // CRITICAL-1 FIX: Remove folderPath parameter (security boundary enforced in main process)
   loadFiles: (): Promise<FileMetadata[]> =>
     ipcRenderer.invoke('file:load-files'),
