@@ -100,9 +100,9 @@ D0→D1→D2→D3→B0(Phase 1a)→B2(1a COMPLETE)→1c COMPLETE→Phase 1b(B2.1
 - Path: `/Volumes/videos-current/2. WORKING PROJECTS`
 - Status: ACCESSIBLE
 
-**Ubuntu NFS (Raw Storage):**
+**Ubuntu SMB (Raw Storage):**
 - Path: `/Volumes/EAV_Video_RAW/`
-- Status: ACCESSIBLE
+- Status: ACCESSIBLE (SMB 3.1.1 mount)
 
 ---
 

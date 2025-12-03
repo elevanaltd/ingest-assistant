@@ -41,7 +41,7 @@
 - Skip empirical integration testing, fix issues in production
 - Rationale: Error handling comprehensive, real-world feedback faster
 - I4 (Zero Data Loss) remains 🟡 Partial until production validation
-- Commitment: First LucidLink/NFS failure = BLOCKING priority fix
+- Commitment: First LucidLink/SMB failure = BLOCKING priority fix
 
 **Deferred (Phase 1a-POLISH → parallel to Phase 1b):**
 - [ ] Auto-detection IPC + UI (service ready, activate when multi-card needed)
@@ -213,7 +213,7 @@ src/components/BatchOperationsPanel/
 ### From SHARED-CHECKLIST.md (Verified Nov 26)
 
 **Phase 1a Remaining:**
-- [ ] Integration testing (LucidLink + NFS)
+- [ ] Integration testing (LucidLink + SMB)
 
 **Phase 1a Deferred:**
 - [~] Auto-detection IPC + UI (service complete, activate when multi-card workflow needed)

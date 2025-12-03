@@ -31,7 +31,7 @@ The D3 Blueprint and B0 Decision identified 7 blocking conditions. Three of thes
 ### Hardware Requirements
 - **CFEx Card:** `/Volumes/Untitled` (production card with real shoot files)
 - **macOS:** M-series MacBook with LucidLink client installed
-- **Ubuntu:** NFS-mounted network storage (if available, or use local test)
+- **Ubuntu:** SMB 3.1.1-mounted network storage (if available, or use local test)
 - **Network:** Stable WiFi/Ethernet connection for LucidLink testing
 
 ### Software Requirements
@@ -42,7 +42,7 @@ which exiftool  # Should show /opt/homebrew/bin/exiftool
 # Verify LucidLink mounted
 mount | grep LucidLink
 
-# Verify Ubuntu accessible (if testing NFS)
+# Verify Ubuntu accessible (if testing SMB)
 ping ubuntu-server.local
 ```
 
@@ -262,48 +262,48 @@ Retry Strategy: [immediate / linear / exponential]
 
 ---
 
-## Day 3: Ubuntu NFS Testing
+## Day 3: Ubuntu SMB Testing
 
 ### Objective
-Validate NFS mount timeout assumptions and measure recovery windows for network partitions.
+Validate SMB mount timeout assumptions and measure recovery windows for network partitions.
 
 ### Why This Matters
-**I4 Immutable:** Zero data loss during raw video transfer to Ubuntu NFS storage.
+**I4 Immutable:** Zero data loss during raw video transfer to Ubuntu SMB storage.
 **Risk:** Timeout too short → premature failure | Timeout too long → excessive wait.
 
 ### Test Procedure
 
-#### 3a. NFS Mount Verification
+#### 3a. SMB Mount Verification
 ```bash
-# Check Ubuntu NFS mount
-mount | grep nfs
+# Check Ubuntu SMB mount
+mount | grep smbfs
 
 # Expected output:
-# ubuntu-server:/export/videos on /Volumes/Ubuntu type nfs (rw,bg,hard,intr,tcp)
+# //ubuntu-server/videos on /Volumes/Ubuntu type smbfs (rw,nosuid,nodev)
 
 # Verify write access
 touch /Volumes/Ubuntu/test-write && rm /Volumes/Ubuntu/test-write
 ```
 
-**If NFS not available:** Document local testing approach (simulated delay acceptable).
+**If SMB not available:** Document local testing approach (simulated delay acceptable).
 
-#### 3b. Baseline NFS Transfer
+#### 3b. Baseline SMB Transfer
 ```bash
 # Create test folder
-mkdir -p /Volumes/Ubuntu/cfex-nfs-test
+mkdir -p /Volumes/Ubuntu/cfex-smb-test
 
 # Transfer large video file
-cp /Volumes/Untitled/PRIVATE/M4ROOT/CLIP/*.MOV /Volumes/Ubuntu/cfex-nfs-test/ &
+cp /Volumes/Untitled/PRIVATE/M4ROOT/CLIP/*.MOV /Volumes/Ubuntu/cfex-smb-test/ &
 
 # Monitor transfer
-watch -n 1 "ls -lh /Volumes/Ubuntu/cfex-nfs-test"
+watch -n 1 "ls -lh /Volumes/Ubuntu/cfex-smb-test"
 
 # Record: Transfer speed, duration
 ```
 
 **Recording Template:**
 ```
-Baseline NFS Transfer:
+Baseline SMB Transfer:
 - File size: [X GB]
 - Transfer duration: [T seconds]
 - Transfer speed: [X MB/s]
@@ -313,18 +313,18 @@ Baseline NFS Transfer:
 #### 3c. Network Partition Simulation
 ```bash
 # Start transfer
-cp /Volumes/Untitled/PRIVATE/M4ROOT/CLIP/*.MOV /Volumes/Ubuntu/cfex-nfs-partition-test/ &
+cp /Volumes/Untitled/PRIVATE/M4ROOT/CLIP/*.MOV /Volumes/Ubuntu/cfex-smb-partition-test/ &
 
 # After 5 seconds: Disconnect network
 # (WiFi off OR unplug Ethernet)
 
 # Observe behavior:
-# - Does write hang? (expected with hard mount)
-# - Error message? (ETIMEDOUT expected)
+# - Does write hang? (SMB should handle reconnection gracefully)
+# - Error message? (ETIMEDOUT expected, but SMB 3.1.1 reconnects automatically)
 # - How long until timeout? (measure)
 
 # Reconnect network after 30 seconds
-# - Does write resume? (expected with hard mount + intr)
+# - Does write resume? (SMB 3.1.1 supports automatic reconnection)
 # - Recovery time? (measure)
 ```
 
@@ -333,19 +333,20 @@ cp /Volumes/Untitled/PRIVATE/M4ROOT/CLIP/*.MOV /Volumes/Ubuntu/cfex-nfs-partitio
 - Timeout error message: [exact error text]
 - Recovery after reconnect: [Y/N + time]
 - Data integrity: [files complete? checksum match?]
+- SMB reconnection behavior: [automatic vs manual]
 
 #### 3d. Timeout Threshold Testing
-Test different timeout values if NFS mount configurable:
+Test different timeout values if SMB mount configurable:
 
 ```bash
 # Mount with short timeout (15s)
-sudo mount -o nfs,timeo=150 ubuntu-server:/export/videos /mnt/test-15s
+sudo mount -t smbfs -o soft,timeout=15 //ubuntu-server/videos /mnt/test-15s
 
 # Mount with medium timeout (30s) ← D3 Blueprint assumption
-sudo mount -o nfs,timeo=300 ubuntu-server:/export/videos /mnt/test-30s
+sudo mount -t smbfs -o soft,timeout=30 //ubuntu-server/videos /mnt/test-30s
 
 # Mount with long timeout (60s)
-sudo mount -o nfs,timeo=600 ubuntu-server:/export/videos /mnt/test-60s
+sudo mount -t smbfs -o soft,timeout=60 //ubuntu-server/videos /mnt/test-60s
 
 # For each: Simulate partition, measure user experience
 ```
@@ -370,8 +371,9 @@ Timeout Value: [N seconds]
 **Target:** 30s timeout with progress UI showing "Waiting for network..." after 10s.
 
 ### Deliverable
-- **Document:** `NFS-TIMEOUT-REPORT.md` with timing data
+- **Document:** `SMB-TIMEOUT-REPORT.md` with timing data
 - **D3 Blueprint Update:** Confirm 30s timeout OR adjust based on findings
+- **SMB 3.1.1 Benefits:** Automatic reconnection after network disruption (more reliable than NFS)
 
 ---
 
@@ -405,16 +407,17 @@ Create `006-CFEX-EMPIRICAL-FINDINGS-SUMMARY.md` after all testing complete:
 - Recovery time: [avg Ts]
 - User experience: [acceptable/needs UI improvement]
 
-## Ubuntu NFS Timeout (Day 3)
+## Ubuntu SMB Timeout (Day 3)
 - Recommended timeout: [30s]
 - Partition detection: [Ts]
 - Recovery success: [X]%
 - User experience: [acceptable with progress UI]
+- SMB 3.1.1 reconnection: [automatic - more reliable than NFS]
 
 ## B0 Blocker Resolution
 - Blocker 1 (EXIF): [RESOLVED / NEEDS D3 UPDATE]
 - Blocker 2 (LucidLink): [RESOLVED / NEEDS D3 UPDATE]
-- Blocker 3 (NFS): [RESOLVED / NEEDS D3 UPDATE]
+- Blocker 3 (SMB): [RESOLVED / NEEDS D3 UPDATE]
 
 ## Next Steps
 1. Update D3 Blueprint with validated timing values
@@ -429,7 +432,7 @@ Create `006-CFEX-EMPIRICAL-FINDINGS-SUMMARY.md` after all testing complete:
 **HALT testing and escalate if:**
 1. EXIF coverage <50% (I1 immutable at severe risk)
 2. LucidLink retry strategy achieves <80% recovery (I4 immutable at risk)
-3. NFS timeout causes data corruption (integrity failure)
+3. SMB timeout causes data corruption (integrity failure)
 4. Any test reveals fundamental architectural flaw
 
 **Escalation Path:**

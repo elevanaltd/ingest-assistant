@@ -44,7 +44,7 @@ DELIVERABLE::advanced_user_control + workflow_flexibility
 2. Destination folder pickers::[photos: `/LucidLink/`, raw_videos: `/Ubuntu/`]
 3. "Process" button → copy + progress tracking
 4. Integrity validation::[file_count_match, file_size_verification, EXIF_DateTimeOriginal_validation → warn_if_missing]
-5. Path intelligence::[remember_last-used, suggest_project_paths, platform-aware{macOS_LucidLink + Ubuntu_NFS}]
+5. Path intelligence::[remember_last-used, suggest_project_paths, platform-aware{macOS_LucidLink + Ubuntu_SMB}]
 
 **OUT OF SCOPE (Deferred):**
 - Proxy generation (Phase 1b)

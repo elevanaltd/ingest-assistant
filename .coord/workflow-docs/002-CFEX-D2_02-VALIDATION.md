@@ -326,7 +326,7 @@ MISSING error codes (validator's additions):
 - EACCES: Permission denied (fatal - user intervention)
 - EROFS: Read-only filesystem (fatal - wrong mount)
 - EIO: I/O error (ambiguous - could be transient disk hiccup OR failing drive)
-- ESTALE: Stale NFS file handle (transient for LucidLink/Ubuntu - retry)
+- ESTALE: Stale file handle (transient for LucidLink/Ubuntu SMB - retry)
 - EAGAIN: Resource temporarily unavailable (transient - retry)
 
 CRITICAL ambiguity: EIO classification
@@ -338,9 +338,9 @@ LucidLink-specific errors (observed in EAV production):
 - Intermittent "file not found" (LucidLink cache eviction) - transient, retry 5s
 - "Operation not permitted" during cache sync - transient, retry 10s
 
-Ubuntu NFS mount errors:
-- ESTALE: Common during network hiccups - transient, retry
-- EIO during NFS write: Ambiguous (network vs drive failure)
+Ubuntu SMB mount errors:
+- ESTALE: Can occur during network hiccups - transient, retry
+- EIO during SMB write: Ambiguous (network vs drive failure)
 
 Mitigation:
 1. Comprehensive error code mapping (testing on LucidLink + Ubuntu required)
@@ -357,8 +357,8 @@ Mitigation:
 - Impact: Transfer halts immediately (false fatal error)
 - **Mitigation Required:** Add ENOENT to transient list, retry after 5s delay
 
-**Scenario 2: Ubuntu NFS Mount Hangs (Network Hiccup)**
-- Likelihood: Low-Medium (network dependencies)
+**Scenario 2: Ubuntu SMB Mount Hangs (Network Hiccup)**
+- Likelihood: Low-Medium (network dependencies, SMB 3.1.1 has better reconnection)
 - Symptom: ETIMEDOUT or ESTALE
 - Current classification: ETIMEDOUT = transient (correct)
 - Impact: Retry succeeds after network recovery
@@ -631,9 +631,9 @@ Implementation requirements:
    - What's the typical retry delay needed?
    - **Mitigation:** 2-day empirical testing sprint before B2 implementation
 
-2. **Ubuntu NFS Mount Point Variability (Alternative 4C dependency)**
+2. **Ubuntu SMB Mount Point Variability (Alternative 4C dependency)**
    - Does `/media/$USER/` work on Ubuntu 20.04 + 22.04?
-   - Are there edge cases with custom udev rules?
+   - Are there edge cases with custom mount configurations?
    - **Mitigation:** 0.5-day Ubuntu platform testing
 
 3. **EXIF DateTimeOriginal Reliability (Alternative 2C dependency)**
@@ -669,7 +669,7 @@ function isTransientError(error: Error): boolean {
   return [
     'EBUSY', 'ETIMEDOUT', 'ECONNRESET',
     'ENOENT',  // LucidLink cache eviction - ADD THIS
-    'ESTALE'   // NFS stale handle - ADD THIS
+    'ESTALE'   // Stale file handle (SMB/network) - ADD THIS
   ].includes(error.code);
 }
 
@@ -688,7 +688,7 @@ function isTransientError(error: Error): boolean {
 ### Scenario 2: Destination Disk Full Mid-Transfer (MEDIUM LIKELIHOOD)
 
 **Description:**
-Ubuntu NFS mount fills up at file 75 of 100 → ENOSPC error during write
+Ubuntu SMB mount fills up at file 75 of 100 → ENOSPC error during write
 
 **Likelihood:** MEDIUM (users should monitor space, but mistakes happen)
 
@@ -780,12 +780,12 @@ async function cleanupPartialTransfer(partialFiles: string[]) {
 
 ---
 
-### Scenario 4: Network Partition (Ubuntu NFS Unreachable) (LOW LIKELIHOOD)
+### Scenario 4: Network Partition (Ubuntu SMB Unreachable) (LOW LIKELIHOOD)
 
 **Description:**
-Network connection between macOS and Ubuntu NFS mount drops during video transfer → ETIMEDOUT or ENETUNREACH
+Network connection between macOS and Ubuntu SMB mount drops during video transfer → ETIMEDOUT or ENETUNREACH (SMB 3.1.1 has automatic reconnection)
 
-**Likelihood:** LOW (LAN connections stable, but possible during network maintenance)
+**Likelihood:** LOW (LAN connections stable, SMB 3.1.1 reconnects automatically)
 
 **Impact:** MEDIUM (transfer stalls, user waits for timeout, eventually fails)
 
@@ -1428,7 +1428,7 @@ function detectCFExCards(): CFExCard[] {
 
 3. ✅ **Conduct empirical testing BEFORE B2** (2-day sprint)
    - LucidLink cache eviction behavior (simulate during transfer)
-   - Ubuntu NFS mount point detection (20.04 + 22.04)
+   - Ubuntu SMB mount point detection (20.04 + 22.04)
    - EXIF timestamp reliability (real CFEx card shoots)
    - Error code patterns (which errors occur in practice?)
 
@@ -1509,7 +1509,7 @@ function detectCFExCards(): CFExCard[] {
 **Before starting implementation:**
 1. ✅ Conduct 2-day empirical testing sprint:
    - LucidLink cache eviction behavior
-   - Ubuntu NFS mount detection (20.04 + 22.04)
+   - Ubuntu SMB mount detection (20.04 + 22.04)
    - Real CFEx card EXIF validation (3-5 shoots)
    - Error code pattern observation
 

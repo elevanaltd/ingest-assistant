@@ -47,7 +47,7 @@ export class ErrorHandler {
     'ETIMEDOUT',  // Network timeout (also in NETWORK_ERRORS for extended retry)
     'ECONNRESET', // Connection reset
     'ENOENT',     // File not found (LucidLink cache eviction)
-    'ESTALE',     // Stale NFS handle (Ubuntu NFS)
+    'ESTALE',     // Stale network handle (Ubuntu SMB)
     'EAGAIN',     // Resource temporarily unavailable
     'EIO',        // I/O error (conservative retry 3x then fail)
   ];
@@ -75,8 +75,8 @@ export class ErrorHandler {
     'EACCES': 'Permission denied. Check folder access permissions.',
     'EROFS': 'Destination is read-only. Cannot write files.',
     'ENOENT': 'File not found. Retrying... (LucidLink cache may be reloading)',
-    'ESTALE': 'Network file handle stale. Retrying... (NFS temporary issue)',
-    'ENETUNREACH': 'Network unreachable. Retrying... (Check NFS mount)',
+    'ESTALE': 'Network file handle stale. Retrying... (network share temporary issue)',
+    'ENETUNREACH': 'Network unreachable. Retrying... (Check network share)',
     'ETIMEDOUT': 'Network timeout. Retrying...',
     'EBUSY': 'File is busy. Retrying...',
     'EIO': 'I/O error. Retrying...',
@@ -88,8 +88,8 @@ export class ErrorHandler {
     'EACCES': 'Check folder permissions (chmod/chown) and restart transfer',
     'EROFS': 'Ensure destination is mounted read-write',
     'ENOENT': 'Wait for retry - LucidLink cache will repopulate',
-    'ESTALE': 'Wait for retry - NFS mount will recover',
-    'ENETUNREACH': 'Check network connection and NFS mount status',
+    'ESTALE': 'Wait for retry - network share will recover',
+    'ENETUNREACH': 'Check network connection and network share status',
     'ETIMEDOUT': 'Check network connection stability',
     'EBUSY': 'Wait for retry - file will become available',
     'EIO': 'Check disk health and cable connections',
@@ -150,7 +150,7 @@ export class ErrorHandler {
   /**
    * Get maximum retry attempts based on destination path
    *
-   * Network paths (LucidLink, Ubuntu NFS) get extended retry tolerance (5 attempts)
+   * Network paths (LucidLink, Ubuntu SMB) get extended retry tolerance (5 attempts)
    * Local paths get standard retry tolerance (3 attempts)
    *
    * @param destinationPath - Destination file path
