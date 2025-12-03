@@ -95,6 +95,9 @@ export class ExifPreserver {
    *
    * FIX (I1 compliance): Calls exiftool separately for each file to preserve per-file timestamps.
    * Previous implementation called exiftool once with all files, which applied LAST value to ALL files.
+   *
+   * Concurrency limiting: Processes files in chunks of 8 to prevent EMFILE errors on large batches.
+   * Risk mitigation: 500+ proxies with unbounded Promise.all() causes OS file descriptor exhaustion.
    */
   async writeBatch(proxyDateMap: Map<string, string>): Promise<void> {
     if (proxyDateMap.size === 0) {
@@ -103,47 +106,56 @@ export class ExifPreserver {
 
     console.log('[ExifPreserver] Writing DateTimeOriginal to', proxyDateMap.size, 'proxy videos');
 
-    // Execute exiftool separately for each file to ensure per-file timestamp preservation
-    const writePromises: Promise<void>[] = [];
+    const CONCURRENCY_LIMIT = 8;
+    const entries = Array.from(proxyDateMap.entries());
 
-    for (const [proxyPath, dateTime] of proxyDateMap.entries()) {
-      const writePromise = new Promise<void>((resolve, reject) => {
-        const args = [
-          '-overwrite_original',
-          `-QuickTime:DateTimeOriginal=${dateTime}`,
-          proxyPath
-        ];
-
-        const exiftoolProcess = spawn('exiftool', args);
-
-        let stderr = '';
-
-        exiftoolProcess.stderr.on('data', (data) => {
-          stderr += data.toString();
-        });
-
-        exiftoolProcess.on('close', (code) => {
-          if (code !== 0) {
-            console.error('[ExifPreserver] exiftool write failed for', proxyPath, ':', stderr);
-            reject(new Error('Failed to write EXIF data'));
-            return;
-          }
-
-          resolve();
-        });
-
-        exiftoolProcess.on('error', (err) => {
-          console.error('[ExifPreserver] exiftool spawn error for', proxyPath, ':', err);
-          reject(err);
-        });
-      });
-
-      writePromises.push(writePromise);
+    // Process files in chunks to limit concurrent exiftool processes
+    for (let i = 0; i < entries.length; i += CONCURRENCY_LIMIT) {
+      const chunk = entries.slice(i, i + CONCURRENCY_LIMIT);
+      const chunkPromises = chunk.map(([proxyPath, dateTime]) =>
+        this.writeSingleFile(proxyPath, dateTime)
+      );
+      await Promise.all(chunkPromises);
     }
 
-    // Wait for all writes to complete
-    await Promise.all(writePromises);
     console.log('[ExifPreserver] Write complete');
+  }
+
+  /**
+   * Write DateTimeOriginal to a single proxy file using exiftool
+   * Extracted for concurrency limiting and testability
+   */
+  private async writeSingleFile(proxyPath: string, dateTime: string): Promise<void> {
+    return new Promise<void>((resolve, reject) => {
+      const args = [
+        '-overwrite_original',
+        `-QuickTime:DateTimeOriginal=${dateTime}`,
+        proxyPath
+      ];
+
+      const exiftoolProcess = spawn('exiftool', args);
+
+      let stderr = '';
+
+      exiftoolProcess.stderr.on('data', (data) => {
+        stderr += data.toString();
+      });
+
+      exiftoolProcess.on('close', (code) => {
+        if (code !== 0) {
+          console.error('[ExifPreserver] exiftool write failed for', proxyPath, ':', stderr);
+          reject(new Error('Failed to write EXIF data'));
+          return;
+        }
+
+        resolve();
+      });
+
+      exiftoolProcess.on('error', (err) => {
+        console.error('[ExifPreserver] exiftool spawn error for', proxyPath, ':', err);
+        reject(err);
+      });
+    });
   }
 
   /**
