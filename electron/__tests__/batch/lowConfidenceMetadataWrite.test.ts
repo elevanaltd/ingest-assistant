@@ -25,12 +25,12 @@ import * as path from 'path';
  */
 
 describe('Low Confidence Metadata Writing', () => {
-  const mainTsPath = path.join(__dirname, '../../main.ts');
-  let mainTsContent: string;
+  const batchHandlersPath = path.join(__dirname, '../../ipc/batchHandlers.ts');
+  let batchHandlersContent: string;
 
-  // Read main.ts once for all tests
+  // Read batchHandlers.ts once for all tests (moved from main.ts)
   beforeAll(() => {
-    mainTsContent = fs.readFileSync(mainTsPath, 'utf-8');
+    batchHandlersContent = fs.readFileSync(batchHandlersPath, 'utf-8');
   });
 
   describe('Source Code Integration Test (RED phase)', () => {
@@ -42,11 +42,11 @@ describe('Low Confidence Metadata Writing', () => {
       // It will FAIL (RED) before implementation, PASS (GREEN) after removal
 
       // Find the batch:start handler section
-      const batchStartIndex = mainTsContent.indexOf("ipcMain.handle('batch:start'");
+      const batchStartIndex = batchHandlersContent.indexOf("ipcMain.handle('batch:start'");
       expect(batchStartIndex).toBeGreaterThan(-1);
 
       // Extract relevant section (batch:start handler)
-      const batchStartSection = mainTsContent.slice(batchStartIndex, batchStartIndex + 5000);
+      const batchStartSection = batchHandlersContent.slice(batchStartIndex, batchStartIndex + 5000);
 
       // Check for confidence threshold in batch:start section
       const hasConfidenceThreshold = batchStartSection.includes('if (result.confidence > 0.7)');
@@ -63,14 +63,14 @@ describe('Low Confidence Metadata Writing', () => {
       // EXPECTED STATE (GREEN): No threshold checks → Write ALL results
 
       // Find the batch:start handler section
-      const batchStartIndex = mainTsContent.indexOf("ipcMain.handle('batch:start'");
+      const batchStartIndex = batchHandlersContent.indexOf("ipcMain.handle('batch:start'");
       expect(batchStartIndex).toBeGreaterThan(-1);
 
       // Find the next handler after batch:start (to limit search scope)
-      const nextHandlerIndex = mainTsContent.indexOf("ipcMain.handle('batch:cancel'", batchStartIndex);
+      const nextHandlerIndex = batchHandlersContent.indexOf("ipcMain.handle('batch:cancel'", batchStartIndex);
 
       // Extract the entire batch:start handler
-      const batchStartHandler = mainTsContent.slice(batchStartIndex, nextHandlerIndex);
+      const batchStartHandler = batchHandlersContent.slice(batchStartIndex, nextHandlerIndex);
 
       // Count occurrences of confidence threshold
       const thresholdPattern = /if \(result\.confidence > 0\.7\)/g;
@@ -86,10 +86,10 @@ describe('Low Confidence Metadata Writing', () => {
       // After removing threshold, implementation should include explanatory comment
       // Example: "// All confidence levels written for QC analysis workflow"
 
-      const hasRationale = mainTsContent.includes('QC analysis') ||
-                          mainTsContent.includes('QC workflow') ||
-                          mainTsContent.includes('All confidence levels written') ||
-                          mainTsContent.includes('confidence regardless');
+      const hasRationale = batchHandlersContent.includes('QC analysis') ||
+                          batchHandlersContent.includes('QC workflow') ||
+                          batchHandlersContent.includes('All confidence levels written') ||
+                          batchHandlersContent.includes('confidence regardless');
 
       // RED PHASE: No rationale comment exists (will fail)
       // GREEN PHASE: Rationale comment added (will pass)
