@@ -1348,6 +1348,252 @@ describe('CfexTransferWindow', () => {
     });
   });
 
+  /**
+   * Transfer Another Card Button Tests (TDD - RED Phase)
+   *
+   * Tests for reset button that allows user to start a new transfer after completion/error.
+   * Fixes UI lock where user cannot start new transfer after previous one completes.
+   */
+  describe('Transfer Another Card Button', () => {
+    test('renders "Transfer Another Card" button when transfer status is complete', async () => {
+      // ARRANGE: Mock successful transfer completion
+      mockStartTransfer.mockResolvedValue({
+        success: true,
+        filesTransferred: 10,
+        filesTotal: 10,
+        bytesTransferred: 1000000,
+        duration: 5000,
+        validationWarnings: [],
+        errors: []
+      })
+
+      renderWithProviders(<CfexTransferWindow />)
+      const user = userEvent.setup()
+
+      // Wait for auto-detection to complete
+      await waitFor(() => {
+        expect(mockDetectSources).toHaveBeenCalled()
+      })
+
+      // ACT: Start and complete transfer
+      const startButton = await screen.findByRole('button', { name: /start transfer/i })
+      await waitFor(() => {
+        expect(startButton).not.toBeDisabled()
+      })
+      await user.click(startButton)
+
+      // Wait for transfer completion
+      await waitFor(() => {
+        expect(mockStartTransfer).toHaveBeenCalled()
+      })
+
+      // ASSERT: "Transfer Another Card" button visible after completion
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: /transfer another card/i })).toBeInTheDocument()
+      })
+    })
+
+    test('renders "Transfer Another Card" button when transfer status is error', async () => {
+      // ARRANGE: Mock transfer failure
+      mockStartTransfer.mockRejectedValue(new Error('Source path not accessible'))
+
+      renderWithProviders(<CfexTransferWindow />)
+      const user = userEvent.setup()
+
+      // Wait for auto-detection to complete
+      await waitFor(() => {
+        expect(mockDetectSources).toHaveBeenCalled()
+      })
+
+      // ACT: Start transfer and wait for error
+      const startButton = await screen.findByRole('button', { name: /start transfer/i })
+      await waitFor(() => {
+        expect(startButton).not.toBeDisabled()
+      })
+      await user.click(startButton)
+
+      // Wait for error state
+      await waitFor(() => {
+        expect(screen.getByText(/Source path not accessible/i)).toBeInTheDocument()
+      })
+
+      // ASSERT: "Transfer Another Card" button visible after error
+      expect(screen.getByRole('button', { name: /transfer another card/i })).toBeInTheDocument()
+    })
+
+    test('does NOT render "Transfer Another Card" button when status is idle', () => {
+      // ARRANGE
+      renderWithProviders(<CfexTransferWindow />)
+
+      // ASSERT: Button not visible when idle
+      expect(screen.queryByRole('button', { name: /transfer another card/i })).not.toBeInTheDocument()
+    })
+
+    test('does NOT render "Transfer Another Card" button when status is transferring', async () => {
+      // ARRANGE: Mock transfer that never resolves (in-progress state)
+      mockStartTransfer.mockImplementation(() => new Promise(() => {}))
+
+      renderWithProviders(<CfexTransferWindow />)
+      const user = userEvent.setup()
+
+      // Wait for auto-detection to complete
+      await waitFor(() => {
+        expect(mockDetectSources).toHaveBeenCalled()
+      })
+
+      // ACT: Start transfer
+      const startButton = await screen.findByRole('button', { name: /start transfer/i })
+      await waitFor(() => {
+        expect(startButton).not.toBeDisabled()
+      })
+      await user.click(startButton)
+
+      // Wait for transfer to start
+      await waitFor(() => {
+        expect(mockStartTransfer).toHaveBeenCalled()
+      })
+
+      // ASSERT: Button not visible during transfer
+      expect(screen.queryByRole('button', { name: /transfer another card/i })).not.toBeInTheDocument()
+    })
+
+    test('clicking "Transfer Another Card" button resets transfer status to idle', async () => {
+      // ARRANGE: Mock successful transfer completion
+      mockStartTransfer.mockResolvedValue({
+        success: true,
+        filesTransferred: 10,
+        filesTotal: 10,
+        bytesTransferred: 1000000,
+        duration: 5000,
+        validationWarnings: [],
+        errors: []
+      })
+
+      renderWithProviders(<CfexTransferWindow />)
+      const user = userEvent.setup()
+
+      // Wait for auto-detection to complete
+      await waitFor(() => {
+        expect(mockDetectSources).toHaveBeenCalled()
+      })
+
+      // ACT: Complete transfer
+      const startButton = await screen.findByRole('button', { name: /start transfer/i })
+      await waitFor(() => {
+        expect(startButton).not.toBeDisabled()
+      })
+      await user.click(startButton)
+
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: /transfer another card/i })).toBeInTheDocument()
+      })
+
+      // ACT: Click "Transfer Another Card" button
+      const resetButton = screen.getByRole('button', { name: /transfer another card/i })
+      await user.click(resetButton)
+
+      // ASSERT: UI resets to idle state
+      await waitFor(() => {
+        // Start button should return to "Start Transfer" text and be enabled
+        expect(screen.getByRole('button', { name: /start transfer/i })).toBeInTheDocument()
+        expect(screen.getByRole('button', { name: /start transfer/i })).not.toBeDisabled()
+        // Reset button should disappear
+        expect(screen.queryByRole('button', { name: /transfer another card/i })).not.toBeInTheDocument()
+      })
+    })
+
+    test('clicking "Transfer Another Card" button re-enables FolderPicker inputs', async () => {
+      // ARRANGE: Mock successful transfer completion
+      mockStartTransfer.mockResolvedValue({
+        success: true,
+        filesTransferred: 10,
+        filesTotal: 10,
+        bytesTransferred: 1000000,
+        duration: 5000,
+        validationWarnings: [],
+        errors: []
+      })
+
+      renderWithProviders(<CfexTransferWindow />)
+      const user = userEvent.setup()
+
+      // Wait for auto-detection to complete
+      await waitFor(() => {
+        expect(mockDetectSources).toHaveBeenCalled()
+      })
+
+      // ACT: Complete transfer
+      const startButton = await screen.findByRole('button', { name: /start transfer/i })
+      await waitFor(() => {
+        expect(startButton).not.toBeDisabled()
+      })
+      await user.click(startButton)
+
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: /transfer another card/i })).toBeInTheDocument()
+      })
+
+      // VERIFY: Source input is disabled after completion
+      const sourceInput = screen.getByLabelText(/source.*folder/i)
+      expect(sourceInput).toBeDisabled()
+
+      // ACT: Click reset button
+      const resetButton = screen.getByRole('button', { name: /transfer another card/i })
+      await user.click(resetButton)
+
+      // ASSERT: Source input is enabled after reset
+      await waitFor(() => {
+        expect(sourceInput).not.toBeDisabled()
+      })
+    })
+
+    test('completion summary remains visible until user clicks reset button', async () => {
+      // ARRANGE: Mock successful transfer completion
+      mockStartTransfer.mockResolvedValue({
+        success: true,
+        filesTransferred: 10,
+        filesTotal: 10,
+        bytesTransferred: 1000000,
+        duration: 5000,
+        validationWarnings: [],
+        errors: []
+      })
+
+      renderWithProviders(<CfexTransferWindow />)
+      const user = userEvent.setup()
+
+      // Wait for auto-detection to complete
+      await waitFor(() => {
+        expect(mockDetectSources).toHaveBeenCalled()
+      })
+
+      // ACT: Complete transfer
+      const startButton = await screen.findByRole('button', { name: /start transfer/i })
+      await waitFor(() => {
+        expect(startButton).not.toBeDisabled()
+      })
+      await user.click(startButton)
+
+      // ASSERT: Completion summary visible
+      await waitFor(() => {
+        expect(screen.getByText(/100\.00%/i)).toBeInTheDocument()
+      })
+
+      // VERIFY: Summary persists (wait a bit)
+      await new Promise(resolve => setTimeout(resolve, 100))
+      expect(screen.getByText(/100\.00%/i)).toBeInTheDocument()
+
+      // ACT: Click reset button
+      const resetButton = screen.getByRole('button', { name: /transfer another card/i })
+      await user.click(resetButton)
+
+      // ASSERT: Summary cleared after reset (progress should return to 0)
+      await waitFor(() => {
+        expect(screen.queryByText(/100\.00%/i)).not.toBeInTheDocument()
+      })
+    })
+  })
+
   describe('Proxy Generation Progress (TDD - RED phase)', () => {
     test('should display proxy progress section after transfer completes with proxies enabled', async () => {
       // ARRANGE: Setup proxy progress event emitter
