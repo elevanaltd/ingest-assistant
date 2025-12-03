@@ -1,6 +1,6 @@
 # Ingest Assistant - Project Context
 
-**Last Updated:** 2025-12-03 | **Version:** v2.3.1 | **Branch:** main (Issue #113 Context Routing Fix)
+**Last Updated:** 2025-12-03 | **Version:** v2.3.1+ | **Branch:** main (4f8704c - PR #134, #135 merged)
 
 ---
 
@@ -24,7 +24,7 @@
 - **Runtime:** Electron (main + renderer)
 - **Frontend:** React 18, TypeScript
 - **Build:** Vite
-- **Testing:** Vitest (1257 tests, 88 files)
+- **Testing:** Vitest (1299 tests, 89 files)
 - **AI:** OpenRouter, Anthropic Claude, OpenAI APIs
 - **Database:** Supabase (shared with EAV Monorepo)
 
@@ -34,8 +34,8 @@
 
 ### Branch Status
 ```
-Branch: main (v2.3.1 + Issue #113 Context Routing Fix)
-Tests:  1257 passing (+6 from Issue #113)
+Branch: main (4f8704c - PR #134, #135 merged)
+Tests:  1299 total (1283 passing, 1 flaky, 15 skipped)
 Lint:   0 errors
 Types:  0 errors
 Security: 6 moderate vulns (HIGH eliminated)
@@ -75,7 +75,7 @@ D0→D1→D2→D3→B0(Phase 1a)→B2(1a COMPLETE)→1c COMPLETE→Phase 1b(B2.1
 |------|--------|---------|
 | Lint | PASS (0 errors) | `npm run lint` |
 | Typecheck | PASS (0 errors) | `npm run typecheck` |
-| Tests | PASS (1251 passing) | `npm test` |
+| Tests | PASS (1299 total) | `npm test` |
 
 ---
 
@@ -293,7 +293,7 @@ src/components/
 **Active Tech Debt (Updated 2025-12-03):**
 - ✅ Issue #113: BatchOperationsPanel context routing - **RESOLVED** (PR #127 merged)
 - ✅ Issue #116: Reset transfer counters - **RESOLVED** (PR #130 merged)
-- 🟢 Issue #117: main.ts tech debt extraction (**LOW** - 1458 LOC, maintenance burden)
+- ⏭️ Issue #117: main.ts tech debt extraction - **NEXT PRIORITY** (1458 LOC, maintenance burden)
 
 **Backlog Cleanup (2025-12-03):**
 - ✅ #21: Closed as RESOLVED (tier mapping doc complete)
@@ -316,6 +316,27 @@ src/components/
 - Tests: 1245 passing (+4 new ExifPreserver tests)
 
 **I1 Compliance:** ✅ Restored - per-file DateTimeOriginal now correctly preserved
+
+### ✅ Proxy Preset Propagation Fix - COMPLETE (PR #134 merged 2025-12-03)
+
+**Problem:** User-selected proxy preset (e.g., "1080p H.264 HQ") was ignored during proxy generation. Root cause: `proxyPresetId` not passed through IPC chain (UI → handler → orchestrator → generator).
+
+**Solution (TDD pattern, 2 commits):**
+- Thread `proxyPresetId` through 6 files: ProxyPresetsDialog, proxyGenerationHandlers, ProxyOrchestrator, ProxyGenerator, PresetType, ProxyPresets
+- Add 4 new tests verifying preset selection end-to-end
+- Fix: UI selection now correctly applied to proxy output
+
+**Quality Gates:**
+- code-review-specialist (Codex): GO (8/10)
+- Tests: 1295 passing (+4 new)
+- TDD: 7cc524d (RED) → 6254e92 (GREEN)
+
+### ✅ NFS → SMB 3.1.1 Documentation Update - COMPLETE (PR #135 merged 2025-12-03)
+
+**Infrastructure Change:** Ubuntu storage migrated from NFS to SMB 3.1.1 protocol
+- Updated ~76 references across code and documentation
+- Benefits: Better reliability, automatic reconnection on network interruptions
+- Scope: PROJECT-CONTEXT.md, CLAUDE.md, test paths, comments, workflow docs
 
 ---
 
@@ -354,14 +375,14 @@ src/components/
 ## Recent Commits (Last 10)
 
 ```
-86621a4 docs: update PROJECT-CONTEXT and SHARED-CHECKLIST for proxy filename fix
-d9eb252 fix: return updated flag from reconcileMetadata to enable persistence (GREEN)
-7a1c7d6 test: add failing tests for reconcileMetadata updated flag (RED)
-d53b65c refactor: extract reconcileMetadata helper and fix pagination handler
-e7f3f47 fix: update currentFilename when disk filename differs from stored metadata (GREEN)
-6e6b883 Merge pull request #122 from elevanaltd/fix/exif-preserver-i1-violation
-3e67540 feat: fix ExifPreserver fail-fast bug with Promise.allSettled (GREEN)
-51be02d test: add failing test for I1 best-effort fail-continue behavior (RED)
-3c761ce feat: implement concurrency limiting in ExifPreserver.writeBatch (GREEN)
-85c7306 test: add failing test for concurrency limiting in ExifPreserver.writeBatch (RED)
+4f8704c Merge pull request #135 from elevanaltd/docs/update-nfs-to-smb-references
+5bf732a docs: update .coord documentation from NFS to SMB 3.1.1
+65b83ec docs: update NFS references to SMB 3.1.1
+0353612 Merge pull request #134 from elevanaltd/fix/proxy-preset-propagation
+6254e92 feat: wire proxyPresetId through UI → IPC → Orchestrator → Generator (GREEN)
+7cc524d test: add failing tests for proxyPresetId propagation (RED)
+ce2ab80 Merge pull request #133 from elevanaltd/fix/128-post-ai-validation
+4b694cb fix: clarify test name to match assertion (code review)
+63ca253 refactor: extract isAIFailure to shared module (code review)
+c2f4b89 feat: add AI failure validation gate to prevent silent failures (GREEN)
 ```

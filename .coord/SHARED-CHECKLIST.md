@@ -1,6 +1,40 @@
 # Ingest Assistant - Shared Checklist
 
+## Current Focus: Issue #117 main.ts Extraction - NEXT PRIORITY
+
+**Selected for implementation:** main.ts tech debt extraction (1458 LOC → modular utilities)
+
+**Fix approach:**
+1. Extract RateLimiter → `utils/rateLimiter.ts` with unit tests
+2. Extract timestamp helpers → `utils/timestampUtils.ts` with unit tests
+3. Follow `cfexTransferHandlers.ts` pattern for clean separation
+4. Success criterion: main.ts < 1400 LOC
+
+---
+
 ## Current Status (2025-12-03 Updated)
+
+### ✅ PR #134: Proxy Preset Propagation Fix - COMPLETE (merged 2025-12-03)
+
+**Problem:** User-selected proxy preset (e.g., "1080p H.264 HQ") was ignored during generation
+**Root Cause:** `proxyPresetId` not passed through IPC chain (UI → handler → orchestrator → generator)
+
+**Solution (TDD pattern, 2 commits):**
+- Thread `proxyPresetId` through 6 files
+- Add 4 new tests verifying preset selection end-to-end
+- Tests: 1295 passing (+4 from fix)
+- TDD: 7cc524d (RED) → 6254e92 (GREEN)
+
+---
+
+### ✅ PR #135: NFS → SMB 3.1.1 Documentation Update - COMPLETE (merged 2025-12-03)
+
+**Infrastructure Change:** Ubuntu storage migrated from NFS to SMB 3.1.1
+- Updated ~76 references across code and documentation
+- Benefits: Better reliability, automatic reconnection on network interruptions
+- Scope: PROJECT-CONTEXT.md, CLAUDE.md, test paths, comments, workflow docs
+
+---
 
 ### ✅ Issue #113: BatchOperationsPanel bypasses context - COMPLETE (PR #127 merged)
 
@@ -23,14 +57,13 @@
 
 ---
 
-### 🟡 Active Tech Debt - Prioritized
+### ⏭️ Issue #117: main.ts tech debt extraction - NEXT PRIORITY
 
-**Issue #117: main.ts tech debt extraction** - **LOW**
-- **Status:** NOT FIXED - main.ts now 1458 LOC (grew +13 lines since issue created)
+- **Status:** SELECTED FOR IMPLEMENTATION - main.ts now 1458 LOC (grew +13 lines since issue created)
 - **Problem:** Embedded utilities (RateLimiter, timestamp helpers, media server) + inline IPC handlers
 - **Impact:** Integration debt accumulating; cognitive load navigating 1458 LOC file
 - **Fix:** Extract to `utils/rateLimiter.ts`, `utils/timestampUtils.ts`, following `cfexTransferHandlers.ts` pattern
-- **Owner:** technical-architect (spike)
+- **Owner:** technical-architect (spike) → implementation-lead (extraction)
 - **Success Criterion:** main.ts < 1400 LOC; extracted utilities have unit tests
 - **Est. Cost:** 2-4 hours per extraction target
 
@@ -151,8 +184,14 @@
 ---
 
 ## Last Updated
-2025-12-03 (Issue #116 RESOLVED - PR #130 merged)
-**Tests:** 1268 passing (+3 from #116)
-**Branch:** main (cd67879)
-**Lint:** 0 errors, 6 warnings
-**Open Issues:** 6 (#116 closed, remaining: #117, #125, #128, #73, #63, #29, #27)
+2025-12-03 (PR #134, #135 MERGED)
+**Tests:** 1299 total (1283 passing, 1 flaky, 15 skipped)
+**Branch:** main (4f8704c)
+**Lint:** 0 errors
+**Typecheck:** 0 errors
+**Quality Gates:** ALL GREEN
+
+**Today's Session:**
+- ✅ PR #134: Proxy preset propagation fix (+4 tests)
+- ✅ PR #135: NFS → SMB 3.1.1 documentation update
+- ⏭️ Issue #117: Selected as NEXT PRIORITY (main.ts extraction)

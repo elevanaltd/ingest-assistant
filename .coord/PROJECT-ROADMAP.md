@@ -1,6 +1,6 @@
 # Ingest Assistant - Project Roadmap
 
-**Last Updated:** 2025-12-02 | **Current Phase:** Issue #102 COMPLETE (Architecture Validated)
+**Last Updated:** 2025-12-03 | **Current Phase:** Issue #117 main.ts Extraction (NEXT PRIORITY)
 
 ---
 
@@ -18,6 +18,8 @@
 | Bug Fix | Filename ID Stability (PR #93, +5 tests) | Nov 27, 2025 |
 | Phase 1b | CFEx Proxy Generation (B3 validated, +80 tests) | Nov 29, 2025 |
 | Issue #102 | Feature-Context Architecture COMPLETE (+188 tests) | Dec 2, 2025 |
+| PR #134 | Proxy Preset Propagation Fix (+4 tests) | Dec 3, 2025 |
+| PR #135 | NFS → SMB 3.1.1 Documentation Update | Dec 3, 2025 |
 
 **Full history:** [`PROJECT-HISTORY.md`](PROJECT-HISTORY.md)
 
@@ -104,6 +106,28 @@
 
 ## Current Work
 
+### ⏭️ Issue #117: main.ts Tech Debt Extraction - NEXT PRIORITY
+
+**Timeline:** 2-4 hours per extraction target | **Status:** SELECTED as next work item
+**GitHub:** https://github.com/elevanaltd/ingest-assistant/issues/117
+
+**Problem:** main.ts has grown to 1458 LOC with embedded utilities causing:
+- Integration debt accumulation (utils coupled to main process)
+- Cognitive load (navigating monolithic file)
+- Maintenance burden (utilities lack unit tests)
+
+**Fix Approach:**
+1. Extract `RateLimiter` class → `utils/rateLimiter.ts`
+2. Extract timestamp helpers → `utils/timestampUtils.ts`
+3. Follow `cfexTransferHandlers.ts` pattern (clean IPC separation)
+4. Add unit tests for extracted utilities
+
+**Success Criterion:** main.ts < 1400 LOC, extracted utilities have dedicated test files
+
+**Priority:** LOW → elevated to NEXT due to continuous growth (+13 LOC since issue created)
+
+---
+
 ### ✅ Issue #102: Feature-Context Architecture - COMPLETE
 
 **Timeline:** Dec 2, 2025 | **Status:** ALL PHASES COMPLETE (PR #110 merged)
@@ -147,10 +171,10 @@ src/components/BatchOperationsPanel/
 
 **QG:** Tests 1222✅ Lint 0✅ Types 0✅
 
-**Architectural Gaps Discovered (pre-existing, now tracked):**
-- Issue #111: CFEx Cancel button is no-op (HIGH)
-- Issue #112: CFEx Proxies settings not propagated (HIGH)
-- Issue #113: BatchOperationsPanel bypasses context (MEDIUM)
+**Architectural Gaps Discovered (pre-existing, ALL RESOLVED):**
+- ✅ Issue #111: CFEx Cancel button is no-op → RESOLVED via #106
+- ✅ Issue #112: CFEx Proxies settings not propagated → RESOLVED via PR #118, PR #134
+- ✅ Issue #113: BatchOperationsPanel bypasses context → RESOLVED via PR #127
 
 **Tech Debt (deferred):**
 - Issue #105: Centralize Proxy Progress Listener
@@ -237,7 +261,9 @@ Phase 1a CORE:    ✅ COMPLETE (Nov 26, 2025)
 Phase 1c:         ✅ COMPLETE (Nov 26, 2025 - +104 tests)
 Phase 1b:         ✅ COMPLETE (Nov 29, 2025 - +80 tests, v2.3.0)
 Issue #102:       ✅ COMPLETE (Dec 2, 2025 - +188 tests, architecture validated)
-Phase 1a POLISH:  5-10 days (NEXT - auto-detection IPC+UI, path intelligence)
+PR #134:          ✅ COMPLETE (Dec 3, 2025 - Proxy preset propagation fix)
+PR #135:          ✅ COMPLETE (Dec 3, 2025 - NFS → SMB 3.1.1 docs)
+Issue #117:       ⏭️ NEXT (Dec 3, 2025 - main.ts extraction, 2-4 hours per target)
 Issue #63:        3-6 months (after CFEx complete + guardrails)
 ```
 
