@@ -128,7 +128,7 @@ describe('AI Result Validation (Issue #128)', () => {
       expect(isAIFailure(validLowConfidence)).toBe(false);
     });
 
-    it('should detect failure: confidence=0.01 treated as failure boundary', () => {
+    it('should NOT detect failure: confidence=0.01 with data (not a failure boundary)', () => {
       // Edge case: Very low but non-zero confidence with data should NOT be treated as failure
       const edgeCase = {
         version: '2',
