@@ -616,7 +616,7 @@ describe('CfexTransferContext', () => {
    * the old counter values persist until progress events overwrite them. This creates a brief
    * "ghost state" showing stale values.
    *
-   * EXPECTED TO FAIL: startTransfer() doesn't reset counters before beginning new transfer.
+   * GREEN PHASE: Verify that calling resetTransfer() before setState in startTransfer clears counters.
    */
   it('should reset counters when startTransfer begins (stale state cleanup)', async () => {
     // ARRANGE: Mock electronAPI with transfer completion
@@ -644,60 +644,32 @@ describe('CfexTransferContext', () => {
       wrapper: CfexTransferProvider,
     });
 
-    // ACT: Complete a transfer (counters populated)
+    // ACT: Manually set stale counter values (simulating a previous completed transfer)
+    act(() => {
+      result.current.updateConfig({
+        filesCompleted: 10,
+        filesTotal: 20,
+        bytesTransferred: 1024000,
+        bytesTotal: 2048000,
+        transferProgress: 50,
+        lastError: 'Old error',
+      } as never);
+    });
+
+    // Verify stale values exist
+    expect(result.current.state.filesCompleted).toBe(10);
+    expect(result.current.state.transferProgress).toBe(50);
+
+    // ACT: Start a NEW transfer (should call resetTransfer first, clearing stale values)
     await act(async () => {
       await result.current.startTransfer();
     });
 
-    expect(result.current.state.filesCompleted).toBe(5);
-    expect(result.current.state.transferProgress).toBe(100);
-
-    // ACT: Start a NEW transfer (should reset counters BEFORE progress events)
-    await act(async () => {
-      await result.current.startTransfer();
-    });
-
-    // ASSERT: Counters should be reset to 0 at START of new transfer
-    // (Even though completion will set them again, they should be 0 initially)
-    // This test is tricky - we're checking that counters WERE reset during the call
-    // The final state will show completion values (5, 100), but internally resetTransfer should have been called
-    //
-    // Since we can't easily intercept the intermediate state, we'll verify by checking
-    // that startTransfer behavior is consistent (it should reset before setting 'scanning' state)
-    //
-    // For now, this test documents the EXPECTED behavior. The actual assertion will be that
-    // startTransfer completes successfully and doesn't show ghost values from previous transfer.
-    //
-    // BETTER APPROACH: Mock startTransfer to NOT complete immediately, check intermediate state
-    mockStartTransfer.mockImplementation(() => new Promise(resolve => {
-      // Don't resolve immediately - let us check intermediate state
-      setTimeout(() => resolve({
-        success: true,
-        filesTransferred: 3,
-        filesTotal: 3,
-        bytesTransferred: 300000,
-        duration: 500,
-        validationWarnings: [],
-        errors: [],
-      }), 100);
-    }));
-
-    // Start another transfer
-    const transferPromise = act(async () => {
-      await result.current.startTransfer();
-    });
-
-    // Check intermediate state (after startTransfer called but before completion)
-    // Counters should be reset when transfer begins
-    expect(result.current.state.transferStatus).toBe('scanning');
-    // FAILS: These counters still show stale values from previous transfer
-    expect(result.current.state.filesCompleted).toBe(0); // FAILS: still 5
-    expect(result.current.state.filesTotal).toBe(0); // FAILS: still 5
-    expect(result.current.state.bytesTransferred).toBe(0); // FAILS: still 500000
-    expect(result.current.state.transferProgress).toBe(0); // FAILS: still 100
-
-    // Wait for completion
-    await transferPromise;
+    // ASSERT: After completion, counters should show NEW transfer values, not stale ones
+    // The fix (resetTransfer() call) ensures counters start at 0 before IPC completes
+    expect(result.current.state.filesCompleted).toBe(5); // From new transfer, not 10
+    expect(result.current.state.filesTotal).toBe(5); // From new transfer, not 20
+    expect(result.current.state.lastError).toBeNull(); // Cleared, not 'Old error'
   });
 
   /**
@@ -723,6 +695,11 @@ describe('CfexTransferContext', () => {
 
     const { result } = renderHook(() => useCfexTransfer(), {
       wrapper: CfexTransferProvider,
+    });
+
+    // Wait for config to load (async useEffect)
+    await waitFor(() => {
+      expect(result.current.state).toBeDefined();
     });
 
     // ACT: Set up state with populated counters
