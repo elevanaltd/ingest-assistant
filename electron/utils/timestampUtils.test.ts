@@ -46,10 +46,8 @@ describe('getOrExtractCreationTimestamp', () => {
 
   it('should return cached timestamp when available', async () => {
     const cachedDate = new Date('2025-11-03T10:05:30Z');
-    const fileMetadata: FileMetadata = {
-      fileName: 'test.jpg',
+    const fileMetadata = {
       filePath: '/path/to/test.jpg',
-      fileType: 'image',
       creationTimestamp: cachedDate
     };
 
@@ -62,10 +60,8 @@ describe('getOrExtractCreationTimestamp', () => {
 
   it('should convert ISO string to Date when deserializing from JSON', async () => {
     const isoString = '2025-11-03T10:05:30.000Z';
-    const fileMetadata: FileMetadata = {
-      fileName: 'test.jpg',
+    const fileMetadata = {
       filePath: '/path/to/test.jpg',
-      fileType: 'image',
       creationTimestamp: isoString as any // Simulates JSON deserialization
     };
 
@@ -79,10 +75,8 @@ describe('getOrExtractCreationTimestamp', () => {
   });
 
   it('should call readCreationTimestampFn when no cached timestamp', async () => {
-    const fileMetadata: FileMetadata = {
-      fileName: 'test.jpg',
-      filePath: '/path/to/test.jpg',
-      fileType: 'image'
+    const fileMetadata = {
+      filePath: '/path/to/test.jpg'
     };
 
     const extractedDate = new Date('2025-11-03T10:05:30Z');
@@ -95,10 +89,8 @@ describe('getOrExtractCreationTimestamp', () => {
   });
 
   it('should cache extracted timestamp for future use', async () => {
-    const fileMetadata: FileMetadata = {
-      fileName: 'test.jpg',
-      filePath: '/path/to/test.jpg',
-      fileType: 'image'
+    const fileMetadata: { filePath: string; creationTimestamp?: Date } = {
+      filePath: '/path/to/test.jpg'
     };
 
     const extractedDate = new Date('2025-11-03T10:05:30Z');
@@ -110,13 +102,11 @@ describe('getOrExtractCreationTimestamp', () => {
   });
 
   it('should return undefined when extraction returns null', async () => {
-    const fileMetadata: FileMetadata = {
-      fileName: 'test.jpg',
-      filePath: '/path/to/test.jpg',
-      fileType: 'image'
+    const fileMetadata: { filePath: string; creationTimestamp?: Date } = {
+      filePath: '/path/to/test.jpg'
     };
 
-    const mockReadFn = vi.fn().mockResolvedValue(null);
+    const mockReadFn = vi.fn().mockResolvedValue(undefined);
 
     const result = await getOrExtractCreationTimestamp(fileMetadata, mockReadFn);
 
@@ -131,10 +121,8 @@ describe('generateTitleWithTimestamp', () => {
   });
 
   it('should append formatted timestamp to base title', async () => {
-    const fileMetadata: FileMetadata = {
-      fileName: 'test.jpg',
-      filePath: '/path/to/test.jpg',
-      fileType: 'image'
+    const fileMetadata = {
+      filePath: '/path/to/test.jpg'
     };
 
     const timestamp = new Date('2025-11-03T10:05:30Z');
@@ -146,13 +134,11 @@ describe('generateTitleWithTimestamp', () => {
   });
 
   it('should return base title only when no timestamp available', async () => {
-    const fileMetadata: FileMetadata = {
-      fileName: 'test.jpg',
-      filePath: '/path/to/test.jpg',
-      fileType: 'image'
+    const fileMetadata = {
+      filePath: '/path/to/test.jpg'
     };
 
-    const mockReadFn = vi.fn().mockResolvedValue(null);
+    const mockReadFn = vi.fn().mockResolvedValue(undefined);
     const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
     const result = await generateTitleWithTimestamp('kitchen-oven-CU', fileMetadata, mockReadFn);
@@ -165,10 +151,8 @@ describe('generateTitleWithTimestamp', () => {
 
   it('should use cached timestamp without calling readFn', async () => {
     const cachedDate = new Date('2025-11-03T10:05:30Z');
-    const fileMetadata: FileMetadata = {
-      fileName: 'test.jpg',
+    const fileMetadata = {
       filePath: '/path/to/test.jpg',
-      fileType: 'image',
       creationTimestamp: cachedDate
     };
 
@@ -181,10 +165,8 @@ describe('generateTitleWithTimestamp', () => {
   });
 
   it('should handle ISO string timestamps from JSON deserialization', async () => {
-    const fileMetadata: FileMetadata = {
-      fileName: 'test.jpg',
+    const fileMetadata = {
       filePath: '/path/to/test.jpg',
-      fileType: 'image',
       creationTimestamp: '2025-11-03T10:05:30.000Z' as any
     };
 

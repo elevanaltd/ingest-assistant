@@ -46,8 +46,8 @@ export function formatTimestampForTitle(date: Date): string {
  * ```
  */
 export async function getOrExtractCreationTimestamp(
-  fileMetadata: FileMetadata,
-  readCreationTimestampFn: (filePath: string) => Promise<Date | null>
+  fileMetadata: Pick<FileMetadata, 'filePath' | 'creationTimestamp'>,
+  readCreationTimestampFn: (filePath: string) => Promise<Date | undefined>
 ): Promise<Date | undefined> {
   // Return cached timestamp if available (convert from ISO string if needed)
   if (fileMetadata.creationTimestamp) {
@@ -100,8 +100,8 @@ export async function getOrExtractCreationTimestamp(
  */
 export async function generateTitleWithTimestamp(
   baseTitle: string,
-  fileMetadata: FileMetadata,
-  readCreationTimestampFn: (filePath: string) => Promise<Date | null>
+  fileMetadata: Pick<FileMetadata, 'filePath' | 'creationTimestamp'>,
+  readCreationTimestampFn: (filePath: string) => Promise<Date | undefined>
 ): Promise<string> {
   const timestamp = await getOrExtractCreationTimestamp(fileMetadata, readCreationTimestampFn);
 

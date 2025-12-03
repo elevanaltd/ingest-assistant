@@ -29,6 +29,12 @@ import { registerProxyGenerationHandlers } from './ipc/proxyGenerationHandlers';
 import { FilenameTemplateParser } from './services/filenameTemplate';
 import { reconcileMetadata } from './services/metadataReconciler';
 import { isAIFailure } from './utils/aiResultValidation';
+import { RateLimiter } from './utils/rateLimiter';
+import {
+  formatTimestampForTitle,
+  getOrExtractCreationTimestamp,
+  generateTitleWithTimestamp
+} from './utils/timestampUtils';
 
 let mainWindow: BrowserWindow | null = null;
 let mediaServer: http.Server | null = null;
@@ -43,47 +49,6 @@ let MEDIA_SERVER_TOKEN: string = '';
 const securityValidator = new SecurityValidator();
 const metadataWriter: MetadataWriter = new MetadataWriter();
 const fileManager: FileManager = new FileManager(securityValidator, metadataWriter);
-
-// Rate limiter for batch operations (token bucket algorithm)
-class RateLimiter {
-  private tokens: number;
-  private lastRefill: number;
-  private readonly maxTokens: number;
-  private readonly refillRate: number; // tokens per second
-
-  constructor(maxTokens: number, refillRate: number) {
-    this.maxTokens = maxTokens;
-    this.refillRate = refillRate;
-    this.tokens = maxTokens;
-    this.lastRefill = Date.now();
-  }
-
-  private refill(): void {
-    const now = Date.now();
-    const timePassed = (now - this.lastRefill) / 1000; // seconds
-    const tokensToAdd = timePassed * this.refillRate;
-
-    this.tokens = Math.min(this.maxTokens, this.tokens + tokensToAdd);
-    this.lastRefill = now;
-  }
-
-  async consume(tokens: number): Promise<void> {
-    this.refill();
-
-    if (this.tokens < tokens) {
-      // Wait for tokens to be available instead of throwing error
-      const waitTime = Math.ceil(((tokens - this.tokens) / this.refillRate) * 1000);
-      console.log(`[RateLimiter] Waiting ${waitTime}ms for ${tokens} token(s)...`);
-
-      await new Promise(resolve => setTimeout(resolve, waitTime));
-
-      // Refill after waiting
-      this.refill();
-    }
-
-    this.tokens -= tokens;
-  }
-}
 
 // Rate limiter: 100 files per minute (allows bursts of 100, refills at ~1.67 files/sec)
 const batchProcessRateLimiter = new RateLimiter(100, 100 / 60);
@@ -100,75 +65,6 @@ let aiService: AIService | null = null;
 // Initialize batch queue manager with persistent storage
 const batchQueuePath = path.join(app.getPath('userData'), '.ingest-batch-queue.json');
 const batchQueueManager: BatchQueueManager = new BatchQueueManager(batchQueuePath);
-
-/**
- * Format a Date object as yyyymmddhhmmss for use in filenames (14 digits with seconds)
- * Example: 2025-11-03 10:05:30 -> 20251103100530
- */
-function formatTimestampForTitle(date: Date): string {
-  const year = date.getFullYear().toString();
-  const month = (date.getMonth() + 1).toString().padStart(2, '0');
-  const day = date.getDate().toString().padStart(2, '0');
-  const hour = date.getHours().toString().padStart(2, '0');
-  const minute = date.getMinutes().toString().padStart(2, '0');
-  const second = date.getSeconds().toString().padStart(2, '0');
-
-  return `${year}${month}${day}${hour}${minute}${second}`;
-}
-
-/**
- * Get or extract creation timestamp from file metadata.
- * Returns cached timestamp if available, otherwise extracts from file using exiftool.
- * Caches the result in the FileMetadata object for future use.
- */
-async function getOrExtractCreationTimestamp(
-  fileMetadata: import('../src/types').FileMetadata
-): Promise<Date | undefined> {
-  // Return cached timestamp if available (convert from ISO string if needed)
-  if (fileMetadata.creationTimestamp) {
-    // JSON deserialization converts Date objects to ISO strings
-    // Convert back to Date if necessary
-    const timestamp = typeof fileMetadata.creationTimestamp === 'string'
-      ? new Date(fileMetadata.creationTimestamp)
-      : fileMetadata.creationTimestamp;
-
-    // Update cache with Date object for future use
-    fileMetadata.creationTimestamp = timestamp;
-    return timestamp;
-  }
-
-  // Extract from file using exiftool
-  const timestamp = await metadataWriter.readCreationTimestamp(fileMetadata.filePath);
-
-  // Cache in metadata object
-  if (timestamp) {
-    fileMetadata.creationTimestamp = timestamp;
-  }
-
-  return timestamp;
-}
-
-/**
- * Generate title with timestamp suffix.
- * Takes a base title and appends creation timestamp in yyyymmddhhmm format.
- * Example: "kitchen-oven-CU" + timestamp -> "kitchen-oven-CU-202511031005"
- */
-async function generateTitleWithTimestamp(
-  baseTitle: string,
-  fileMetadata: import('../src/types').FileMetadata
-): Promise<string> {
-  const timestamp = await getOrExtractCreationTimestamp(fileMetadata);
-
-  if (timestamp) {
-    const formattedTimestamp = formatTimestampForTitle(timestamp);
-    return `${baseTitle}-${formattedTimestamp}`;
-  }
-
-  // If no timestamp available, return base title as-is
-  // This maintains backward compatibility for files without timestamp metadata
-  console.warn(`[generateTitleWithTimestamp] No creation timestamp found for ${fileMetadata.filePath}, using base title only`);
-  return baseTitle;
-}
 
 /**
  * Normalize file path for cross-platform compatibility.
@@ -736,7 +632,10 @@ ipcMain.handle('file:rename', async (_event, fileId: string, shotName: string, c
     await store.updateFileMetadata(fileId, fileMetadata!);
 
     // Extract and format timestamp for CEP Panel uniqueness (Issue #31)
-    const timestamp = await getOrExtractCreationTimestamp(fileMetadata!);
+    const timestamp = await getOrExtractCreationTimestamp(
+      fileMetadata!,
+      (filePath): Promise<Date | undefined> => metadataWriter.readCreationTimestamp(filePath)
+    );
     const _formattedDate = timestamp ? formatTimestampForTitle(timestamp) : undefined;
 
     // Write metadata to the file
@@ -803,7 +702,10 @@ ipcMain.handle('file:update-metadata', async (_event, fileId: string, metadata: 
     console.log('[main.ts] Actual file path to write:', actualFilePath);
 
     // Extract and format timestamp for CEP Panel uniqueness (Issue #31)
-    const timestamp = await getOrExtractCreationTimestamp(fileMetadata);
+    const timestamp = await getOrExtractCreationTimestamp(
+      fileMetadata,
+      (filePath): Promise<Date | undefined> => metadataWriter.readCreationTimestamp(filePath)
+    );
     const _formattedDate = timestamp ? formatTimestampForTitle(timestamp) : undefined;
 
     // Write metadata INTO the actual file using exiftool
@@ -912,7 +814,11 @@ ipcMain.handle('file:update-structured-metadata', async (_event, fileId: string,
       generatedShotName = `${baseTitle}-#${fileMetadata.shotNumber}`;
     } else {
       // Legacy folders without shot numbers use timestamp for uniqueness
-      generatedShotName = await generateTitleWithTimestamp(baseTitle, fileMetadata);
+      generatedShotName = await generateTitleWithTimestamp(
+        baseTitle,
+        fileMetadata,
+        (filePath): Promise<Date | undefined> => metadataWriter.readCreationTimestamp(filePath)
+      );
     }
 
     // Update shotName to match generated title (R1.1 schema alignment)
@@ -1052,7 +958,11 @@ ipcMain.handle('ai:batch-process', async (_event, fileIds: string[]) => {
       // R1.1 Schema: shotName with #N suffix
       fileMetadata.shotName = fileMetadata.shotNumber !== undefined
         ? `${result.shotName}-#${fileMetadata.shotNumber}` // Add #N suffix when shot number present
-        : await generateTitleWithTimestamp(result.shotName, fileMetadata); // Timestamp for legacy folders
+        : await generateTitleWithTimestamp(
+            result.shotName,
+            fileMetadata,
+            (filePath): Promise<Date | undefined> => metadataWriter.readCreationTimestamp(filePath)
+          ); // Timestamp for legacy folders
       fileMetadata.keywords = result.keywords;
       fileMetadata.location = result.location;
       fileMetadata.subject = result.subject;
@@ -1173,7 +1083,11 @@ ipcMain.handle('batch:start', async (_event, fileIds: string[]) => {
         // R1.1 Schema: shotName with #N suffix
         fileMetadata.shotName = fileMetadata.shotNumber !== undefined
           ? `${result.shotName}-#${fileMetadata.shotNumber}` // Add #N suffix when shot number present
-          : await generateTitleWithTimestamp(result.shotName, fileMetadata); // Timestamp for legacy folders
+          : await generateTitleWithTimestamp(
+              result.shotName,
+              fileMetadata,
+              (filePath): Promise<Date | undefined> => metadataWriter.readCreationTimestamp(filePath)
+            ); // Timestamp for legacy folders
         fileMetadata.keywords = result.keywords;
         fileMetadata.location = result.location;
         fileMetadata.subject = result.subject;
@@ -1184,7 +1098,10 @@ ipcMain.handle('batch:start', async (_event, fileIds: string[]) => {
         await store.updateFileMetadata(fileId, fileMetadata);
 
         // Extract and format timestamp for CEP Panel uniqueness (Issue #31)
-        const timestamp = await getOrExtractCreationTimestamp(fileMetadata);
+        const timestamp = await getOrExtractCreationTimestamp(
+          fileMetadata,
+          (filePath): Promise<Date | undefined> => metadataWriter.readCreationTimestamp(filePath)
+        );
         const _formattedDate = timestamp ? formatTimestampForTitle(timestamp) : undefined;
 
         // Issue #2: Write metadata to actual file (conditionally based on toggle)
