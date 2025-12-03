@@ -1166,13 +1166,15 @@ describe('BatchOperationsPanel', () => {
         expect(mockSelectFolder).toHaveBeenCalled();
       });
 
-      // Should call generateProxies with both paths
+      // Should call generateProxies with both paths (plus proxyPresetId from context)
       await vi.waitFor(() => {
-        expect(mockGenerateProxies).toHaveBeenCalledWith({
-          rawVideoFolder: '/path/to/raw',
-          proxyOutputFolder: '/path/to/proxies',
-          videoFilenames: ['video1.mov', 'video2.mp4'],
-        });
+        expect(mockGenerateProxies).toHaveBeenCalledWith(
+          expect.objectContaining({
+            rawVideoFolder: '/path/to/raw',
+            proxyOutputFolder: '/path/to/proxies',
+            videoFilenames: ['video1.mov', 'video2.mp4'],
+          })
+        );
       });
     });
 
@@ -1224,13 +1226,15 @@ describe('BatchOperationsPanel', () => {
         expect(mockSelectFolder).toHaveBeenCalled();
       });
 
-      // Should call generateProxies with empty rawVideoFolder
+      // Should call generateProxies with empty rawVideoFolder (plus proxyPresetId from context)
       await vi.waitFor(() => {
-        expect(mockGenerateProxies).toHaveBeenCalledWith({
-          rawVideoFolder: '',
-          proxyOutputFolder: '/path/to/proxies',
-          videoFilenames: ['video1.mov'],
-        });
+        expect(mockGenerateProxies).toHaveBeenCalledWith(
+          expect.objectContaining({
+            rawVideoFolder: '',
+            proxyOutputFolder: '/path/to/proxies',
+            videoFilenames: ['video1.mov'],
+          })
+        );
       });
     });
   });

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useBatchQueue } from '../contexts/BatchQueueContext';
+import { useIngestSettings } from '../contexts/IngestSettingsContext';
 import { useProxyProgress } from '../hooks/useProxyProgress';
 import { BatchActionButtons } from './BatchOperationsPanel/BatchActionButtons';
 import { BatchProgressDetails } from './BatchOperationsPanel/BatchProgressDetails';
@@ -21,6 +22,9 @@ interface BatchOperationsPanelProps {
 export function BatchOperationsPanel({ availableFiles, selectedFileIds, filenameRewrite = false, onBatchComplete, currentFolderPath }: BatchOperationsPanelProps) {
   // Consume BatchQueueContext instead of local IPC subscriptions
   const { state: queueState, progress: currentProgress, startBatchProcessing, cancelBatchProcessing } = useBatchQueue();
+
+  // Consume IngestSettingsContext for proxy preset selection
+  const { settings } = useIngestSettings();
 
   // Subscribe to proxy generation progress events via hook
   const proxyProgress = useProxyProgress();
@@ -234,6 +238,7 @@ export function BatchOperationsPanel({ availableFiles, selectedFileIds, filename
         rawVideoFolder: currentFolderPath || '',
         proxyOutputFolder: proxyOutputFolder,
         videoFilenames: videoFilenames,
+        proxyPresetId: settings.proxyPresetId, // Pass user-selected preset from context
       });
 
       // Build informative message showing all outcomes

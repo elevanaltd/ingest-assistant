@@ -40,7 +40,8 @@ import * as path from 'path'
 const GenerateProxiesRequestSchema = z.object({
   rawVideoFolder: z.string().min(1, 'Raw video folder required'),
   proxyOutputFolder: z.string().min(1, 'Proxy output folder required'),
-  videoFilenames: z.array(z.string())
+  videoFilenames: z.array(z.string()),
+  proxyPresetId: z.string().optional() // Optional preset ID (backward compatible)
 })
 
 // Singleton orchestrator instance
@@ -117,7 +118,8 @@ export function registerProxyGenerationHandlers(mainWindow: BrowserWindow) {
       const result = await orch.executeJob(
         {
           rawVideoPaths,
-          proxyOutputDir: validated.proxyOutputFolder
+          proxyOutputDir: validated.proxyOutputFolder,
+          presetId: validated.proxyPresetId // Pass through user-selected preset (or undefined)
         },
         (progressEvent) => {
           sendProgressUpdate(mainWindow, progressEvent)

@@ -17,6 +17,7 @@ import * as path from 'path';
 export interface ProxyJobConfig {
   rawVideoPaths: string[];
   proxyOutputDir: string;
+  presetId?: string; // Optional preset ID (defaults to '2k-prores-proxy' if undefined)
 }
 
 export interface ProxyJobResult {
@@ -56,7 +57,7 @@ export class ProxyOrchestrator {
     jobConfig: ProxyJobConfig,
     progressCallback: (event: ProxyProgressEvent) => void
   ): Promise<ProxyJobResult> {
-    const { rawVideoPaths, proxyOutputDir } = jobConfig;
+    const { rawVideoPaths, proxyOutputDir, presetId } = jobConfig;
     const total = rawVideoPaths.length;
 
     let completedCount = 0;
@@ -85,6 +86,7 @@ export class ProxyOrchestrator {
           rawPath,
           proxyOutputDir,
           {
+            presetId, // Pass through user-selected preset (or undefined for default)
             onProgress: (timeString, percentage) => {
               progressCallback({
                 type: 'transcode_progress',
