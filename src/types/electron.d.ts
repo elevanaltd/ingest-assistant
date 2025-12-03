@@ -102,6 +102,7 @@ export interface ElectronAPI {
       rawVideoFolder: string;
       proxyOutputFolder: string;
       videoFilenames: string[];
+      proxyPresetId?: string; // Optional preset ID (defaults to '2k-prores-proxy' if undefined)
     }) => Promise<{
       success: boolean;
       completedCount: number;
