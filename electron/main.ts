@@ -28,6 +28,7 @@ import { registerCfexTransferHandlers } from './ipc/cfexTransferHandlers';
 import { registerProxyGenerationHandlers } from './ipc/proxyGenerationHandlers';
 import { FilenameTemplateParser } from './services/filenameTemplate';
 import { reconcileMetadata } from './services/metadataReconciler';
+import { isAIFailure } from './utils/aiResultValidation';
 
 let mainWindow: BrowserWindow | null = null;
 let mediaServer: http.Server | null = null;
@@ -1033,6 +1034,14 @@ ipcMain.handle('ai:batch-process', async (_event, fileIds: string[]) => {
       }
       results.set(fileId, result);
 
+      // Issue #128: Validate AI result before marking as processed
+      // Detect TRUE FAILURE (confidence=0 + all empty) vs valid low-confidence results (PR #131)
+      if (isAIFailure(result)) {
+        console.error(`[batch] AI analysis failed for ${fileId}: confidence=0, no structured data`);
+        // Don't mark as processed - allows user to see and retry failed files
+        continue; // Skip to next file without updating metadata
+      }
+
       // Write ALL AI results regardless of confidence for QC analysis workflow
       // Rationale: User workflow requires all results (high + low confidence) written to .ingest-metadata.json
       // QC person reviews/corrects → separate JSON with corrections → analyze AI accuracy
@@ -1144,6 +1153,14 @@ ipcMain.handle('batch:start', async (_event, fileIds: string[]) => {
           await securityValidator.validateFileSize(validatedPath, 100 * 1024 * 1024);
           console.log('[IPC] Batch analyzing image file:', validatedPath);
           result = await aiService!.analyzeImage(validatedPath, lexicon);
+        }
+
+        // Issue #128: Validate AI result before marking as processed
+        // Detect TRUE FAILURE (confidence=0 + all empty) vs valid low-confidence results (PR #131)
+        if (isAIFailure(result)) {
+          console.error(`[batch] AI analysis failed for ${fileId}: confidence=0, no structured data`);
+          // Return failure to allow BatchQueueManager to track failed items
+          return { success: false };
         }
 
         // Write ALL AI results regardless of confidence for QC analysis workflow
