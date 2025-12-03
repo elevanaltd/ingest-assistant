@@ -2,7 +2,7 @@
 import * as dotenv from 'dotenv';
 dotenv.config();
 
-import { app, BrowserWindow, ipcMain, dialog, screen } from 'electron';
+import { app, BrowserWindow, ipcMain, screen } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs/promises';
 import * as fsSync from 'fs';
@@ -11,26 +11,24 @@ import * as crypto from 'crypto';
 import { z } from 'zod';
 import { FileManager } from './services/fileManager';
 import { SecurityValidator } from './services/securityValidator';
-import { SecurityViolationError } from './utils/securityViolationError';
 import { MetadataStore } from './services/metadataStore';
 import { ConfigManager } from './services/configManager';
 import { AIService } from './services/aiService';
 import { MetadataWriter } from './services/metadataWriter';
-import { VideoFrameExtractor } from './services/videoFrameExtractor';
 import { VideoTranscoder } from './services/videoTranscoder';
 import { convertToYAMLFormat, convertToUIFormat } from './utils/lexiconConverter';
 import { sanitizeError } from './utils/errorSanitization';
-import { FileRenameSchema, FileUpdateMetadataSchema, FileStructuredUpdateSchema, AIBatchProcessSchema, BatchStartSchema, FileStructuredUpdateInput } from './schemas/ipcSchemas';
-import type { AppConfig, LexiconConfig, ShotType, AIAnalysisResult, FileMetadata } from '../src/types';
+import { BatchStartSchema } from './schemas/ipcSchemas';
+import type { AppConfig, LexiconConfig, AIAnalysisResult, FileMetadata } from '../src/types';
 import { migrateToKeychain } from './services/keychainMigration';
 import { BatchQueueManager } from './services/batchQueueManager';
 import { registerCfexTransferHandlers } from './ipc/cfexTransferHandlers';
 import { registerProxyGenerationHandlers } from './ipc/proxyGenerationHandlers';
 import { registerFileHandlers } from './ipc/fileHandlers';
+import { registerAiHandlers } from './ipc/aiHandlers';
 import { FilenameTemplateParser } from './services/filenameTemplate';
-import { reconcileMetadata } from './services/metadataReconciler';
-import { isAIFailure } from './utils/aiResultValidation';
 import { RateLimiter } from './utils/rateLimiter';
+import { isAIFailure } from './utils/aiResultValidation';
 import {
   formatTimestampForTitle,
   getOrExtractCreationTimestamp,
@@ -263,6 +261,18 @@ async function createWindow() {
     getMetadataStoreForFolder
   });
 
+  // Register AI IPC handlers
+  const { setAiService: _updateAiService } = registerAiHandlers(mainWindow, {
+    aiService,
+    securityValidator,
+    fileManager,
+    configManager,
+    batchProcessRateLimiter,
+    getCurrentFolderPath: () => currentFolderPath,
+    getMetadataStoreForFolder,
+    normalizeFilePath
+  });
+
   // In development, use Vite dev server; in production, load built files
   const isDev = !app.isPackaged;
 
@@ -354,163 +364,6 @@ app.on('quit', () => {
 });
 
 // IPC Handlers
-
-// AI operations
-ipcMain.handle('ai:analyze-file', async (_event, filePath: string) => {
-  try {
-    if (!aiService) {
-      throw new Error('AI service not configured. Please set API key in config.');
-    }
-
-    // Security: Validate path before AI processing
-    const validPath = await securityValidator.validateFilePath(filePath);
-
-    // Security: Validate file content (prevents sending malware to AI API)
-    await securityValidator.validateFileContent(validPath);
-
-    const lexicon = await configManager.getLexicon();
-
-    // Detect file type and route to appropriate analysis method
-    const fileType = fileManager.getFileType(validPath);
-
-    if (fileType === 'video') {
-      // For videos, we extract frames (not load entire file), so no size limit needed
-      // Video files can be 5GB+ which is fine since we only extract ~5 JPEG frames
-      console.log('[IPC] Analyzing video file (frame extraction):', validPath);
-      return await aiService.analyzeVideo(validPath, lexicon);
-    } else {
-      // For images, validate size before loading into memory for AI analysis
-      // Security: Validate file size (prevents DoS)
-      await securityValidator.validateFileSize(validPath, 100 * 1024 * 1024); // 100MB
-
-      console.log('[IPC] Analyzing image file:', validPath);
-      return await aiService.analyzeImage(validPath, lexicon);
-    }
-  } catch (error) {
-    console.error('Failed to analyze file:', error);
-
-    // Special handling for security violations
-    if (error instanceof SecurityViolationError) {
-      console.error('Security violation:', error.type, error.details);
-      throw new Error('File validation failed');
-    }
-
-    throw sanitizeError(error);
-  }
-});
-
-ipcMain.handle('ai:batch-process', async (_event, fileIds: string[]) => {
-  try {
-    // Security: Validate input schema
-    const validated = AIBatchProcessSchema.parse({ fileIds });
-
-    if (!aiService) {
-      throw new Error('AI service not configured.');
-    }
-
-    if (!currentFolderPath) {
-      throw new Error('No folder selected');
-    }
-
-    const store = getMetadataStoreForFolder(currentFolderPath);
-    const results = new Map();
-    const lexicon = await configManager.getLexicon();
-
-    for (const fileId of validated.fileIds) {
-    // Security: Rate limiting per file (prevents abuse)
-    await batchProcessRateLimiter.consume(1);
-
-    const fileMetadata = await store.getFileMetadata(fileId);
-    if (!fileMetadata || fileMetadata.processedByAI) continue;
-
-    try {
-      // CRITICAL-8: Security validation for each file in batch
-      // Mitigates: Path traversal, content type confusion, resource exhaustion
-      // Pattern: Same 3-layer validation as ai:analyze-file handler
-      // Cross-platform fix: Normalize path to handle macOS/Linux mount point differences
-      const normalizedPath = normalizeFilePath(fileMetadata, currentFolderPath);
-      const validatedPath = await securityValidator.validateFilePath(normalizedPath);
-      await securityValidator.validateFileContent(validatedPath);
-
-      // Detect file type and route to appropriate analysis method
-      const fileType = fileManager.getFileType(validatedPath);
-
-      let result: AIAnalysisResult;
-      if (fileType === 'video') {
-        // For videos, we extract frames (not load entire file), so no size limit needed
-        console.log('[IPC] Batch analyzing video file (frame extraction):', validatedPath);
-        result = await aiService.analyzeVideo(validatedPath, lexicon);
-      } else {
-        // For images, validate size before loading into memory for AI analysis
-        // Security: Validate file size (prevents DoS)
-        await securityValidator.validateFileSize(validatedPath, 100 * 1024 * 1024); // 100MB
-
-        console.log('[IPC] Batch analyzing image file:', validatedPath);
-        result = await aiService.analyzeImage(validatedPath, lexicon);
-      }
-      results.set(fileId, result);
-
-      // Issue #128: Validate AI result before marking as processed
-      // Detect TRUE FAILURE (confidence=0 + all empty) vs valid low-confidence results (PR #131)
-      if (isAIFailure(result)) {
-        console.error(`[batch] AI analysis failed for ${fileId}: confidence=0, no structured data`);
-        // Don't mark as processed - allows user to see and retry failed files
-        continue; // Skip to next file without updating metadata
-      }
-
-      // Write ALL AI results regardless of confidence for QC analysis workflow
-      // Rationale: User workflow requires all results (high + low confidence) written to .ingest-metadata.json
-      // QC person reviews/corrects → separate JSON with corrections → analyze AI accuracy
-      // Confidence value is preserved in results map for downstream analysis
-      // Append timestamp ONLY if shotNumber is not present (same logic as file:update-structured-metadata)
-      // When shotNumber exists, it provides uniqueness (e.g., kitchen-fridge-MID-#1)
-      // When shotNumber absent, timestamp provides uniqueness (e.g., kitchen-oven-WS-20251103100530)
-      // R1.1 Schema: shotName with #N suffix
-      fileMetadata.shotName = fileMetadata.shotNumber !== undefined
-        ? `${result.shotName}-#${fileMetadata.shotNumber}` // Add #N suffix when shot number present
-        : await generateTitleWithTimestamp(
-            result.shotName,
-            fileMetadata,
-            (filePath): Promise<Date | undefined> => metadataWriter.readCreationTimestamp(filePath)
-          ); // Timestamp for legacy folders
-      fileMetadata.keywords = result.keywords;
-      fileMetadata.location = result.location;
-      fileMetadata.subject = result.subject;
-      fileMetadata.action = result.action;
-      fileMetadata.shotType = result.shotType;
-      fileMetadata.processedByAI = true;
-      MetadataStore.updateAuditTrail(fileMetadata);
-      await store.updateFileMetadata(fileId, fileMetadata);
-    } catch (error) {
-      // Security validation errors are logged with their type for audit trail
-      if (error instanceof SecurityViolationError) {
-        console.error(`Security violation for ${fileId}:`, error.type, error.details);
-      } else {
-        console.error(`Failed to process ${fileId}:`, error);
-      }
-      // Continue with remaining files (partial batch failure is acceptable)
-    }
-  }
-
-    return Object.fromEntries(results);
-  } catch (error) {
-    console.error('Failed to batch process:', error);
-
-    // Special handling for validation errors
-    if (error instanceof z.ZodError) {
-      console.error('Invalid IPC message:', error.errors);
-      throw new Error('Invalid request parameters');
-    }
-
-    // Special handling for security violations
-    if (error instanceof SecurityViolationError) {
-      console.error('Security violation:', error.type, error.details);
-      throw new Error('File validation failed');
-    }
-
-    throw sanitizeError(error);
-  }
-});
 
 // Batch operations (Issue #24)
 ipcMain.handle('batch:start', async (_event, fileIds: string[]) => {
@@ -795,110 +648,5 @@ ipcMain.handle('folder:get-completed', async () => {
   } catch (error) {
     console.error('[main.ts] folder:get-completed error:', error);
     throw sanitizeError(error);
-  }
-});
-
-// Check if AI is configured
-ipcMain.handle('ai:is-configured', async () => {
-  return aiService !== null;
-});
-
-// Get AI configuration for UI (with masked API key)
-ipcMain.handle('ai:get-config', async () => {
-  return configManager.getAIConfigForUI();
-});
-
-// Update AI configuration
-ipcMain.handle('ai:update-config', async (_event, config: { provider: 'openai' | 'anthropic' | 'openrouter'; model: string; apiKey: string }) => {
-  try {
-    console.log('[ai:update-config] Received config update:', {
-      provider: config.provider,
-      model: config.model,
-      hasApiKey: !!(config.apiKey && config.apiKey.trim() && config.apiKey !== '***')
-    });
-
-    // Only test connection if a new API key is provided
-    if (config.apiKey && config.apiKey.trim() && config.apiKey !== '***') {
-      console.log('[ai:update-config] Testing connection with new API key...');
-      const testResult = await configManager.testAIConnection(config.provider, config.model, config.apiKey);
-      if (!testResult.success) {
-        console.log('[ai:update-config] Connection test failed:', testResult.error);
-        return { success: false, error: testResult.error || 'Connection test failed' };
-      }
-      console.log('[ai:update-config] Connection test passed');
-    } else {
-      console.log('[ai:update-config] No new API key provided, skipping connection test');
-    }
-
-    // Save configuration (to Keychain + electron-store)
-    // If apiKey is empty, configManager will keep existing Keychain key
-    console.log('[ai:update-config] Saving config...');
-    const saveResult = await configManager.saveAIConfig(config);
-    if (!saveResult) {
-      console.log('[ai:update-config] Save failed');
-      return { success: false, error: 'Failed to save configuration' };
-    }
-    console.log('[ai:update-config] Config saved successfully');
-
-    // Hot-reload aiService with new configuration
-    console.log('[ai:update-config] Reloading AI service...');
-    const newConfig = await ConfigManager.getAIConfig();
-    console.log('[ai:update-config] Loaded new config:', newConfig ? {
-      provider: newConfig.provider,
-      model: newConfig.model,
-      hasApiKey: !!newConfig.apiKey
-    } : null);
-
-    if (newConfig) {
-      aiService = new AIService(newConfig.provider, newConfig.model, newConfig.apiKey);
-      console.log('[ai:update-config] AI service reloaded with model:', newConfig.model);
-    } else {
-      aiService = null;
-      console.log('[ai:update-config] AI service set to null (no config)');
-    }
-
-    return { success: true };
-  } catch (error) {
-    console.error('Failed to update AI config:', error);
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error'
-    };
-  }
-});
-
-// Test AI connection
-ipcMain.handle('ai:test-connection', async (_event, provider: 'openai' | 'anthropic' | 'openrouter', model: string, apiKey: string) => {
-  try {
-    return await configManager.testAIConnection(provider, model, apiKey);
-  } catch (error) {
-    console.error('Failed to test AI connection:', error);
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error'
-    };
-  }
-});
-
-// Test AI connection with saved Keychain key
-ipcMain.handle('ai:test-saved-connection', async () => {
-  try {
-    return await configManager.testSavedAIConnection();
-  } catch (error) {
-    console.error('Failed to test saved AI connection:', error);
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error'
-    };
-  }
-});
-
-// Get available AI models for a provider
-ipcMain.handle('ai:get-models', async (_event, provider: string) => {
-  try {
-    return await configManager.getAIModels(provider);
-  } catch (error) {
-    console.error('Failed to get models:', error);
-    return [];
   }
 });
