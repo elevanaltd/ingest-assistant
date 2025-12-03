@@ -1033,24 +1033,25 @@ ipcMain.handle('ai:batch-process', async (_event, fileIds: string[]) => {
       }
       results.set(fileId, result);
 
-      // Auto-update if confidence is high
-      if (result.confidence > 0.7) {
-        // Append timestamp ONLY if shotNumber is not present (same logic as file:update-structured-metadata)
-        // When shotNumber exists, it provides uniqueness (e.g., kitchen-fridge-MID-#1)
-        // When shotNumber absent, timestamp provides uniqueness (e.g., kitchen-oven-WS-20251103100530)
-        // R1.1 Schema: shotName with #N suffix
-        fileMetadata.shotName = fileMetadata.shotNumber !== undefined
-          ? `${result.shotName}-#${fileMetadata.shotNumber}` // Add #N suffix when shot number present
-          : await generateTitleWithTimestamp(result.shotName, fileMetadata); // Timestamp for legacy folders
-        fileMetadata.keywords = result.keywords;
-        fileMetadata.location = result.location;
-        fileMetadata.subject = result.subject;
-        fileMetadata.action = result.action;
-        fileMetadata.shotType = result.shotType;
-        fileMetadata.processedByAI = true;
-        MetadataStore.updateAuditTrail(fileMetadata);
-        await store.updateFileMetadata(fileId, fileMetadata);
-      }
+      // Write ALL AI results regardless of confidence for QC analysis workflow
+      // Rationale: User workflow requires all results (high + low confidence) written to .ingest-metadata.json
+      // QC person reviews/corrects → separate JSON with corrections → analyze AI accuracy
+      // Confidence value is preserved in results map for downstream analysis
+      // Append timestamp ONLY if shotNumber is not present (same logic as file:update-structured-metadata)
+      // When shotNumber exists, it provides uniqueness (e.g., kitchen-fridge-MID-#1)
+      // When shotNumber absent, timestamp provides uniqueness (e.g., kitchen-oven-WS-20251103100530)
+      // R1.1 Schema: shotName with #N suffix
+      fileMetadata.shotName = fileMetadata.shotNumber !== undefined
+        ? `${result.shotName}-#${fileMetadata.shotNumber}` // Add #N suffix when shot number present
+        : await generateTitleWithTimestamp(result.shotName, fileMetadata); // Timestamp for legacy folders
+      fileMetadata.keywords = result.keywords;
+      fileMetadata.location = result.location;
+      fileMetadata.subject = result.subject;
+      fileMetadata.action = result.action;
+      fileMetadata.shotType = result.shotType;
+      fileMetadata.processedByAI = true;
+      MetadataStore.updateAuditTrail(fileMetadata);
+      await store.updateFileMetadata(fileId, fileMetadata);
     } catch (error) {
       // Security validation errors are logged with their type for audit trail
       if (error instanceof SecurityViolationError) {
@@ -1145,80 +1146,81 @@ ipcMain.handle('batch:start', async (_event, fileIds: string[]) => {
           result = await aiService!.analyzeImage(validatedPath, lexicon);
         }
 
-        // Auto-update if confidence is high
-        if (result.confidence > 0.7) {
-          // Append timestamp ONLY if shotNumber is not present (same logic as file:update-structured-metadata)
-          // When shotNumber exists, it provides uniqueness (e.g., kitchen-fridge-MID-#1)
-          // When shotNumber absent, timestamp provides uniqueness (e.g., kitchen-oven-WS-20251103100530)
-          // R1.1 Schema: shotName with #N suffix
-          fileMetadata.shotName = fileMetadata.shotNumber !== undefined
-            ? `${result.shotName}-#${fileMetadata.shotNumber}` // Add #N suffix when shot number present
-            : await generateTitleWithTimestamp(result.shotName, fileMetadata); // Timestamp for legacy folders
-          fileMetadata.keywords = result.keywords;
-          fileMetadata.location = result.location;
-          fileMetadata.subject = result.subject;
-          fileMetadata.action = result.action;
-          fileMetadata.shotType = result.shotType;
-          fileMetadata.processedByAI = true;
-          MetadataStore.updateAuditTrail(fileMetadata);
-          await store.updateFileMetadata(fileId, fileMetadata);
+        // Write ALL AI results regardless of confidence for QC analysis workflow
+        // Rationale: User workflow requires all results (high + low confidence) written to .ingest-metadata.json
+        // QC person reviews/corrects → separate JSON with corrections → analyze AI accuracy
+        // Confidence value is preserved in results for downstream analysis
+        // Append timestamp ONLY if shotNumber is not present (same logic as file:update-structured-metadata)
+        // When shotNumber exists, it provides uniqueness (e.g., kitchen-fridge-MID-#1)
+        // When shotNumber absent, timestamp provides uniqueness (e.g., kitchen-oven-WS-20251103100530)
+        // R1.1 Schema: shotName with #N suffix
+        fileMetadata.shotName = fileMetadata.shotNumber !== undefined
+          ? `${result.shotName}-#${fileMetadata.shotNumber}` // Add #N suffix when shot number present
+          : await generateTitleWithTimestamp(result.shotName, fileMetadata); // Timestamp for legacy folders
+        fileMetadata.keywords = result.keywords;
+        fileMetadata.location = result.location;
+        fileMetadata.subject = result.subject;
+        fileMetadata.action = result.action;
+        fileMetadata.shotType = result.shotType;
+        fileMetadata.processedByAI = true;
+        MetadataStore.updateAuditTrail(fileMetadata);
+        await store.updateFileMetadata(fileId, fileMetadata);
 
-          // Extract and format timestamp for CEP Panel uniqueness (Issue #31)
-          const timestamp = await getOrExtractCreationTimestamp(fileMetadata);
-          const _formattedDate = timestamp ? formatTimestampForTitle(timestamp) : undefined;
+        // Extract and format timestamp for CEP Panel uniqueness (Issue #31)
+        const timestamp = await getOrExtractCreationTimestamp(fileMetadata);
+        const _formattedDate = timestamp ? formatTimestampForTitle(timestamp) : undefined;
 
-          // Issue #2: Write metadata to actual file (conditionally based on toggle)
-          // Only write to file if metadataWrite toggle enabled (Phase 1c Power Features)
-          // Use normalizedPath (not fileMetadata.filePath) for cross-platform compatibility
-          if (toggles.metadataWrite) {
-            await metadataWriter.writeMetadataToFile(
-              normalizedPath,
-              fileMetadata.shotName,
-              fileMetadata.keywords,
-              {
-                location: fileMetadata.location,
-                subject: fileMetadata.subject,
-                action: fileMetadata.action,
-                shotType: fileMetadata.shotType,
-                shotNumber: fileMetadata.shotNumber,
-                cameraId: fileMetadata.cameraId
-              }
-            );
-          }
-
-          // Rename file if filenameRewrite toggle enabled (Phase 1c Power Features)
-          if (toggles.filenameRewrite) {
-            const parser = new FilenameTemplateParser();
-            const extension = path.extname(normalizedPath);
-            const newBasename = parser.parse(toggles.filenameTemplate, {
+        // Issue #2: Write metadata to actual file (conditionally based on toggle)
+        // Only write to file if metadataWrite toggle enabled (Phase 1c Power Features)
+        // Use normalizedPath (not fileMetadata.filePath) for cross-platform compatibility
+        if (toggles.metadataWrite) {
+          await metadataWriter.writeMetadataToFile(
+            normalizedPath,
+            fileMetadata.shotName,
+            fileMetadata.keywords,
+            {
               location: fileMetadata.location,
               subject: fileMetadata.subject,
-              action: fileMetadata.action || '',
-              shotType: fileMetadata.shotType
-            });
+              action: fileMetadata.action,
+              shotType: fileMetadata.shotType,
+              shotNumber: fileMetadata.shotNumber,
+              cameraId: fileMetadata.cameraId
+            }
+          );
+        }
 
-            // I3 Compliance: Write TapeName BEFORE rename (preserves original filename)
-            // FIX: Use cameraId (immutable) instead of path.basename (changes after rename)
-            // Prevents double extension bug (.JPG.JPG) when file already renamed
-            const originalBasename = fileMetadata.cameraId || path.basename(normalizedPath, extension);
-            await metadataWriter.writeMetadataToFile(
-              normalizedPath,
-              '', // Don't update shotName, just TapeName
-              [],
-              {
-                cameraId: originalBasename // TapeName = original camera filename (immutable)
-              }
-            );
+        // Rename file if filenameRewrite toggle enabled (Phase 1c Power Features)
+        if (toggles.filenameRewrite) {
+          const parser = new FilenameTemplateParser();
+          const extension = path.extname(normalizedPath);
+          const newBasename = parser.parse(toggles.filenameTemplate, {
+            location: fileMetadata.location,
+            subject: fileMetadata.subject,
+            action: fileMetadata.action || '',
+            shotType: fileMetadata.shotType
+          });
 
-            // Rename file
-            const newPath = path.join(folderPath, newBasename + extension);
-            await fs.rename(normalizedPath, newPath);
+          // I3 Compliance: Write TapeName BEFORE rename (preserves original filename)
+          // FIX: Use cameraId (immutable) instead of path.basename (changes after rename)
+          // Prevents double extension bug (.JPG.JPG) when file already renamed
+          const originalBasename = fileMetadata.cameraId || path.basename(normalizedPath, extension);
+          await metadataWriter.writeMetadataToFile(
+            normalizedPath,
+            '', // Don't update shotName, just TapeName
+            [],
+            {
+              cameraId: originalBasename // TapeName = original camera filename (immutable)
+            }
+          );
 
-            // Update metadata store with new filename
-            fileMetadata.currentFilename = newBasename + extension;
-            fileMetadata.filePath = newPath;
-            await store.updateFileMetadata(fileId, fileMetadata);
-          }
+          // Rename file
+          const newPath = path.join(folderPath, newBasename + extension);
+          await fs.rename(normalizedPath, newPath);
+
+          // Update metadata store with new filename
+          fileMetadata.currentFilename = newBasename + extension;
+          fileMetadata.filePath = newPath;
+          await store.updateFileMetadata(fileId, fileMetadata);
         }
 
         return { success: true, result };
