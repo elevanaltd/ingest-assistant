@@ -12,16 +12,18 @@
 
 ---
 
-### 🟡 Active Tech Debt - Prioritized
+### ✅ Issue #116: Reset transfer counters - COMPLETE (PR #130 merged 2025-12-03)
 
-**Issue #116: Reset transfer counters on cancel/start** - **MEDIUM**
-- **Status:** NOT FIXED - `cancelTransfer` (L285-290) only resets `isTransferring`, `transferStatus`, `currentFile`
-- **Problem:** `filesTransferred`, `progress`, `bytesTransferred` persist after cancel → stale metrics displayed
-- **Impact:** UI reports stale totals during scanning phase (45% × medium-high risk)
-- **Fix:** Reset counters in both `cancelTransfer` and `startTransfer` (or call `resetTransfer`)
-- **Owner:** CfexTransfer engineer
-- **Success Criterion:** Test verifies counters=0 after cancel/restart before first progress event
-- **Est. Cost:** 0.5 day
+**Resolution:**
+- `resetTransfer()` now called from `startTransfer()` (L242) and both `cancelTransfer()` paths (L305, L309)
+- All 9 counters reset: `isTransferring`, `transferProgress`, `transferStatus`, `currentFile`, `filesCompleted`, `filesTotal`, `bytesTransferred`, `bytesTotal`, `lastError`
+- 3 new tests verify counter reset behavior (success path, error path, stale state cleanup)
+- TDD compliance: df234b2 (RED) → d9cd575 (GREEN) → cd67879 (merge)
+- Tests: 1268 passing (+3 from fix)
+
+---
+
+### 🟡 Active Tech Debt - Prioritized
 
 **Issue #117: main.ts tech debt extraction** - **LOW**
 - **Status:** NOT FIXED - main.ts now 1458 LOC (grew +13 lines since issue created)
@@ -149,8 +151,8 @@
 ---
 
 ## Last Updated
-2025-12-03 (Issue #113 RESOLVED - PR #127 merged)
-**Tests:** 1257 passing (+6 from #113)
-**Branch:** main (befeb85)
+2025-12-03 (Issue #116 RESOLVED - PR #130 merged)
+**Tests:** 1268 passing (+3 from #116)
+**Branch:** main (cd67879)
 **Lint:** 0 errors, 6 warnings
-**Open Issues:** 7 (#113 closed, remaining: #116, #117, #125, #128, #73, #63, #29, #27)
+**Open Issues:** 6 (#116 closed, remaining: #117, #125, #128, #73, #63, #29, #27)

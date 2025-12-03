@@ -292,7 +292,7 @@ src/components/
 
 **Active Tech Debt (Updated 2025-12-03):**
 - ✅ Issue #113: BatchOperationsPanel context routing - **RESOLVED** (PR #127 merged)
-- 🟡 Issue #116: Reset transfer counters on cancel/start (**MEDIUM** - UX telemetry accuracy)
+- ✅ Issue #116: Reset transfer counters - **RESOLVED** (PR #130 merged)
 - 🟢 Issue #117: main.ts tech debt extraction (**LOW** - 1458 LOC, maintenance burden)
 
 **Backlog Cleanup (2025-12-03):**
