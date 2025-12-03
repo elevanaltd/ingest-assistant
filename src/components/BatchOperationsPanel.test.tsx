@@ -1236,6 +1236,116 @@ describe('BatchOperationsPanel', () => {
   });
 
   /**
+   * Proxy Preset Propagation (Bug Fix - proxyPresetId not wired through IPC)
+   *
+   * Purpose: Verify proxyPresetId from IngestSettingsContext is passed through to proxy generation IPC
+   * Bug: User selects preset in Settings → stored in context → but NEVER passed to generateProxies IPC
+   * Result: getPresetById(undefined) defaults to '2k-prores-proxy', ignoring user selection
+   * Solution: Read settings.proxyPresetId from useIngestSettings() and include in IPC request
+   */
+  describe('Proxy Preset Propagation (TDD RED Phase)', () => {
+    const mockGenerateProxies = vi.fn().mockResolvedValue({
+      success: true,
+      completedCount: 2,
+      failedCount: 0,
+      failedFiles: [],
+      verificationFailures: [],
+    });
+
+    beforeEach(() => {
+      mockGenerateProxies.mockClear();
+
+      // Mock window.electronAPI.proxy and selectFolder
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (window as any).electronAPI = {
+        batchGetStatus: vi.fn().mockResolvedValue({
+          queueId: null,
+          status: 'idle',
+          items: [],
+        }),
+        onBatchProgress: vi.fn().mockReturnValue(() => {}),
+        onTranscodeProgress: vi.fn().mockReturnValue(() => {}),
+        proxy: {
+          generateProxies: mockGenerateProxies,
+          onProxyProgress: vi.fn().mockReturnValue(() => {}),
+        },
+        selectFolder: vi.fn().mockResolvedValue('/path/to/proxies'),
+        getShotTypes: mockGetShotTypes,
+      };
+      window.alert = vi.fn();
+    });
+
+    it('should pass proxyPresetId from IngestSettingsContext to generateProxies IPC', async () => {
+      // ARRANGE: This test will FAIL initially because BatchOperationsPanel doesn't read settings.proxyPresetId
+      // The component needs to:
+      // 1. Import useIngestSettings hook
+      // 2. Read settings.proxyPresetId
+      // 3. Pass it to generateProxies IPC call
+
+      // Mock IngestSettingsContext providing custom preset (will be provided by renderWithProviders)
+      // For now, we expect the component to read this value and pass it through
+
+      render(
+        <BatchOperationsPanel
+          availableFiles={[
+            { id: '/path/video1.mov', filename: 'video1.mov', processedByAI: false },
+          ]}
+          currentFolderPath="/path"
+          onBatchComplete={vi.fn()}
+        />
+      );
+
+      const proxyButton = screen.getByRole('button', { name: /generate proxies for 1 video/i });
+      proxyButton.click();
+
+      // Wait for folder selection and proxy generation
+      await vi.waitFor(() => {
+        expect(mockGenerateProxies).toHaveBeenCalled();
+      });
+
+      // ASSERT: Should include proxyPresetId in IPC call
+      expect(mockGenerateProxies).toHaveBeenCalledWith(
+        expect.objectContaining({
+          proxyPresetId: expect.any(String) // Should be present (currently missing)
+        })
+      );
+    });
+
+    it('should use proxyPresetId from settings context (not hardcoded default)', async () => {
+      // This test verifies the component reads proxyPresetId from IngestSettingsContext
+      // Expected: settings.proxyPresetId = '2k-prores-proxy' (default from context)
+      // Current behavior: proxyPresetId not passed at all
+
+      render(
+        <BatchOperationsPanel
+          availableFiles={[
+            { id: '/path/video1.mov', filename: 'video1.mov', processedByAI: false },
+          ]}
+          currentFolderPath="/path"
+          onBatchComplete={vi.fn()}
+        />
+      );
+
+      const proxyButton = screen.getByRole('button', { name: /generate proxies for 1 video/i });
+      proxyButton.click();
+
+      await vi.waitFor(() => {
+        expect(mockGenerateProxies).toHaveBeenCalled();
+      });
+
+      // ASSERT: Should pass through the preset ID from context
+      expect(mockGenerateProxies).toHaveBeenCalledWith(
+        expect.objectContaining({
+          rawVideoFolder: '/path',
+          proxyOutputFolder: '/path/to/proxies',
+          videoFilenames: ['video1.mov'],
+          proxyPresetId: '2k-prores-proxy' // From IngestSettingsContext default
+        })
+      );
+    });
+  });
+
+  /**
    * Issue #113: BatchOperationsPanel bypasses BatchQueueContext - direct IPC calls
    *
    * Purpose: Ensure BatchOperationsPanel uses BatchQueueContext actions instead of direct IPC

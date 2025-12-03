@@ -267,4 +267,99 @@ describe('Proxy Generation IPC Handlers', () => {
       expect(result.failedCount).toBe(1)
     })
   })
+
+  describe('Proxy Preset Propagation (TDD RED Phase)', () => {
+    /**
+     * Bug Fix: proxyPresetId not wired through IPC → Orchestrator → Generator
+     * User selects preset in UI → stored in context → BUT never reaches ProxyGenerator
+     * Result: getPresetById(undefined) defaults to '2k-prores-proxy', ignoring user selection
+     *
+     * Solution: Thread proxyPresetId through:
+     * 1. electron.d.ts proxy.generateProxies request type (add optional proxyPresetId?: string)
+     * 2. proxyGenerationHandlers Zod schema (add z.string().optional())
+     * 3. ProxyJobConfig interface (add presetId?: string)
+     * 4. executeJob call (pass presetId to orchestrator)
+     * 5. BatchOperationsPanel component (read from useIngestSettings)
+     */
+
+    test('accepts optional proxyPresetId in request', async () => {
+      // ARRANGE
+      const expectedResult = {
+        success: true,
+        completedCount: 1,
+        failedCount: 0,
+        failedFiles: [],
+        verificationFailures: []
+      }
+
+      mockOrchestrator.executeJob.mockResolvedValue(expectedResult)
+
+      registerProxyGenerationHandlers(mockWindow)
+      const handler = (ipcMain.handle as any).mock.calls.find(
+        (call: any) => call[0] === 'proxy:generate'
+      )[1]
+
+      // Request WITH proxyPresetId (user selected 1080p H.264)
+      const requestWithPreset = {
+        rawVideoFolder: '/valid/raw',
+        proxyOutputFolder: '/valid/output',
+        videoFilenames: ['video1.MOV'],
+        proxyPresetId: '1080p-h264-crf18' // User selection from Settings
+      }
+
+      // ACT
+      const result = await handler({}, requestWithPreset)
+
+      // ASSERT
+      expect(result).toEqual(expectedResult)
+      // Should pass presetId to orchestrator.executeJob
+      expect(mockOrchestrator.executeJob).toHaveBeenCalledWith(
+        expect.objectContaining({
+          presetId: '1080p-h264-crf18' // Should propagate to orchestrator
+        }),
+        expect.any(Function)
+      )
+    })
+
+    test('allows proxyPresetId to be undefined (backward compatibility)', async () => {
+      // ARRANGE
+      const expectedResult = {
+        success: true,
+        completedCount: 1,
+        failedCount: 0,
+        failedFiles: [],
+        verificationFailures: []
+      }
+
+      mockOrchestrator.executeJob.mockResolvedValue(expectedResult)
+
+      registerProxyGenerationHandlers(mockWindow)
+      const handler = (ipcMain.handle as any).mock.calls.find(
+        (call: any) => call[0] === 'proxy:generate'
+      )[1]
+
+      // Request WITHOUT proxyPresetId (legacy code path)
+      const requestWithoutPreset = {
+        rawVideoFolder: '/valid/raw',
+        proxyOutputFolder: '/valid/output',
+        videoFilenames: ['video1.MOV']
+        // proxyPresetId: undefined (not included)
+      }
+
+      // ACT
+      const result = await handler({}, requestWithoutPreset)
+
+      // ASSERT
+      expect(result).toEqual(expectedResult)
+      // Should still work (presetId will be undefined → getPresetById(undefined) → default)
+      expect(mockOrchestrator.executeJob).toHaveBeenCalledWith(
+        expect.objectContaining({
+          rawVideoPaths: ['/valid/raw/video1.MOV'],
+          proxyOutputDir: '/valid/output'
+          // presetId: undefined (backward compatible)
+        }),
+        expect.any(Function)
+      )
+    })
+  })
 })
