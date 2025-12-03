@@ -270,7 +270,6 @@ describe('file:create-folder IPC Handler', () => {
       // Arrange
       const basePath = '/Volumes/LucidLink/project1'
       const folderName = 'valid-name'
-      const expectedPath = path.join(basePath, folderName)
 
       // Mock security validator rejects (path outside allowed base)
       mockSecurityValidator.validateFilePath.mockRejectedValue(
