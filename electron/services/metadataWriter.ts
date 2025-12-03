@@ -29,9 +29,11 @@ function findExiftool(): string {
 }
 
 // Shell metacharacters that indicate injection attempt
-// Parentheses, hyphens, apostrophes, brackets are SAFE (common in metadata)
-// Dangerous: semicolon, pipe, ampersand, backtick, dollar, newline, angle brackets
-const SHELL_METACHARACTERS = /[;|&$`\n<>{}!]/;
+// Parentheses, hyphens, apostrophes, brackets, ampersand are SAFE (common in metadata, execFile prevents shell)
+// Dangerous: semicolon, pipe, backtick, dollar, newline, angle brackets
+// SECURITY: & removed - safe with execFile() (no shell spawned, args passed as array)
+// Common in legitimate metadata: "5 Kg Wash & Dry", "Villeroy & Boch"
+const SHELL_METACHARACTERS = /[;|$`\n<>{}!]/;
 
 /**
  * MetadataWriter service for embedding metadata into media files via exiftool.
