@@ -1,6 +1,44 @@
 # Ingest Assistant - Shared Checklist
 
+## Current Focus: Issue #137 IPC Handler Extraction - NEXT PRIORITY
+
+**Selected for implementation:** main.ts Phase 2 extraction (1394 LOC → < 800 LOC)
+
+**Fix approach:**
+1. Extract `file:*` handlers → `ipc/fileHandlers.ts` with unit tests
+2. Extract `ai:*` handlers → `ipc/aiHandlers.ts` with unit tests
+3. Extract `batch:*` handlers → `ipc/batchHandlers.ts` with unit tests
+4. Extract `config:*` handlers → `ipc/configHandlers.ts` with unit tests
+5. Follow `cfexTransferHandlers.ts` and `proxyGenerationHandlers.ts` patterns
+6. Success criterion: main.ts < 800 LOC
+
+**Predecessor:** Issue #117 COMPLETE (RateLimiter + timestamp utils extracted)
+
+---
+
 ## Current Status (2025-12-03 Updated)
+
+### ✅ PR #134: Proxy Preset Propagation Fix - COMPLETE (merged 2025-12-03)
+
+**Problem:** User-selected proxy preset (e.g., "1080p H.264 HQ") was ignored during generation
+**Root Cause:** `proxyPresetId` not passed through IPC chain (UI → handler → orchestrator → generator)
+
+**Solution (TDD pattern, 2 commits):**
+- Thread `proxyPresetId` through 6 files
+- Add 4 new tests verifying preset selection end-to-end
+- Tests: 1295 passing (+4 from fix)
+- TDD: 7cc524d (RED) → 6254e92 (GREEN)
+
+---
+
+### ✅ PR #135: NFS → SMB 3.1.1 Documentation Update - COMPLETE (merged 2025-12-03)
+
+**Infrastructure Change:** Ubuntu storage migrated from NFS to SMB 3.1.1
+- Updated ~76 references across code and documentation
+- Benefits: Better reliability, automatic reconnection on network interruptions
+- Scope: PROJECT-CONTEXT.md, CLAUDE.md, test paths, comments, workflow docs
+
+---
 
 ### ✅ Issue #113: BatchOperationsPanel bypasses context - COMPLETE (PR #127 merged)
 
@@ -23,16 +61,35 @@
 
 ---
 
-### 🟡 Active Tech Debt - Prioritized
+### ✅ Issue #117: main.ts tech debt extraction - COMPLETE (Branch: fix/117-main-ts-extraction)
 
-**Issue #117: main.ts tech debt extraction** - **LOW**
-- **Status:** NOT FIXED - main.ts now 1458 LOC (grew +13 lines since issue created)
-- **Problem:** Embedded utilities (RateLimiter, timestamp helpers, media server) + inline IPC handlers
-- **Impact:** Integration debt accumulating; cognitive load navigating 1458 LOC file
-- **Fix:** Extract to `utils/rateLimiter.ts`, `utils/timestampUtils.ts`, following `cfexTransferHandlers.ts` pattern
-- **Owner:** technical-architect (spike)
-- **Success Criterion:** main.ts < 1400 LOC; extracted utilities have unit tests
+**Extraction Complete:**
+- main.ts: 1458 → 1394 LOC (64 lines removed, < 1400 criterion met)
+- `electron/utils/rateLimiter.ts` extracted (39 lines, 7 tests)
+- `electron/utils/timestampUtils.ts` extracted (64 lines, 13 tests)
+- Tests: 1304 passing (+20 new tests)
+- TDD: RED→GREEN commits visible in git history
+
+**Quality Gates:**
+- Lint: 0 errors
+- Typecheck: 0 errors
+- Tests: 1304 passing
+- code-review-specialist: CONSULTED (test cleanup patterns)
+
+**Commits:** 79e1690→e947870→7a81d2d→bab05e2→3de710b→55528b2→6079b4f
+
+---
+
+### ⏭️ Issue #137: Extract remaining IPC handlers - NEXT PRIORITY
+
+- **Status:** CREATED - Phase 2 of main.ts refactoring
+- **Problem:** Remaining IPC handlers still inline (file, ai, batch, config)
+- **Impact:** main.ts still 1394 LOC; REPO_REVIEW.md (2025-11-05) recommended handler extraction
+- **Fix:** Extract to `electron/ipc/fileHandlers.ts`, `aiHandlers.ts`, `batchHandlers.ts`, `configHandlers.ts`
+- **Owner:** technical-architect (spike) → implementation-lead (extraction)
+- **Success Criterion:** main.ts < 800 LOC; each handler has unit tests
 - **Est. Cost:** 2-4 hours per extraction target
+- **GitHub:** https://github.com/elevanaltd/ingest-assistant/issues/137
 
 **Backlog Cleanup (2025-12-03):**
 - ✅ #21: Closed as RESOLVED (tier mapping doc complete)
@@ -151,8 +208,15 @@
 ---
 
 ## Last Updated
-2025-12-03 (Issue #116 RESOLVED - PR #130 merged)
-**Tests:** 1268 passing (+3 from #116)
-**Branch:** main (cd67879)
-**Lint:** 0 errors, 6 warnings
-**Open Issues:** 6 (#116 closed, remaining: #117, #125, #128, #73, #63, #29, #27)
+2025-12-03 (Issue #117 COMPLETE, PR pending)
+**Tests:** 1304 total (1304 passing, 15 skipped)
+**Branch:** fix/117-main-ts-extraction
+**Lint:** 0 errors
+**Typecheck:** 0 errors
+**Quality Gates:** ALL GREEN
+
+**Today's Session:**
+- ✅ PR #134: Proxy preset propagation fix (+4 tests)
+- ✅ PR #135: NFS → SMB 3.1.1 documentation update
+- ✅ Issue #117: COMPLETE - main.ts 1458→1394 LOC (+20 tests)
+- 🆕 Issue #137: Created for Phase 2 (IPC handler extraction)
