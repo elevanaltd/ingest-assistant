@@ -44,6 +44,10 @@ describe('getOrExtractCreationTimestamp', () => {
     vi.clearAllMocks();
   });
 
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   it('should return cached timestamp when available', async () => {
     const cachedDate = new Date('2025-11-03T10:05:30Z');
     const fileMetadata = {
@@ -118,6 +122,10 @@ describe('getOrExtractCreationTimestamp', () => {
 describe('generateTitleWithTimestamp', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   it('should append formatted timestamp to base title', async () => {

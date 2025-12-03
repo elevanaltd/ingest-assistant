@@ -6,6 +6,11 @@ describe('RateLimiter', () => {
     vi.useFakeTimers();
   });
 
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+  });
+
   it('should initialize with maxTokens available', () => {
     const limiter = new RateLimiter(100, 10);
 
