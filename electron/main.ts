@@ -28,6 +28,7 @@ import { registerCfexTransferHandlers } from './ipc/cfexTransferHandlers';
 import { registerProxyGenerationHandlers } from './ipc/proxyGenerationHandlers';
 import { FilenameTemplateParser } from './services/filenameTemplate';
 import { reconcileMetadata } from './services/metadataReconciler';
+import { isAIFailure } from './utils/aiResultValidation';
 
 let mainWindow: BrowserWindow | null = null;
 let mediaServer: http.Server | null = null;
@@ -113,27 +114,6 @@ function formatTimestampForTitle(date: Date): string {
   const second = date.getSeconds().toString().padStart(2, '0');
 
   return `${year}${month}${day}${hour}${minute}${second}`;
-}
-
-/**
- * Detect AI analysis TRUE FAILURE (Issue #128)
- *
- * TRUE FAILURE = confidence 0 AND all structured fields empty
- * This distinguishes between:
- * 1. Low confidence results with some data (valid per PR #131) → processedByAI=true
- * 2. Total AI failure with no data (aiService catch block) → processedByAI=false
- *
- * @param result AI analysis result to validate
- * @returns true if this is a true failure (don't mark as processed)
- */
-function isAIFailure(result: AIAnalysisResult): boolean {
-  return (
-    result.confidence === 0 &&
-    !result.location &&
-    !result.subject &&
-    !result.action &&
-    !result.shotType
-  );
 }
 
 /**

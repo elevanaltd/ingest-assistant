@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { isAIFailure } from '../../utils/aiResultValidation';
 
 /**
  * AI Result Validation Tests (Issue #128)
@@ -14,127 +15,115 @@ import { describe, it, expect } from 'vitest';
  * - confidence > 0 with ANY data → Write results, set processedByAI=true (QC workflow)
  * - confidence === 0 AND ALL empty fields → TRUE FAILURE, DON'T set processedByAI=true
  *
- * TDD Evidence: RED phase - These tests FAIL before implementation
+ * TDD Evidence: These tests exercise the PRODUCTION helper from electron/utils/aiResultValidation.ts
+ * to ensure regression protection.
  */
-
-/**
- * Helper function to detect AI analysis TRUE FAILURE
- * TRUE FAILURE = confidence 0 AND all structured fields empty
- *
- * This distinguishes between:
- * 1. Low confidence results with some data (valid per PR #131) → processedByAI=true
- * 2. Total AI failure with no data (aiService catch block) → processedByAI=false
- */
-export function isAIFailure(result: {
-  confidence: number;
-  location?: string;
-  subject?: string;
-  action?: string;
-  shotType?: string;
-}): boolean {
-  return (
-    result.confidence === 0 &&
-    !result.location &&
-    !result.subject &&
-    !result.action &&
-    !result.shotType
-  );
-}
 
 describe('AI Result Validation (Issue #128)', () => {
   describe('isAIFailure detection', () => {
     it('should detect TRUE FAILURE: confidence=0 with all empty fields', () => {
       const failureResult = {
+        version: '2',
+        shotName: '',
+        keywords: [],
         confidence: 0,
         location: '',
         subject: '',
         action: '',
         shotType: '',
-      };
+      } as any;
 
       expect(isAIFailure(failureResult)).toBe(true);
     });
 
     it('should detect TRUE FAILURE: confidence=0 with undefined fields', () => {
       const failureResult = {
+        version: '2',
+        shotName: '',
+        keywords: [],
         confidence: 0,
         location: undefined,
         subject: undefined,
         action: undefined,
         shotType: undefined,
-      };
+      } as any;
 
       expect(isAIFailure(failureResult)).toBe(true);
     });
 
     it('should NOT detect failure: confidence=0 but has location data (PR #131 preserved)', () => {
       const validLowConfidence = {
+        version: '2',
+        shotName: '',
+        keywords: [],
         confidence: 0,
         location: 'kitchen',
-        subject: '',
-        action: '',
-        shotType: '',
-      };
+      } as any;
 
       expect(isAIFailure(validLowConfidence)).toBe(false);
     });
 
     it('should NOT detect failure: confidence=0 but has subject data (PR #131 preserved)', () => {
       const validLowConfidence = {
+        version: '2',
+        shotName: '',
+        keywords: [],
         confidence: 0,
-        location: '',
         subject: 'oven',
-        action: '',
-        shotType: '',
-      };
+      } as any;
 
       expect(isAIFailure(validLowConfidence)).toBe(false);
     });
 
     it('should NOT detect failure: confidence=0.3 with some data (normal QC workflow)', () => {
       const normalResult = {
+        version: '2',
+        shotName: '',
+        keywords: [],
         confidence: 0.3,
         location: 'kitchen',
         subject: 'oven',
-        action: '',
         shotType: 'CU',
-      };
+      } as any;
 
       expect(isAIFailure(normalResult)).toBe(false);
     });
 
     it('should NOT detect failure: high confidence with full data', () => {
       const successResult = {
+        version: '2',
+        shotName: '',
+        keywords: [],
         confidence: 0.9,
         location: 'kitchen',
         subject: 'oven',
         action: 'cleaning',
         shotType: 'WS',
-      };
+      } as any;
 
       expect(isAIFailure(successResult)).toBe(false);
     });
 
     it('should NOT detect failure: confidence=0 but has action data (PR #131 preserved)', () => {
       const validLowConfidence = {
+        version: '2',
+        shotName: '',
+        keywords: [],
         confidence: 0,
-        location: '',
-        subject: '',
         action: 'cleaning',
-        shotType: '',
-      };
+      } as any;
 
       expect(isAIFailure(validLowConfidence)).toBe(false);
     });
 
     it('should NOT detect failure: confidence=0 but has shotType data (PR #131 preserved)', () => {
       const validLowConfidence = {
+        version: '2',
+        shotName: '',
+        keywords: [],
         confidence: 0,
-        location: '',
-        subject: '',
-        action: '',
         shotType: 'MID',
-      };
+      } as any;
 
       expect(isAIFailure(validLowConfidence)).toBe(false);
     });
@@ -142,12 +131,12 @@ describe('AI Result Validation (Issue #128)', () => {
     it('should detect failure: confidence=0.01 treated as failure boundary', () => {
       // Edge case: Very low but non-zero confidence with data should NOT be treated as failure
       const edgeCase = {
+        version: '2',
+        shotName: '',
+        keywords: [],
         confidence: 0.01,
         location: 'kitchen',
-        subject: '',
-        action: '',
-        shotType: '',
-      };
+      } as any;
 
       expect(isAIFailure(edgeCase)).toBe(false);
     });
@@ -160,12 +149,11 @@ describe('AI Result Validation (Issue #128)', () => {
       // Expected behavior (after fix): processedByAI remains false
 
       const aiFailureResult = {
+        version: '2',
+        shotName: '',
+        keywords: [],
         confidence: 0,
-        location: '',
-        subject: '',
-        action: '',
-        shotType: '',
-      };
+      } as any;
 
       const shouldProcess = !isAIFailure(aiFailureResult);
 
@@ -176,12 +164,14 @@ describe('AI Result Validation (Issue #128)', () => {
     it('should set processedByAI=true when AI returns low confidence with data (PR #131)', () => {
       // PR #131: Write ALL results regardless of confidence for QC workflow
       const lowConfidenceResult = {
+        version: '2',
+        shotName: '',
+        keywords: [],
         confidence: 0.2,
         location: 'kitchen',
         subject: 'oven',
-        action: '',
         shotType: 'CU',
-      };
+      } as any;
 
       const shouldProcess = !isAIFailure(lowConfidenceResult);
 
@@ -192,12 +182,12 @@ describe('AI Result Validation (Issue #128)', () => {
     it('should set processedByAI=true when AI returns confidence=0 but has some structured data (PR #131)', () => {
       // PR #131: Even confidence=0 with partial data should be written for QC
       const partialDataResult = {
+        version: '2',
+        shotName: '',
+        keywords: [],
         confidence: 0,
         location: 'kitchen',
-        subject: '',
-        action: '',
-        shotType: '',
-      };
+      } as any;
 
       const shouldProcess = !isAIFailure(partialDataResult);
 
