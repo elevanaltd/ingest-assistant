@@ -329,6 +329,53 @@ describe('ExifPreserver', () => {
       // ASSERTION: All 20 files should still be processed
       expect(spawn).toHaveBeenCalledTimes(20);
     });
+
+    it('should continue processing all files even if one file fails (I1 best-effort)', async () => {
+      // RED PHASE: Code review finding - Promise.all aborts on first failure
+      // Current implementation: Promise.all throws on first failure, skipping remaining chunks
+      // Expected behavior: Process all 500 files with "best effort per file" (I1 compliance)
+      // If file #3 fails, files #9-500 should still be attempted
+      const processedFiles: string[] = [];
+
+      vi.mocked(spawn).mockImplementation((_cmd, args) => {
+        const mockProcess = new EventEmitter() as any;
+        mockProcess.stdout = new EventEmitter();
+        mockProcess.stderr = new EventEmitter();
+
+        // Extract file path from args (last argument)
+        const filePath = args[args.length - 1] as string;
+        processedFiles.push(filePath);
+
+        // Simulate failure on file #3
+        setTimeout(() => {
+          if (filePath.includes('video3_proxy')) {
+            mockProcess.stderr.emit('data', Buffer.from('Simulated write failure'));
+            mockProcess.emit('close', 1); // Non-zero exit code = failure
+          } else {
+            mockProcess.emit('close', 0); // Success
+          }
+        }, 1);
+
+        return mockProcess;
+      });
+
+      // Create batch with 20 files (file #3 will fail)
+      const proxyDateMap = new Map<string, string>();
+      for (let i = 1; i <= 20; i++) {
+        proxyDateMap.set(`/Volumes/videos-current/project/video${i}_proxy.MOV`, `2024:11:20 14:${i.toString().padStart(2, '0')}:00`);
+      }
+
+      // Current implementation: Promise.all will throw on file #3 failure
+      // This will skip chunk 2 (files #9-16) and chunk 3 (files #17-20)
+      // Expected behavior: Continue processing all chunks, collect errors, throw/return summary at end
+      await expect(preserver.writeBatch(proxyDateMap)).rejects.toThrow();
+
+      // CRITICAL ASSERTION: All 20 files should be ATTEMPTED (not just 1-8)
+      // Current bug: Only processes files 1-8 (chunk 1), then aborts
+      // Fixed behavior: Processes all 20 files, reports file #3 failure at end
+      expect(processedFiles.length).toBe(20); // Currently fails: only 8 files attempted
+      expect(processedFiles).toContain('/Volumes/videos-current/project/video20_proxy.MOV'); // File from chunk 3
+    });
   });
 
   describe('Phase 3b: Batch Verification', () => {
