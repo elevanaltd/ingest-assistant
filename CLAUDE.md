@@ -1,5 +1,30 @@
 # Ingest Assistant - Project Guide for Claude Code
 
+===GIT_SAFETY_PROTOCOL===
+
+⚠️ BRANCH_PROTECTION_ACTIVE ⚠️
+
+CONSTRAINT::[
+  MAIN_BRANCH::protected[push_blocked_at_remote],
+  NEVER::commit_directly_to_main,
+  ALWAYS::create_feature_branch→PR→merge
+]
+
+WORKTREE_AWARENESS::[
+  CHECK_FIRST::git branch --show-current,
+  IF_MAIN::switch_to_feature_branch_immediately,
+  RISK::worktrees_may_default_to_main→verify_before_commit,
+  PATTERN::git checkout -b feat/description OR fix/description
+]
+
+BEFORE_ANY_COMMIT::[
+  1::verify_branch[git branch --show-current],
+  2::confirm_NOT_main,
+  3::if_main→git checkout -b {appropriate_branch}
+]
+
+===END_GIT_SAFETY===
+
 ## Project Identity
 
 **Name:** Ingest Assistant
