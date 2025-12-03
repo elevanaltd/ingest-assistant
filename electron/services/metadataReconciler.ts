@@ -11,6 +11,16 @@ import { FileMetadata } from '../../src/types';
 import { MetadataStore } from './metadataStore';
 
 /**
+ * Result of metadata reconciliation
+ */
+export interface ReconcileResult {
+  /** The reconciled metadata object */
+  metadata: FileMetadata;
+  /** Whether the metadata was updated (true if filename changed, false otherwise) */
+  updated: boolean;
+}
+
+/**
  * Reconciles existing metadata with scanned file metadata.
  *
  * Updates currentFilename and filePath if they differ from the scanned values,
@@ -22,22 +32,26 @@ import { MetadataStore } from './metadataStore';
  *
  * @param existingMetadata - Metadata currently stored in the database
  * @param scannedMetadata - Fresh metadata from filesystem scan
- * @returns Updated metadata object with reconciled currentFilename/filePath
+ * @returns ReconcileResult with metadata and updated flag
  *
  * @example
  * ```typescript
  * const existing = await store.getFileMetadata('EA002033');
  * const scanned = await scanFolder('/path/to/folder');
- * const reconciled = reconcileMetadata(existing, scanned[0]);
- * await store.updateFileMetadata('EA002033', reconciled);
+ * const { metadata: reconciled, updated } = reconcileMetadata(existing, scanned[0]);
+ * if (updated) {
+ *   await store.updateFileMetadata('EA002033', reconciled);
+ * }
  * ```
  */
 export function reconcileMetadata(
   existingMetadata: FileMetadata,
   scannedMetadata: FileMetadata
-): FileMetadata {
+): ReconcileResult {
   // Detect stale filename: stored metadata has old filename, scan found new filename
-  if (existingMetadata.currentFilename !== scannedMetadata.currentFilename) {
+  const needsUpdate = existingMetadata.currentFilename !== scannedMetadata.currentFilename;
+
+  if (needsUpdate) {
     console.log(
       `[metadataReconciler] Updating stale currentFilename: ${existingMetadata.currentFilename} → ${scannedMetadata.currentFilename}`
     );
@@ -50,5 +64,5 @@ export function reconcileMetadata(
     MetadataStore.updateAuditTrail(existingMetadata);
   }
 
-  return existingMetadata;
+  return { metadata: existingMetadata, updated: needsUpdate };
 }

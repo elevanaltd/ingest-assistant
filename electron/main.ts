@@ -603,8 +603,8 @@ ipcMain.handle('file:load-files', async () => {
     } else {
       // Use existing metadata (which may have been AI-processed)
       // Stale Metadata Fix: Reconcile filename differences using shared helper
-      const reconciledMetadata = reconcileMetadata(existingMetadata, file);
-      if (reconciledMetadata.currentFilename !== existingMetadata.currentFilename) {
+      const { metadata: reconciledMetadata, updated } = reconcileMetadata(existingMetadata, file);
+      if (updated) {
         await store.updateFileMetadata(file.id, reconciledMetadata);
       }
 
@@ -648,8 +648,8 @@ ipcMain.handle('file:list-range', async (_event, startIndex: number, pageSize: n
     const existingMetadata = await store.getFileMetadata(file.id);
     if (existingMetadata) {
       // Stale Metadata Fix: Reconcile filename differences using shared helper
-      const reconciledMetadata = reconcileMetadata(existingMetadata, file);
-      if (reconciledMetadata.currentFilename !== existingMetadata.currentFilename) {
+      const { metadata: reconciledMetadata, updated } = reconcileMetadata(existingMetadata, file);
+      if (updated) {
         await store.updateFileMetadata(file.id, reconciledMetadata);
       }
 
