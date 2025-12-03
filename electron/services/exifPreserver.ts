@@ -98,6 +98,9 @@ export class ExifPreserver {
    *
    * Concurrency limiting: Processes files in chunks of 8 to prevent EMFILE errors on large batches.
    * Risk mitigation: 500+ proxies with unbounded Promise.all() causes OS file descriptor exhaustion.
+   *
+   * Fail-continue behavior: Uses Promise.allSettled to attempt all files even if some fail (I1 best-effort).
+   * Collects failures and throws aggregated error at end if any failures occurred.
    */
   async writeBatch(proxyDateMap: Map<string, string>): Promise<void> {
     if (proxyDateMap.size === 0) {
@@ -108,14 +111,33 @@ export class ExifPreserver {
 
     const CONCURRENCY_LIMIT = 8;
     const entries = Array.from(proxyDateMap.entries());
+    const failures: Array<{ path: string; error: string }> = [];
 
     // Process files in chunks to limit concurrent exiftool processes
     for (let i = 0; i < entries.length; i += CONCURRENCY_LIMIT) {
       const chunk = entries.slice(i, i + CONCURRENCY_LIMIT);
       const chunkPromises = chunk.map(([proxyPath, dateTime]) =>
         this.writeSingleFile(proxyPath, dateTime)
+          .then(() => ({ status: 'fulfilled' as const, path: proxyPath }))
+          .catch((err) => ({ status: 'rejected' as const, path: proxyPath, error: err.message }))
       );
-      await Promise.all(chunkPromises);
+
+      // Use Promise.allSettled to continue processing even if some files fail
+      const results = await Promise.all(chunkPromises);
+
+      // Collect failures for reporting at end
+      results.forEach((result) => {
+        if (result.status === 'rejected') {
+          failures.push({ path: result.path, error: result.error });
+        }
+      });
+    }
+
+    // If any failures occurred, throw aggregated error
+    if (failures.length > 0) {
+      const errorMessage = `Failed to write EXIF data to ${failures.length} file(s): ${failures.map(f => f.path).join(', ')}`;
+      console.error('[ExifPreserver] Batch write completed with failures:', failures);
+      throw new Error(errorMessage);
     }
 
     console.log('[ExifPreserver] Write complete');
