@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { MetadataStore } from '../services/metadataStore';
+import { reconcileMetadata } from '../services/metadataReconciler';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import * as os from 'os';
@@ -78,7 +79,7 @@ describe('Stale Metadata Fix', () => {
       shotName: '', // scanFolder doesn't know shotName yet
     });
 
-    // ACT: Simulate the FIXED code path in main.ts:604-611
+    // ACT: Use the ACTUAL reconcileMetadata helper (production code)
     const existingMetadata = await store.getFileMetadata('EA002033');
 
     if (!existingMetadata) {
@@ -86,12 +87,10 @@ describe('Stale Metadata Fix', () => {
       await store.updateFileMetadata('EA002033', freshMetadataFromScan);
     } else {
       // Use existing metadata (which may have been AI-processed)
-      // Stale Metadata Fix: Update currentFilename if actual disk filename differs
-      if (existingMetadata.currentFilename !== freshMetadataFromScan.currentFilename) {
-        existingMetadata.currentFilename = freshMetadataFromScan.currentFilename;
-        existingMetadata.filePath = freshMetadataFromScan.filePath;
-        MetadataStore.updateAuditTrail(existingMetadata);
-        await store.updateFileMetadata('EA002033', existingMetadata);
+      // Stale Metadata Fix: Reconcile using the actual production helper
+      const reconciledMetadata = reconcileMetadata(existingMetadata, freshMetadataFromScan);
+      if (reconciledMetadata.currentFilename !== existingMetadata.currentFilename) {
+        await store.updateFileMetadata('EA002033', reconciledMetadata);
       }
     }
 
@@ -135,16 +134,25 @@ describe('Stale Metadata Fix', () => {
     const proxyPath = path.join(tempDir, proxyFilename);
     await fs.writeFile(proxyPath, 'dummy image content');
 
-    // ACT: Simulate the fix (which doesn't exist yet)
+    // ACT: Use the ACTUAL reconcileMetadata helper (production code)
     const existingMetadata = await store.getFileMetadata('EA002034');
 
-    // When currentFilename differs, we should update it
-    if (existingMetadata && existingMetadata.currentFilename !== proxyFilename) {
-      // This is what the FIX should do (currently not implemented)
-      existingMetadata.currentFilename = proxyFilename;
-      existingMetadata.filePath = proxyPath;
-      MetadataStore.updateAuditTrail(existingMetadata);
-      await store.updateFileMetadata('EA002034', existingMetadata);
+    const scannedMetadata = MetadataStore.createMetadata({
+      id: 'EA002034',
+      originalFilename: 'EA002034.JPG',
+      currentFilename: proxyFilename,
+      filePath: proxyPath,
+      extension: '.jpg',
+      fileType: 'image',
+      shotName: '', // scanFolder doesn't know shotName yet
+    });
+
+    // Use the actual production reconciliation helper
+    if (existingMetadata) {
+      const reconciledMetadata = reconcileMetadata(existingMetadata, scannedMetadata);
+      if (reconciledMetadata.currentFilename !== existingMetadata.currentFilename) {
+        await store.updateFileMetadata('EA002034', reconciledMetadata);
+      }
     }
 
     // ASSERT: Filename updated, AI data preserved
@@ -192,15 +200,26 @@ describe('Stale Metadata Fix', () => {
     const beforeUpdate = await store.getFileMetadata('EA002035');
     const originalModifiedAt = beforeUpdate?.modifiedAt;
 
-    // ACT: Simulate the code path (no update should happen)
+    // ACT: Use the ACTUAL reconcileMetadata helper (no update should happen)
     const existingMetadata = await store.getFileMetadata('EA002035');
 
-    if (existingMetadata && existingMetadata.currentFilename !== filename) {
-      // Should NOT execute this branch
-      existingMetadata.currentFilename = filename;
-      existingMetadata.filePath = filePath;
-      MetadataStore.updateAuditTrail(existingMetadata);
-      await store.updateFileMetadata('EA002035', existingMetadata);
+    const scannedMetadata = MetadataStore.createMetadata({
+      id: 'EA002035',
+      originalFilename: 'EA002035.MOV',
+      currentFilename: filename, // Same as existing
+      filePath: filePath,
+      extension: '.mov',
+      fileType: 'video',
+      shotName: '',
+    });
+
+    // Use the actual production reconciliation helper
+    if (existingMetadata) {
+      const reconciledMetadata = reconcileMetadata(existingMetadata, scannedMetadata);
+      // Should NOT update (filenames match)
+      if (reconciledMetadata.currentFilename !== existingMetadata.currentFilename) {
+        await store.updateFileMetadata('EA002035', reconciledMetadata);
+      }
     }
 
     // ASSERT: No changes made
