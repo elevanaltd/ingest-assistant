@@ -24,7 +24,7 @@
 - **Runtime:** Electron (main + renderer)
 - **Frontend:** React 18, TypeScript
 - **Build:** Vite
-- **Testing:** Vitest (1299 tests, 89 files)
+- **Testing:** Vitest (1304 tests, 91 files)
 - **AI:** OpenRouter, Anthropic Claude, OpenAI APIs
 - **Database:** Supabase (shared with EAV Monorepo)
 
@@ -293,7 +293,8 @@ src/components/
 **Active Tech Debt (Updated 2025-12-03):**
 - ✅ Issue #113: BatchOperationsPanel context routing - **RESOLVED** (PR #127 merged)
 - ✅ Issue #116: Reset transfer counters - **RESOLVED** (PR #130 merged)
-- ⏭️ Issue #117: main.ts tech debt extraction - **NEXT PRIORITY** (1458 LOC, maintenance burden)
+- ✅ Issue #117: main.ts tech debt extraction - **COMPLETE** (1458→1394 LOC, RateLimiter + timestamp utils)
+- ⏭️ Issue #137: Extract remaining IPC handlers - **NEXT PRIORITY** (target: main.ts < 800 LOC)
 
 **Backlog Cleanup (2025-12-03):**
 - ✅ #21: Closed as RESOLVED (tier mapping doc complete)
