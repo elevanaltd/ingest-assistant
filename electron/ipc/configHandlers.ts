@@ -36,21 +36,41 @@ export function registerConfigHandlers(
 
   // Config operations
   ipcMain.handle('config:load', async () => {
-    return await configManager.loadConfig();
+    try {
+      return await configManager.loadConfig();
+    } catch (error) {
+      console.error('Failed to load config:', error);
+      throw sanitizeError(error);
+    }
   });
 
   ipcMain.handle('config:save', async (_event, config: AppConfig) => {
-    return await configManager.saveConfig(config);
+    try {
+      return await configManager.saveConfig(config);
+    } catch (error) {
+      console.error('Failed to save config:', error);
+      throw sanitizeError(error);
+    }
   });
 
   ipcMain.handle('config:get-lexicon', async () => {
-    return await configManager.getLexicon();
+    try {
+      return await configManager.getLexicon();
+    } catch (error) {
+      console.error('Failed to get lexicon:', error);
+      throw sanitizeError(error);
+    }
   });
 
   ipcMain.handle('config:get-shot-types', async () => {
-    // Load config first to ensure it's cached
-    await configManager.loadConfig();
-    return configManager.getAllShotTypes();
+    try {
+      // Load config first to ensure it's cached
+      await configManager.loadConfig();
+      return configManager.getAllShotTypes();
+    } catch (error) {
+      console.error('Failed to get shot types:', error);
+      throw sanitizeError(error);
+    }
   });
 
   // Lexicon operations (UI format)

@@ -266,7 +266,8 @@ async function createWindow() {
   });
 
   // Register Batch IPC handlers
-  registerBatchHandlers(mainWindow, {
+  // CRITICAL FIX: Pass getter function to prevent stale BrowserWindow reference (darwin behavior)
+  registerBatchHandlers(() => mainWindow, {
     batchQueueManager,
     batchProcessRateLimiter,
     securityValidator,

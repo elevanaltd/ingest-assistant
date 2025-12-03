@@ -64,28 +64,28 @@ describe('registerBatchHandlers', () => {
 
   it('should register batch:start handler', async () => {
     const { registerBatchHandlers } = await import('../../ipc/batchHandlers');
-    registerBatchHandlers(mockWindow, mockDeps);
+    registerBatchHandlers(() => mockWindow, mockDeps);
 
     expect(ipcMain.handle).toHaveBeenCalledWith('batch:start', expect.any(Function));
   });
 
   it('should register batch:cancel handler', async () => {
     const { registerBatchHandlers } = await import('../../ipc/batchHandlers');
-    registerBatchHandlers(mockWindow, mockDeps);
+    registerBatchHandlers(() => mockWindow, mockDeps);
 
     expect(ipcMain.handle).toHaveBeenCalledWith('batch:cancel', expect.any(Function));
   });
 
   it('should register batch:get-status handler', async () => {
     const { registerBatchHandlers } = await import('../../ipc/batchHandlers');
-    registerBatchHandlers(mockWindow, mockDeps);
+    registerBatchHandlers(() => mockWindow, mockDeps);
 
     expect(ipcMain.handle).toHaveBeenCalledWith('batch:get-status', expect.any(Function));
   });
 
   it('should register all 3 batch handlers', async () => {
     const { registerBatchHandlers } = await import('../../ipc/batchHandlers');
-    registerBatchHandlers(mockWindow, mockDeps);
+    registerBatchHandlers(() => mockWindow, mockDeps);
 
     // Verify exactly 3 handlers registered
     expect(ipcMain.handle).toHaveBeenCalledTimes(3);

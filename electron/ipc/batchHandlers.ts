@@ -10,7 +10,7 @@
  * (prevents stale aiService after ai:update-config)
  */
 
-import { ipcMain, BrowserWindow } from 'electron';
+import { ipcMain, type BrowserWindow } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs/promises';
 import { z } from 'zod';
@@ -47,7 +47,7 @@ interface BatchHandlerDependencies {
 }
 
 export function registerBatchHandlers(
-  mainWindow: BrowserWindow,
+  getMainWindow: () => BrowserWindow | null,
   dependencies: BatchHandlerDependencies
 ): void {
   const {
@@ -229,9 +229,12 @@ export function registerBatchHandlers(
       };
 
       // Define progress callback that emits events to renderer
+      // CRITICAL FIX: Use dynamic window lookup to prevent stale reference crashes (darwin behavior)
+      // When window closes on macOS, app stays alive but webContents is destroyed
       const progressCallback = (progress: import('../../src/types').BatchProgress) => {
-        if (mainWindow) {
-          mainWindow.webContents.send('batch:progress', progress);
+        const win = getMainWindow();
+        if (win && !win.isDestroyed()) {
+          win.webContents.send('batch:progress', progress);
         }
       };
 
@@ -246,8 +249,10 @@ export function registerBatchHandlers(
           // Non-blocking - still emit completion event even if reload fails
         }
 
-        if (mainWindow) {
-          mainWindow.webContents.send('batch:complete', summary);
+        // CRITICAL FIX: Use dynamic window lookup to prevent stale reference crashes (darwin behavior)
+        const win = getMainWindow();
+        if (win && !win.isDestroyed()) {
+          win.webContents.send('batch:complete', summary);
         }
       };
 
