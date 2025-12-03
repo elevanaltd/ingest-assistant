@@ -1,6 +1,6 @@
 # Ingest Assistant - Project Context
 
-**Last Updated:** 2025-12-02 | **Version:** v2.3.0 | **Branch:** main (Issue #112 COMPLETE + All Major Gaps Resolved)
+**Last Updated:** 2025-12-03 | **Version:** v2.3.0 | **Branch:** main (Proxy Filename Resolution Fix)
 
 ---
 
@@ -24,7 +24,7 @@
 - **Runtime:** Electron (main + renderer)
 - **Frontend:** React 18, TypeScript
 - **Build:** Vite
-- **Testing:** Vitest (1241 tests, 85 files)
+- **Testing:** Vitest (1251 tests, 88 files)
 - **AI:** OpenRouter, Anthropic Claude, OpenAI APIs
 - **Database:** Supabase (shared with EAV Monorepo)
 
@@ -34,8 +34,8 @@
 
 ### Branch Status
 ```
-Branch: main (v2.3.0 + All Major Gaps Resolved)
-Tests:  1241 passing (+199 from #102, +11 tech debt, +8 from #112)
+Branch: main (v2.3.0 + Proxy Filename Resolution)
+Tests:  1251 passing (+10 from proxy filename fix)
 Lint:   0 errors
 Types:  0 errors
 Security: 6 moderate vulns (HIGH eliminated)
@@ -75,7 +75,7 @@ D0→D1→D2→D3→B0(Phase 1a)→B2(1a COMPLETE)→1c COMPLETE→Phase 1b(B2.1
 |------|--------|---------|
 | Lint | PASS (0 errors) | `npm run lint` |
 | Typecheck | PASS (0 errors) | `npm run typecheck` |
-| Tests | PASS (1233 passing) | `npm test` |
+| Tests | PASS (1251 passing) | `npm test` |
 
 ---
 
@@ -269,6 +269,27 @@ src/components/
 - ✅ #111: CFEx Cancel button (resolved via #106)
 - ✅ #112: CFEx Proxy settings propagation (PR #118)
 
+### ✅ Proxy Filename Resolution Fix - COMPLETE (2025-12-03)
+
+**Problem:** ENOENT error when AI processing proxy files (e.g., `EA002033_proxy.mov`) because stale metadata stored raw filename (`EA002033.MOV`).
+
+**Root Cause:** When opening proxy folder with existing `.ingest-metadata.json` from previous raw scan, stored `currentFilename` wasn't updated to match actual disk filename.
+
+**Solution:**
+- Created `metadataReconciler.ts` with `reconcileMetadata()` helper
+- Returns `{ metadata, updated }` flag to enable conditional persistence
+- Applied to both `file:list-all` and `file:list-range` IPC handlers
+- Stale metadata auto-corrected when disk filename differs
+
+**Commits:** 5 (TDD discipline: RED→GREEN pattern)
+**Tests:** +10 new tests (3 unit + 7 integration)
+**Quality Gates:** CRS GO (9/10), CE GO (Approved)
+
+**Enables Option B Workflow:**
+1. Export files off CFEx card
+2. Create proxies (`{name}_proxy.mov`)
+3. AI process proxy files → JSON in proxy folder ✅
+
 **Remaining Open Issues:**
 - Issue #113: BatchOperationsPanel bypasses context (MEDIUM)
 - Issue #116: Reset transfer counters on cancel/start (LOW)
@@ -311,14 +332,14 @@ src/components/
 ## Recent Commits (Last 10)
 
 ```
-93db11c Merge pull request #110 from elevanaltd/feat/issue-102-phase-8-presentational-cleanup
-a9cad52 docs: update SHARED-CHECKLIST for Phase 8b completion
-d12aebd refactor: integrate extracted components into BatchOperationsPanel
-18e1c8e refactor: extract ProxyProgressCard from BatchOperationsPanel (GREEN)
-56095d6 refactor: extract BatchProgressDetails from BatchOperationsPanel (GREEN)
-15ff9fb test: add FolderPicker extraction tests (RED)
-e32680e Merge pull request #109 from elevanaltd/feat/issue-102-phase-7-settings-decomposition
-91569ae fix: align SettingsModal test assertions with async context loading
-fa36bbd refactor(settings): decompose SettingsModal into tab components (Phase 7)
-4a92d97 fix: prevent stale media from rendering on rapid navigation
+5cc7495 fix: return updated flag from reconcileMetadata to enable persistence (GREEN)
+b1af676 test: add failing tests for reconcileMetadata updated flag (RED)
+3681e86 refactor: extract reconcileMetadata helper and fix pagination handler
+c11eb93 fix: update currentFilename when disk filename differs from stored metadata (GREEN)
+9264770 test: add test for stale currentFilename update
+6e6b883 Merge pull request #122 from elevanaltd/fix/exif-preserver-i1-violation
+3e67540 feat: fix ExifPreserver fail-fast bug with Promise.allSettled (GREEN)
+51be02d test: add failing test for I1 best-effort fail-continue behavior (RED)
+3c761ce feat: implement concurrency limiting in ExifPreserver.writeBatch (GREEN)
+85c7306 test: add failing test for concurrency limiting in ExifPreserver.writeBatch (RED)
 ```

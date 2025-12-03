@@ -27,6 +27,7 @@ import { BatchQueueManager } from './services/batchQueueManager';
 import { registerCfexTransferHandlers } from './ipc/cfexTransferHandlers';
 import { registerProxyGenerationHandlers } from './ipc/proxyGenerationHandlers';
 import { FilenameTemplateParser } from './services/filenameTemplate';
+import { reconcileMetadata } from './services/metadataReconciler';
 
 let mainWindow: BrowserWindow | null = null;
 let mediaServer: http.Server | null = null;
@@ -601,6 +602,12 @@ ipcMain.handle('file:load-files', async () => {
       await store.updateFileMetadata(file.id, file);
     } else {
       // Use existing metadata (which may have been AI-processed)
+      // Stale Metadata Fix: Reconcile filename differences using shared helper
+      const { metadata: reconciledMetadata, updated } = reconcileMetadata(existingMetadata, file);
+      if (updated) {
+        await store.updateFileMetadata(file.id, reconciledMetadata);
+      }
+
       // Bug #1 Fix: Fallback to mainName for legacy pre-R1.1 records, then to empty string if both missing
       file.shotName = existingMetadata.shotName || existingMetadata.mainName || '';
       file.keywords = existingMetadata.keywords;
@@ -640,6 +647,12 @@ ipcMain.handle('file:list-range', async (_event, startIndex: number, pageSize: n
   for (const file of result.files) {
     const existingMetadata = await store.getFileMetadata(file.id);
     if (existingMetadata) {
+      // Stale Metadata Fix: Reconcile filename differences using shared helper
+      const { metadata: reconciledMetadata, updated } = reconcileMetadata(existingMetadata, file);
+      if (updated) {
+        await store.updateFileMetadata(file.id, reconciledMetadata);
+      }
+
       // Bug #1 Fix: Fallback to mainName for legacy pre-R1.1 records, then to empty string if both missing
       file.shotName = existingMetadata.shotName || existingMetadata.mainName || '';
       file.keywords = existingMetadata.keywords;
