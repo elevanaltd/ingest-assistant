@@ -1,6 +1,6 @@
 # Ingest Assistant - Project Context
 
-**Last Updated:** 2025-12-03 | **Version:** v2.3.0 | **Branch:** main (Proxy Filename Resolution Fix)
+**Last Updated:** 2025-12-03 | **Version:** v2.3.1 | **Branch:** main (ExifPreserver I1 Fix + Proxy Filename Resolution)
 
 ---
 
@@ -34,8 +34,8 @@
 
 ### Branch Status
 ```
-Branch: main (v2.3.0 + Proxy Filename Resolution)
-Tests:  1251 passing (+10 from proxy filename fix)
+Branch: main (v2.3.1 + ExifPreserver I1 Fix + Proxy Filename Resolution)
+Tests:  1251 passing (+14 from recent fixes)
 Lint:   0 errors
 Types:  0 errors
 Security: 6 moderate vulns (HIGH eliminated)
@@ -295,6 +295,22 @@ src/components/
 - Issue #116: Reset transfer counters on cancel/start (LOW)
 - Issue #117: main.ts tech debt extraction (LOW)
 
+### ✅ ExifPreserver I1 Bug Fix - COMPLETE (PR #122 merged 2025-12-03)
+
+**Problem Discovered:** All proxy files received SAME DateTimeOriginal timestamp (14:42:43) instead of individual chronological timestamps. Root cause: `exiftool` command syntax doesn't support per-file tag values in single invocation.
+
+**Fix Applied (3 commits, TDD pattern):**
+1. **Per-file timestamp preservation** - separate exiftool call per file
+2. **Concurrency limiting** - CONCURRENCY_LIMIT=8 prevents EMFILE on 500+ file batches
+3. **Fail-continue behavior** - Promise.allSettled ensures all files attempted even if some fail
+
+**Quality Gates:**
+- code-review-specialist (Codex): GO (9/10)
+- critical-engineer (Gemini): GO (9/10) - MERGE_APPROVED
+- Tests: 1245 passing (+4 new ExifPreserver tests)
+
+**I1 Compliance:** ✅ Restored - per-file DateTimeOriginal now correctly preserved
+
 ---
 
 ## Assumptions to Validate
@@ -332,11 +348,11 @@ src/components/
 ## Recent Commits (Last 10)
 
 ```
-5cc7495 fix: return updated flag from reconcileMetadata to enable persistence (GREEN)
-b1af676 test: add failing tests for reconcileMetadata updated flag (RED)
-3681e86 refactor: extract reconcileMetadata helper and fix pagination handler
-c11eb93 fix: update currentFilename when disk filename differs from stored metadata (GREEN)
-9264770 test: add test for stale currentFilename update
+86621a4 docs: update PROJECT-CONTEXT and SHARED-CHECKLIST for proxy filename fix
+d9eb252 fix: return updated flag from reconcileMetadata to enable persistence (GREEN)
+7a1c7d6 test: add failing tests for reconcileMetadata updated flag (RED)
+d53b65c refactor: extract reconcileMetadata helper and fix pagination handler
+e7f3f47 fix: update currentFilename when disk filename differs from stored metadata (GREEN)
 6e6b883 Merge pull request #122 from elevanaltd/fix/exif-preserver-i1-violation
 3e67540 feat: fix ExifPreserver fail-fast bug with Promise.allSettled (GREEN)
 51be02d test: add failing test for I1 best-effort fail-continue behavior (RED)

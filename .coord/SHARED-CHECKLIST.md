@@ -2,7 +2,7 @@
 
 ## Current Status (2025-12-03 Updated)
 
-### ✅ Proxy Filename Resolution Fix - COMPLETE (PR #123)
+### ✅ Proxy Filename Resolution Fix - COMPLETE (PR #123 merged 2025-12-03)
 
 **Problem:** ENOENT error when AI processing proxy files (`EA002033_proxy.mov`) because stale `.ingest-metadata.json` stored raw filename (`EA002033.MOV`).
 
@@ -21,6 +21,22 @@
 1. Export files off CFEx card
 2. Create proxies (`{name}_proxy.mov`)
 3. AI process proxy files → JSON in proxy folder ✅
+
+---
+
+### ✅ ExifPreserver I1 Bug Fix - COMPLETE (PR #122 merged 2025-12-03)
+
+**Problem:** All proxy files received SAME DateTimeOriginal timestamp instead of individual chronological timestamps. Root cause: `exiftool` command syntax doesn't support per-file tag values in single invocation.
+
+**Fix Applied (6 commits, TDD pattern):**
+- [x] Per-file timestamp preservation (separate exiftool call per file)
+- [x] Concurrency limiting (CONCURRENCY_LIMIT=8 prevents EMFILE)
+- [x] Fail-continue behavior (Promise.allSettled ensures all files attempted)
+
+**Quality Gates:**
+- code-review-specialist (Codex): GO (9/10)
+- critical-engineer (Gemini): GO (9/10) - MERGE_APPROVED
+- Tests: 1245 passing (+4 new ExifPreserver tests)
 
 ---
 
@@ -95,7 +111,7 @@
 ---
 
 ## Last Updated
-2025-12-03 (Proxy filename resolution fix - holistic-orchestrator)
-**Tests:** 1251/1251 passing
-**Branch:** fix/proxy-filename-resolution → main
+2025-12-03 (Merge conflict resolution - PR #124)
+**Tests:** 1251 passing
+**Branch:** main
 **Lint:** 0 errors, 6 warnings
