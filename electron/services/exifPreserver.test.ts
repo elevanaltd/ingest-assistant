@@ -164,12 +164,64 @@ describe('ExifPreserver', () => {
   });
 
   describe('Phase 3a: Batch Write DateTimeOriginal', () => {
-    it('should write DateTimeOriginal to multiple proxy videos via exiftool', async () => {
-      const mockProcess = new EventEmitter() as any;
-      mockProcess.stdout = new EventEmitter();
-      mockProcess.stderr = new EventEmitter();
+    it('should write DIFFERENT DateTimeOriginal values to each proxy file (I1 bug fix)', async () => {
+      // GREEN PHASE: Fixed implementation calls exiftool separately for each file
+      // This ensures per-file timestamp preservation (I1 compliance)
+      const mockProcesses: any[] = [];
 
-      vi.mocked(spawn).mockReturnValue(mockProcess);
+      vi.mocked(spawn).mockImplementation(() => {
+        const mockProcess = new EventEmitter() as any;
+        mockProcess.stdout = new EventEmitter();
+        mockProcess.stderr = new EventEmitter();
+        mockProcesses.push(mockProcess);
+        return mockProcess;
+      });
+
+      const proxyDateMap = new Map([
+        ['/Volumes/videos-current/project/video1_proxy.MOV', '2024:11:20 14:30:45'],
+        ['/Volumes/videos-current/project/video2_proxy.MOV', '2024:11:20 14:32:10']
+      ]);
+
+      const writePromise = preserver.writeBatch(proxyDateMap);
+
+      // Complete all spawned processes
+      setTimeout(() => {
+        mockProcesses.forEach(process => process.emit('close', 0));
+      }, 10);
+
+      await writePromise;
+
+      // CRITICAL: Should call exiftool separately for each file to preserve per-file timestamps
+      const spawnCalls = vi.mocked(spawn).mock.calls;
+
+      // Expected behavior: Each file gets its own exiftool call with its specific timestamp
+      expect(spawnCalls.length).toBe(2); // Should be 2 separate calls (1 per file)
+
+      // First call: video1_proxy.MOV with 14:30:45
+      expect(spawnCalls[0][0]).toBe('exiftool');
+      expect(spawnCalls[0][1]).toContain('-overwrite_original');
+      expect(spawnCalls[0][1]).toContain('-QuickTime:DateTimeOriginal=2024:11:20 14:30:45');
+      expect(spawnCalls[0][1]).toContain('/Volumes/videos-current/project/video1_proxy.MOV');
+      expect(spawnCalls[0][1]).not.toContain('video2_proxy.MOV'); // Should NOT include other files
+
+      // Second call: video2_proxy.MOV with 14:32:10
+      expect(spawnCalls[1][0]).toBe('exiftool');
+      expect(spawnCalls[1][1]).toContain('-overwrite_original');
+      expect(spawnCalls[1][1]).toContain('-QuickTime:DateTimeOriginal=2024:11:20 14:32:10');
+      expect(spawnCalls[1][1]).toContain('/Volumes/videos-current/project/video2_proxy.MOV');
+      expect(spawnCalls[1][1]).not.toContain('video1_proxy.MOV'); // Should NOT include other files
+    });
+
+    it('should write DateTimeOriginal to multiple proxy videos via exiftool', async () => {
+      const mockProcesses: any[] = [];
+
+      vi.mocked(spawn).mockImplementation(() => {
+        const mockProcess = new EventEmitter() as any;
+        mockProcess.stdout = new EventEmitter();
+        mockProcess.stderr = new EventEmitter();
+        mockProcesses.push(mockProcess);
+        return mockProcess;
+      });
 
       const proxyDateMap = new Map([
         ['/Volumes/videos-current/project/video1_proxy.MOV', '2024:11:20 14:30:45'],
@@ -179,18 +231,25 @@ describe('ExifPreserver', () => {
       const writePromise = preserver.writeBatch(proxyDateMap);
 
       setTimeout(() => {
-        mockProcess.emit('close', 0);
+        mockProcesses.forEach(process => process.emit('close', 0));
       }, 10);
 
       await writePromise;
 
-      // Should call exiftool with -overwrite_original and DateTimeOriginal tags
+      // Should call exiftool separately for each file with its specific timestamp
+      expect(spawn).toHaveBeenCalledTimes(2);
       expect(spawn).toHaveBeenCalledWith(
         'exiftool',
         expect.arrayContaining([
           '-overwrite_original',
           '-QuickTime:DateTimeOriginal=2024:11:20 14:30:45',
-          '/Volumes/videos-current/project/video1_proxy.MOV',
+          '/Volumes/videos-current/project/video1_proxy.MOV'
+        ])
+      );
+      expect(spawn).toHaveBeenCalledWith(
+        'exiftool',
+        expect.arrayContaining([
+          '-overwrite_original',
           '-QuickTime:DateTimeOriginal=2024:11:20 14:32:10',
           '/Volumes/videos-current/project/video2_proxy.MOV'
         ])
@@ -220,6 +279,102 @@ describe('ExifPreserver', () => {
       }, 10);
 
       await expect(writePromise).rejects.toThrow('Failed to write EXIF data');
+    });
+
+    it('should limit concurrent exiftool processes to prevent EMFILE errors', async () => {
+      // CRITICAL: Prevents O(n) simultaneous processes which causes EMFILE on large batches
+      // Risk: 500+ proxies → 500+ spawn() → OS file descriptor exhaustion
+      const mockProcesses: any[] = [];
+      let maxConcurrent = 0;
+      let currentConcurrent = 0;
+
+      vi.mocked(spawn).mockImplementation(() => {
+        const mockProcess = new EventEmitter() as any;
+        mockProcess.stdout = new EventEmitter();
+        mockProcess.stderr = new EventEmitter();
+
+        // Track concurrent process count
+        currentConcurrent++;
+        if (currentConcurrent > maxConcurrent) {
+          maxConcurrent = currentConcurrent;
+        }
+
+        mockProcesses.push(mockProcess);
+
+        // Simulate process completing (decrement counter)
+        mockProcess.on('close', () => {
+          currentConcurrent--;
+        });
+
+        // Auto-complete process immediately (chunked implementation waits for each chunk)
+        setTimeout(() => {
+          mockProcess.emit('close', 0);
+        }, 1);
+
+        return mockProcess;
+      });
+
+      // Create large batch (20 files to verify chunking)
+      const proxyDateMap = new Map<string, string>();
+      for (let i = 1; i <= 20; i++) {
+        proxyDateMap.set(`/Volumes/videos-current/project/video${i}_proxy.MOV`, `2024:11:20 14:${i.toString().padStart(2, '0')}:00`);
+      }
+
+      await preserver.writeBatch(proxyDateMap);
+
+      // ASSERTION: Max concurrent processes should be limited to 8 (not 20)
+      expect(maxConcurrent).toBeLessThanOrEqual(8);
+      expect(maxConcurrent).toBeGreaterThan(0); // Sanity check: at least 1 concurrent process
+
+      // ASSERTION: All 20 files should still be processed
+      expect(spawn).toHaveBeenCalledTimes(20);
+    });
+
+    it('should continue processing all files even if one file fails (I1 best-effort)', async () => {
+      // RED PHASE: Code review finding - Promise.all aborts on first failure
+      // Current implementation: Promise.all throws on first failure, skipping remaining chunks
+      // Expected behavior: Process all 500 files with "best effort per file" (I1 compliance)
+      // If file #3 fails, files #9-500 should still be attempted
+      const processedFiles: string[] = [];
+
+      vi.mocked(spawn).mockImplementation((_cmd, args) => {
+        const mockProcess = new EventEmitter() as any;
+        mockProcess.stdout = new EventEmitter();
+        mockProcess.stderr = new EventEmitter();
+
+        // Extract file path from args (last argument)
+        const filePath = args[args.length - 1] as string;
+        processedFiles.push(filePath);
+
+        // Simulate failure on file #3
+        setTimeout(() => {
+          if (filePath.includes('video3_proxy')) {
+            mockProcess.stderr.emit('data', Buffer.from('Simulated write failure'));
+            mockProcess.emit('close', 1); // Non-zero exit code = failure
+          } else {
+            mockProcess.emit('close', 0); // Success
+          }
+        }, 1);
+
+        return mockProcess;
+      });
+
+      // Create batch with 20 files (file #3 will fail)
+      const proxyDateMap = new Map<string, string>();
+      for (let i = 1; i <= 20; i++) {
+        proxyDateMap.set(`/Volumes/videos-current/project/video${i}_proxy.MOV`, `2024:11:20 14:${i.toString().padStart(2, '0')}:00`);
+      }
+
+      // Current implementation: Promise.all will throw on file #3 failure
+      // This will skip chunk 2 (files #9-16) and chunk 3 (files #17-20)
+      // Expected behavior: Continue processing all chunks, collect errors, throw/return summary at end
+      await expect(preserver.writeBatch(proxyDateMap)).rejects.toThrow();
+
+      // CRITICAL ASSERTION: All 20 files should be ATTEMPTED (not just 1-8)
+      // Current bug: Only processes files 1-8 (chunk 1), then aborts
+      // Fixed behavior: Processes all 20 files, reports file #3 failure at end
+      expect(processedFiles.length).toBe(20); // Currently fails: only 8 files attempted
+      expect(processedFiles).toContain('/Volumes/videos-current/project/video20_proxy.MOV'); // File from chunk 3
     });
   });
 
