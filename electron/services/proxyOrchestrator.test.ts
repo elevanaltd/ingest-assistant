@@ -424,6 +424,50 @@ describe('ProxyOrchestrator', () => {
       );
     });
 
+    it('should include index and total in transcode_progress events for UI display', async () => {
+      // Issue: ProxyProgressCard displays "X / Y videos" but transcode_progress
+      // events were missing index and total, causing "0 / 0" to display
+      const jobConfig: ProxyJobConfig = {
+        rawVideoPaths: [
+          '/Volumes/EAV_Video_RAW/project/video1.MOV',
+          '/Volumes/EAV_Video_RAW/project/video2.MOV'
+        ],
+        proxyOutputDir: '/Volumes/videos-current/project/proxies'
+      };
+
+      mockProxyGenerator.generateProxy.mockImplementation(
+        async (_source: string, _output: string, options?: { onProgress?: (t: string, p: number) => void }) => {
+          // Simulate progress event during transcode
+          if (options?.onProgress) {
+            options.onProgress('00:00:05.00', 50);
+          }
+          return '/proxy.MOV';
+        }
+      );
+
+      mockExifPreserver.extractBatch.mockResolvedValue(new Map());
+      mockExifPreserver.writeBatch.mockResolvedValue(undefined);
+      mockExifPreserver.verifyBatch.mockResolvedValue([]);
+
+      const progressCallback = vi.fn();
+      await orchestrator.executeJob(jobConfig, progressCallback);
+
+      // Find transcode_progress events
+      const transcodeProgressCalls = progressCallback.mock.calls
+        .filter((call: [{ type: string }]) => call[0].type === 'transcode_progress');
+
+      expect(transcodeProgressCalls.length).toBeGreaterThan(0);
+
+      // CRITICAL: transcode_progress MUST include index and total for UI
+      transcodeProgressCalls.forEach((call: [{ type: string; index?: number; total?: number }]) => {
+        expect(call[0]).toMatchObject({
+          type: 'transcode_progress',
+          index: expect.any(Number),
+          total: 2 // Total files in job
+        });
+      });
+    });
+
     it('should emit phase_start events for transcode and EXIF phases', async () => {
       const jobConfig: ProxyJobConfig = {
         rawVideoPaths: ['/Volumes/EAV_Video_RAW/project/video1.MOV'],
