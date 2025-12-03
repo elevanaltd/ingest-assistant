@@ -290,10 +290,16 @@ src/components/
 2. Create proxies (`{name}_proxy.mov`)
 3. AI process proxy files → JSON in proxy folder ✅
 
-**Remaining Open Issues:**
-- Issue #113: BatchOperationsPanel bypasses context (MEDIUM)
-- Issue #116: Reset transfer counters on cancel/start (LOW)
-- Issue #117: main.ts tech debt extraction (LOW)
+**Active Tech Debt (Prioritized 2025-12-03):**
+- 🔴 Issue #113: BatchOperationsPanel bypasses BatchQueueContext (**HIGH** - architectural pattern violation)
+- 🟡 Issue #116: Reset transfer counters on cancel/start (**MEDIUM** - UX telemetry accuracy)
+- 🟢 Issue #117: main.ts tech debt extraction (**LOW** - 1458 LOC, maintenance burden)
+
+**Backlog Cleanup (2025-12-03):**
+- ✅ #21: Closed as RESOLVED (tier mapping doc complete)
+- ✅ #26: Closed as SUPERSEDED by #102 (Feature-Context Architecture)
+- ✅ #25: Closed as WONTFIX (Result/Either - no ROI)
+- ✅ #28: Closed as WONTFIX (State machine - no undo/redo requirement)
 
 ### ✅ ExifPreserver I1 Bug Fix - COMPLETE (PR #122 merged 2025-12-03)
 
