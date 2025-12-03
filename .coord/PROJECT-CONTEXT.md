@@ -1,6 +1,6 @@
 # Ingest Assistant - Project Context
 
-**Last Updated:** 2025-12-03 | **Version:** v2.3.1 | **Branch:** main (ExifPreserver I1 Fix - PR #122)
+**Last Updated:** 2025-12-03 | **Version:** v2.3.1 | **Branch:** main (ExifPreserver I1 Fix + Proxy Filename Resolution)
 
 ---
 
@@ -24,7 +24,7 @@
 - **Runtime:** Electron (main + renderer)
 - **Frontend:** React 18, TypeScript
 - **Build:** Vite
-- **Testing:** Vitest (1241 tests, 85 files)
+- **Testing:** Vitest (1251 tests, 88 files)
 - **AI:** OpenRouter, Anthropic Claude, OpenAI APIs
 - **Database:** Supabase (shared with EAV Monorepo)
 
@@ -34,8 +34,8 @@
 
 ### Branch Status
 ```
-Branch: main (v2.3.1 + ExifPreserver I1 Fix)
-Tests:  1245 passing (+4 from PR #122 ExifPreserver fix)
+Branch: main (v2.3.1 + ExifPreserver I1 Fix + Proxy Filename Resolution)
+Tests:  1251 passing (+14 from recent fixes)
 Lint:   0 errors
 Types:  0 errors
 Security: 6 moderate vulns (HIGH eliminated)
@@ -75,7 +75,7 @@ D0→D1→D2→D3→B0(Phase 1a)→B2(1a COMPLETE)→1c COMPLETE→Phase 1b(B2.1
 |------|--------|---------|
 | Lint | PASS (0 errors) | `npm run lint` |
 | Typecheck | PASS (0 errors) | `npm run typecheck` |
-| Tests | PASS (1245 passing) | `npm test` |
+| Tests | PASS (1251 passing) | `npm test` |
 
 ---
 
@@ -269,6 +269,27 @@ src/components/
 - ✅ #111: CFEx Cancel button (resolved via #106)
 - ✅ #112: CFEx Proxy settings propagation (PR #118)
 
+### ✅ Proxy Filename Resolution Fix - COMPLETE (2025-12-03)
+
+**Problem:** ENOENT error when AI processing proxy files (e.g., `EA002033_proxy.mov`) because stale metadata stored raw filename (`EA002033.MOV`).
+
+**Root Cause:** When opening proxy folder with existing `.ingest-metadata.json` from previous raw scan, stored `currentFilename` wasn't updated to match actual disk filename.
+
+**Solution:**
+- Created `metadataReconciler.ts` with `reconcileMetadata()` helper
+- Returns `{ metadata, updated }` flag to enable conditional persistence
+- Applied to both `file:list-all` and `file:list-range` IPC handlers
+- Stale metadata auto-corrected when disk filename differs
+
+**Commits:** 5 (TDD discipline: RED→GREEN pattern)
+**Tests:** +10 new tests (3 unit + 7 integration)
+**Quality Gates:** CRS GO (9/10), CE GO (Approved)
+
+**Enables Option B Workflow:**
+1. Export files off CFEx card
+2. Create proxies (`{name}_proxy.mov`)
+3. AI process proxy files → JSON in proxy folder ✅
+
 **Remaining Open Issues:**
 - Issue #113: BatchOperationsPanel bypasses context (MEDIUM)
 - Issue #116: Reset transfer counters on cancel/start (LOW)
@@ -327,14 +348,14 @@ src/components/
 ## Recent Commits (Last 10)
 
 ```
+86621a4 docs: update PROJECT-CONTEXT and SHARED-CHECKLIST for proxy filename fix
+d9eb252 fix: return updated flag from reconcileMetadata to enable persistence (GREEN)
+7a1c7d6 test: add failing tests for reconcileMetadata updated flag (RED)
+d53b65c refactor: extract reconcileMetadata helper and fix pagination handler
+e7f3f47 fix: update currentFilename when disk filename differs from stored metadata (GREEN)
 6e6b883 Merge pull request #122 from elevanaltd/fix/exif-preserver-i1-violation
 3e67540 feat: fix ExifPreserver fail-fast bug with Promise.allSettled (GREEN)
 51be02d test: add failing test for I1 best-effort fail-continue behavior (RED)
 3c761ce feat: implement concurrency limiting in ExifPreserver.writeBatch (GREEN)
 85c7306 test: add failing test for concurrency limiting in ExifPreserver.writeBatch (RED)
-2a62906 fix: preserve per-file DateTimeOriginal in ExifPreserver.writeBatch() (GREEN)
-be0a783 test: add failing test for per-file DateTimeOriginal preservation (RED)
-d5aec0c Merge pull request #121 from elevanaltd/ubuntu-amendments
-58152b6 fix: preserve file timestamps during CFEx transfer
-244ab83 Merge pull request #120 from elevanaltd/docs/sync-context-112
 ```
