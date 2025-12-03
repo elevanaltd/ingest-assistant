@@ -1,6 +1,28 @@
 # Ingest Assistant - Shared Checklist
 
-## Current Status (2025-12-02 Updated)
+## Current Status (2025-12-03 Updated)
+
+### ✅ Proxy Filename Resolution Fix - COMPLETE (PR #123)
+
+**Problem:** ENOENT error when AI processing proxy files (`EA002033_proxy.mov`) because stale `.ingest-metadata.json` stored raw filename (`EA002033.MOV`).
+
+**Solution:**
+- Created `metadataReconciler.ts` with `reconcileMetadata()` helper
+- Returns `{ metadata, updated }` flag for conditional persistence
+- Applied to both `file:list-all` and `file:list-range` IPC handlers
+
+**Quality Gates:**
+- CRS (Codex): GO (9/10)
+- CE (Gemini): GO (Approved)
+- Tests: 1251 passing (+10 new)
+- TDD: 5 commits (RED→GREEN pattern)
+
+**Enables Option B Workflow:**
+1. Export files off CFEx card
+2. Create proxies (`{name}_proxy.mov`)
+3. AI process proxy files → JSON in proxy folder ✅
+
+---
 
 ### ✅ Feature-Context Architecture (Issue #102) - COMPLETE
 
@@ -73,7 +95,7 @@
 ---
 
 ## Last Updated
-2025-12-02 (Tech debt #105 + #106 resolved - holistic-orchestrator)
-**Tests:** 1233/1233 passing
-**Branch:** main
+2025-12-03 (Proxy filename resolution fix - holistic-orchestrator)
+**Tests:** 1251/1251 passing
+**Branch:** fix/proxy-filename-resolution → main
 **Lint:** 0 errors, 6 warnings
