@@ -215,12 +215,31 @@ export function CfexTransferProvider({ children }: CfexTransferProviderProps) {
     setState(prev => ({ ...prev, ...updates }));
   }, []);
 
+  // Reset transfer state (defined first so startTransfer and cancelTransfer can call it)
+  const resetTransfer = useCallback(() => {
+    setState(prev => ({
+      ...prev,
+      isTransferring: false,
+      transferProgress: 0,
+      transferStatus: 'idle',
+      currentFile: null,
+      filesCompleted: 0,
+      filesTotal: 0,
+      bytesTransferred: 0,
+      bytesTotal: 0,
+      lastError: null,
+    }));
+  }, []);
+
   // Start transfer action
   const startTransfer = useCallback(async () => {
     if (!window.electronAPI?.cfex?.startTransfer) {
       console.error('[CfexTransferContext] startTransfer not available');
       return;
     }
+
+    // Reset all counters before starting new transfer (prevents stale values)
+    resetTransfer();
 
     setState(prev => ({
       ...prev,
@@ -268,12 +287,13 @@ export function CfexTransferProvider({ children }: CfexTransferProviderProps) {
         lastError: error instanceof Error ? error.message : 'Transfer failed',
       }));
     }
-  }, [state.sourcePath, state.photosDestination, state.videosDestination, state.photosEnabled, state.videosEnabled, state.proxiesEnabled, state.proxiesDestination, state.proxyPresetId]);
+  }, [state.sourcePath, state.photosDestination, state.videosDestination, state.photosEnabled, state.videosEnabled, state.proxiesEnabled, state.proxiesDestination, state.proxyPresetId, resetTransfer]);
 
   /**
    * Cancel transfer action
    *
-   * Calls IPC handler to stop backend transfer process, then resets UI state.
+   * Calls IPC handler to stop backend transfer process, then resets ALL transfer state
+   * including counters (filesCompleted, filesTotal, bytesTransferred, etc).
    */
   const cancelTransfer = useCallback(async () => {
     try {
@@ -281,40 +301,14 @@ export function CfexTransferProvider({ children }: CfexTransferProviderProps) {
       const result = await window.electronAPI.cfex.cancel();
       console.log('[CfexTransferContext] cancelTransfer IPC result:', result);
 
-      // Reset UI state after IPC call
-      setState(prev => ({
-        ...prev,
-        isTransferring: false,
-        transferStatus: 'idle',
-        currentFile: null,
-      }));
+      // Reset ALL transfer state (including counters) after IPC call
+      resetTransfer();
     } catch (error) {
       console.error('[CfexTransferContext] cancelTransfer IPC error:', error);
-      // Reset state even if IPC fails (UI should reflect cancellation intent)
-      setState(prev => ({
-        ...prev,
-        isTransferring: false,
-        transferStatus: 'idle',
-        currentFile: null,
-      }));
+      // Reset ALL transfer state even if IPC fails (UI should reflect cancellation intent)
+      resetTransfer();
     }
-  }, []);
-
-  // Reset transfer state
-  const resetTransfer = useCallback(() => {
-    setState(prev => ({
-      ...prev,
-      isTransferring: false,
-      transferProgress: 0,
-      transferStatus: 'idle',
-      currentFile: null,
-      filesCompleted: 0,
-      filesTotal: 0,
-      bytesTransferred: 0,
-      bytesTotal: 0,
-      lastError: null,
-    }));
-  }, []);
+  }, [resetTransfer]);
 
   return (
     <CfexTransferContext.Provider

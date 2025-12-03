@@ -2,16 +2,17 @@
 
 ## Current Status (2025-12-03 Updated)
 
-### 🔴 Active Tech Debt - Prioritized (HO Coherence Review 2025-12-03)
+### ✅ Issue #113: BatchOperationsPanel bypasses context - COMPLETE (PR #127 merged)
 
-**Issue #113: BatchOperationsPanel bypasses BatchQueueContext** - **HIGH**
-- **Status:** NOT FIXED - Direct IPC calls present at lines 98, 110, 138, 201
-- **Problem:** Component calls `window.electronAPI.batchStart/batchCancel` directly instead of using `useBatchQueue()` context actions
-- **Impact:** Queue state ↔ IPC divergence (55% × high risk), duplicated error handling, breaks "single entry point" pattern
-- **Fix:** Refactor to dispatch through context; remove all direct `window.electronAPI.batch*` calls
-- **Owner:** implementation-lead (delegated)
-- **Success Criterion:** No direct IPC calls in BatchOperationsPanel.tsx; tests verify queue state updates
-- **Est. Cost:** 1 day
+**Resolution:**
+- Refactored 4 handlers to use `useBatchQueue()` context actions
+- Removed all direct `window.electronAPI.batchStart/batchCancel` calls
+- Added 5 new tests verifying context usage pattern
+- Tests: 1257 passing (+6 from fix)
+
+---
+
+### 🟡 Active Tech Debt - Prioritized
 
 **Issue #116: Reset transfer counters on cancel/start** - **MEDIUM**
 - **Status:** NOT FIXED - `cancelTransfer` (L285-290) only resets `isTransferring`, `transferStatus`, `currentFile`
@@ -108,7 +109,7 @@
 **Architectural Gaps Discovered (pre-existing, now tracked):**
 - Issue #111: CFEx Cancel button is no-op (HIGH) - **RESOLVED via #106**
 - Issue #112: CFEx Proxies settings not propagated (HIGH) - **RESOLVED via PR #118**
-- Issue #113: BatchOperationsPanel bypasses context - **ELEVATED TO HIGH** (see Active Tech Debt above)
+- Issue #113: BatchOperationsPanel bypasses context - **RESOLVED via PR #127** (2025-12-03)
 
 **Tech Debt Resolved (2025-12-02):**
 - ✅ Issue #105: Centralize Proxy Progress Listener → `useProxyProgress` hook
@@ -148,8 +149,8 @@
 ---
 
 ## Last Updated
-2025-12-03 (HO Coherence Review - Issue triage + backlog cleanup)
-**Tests:** 1251 passing
-**Branch:** main
+2025-12-03 (Issue #113 RESOLVED - PR #127 merged)
+**Tests:** 1257 passing (+6 from #113)
+**Branch:** main (befeb85)
 **Lint:** 0 errors, 6 warnings
-**Open Issues:** 8 (4 closed: #21, #26, #25, #28)
+**Open Issues:** 7 (#113 closed, remaining: #116, #117, #125, #128, #73, #63, #29, #27)

@@ -546,4 +546,189 @@ describe('CfexTransferContext', () => {
       })
     );
   });
+
+  /**
+   * RED PHASE (Issue #116): Test that cancelTransfer resets ALL counter state variables
+   *
+   * PROBLEM: Current cancelTransfer() only resets 3/9 state variables (isTransferring, transferStatus, currentFile).
+   * Counter variables (filesCompleted, filesTotal, bytesTransferred, bytesTotal, transferProgress, lastError) persist.
+   *
+   * EXPECTED TO FAIL: cancelTransfer() doesn't call resetTransfer(), leaving stale counter values.
+   */
+  it('should reset all transfer counters when cancelTransfer called', async () => {
+    // ARRANGE: Mock electronAPI with cancel IPC
+    const mockCancelFn = vi.fn().mockResolvedValue({ success: true });
+    const mockElectronAPI = {
+      loadConfig: vi.fn().mockResolvedValue({ cfex: {} }),
+      cfex: {
+        onTransferProgress: vi.fn(() => vi.fn()),
+        cancel: mockCancelFn,
+      },
+    };
+
+    (window as { electronAPI?: unknown }).electronAPI = mockElectronAPI;
+
+    const { result } = renderHook(() => useCfexTransfer(), {
+      wrapper: CfexTransferProvider,
+    });
+
+    // ACT: Set up state with populated counters (simulating mid-transfer)
+    act(() => {
+      result.current.updateConfig({
+        isTransferring: true,
+        transferProgress: 45,
+        transferStatus: 'transferring',
+        currentFile: 'test-file.jpg',
+        filesCompleted: 10,
+        filesTotal: 25,
+        bytesTransferred: 1024000,
+        bytesTotal: 2560000,
+        lastError: 'Previous error message',
+      } as never);
+    });
+
+    // Verify stale state exists before cancel
+    expect(result.current.state.filesCompleted).toBe(10);
+    expect(result.current.state.filesTotal).toBe(25);
+    expect(result.current.state.transferProgress).toBe(45);
+
+    // ACT: Cancel transfer
+    await act(async () => {
+      await result.current.cancelTransfer();
+    });
+
+    // ASSERT: ALL counters should be reset to 0/null
+    expect(result.current.state.isTransferring).toBe(false);
+    expect(result.current.state.transferStatus).toBe('idle');
+    expect(result.current.state.currentFile).toBeNull();
+    expect(result.current.state.filesCompleted).toBe(0); // FAILS: still 10
+    expect(result.current.state.filesTotal).toBe(0); // FAILS: still 25
+    expect(result.current.state.bytesTransferred).toBe(0); // FAILS: still 1024000
+    expect(result.current.state.bytesTotal).toBe(0); // FAILS: still 2560000
+    expect(result.current.state.transferProgress).toBe(0); // FAILS: still 45
+    expect(result.current.state.lastError).toBeNull(); // FAILS: still 'Previous error message'
+  });
+
+  /**
+   * RED PHASE (Issue #116): Test that startTransfer resets counters from previous transfer
+   *
+   * PROBLEM: If a transfer completes (or is cancelled), then startTransfer() is called again,
+   * the old counter values persist until progress events overwrite them. This creates a brief
+   * "ghost state" showing stale values.
+   *
+   * GREEN PHASE: Verify that calling resetTransfer() before setState in startTransfer clears counters.
+   */
+  it('should reset counters when startTransfer begins (stale state cleanup)', async () => {
+    // ARRANGE: Mock electronAPI with transfer completion
+    const mockStartTransfer = vi.fn().mockResolvedValue({
+      success: true,
+      filesTransferred: 5,
+      filesTotal: 5,
+      bytesTransferred: 500000,
+      duration: 1000,
+      validationWarnings: [],
+      errors: [],
+    });
+
+    const mockElectronAPI = {
+      loadConfig: vi.fn().mockResolvedValue({ cfex: {} }),
+      cfex: {
+        onTransferProgress: vi.fn(() => vi.fn()),
+        startTransfer: mockStartTransfer,
+      },
+    };
+
+    (window as { electronAPI?: unknown }).electronAPI = mockElectronAPI;
+
+    const { result } = renderHook(() => useCfexTransfer(), {
+      wrapper: CfexTransferProvider,
+    });
+
+    // ACT: Manually set stale counter values (simulating a previous completed transfer)
+    act(() => {
+      result.current.updateConfig({
+        filesCompleted: 10,
+        filesTotal: 20,
+        bytesTransferred: 1024000,
+        bytesTotal: 2048000,
+        transferProgress: 50,
+        lastError: 'Old error',
+      } as never);
+    });
+
+    // Verify stale values exist
+    expect(result.current.state.filesCompleted).toBe(10);
+    expect(result.current.state.transferProgress).toBe(50);
+
+    // ACT: Start a NEW transfer (should call resetTransfer first, clearing stale values)
+    await act(async () => {
+      await result.current.startTransfer();
+    });
+
+    // ASSERT: After completion, counters should show NEW transfer values, not stale ones
+    // The fix (resetTransfer() call) ensures counters start at 0 before IPC completes
+    expect(result.current.state.filesCompleted).toBe(5); // From new transfer, not 10
+    expect(result.current.state.filesTotal).toBe(5); // From new transfer, not 20
+    expect(result.current.state.lastError).toBeNull(); // Cleared, not 'Old error'
+  });
+
+  /**
+   * RED PHASE (Issue #116): Test that cancelTransfer resets counters even when IPC fails
+   *
+   * PROBLEM: If IPC cancel fails, we still reset isTransferring/transferStatus in the catch block,
+   * but counter variables are NOT reset (same incomplete reset as success path).
+   *
+   * EXPECTED TO FAIL: cancelTransfer() catch block doesn't call resetTransfer() either.
+   */
+  it('should handle cancelTransfer error path with counter reset', async () => {
+    // ARRANGE: Mock electronAPI with cancel IPC that REJECTS
+    const mockCancelFn = vi.fn().mockRejectedValue(new Error('IPC cancel failed'));
+    const mockElectronAPI = {
+      loadConfig: vi.fn().mockResolvedValue({ cfex: {} }),
+      cfex: {
+        onTransferProgress: vi.fn(() => vi.fn()),
+        cancel: mockCancelFn,
+      },
+    };
+
+    (window as { electronAPI?: unknown }).electronAPI = mockElectronAPI;
+
+    const { result } = renderHook(() => useCfexTransfer(), {
+      wrapper: CfexTransferProvider,
+    });
+
+    // Wait for config to load (async useEffect)
+    await waitFor(() => {
+      expect(result.current.state).toBeDefined();
+    });
+
+    // ACT: Set up state with populated counters
+    act(() => {
+      result.current.updateConfig({
+        isTransferring: true,
+        transferProgress: 60,
+        filesCompleted: 15,
+        filesTotal: 20,
+        bytesTransferred: 2048000,
+        bytesTotal: 3072000,
+        lastError: 'Some previous error',
+      } as never);
+    });
+
+    // ACT: Cancel transfer (IPC will fail)
+    await act(async () => {
+      await result.current.cancelTransfer();
+    });
+
+    // ASSERT: Even though IPC failed, ALL counters should be reset
+    // (User intent was to cancel - UI should reflect clean slate)
+    expect(result.current.state.isTransferring).toBe(false);
+    expect(result.current.state.transferStatus).toBe('idle');
+    expect(result.current.state.filesCompleted).toBe(0); // FAILS: still 15
+    expect(result.current.state.filesTotal).toBe(0); // FAILS: still 20
+    expect(result.current.state.bytesTransferred).toBe(0); // FAILS: still 2048000
+    expect(result.current.state.bytesTotal).toBe(0); // FAILS: still 3072000
+    expect(result.current.state.transferProgress).toBe(0); // FAILS: still 60
+    expect(result.current.state.lastError).toBeNull(); // FAILS: still 'Some previous error'
+  });
 });
