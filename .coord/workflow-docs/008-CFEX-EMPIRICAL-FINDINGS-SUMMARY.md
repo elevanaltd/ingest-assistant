@@ -13,7 +13,7 @@
 
 **B0 Decision:** ✅ PROCEED TO FINAL GO RE-VALIDATION
 - I1 immutable VALIDATED (100% EXIF coverage = chronological integrity guaranteed)
-- LucidLink/NFS assumptions remain conservative (validate during B2 implementation)
+- LucidLink/SMB assumptions remain conservative (validate during B2 implementation)
 - No blocking risks identified
 
 ---
@@ -70,7 +70,7 @@
 
 ---
 
-## Day 3: Ubuntu NFS Timeout (DEFERRED)
+## Day 3: Ubuntu SMB Timeout (DEFERRED)
 
 ### Decision Rationale
 **Status:** ⚠️ DEFERRED TO B2 IMPLEMENTATION
@@ -78,19 +78,20 @@
 **Why Defer:**
 1. **Day 1 results sufficient:** EXIF coverage validates core chronological integrity
 2. **Conservative assumptions:** 30s timeout provides ample buffer for network recovery
-3. **Platform-specific:** NFS behavior varies by network stack configuration
-4. **Real-world validation preferable:** Actual Ubuntu NFS usage during B2 provides better tuning data
+3. **Platform-specific:** SMB behavior varies by network configuration (SMB 3.1.1 has better reconnection than NFS)
+4. **Real-world validation preferable:** Actual Ubuntu SMB usage during B2 provides better tuning data
 
 **D3 Blueprint Assumptions (Remain Valid):**
 - Timeout: 30 seconds
 - Progress UI: Show "Waiting for network..." after 10s
-- Recovery: Automatic resume on network reconnect
+- Recovery: Automatic resume on network reconnect (SMB 3.1.1 reconnects automatically)
 - User experience: Transparent recovery with status feedback
 
 **Validation During B2:**
-- Monitor Ubuntu NFS transfers during development
+- Monitor Ubuntu SMB transfers during development
 - Measure actual timeout behavior on target network
 - Adjust timeout values if needed based on empirical data
+- Observe SMB 3.1.1 automatic reconnection behavior
 
 ---
 
@@ -107,9 +108,9 @@
 - **Risk:** LOW (conservative retry strategy provides safety margin)
 - **Validation:** During B2 implementation with real usage patterns
 
-### Blocker 3: Ubuntu NFS Timeout ⚠️ DEFERRED
+### Blocker 3: Ubuntu SMB Timeout ⚠️ DEFERRED
 - **Status:** DEFERRED TO B2 IMPLEMENTATION
-- **Risk:** LOW (30s timeout conservative for most networks)
+- **Risk:** LOW (30s timeout conservative, SMB 3.1.1 has better reconnection than NFS)
 - **Validation:** During B2 implementation on target infrastructure
 
 ---
@@ -119,13 +120,13 @@
 ### Minimal Changes (EXIF Strategy Validated)
 - ✅ **No structural changes required**
 - ✅ **EXIF-first strategy confirmed** (100% coverage on Fujifilm CFEx)
-- ⚠️ **Document deferral decision** for LucidLink/NFS empirical tests
+- ⚠️ **Document deferral decision** for LucidLink/SMB empirical tests
 - ⚠️ **Add B2 validation notes** for retry timing and timeout tuning
 
 ### Recommended Additions (Optional)
 1. **EXIF Coverage Validation:** Add note that Fujifilm cameras achieve 100% coverage (real-world data point)
 2. **Retry Timing Validation:** Add note to monitor and tune during B2 implementation
-3. **NFS Timeout Validation:** Add note to measure and adjust during B2 implementation
+3. **SMB Timeout Validation:** Add note to measure and adjust during B2 implementation (SMB 3.1.1 reconnection)
 
 ---
 
@@ -139,7 +140,7 @@
 ### B0 Re-Validation (Next)
 4. **Invoke critical-design-validator** for FINAL GO/NO-GO decision
    - Evidence: 100% EXIF coverage (I1 validated)
-   - Evidence: Conservative LucidLink/NFS assumptions (low risk)
+   - Evidence: Conservative LucidLink/SMB assumptions (low risk)
    - Evidence: B2 validation plan for deferred tests
 5. **Proceed to D3 Blueprint fixes** (1.25 days) - 4 remaining blockers:
    - Blocker #4: App quit handler (0.5 days)
@@ -151,7 +152,7 @@
 6. **Begin TDD implementation** (implementation-lead) - 3 weeks CORE phase
 7. **Validate deferred assumptions** during implementation:
    - Monitor LucidLink retry behavior
-   - Measure Ubuntu NFS timeout thresholds
+   - Measure Ubuntu SMB timeout thresholds
    - Tune values based on real-world data
 
 ---
@@ -175,7 +176,7 @@
 ### Risk Assessment
 - **Critical risks:** NONE (I1 validated, conservative assumptions acceptable)
 - **Medium risks:** Retry timing suboptimal (mitigated by B2 validation)
-- **Low risks:** NFS timeout suboptimal (mitigated by 30s conservative value)
+- **Low risks:** SMB timeout suboptimal (mitigated by 30s conservative value + SMB 3.1.1 reconnection)
 
 ---
 
@@ -183,21 +184,22 @@
 
 ### For B0 Re-Validation (critical-design-validator)
 1. **APPROVE:** Day 1 results sufficient for I1 immutable validation
-2. **APPROVE:** Conservative LucidLink/NFS assumptions acceptable for B2 start
+2. **APPROVE:** Conservative LucidLink/SMB assumptions acceptable for B2 start
 3. **REQUIRE:** D3 Blueprint updates documenting deferral + B2 validation plan
 4. **DECISION:** ✅ FINAL GO (with B2 validation conditions)
 
 ### For D3 Blueprint Updates (design-architect)
 1. Add Day 1 findings (100% EXIF coverage on Fujifilm CFEx)
 2. Document Day 2/3 deferral rationale
-3. Add B2 validation notes for retry timing and NFS timeout
+3. Add B2 validation notes for retry timing and SMB timeout
 4. No structural changes required (assumptions validated or conservative)
 
 ### For B2 Implementation (implementation-lead)
 1. Include LucidLink retry monitoring in telemetry
-2. Measure Ubuntu NFS timeout behavior during development
+2. Measure Ubuntu SMB timeout behavior during development
 3. Tune retry delays and timeout values based on real-world data
 4. Document empirical findings for future reference
+5. Observe SMB 3.1.1 automatic reconnection advantages over NFS
 
 ---
 

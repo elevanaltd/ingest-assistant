@@ -725,15 +725,15 @@ Show temporary error with automatic retry in progress. User sees retry attempt c
 **Network Timeout (ETIMEDOUT):**
 ```
 │  │  Error: Network timeout (ETIMEDOUT)                      │   │
-│  │  Reason: Ubuntu NFS mount may be slow to respond        │   │
+│  │  Reason: Ubuntu SMB mount may be slow to respond        │   │
 │  │                                                           │   │
 │  │  Retry: Attempt 3 of 5 (waiting 8s...)                  │   │
 ```
 
-**Stale NFS Handle (ESTALE):**
+**Stale File Handle (ESTALE):**
 ```
-│  │  Error: Stale NFS handle (ESTALE)                        │   │
-│  │  Reason: Ubuntu NFS mount recovering from network hiccup │   │
+│  │  Error: Stale file handle (ESTALE)                       │   │
+│  │  Reason: Ubuntu SMB mount recovering from network hiccup │   │
 │  │                                                           │   │
 │  │  Retry: Attempt 1 of 5 (waiting 2s...)                  │   │
 ```

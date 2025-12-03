@@ -28,18 +28,18 @@
 
 - **Recommendation:** Claude runs baseline test NOW, human performs cache eviction tests later
 
-### Day 3: Ubuntu NFS Baseline Transfer - **PARTIALLY AUTOMATABLE** ⚠️
+### Day 3: Ubuntu SMB Baseline Transfer - **PARTIALLY AUTOMATABLE** ⚠️
 - **What Claude CAN do:**
-  - ✅ Verify NFS mount exists
+  - ✅ Verify SMB mount exists
   - ✅ Test write permissions
-  - ✅ Copy files to NFS mount
+  - ✅ Copy files to SMB mount
   - ✅ Measure transfer speed and duration
   - ✅ Calculate baseline performance metrics
 
 - **What Claude CANNOT do:**
   - ❌ Disconnect network mid-transfer
   - ❌ Simulate network partition
-  - ❌ Change NFS mount timeout settings (requires system config)
+  - ❌ Change SMB mount timeout settings (requires system config)
 
 - **Recommendation:** Claude runs baseline test NOW, human performs partition tests later
 
@@ -62,14 +62,14 @@
 6. Human: Observe recovery time and record results
 7. Repeat with different retry strategies (immediate / linear / exponential backoff)
 
-### Day 3: Ubuntu NFS Network Partition Testing
+### Day 3: Ubuntu SMB Network Partition Testing
 **Why Human Required:**
 - Network partition requires physical network disconnect
-- Timeout threshold testing requires NFS mount config changes (sudo required)
-- System-level timing observation (when does NFS client timeout?)
+- Timeout threshold testing requires SMB mount config changes (sudo required)
+- System-level timing observation (when does SMB client timeout?)
 
 **Human Procedure:**
-1. Claude: Run baseline NFS transfer (completed by Claude)
+1. Claude: Run baseline SMB transfer (completed by Claude)
 2. Human: Start transfer using test script
 3. Human: Disconnect network after 5 seconds
 4. Human: Observe hang duration (when does error appear?)
@@ -85,11 +85,11 @@
 ### Immediate (Claude Executes NOW):
 1. ✅ **Day 1 EXIF Testing** - COMPLETE (100% coverage)
 2. ⏳ **Day 2 Baseline Transfer** - Run baseline LucidLink test
-3. ⏳ **Day 3 Baseline NFS Transfer** - Run baseline NFS test (if mount available)
+3. ⏳ **Day 3 Baseline SMB Transfer** - Run baseline SMB test (if mount available)
 
 ### Later (Human Executes with Claude Guidance):
 1. **Day 2 Cache Eviction** - Network disconnect scenarios (30-60 min)
-2. **Day 3 Network Partition** - NFS timeout scenarios (30-60 min)
+2. **Day 3 Network Partition** - SMB timeout scenarios (30-60 min)
 
 ### Total Time Savings:
 - **Traditional:** 3 full days (24 hours) of manual testing
@@ -109,7 +109,7 @@
 
 ### Pending Tests (Claude Can Run):
 - [ ] Day 2: LucidLink Baseline Transfer (automatable)
-- [ ] Day 3: Ubuntu NFS Baseline Transfer (automatable if mount exists)
+- [ ] Day 3: Ubuntu SMB Baseline Transfer (automatable if mount exists)
 
 ### Pending Tests (Require Human):
 - [ ] Day 2: LucidLink Cache Eviction Reproduction (~30 min)
@@ -125,7 +125,7 @@
 
 ### Option 1: Claude Continues Testing (RECOMMENDED)
 - Claude runs Day 2 LucidLink baseline test RIGHT NOW
-- Claude runs Day 3 Ubuntu NFS baseline test RIGHT NOW (if mounted)
+- Claude runs Day 3 Ubuntu SMB baseline test RIGHT NOW (if mounted)
 - Human performs network disconnect tests later (1-2 hours total)
 
 ### Option 2: Human Takes Over
