@@ -1,6 +1,6 @@
 # Ingest Assistant - Project Context
 
-**Last Updated:** 2025-12-03 | **Version:** v2.3.1 | **Branch:** main (ExifPreserver I1 Fix + Proxy Filename Resolution)
+**Last Updated:** 2025-12-03 | **Version:** v2.3.1 | **Branch:** main (Issue #113 Context Routing Fix)
 
 ---
 
@@ -24,7 +24,7 @@
 - **Runtime:** Electron (main + renderer)
 - **Frontend:** React 18, TypeScript
 - **Build:** Vite
-- **Testing:** Vitest (1251 tests, 88 files)
+- **Testing:** Vitest (1257 tests, 88 files)
 - **AI:** OpenRouter, Anthropic Claude, OpenAI APIs
 - **Database:** Supabase (shared with EAV Monorepo)
 
@@ -34,8 +34,8 @@
 
 ### Branch Status
 ```
-Branch: main (v2.3.1 + ExifPreserver I1 Fix + Proxy Filename Resolution)
-Tests:  1251 passing (+14 from recent fixes)
+Branch: main (v2.3.1 + Issue #113 Context Routing Fix)
+Tests:  1257 passing (+6 from Issue #113)
 Lint:   0 errors
 Types:  0 errors
 Security: 6 moderate vulns (HIGH eliminated)
@@ -290,8 +290,8 @@ src/components/
 2. Create proxies (`{name}_proxy.mov`)
 3. AI process proxy files → JSON in proxy folder ✅
 
-**Active Tech Debt (Prioritized 2025-12-03):**
-- 🔴 Issue #113: BatchOperationsPanel bypasses BatchQueueContext (**HIGH** - architectural pattern violation)
+**Active Tech Debt (Updated 2025-12-03):**
+- ✅ Issue #113: BatchOperationsPanel context routing - **RESOLVED** (PR #127 merged)
 - 🟡 Issue #116: Reset transfer counters on cancel/start (**MEDIUM** - UX telemetry accuracy)
 - 🟢 Issue #117: main.ts tech debt extraction (**LOW** - 1458 LOC, maintenance burden)
 
