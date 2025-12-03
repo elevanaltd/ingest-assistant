@@ -15,9 +15,7 @@ import { ConfigManager } from './services/configManager';
 import { AIService } from './services/aiService';
 import { MetadataWriter } from './services/metadataWriter';
 import { VideoTranscoder } from './services/videoTranscoder';
-import { convertToYAMLFormat, convertToUIFormat } from './utils/lexiconConverter';
-import { sanitizeError } from './utils/errorSanitization';
-import type { AppConfig, LexiconConfig, FileMetadata } from '../src/types';
+import type { FileMetadata } from '../src/types';
 import { migrateToKeychain } from './services/keychainMigration';
 import { BatchQueueManager } from './services/batchQueueManager';
 import { registerCfexTransferHandlers } from './ipc/cfexTransferHandlers';
@@ -25,6 +23,7 @@ import { registerProxyGenerationHandlers } from './ipc/proxyGenerationHandlers';
 import { registerFileHandlers } from './ipc/fileHandlers';
 import { registerAiHandlers } from './ipc/aiHandlers';
 import { registerBatchHandlers } from './ipc/batchHandlers';
+import { registerConfigHandlers } from './ipc/configHandlers';
 import { RateLimiter } from './utils/rateLimiter';
 
 let mainWindow: BrowserWindow | null = null;
@@ -279,6 +278,13 @@ async function createWindow() {
     normalizeFilePath
   });
 
+  // Register Config IPC handlers
+  registerConfigHandlers({
+    configManager,
+    getCurrentFolderPath: () => currentFolderPath,
+    getMetadataStore: () => metadataStore
+  });
+
   // In development, use Vite dev server; in production, load built files
   const isDev = !app.isPackaged;
 
@@ -369,68 +375,4 @@ app.on('quit', () => {
   }
 });
 
-// IPC Handlers
-
-// Config operations
-ipcMain.handle('config:load', async () => {
-  return await configManager.loadConfig();
-});
-
-ipcMain.handle('config:save', async (_event, config: AppConfig) => {
-  return await configManager.saveConfig(config);
-});
-
-ipcMain.handle('config:get-lexicon', async () => {
-  return await configManager.getLexicon();
-});
-
-ipcMain.handle('config:get-shot-types', async () => {
-  // Load config first to ensure it's cached
-  await configManager.loadConfig();
-  return configManager.getAllShotTypes();
-});
-
-// Lexicon operations (UI format)
-ipcMain.handle('lexicon:load', async () => {
-  const lexicon = await configManager.getLexicon();
-  return convertToUIFormat(lexicon);
-});
-
-ipcMain.handle('lexicon:save', async (_event, uiConfig: LexiconConfig) => {
-  try {
-    const lexicon = convertToYAMLFormat(uiConfig);
-    await configManager.saveLexicon(lexicon);
-    return true;
-  } catch (error) {
-    console.error('Failed to save lexicon:', error); // Log full error internally
-    throw sanitizeError(error); // Send sanitized error to renderer
-  }
-});
-
-// Folder completion operations (Phase C)
-ipcMain.handle('folder:set-completed', async (_event, completed: boolean) => {
-  try {
-    if (!currentFolderPath || !metadataStore) {
-      throw new Error('No folder selected');
-    }
-
-    const result = await metadataStore.setCompleted(completed);
-    return result;
-  } catch (error) {
-    console.error('[main.ts] folder:set-completed error:', error);
-    throw sanitizeError(error);
-  }
-});
-
-ipcMain.handle('folder:get-completed', async () => {
-  try {
-    if (!currentFolderPath || !metadataStore) {
-      throw new Error('No folder selected');
-    }
-
-    return metadataStore.getCompleted();
-  } catch (error) {
-    console.error('[main.ts] folder:get-completed error:', error);
-    throw sanitizeError(error);
-  }
-});
+// IPC Handlers - All handlers now registered via handler modules
