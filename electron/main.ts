@@ -116,6 +116,27 @@ function formatTimestampForTitle(date: Date): string {
 }
 
 /**
+ * Detect AI analysis TRUE FAILURE (Issue #128)
+ *
+ * TRUE FAILURE = confidence 0 AND all structured fields empty
+ * This distinguishes between:
+ * 1. Low confidence results with some data (valid per PR #131) → processedByAI=true
+ * 2. Total AI failure with no data (aiService catch block) → processedByAI=false
+ *
+ * @param result AI analysis result to validate
+ * @returns true if this is a true failure (don't mark as processed)
+ */
+function isAIFailure(result: AIAnalysisResult): boolean {
+  return (
+    result.confidence === 0 &&
+    !result.location &&
+    !result.subject &&
+    !result.action &&
+    !result.shotType
+  );
+}
+
+/**
  * Get or extract creation timestamp from file metadata.
  * Returns cached timestamp if available, otherwise extracts from file using exiftool.
  * Caches the result in the FileMetadata object for future use.
@@ -1033,6 +1054,14 @@ ipcMain.handle('ai:batch-process', async (_event, fileIds: string[]) => {
       }
       results.set(fileId, result);
 
+      // Issue #128: Validate AI result before marking as processed
+      // Detect TRUE FAILURE (confidence=0 + all empty) vs valid low-confidence results (PR #131)
+      if (isAIFailure(result)) {
+        console.error(`[batch] AI analysis failed for ${fileId}: confidence=0, no structured data`);
+        // Don't mark as processed - allows user to see and retry failed files
+        continue; // Skip to next file without updating metadata
+      }
+
       // Write ALL AI results regardless of confidence for QC analysis workflow
       // Rationale: User workflow requires all results (high + low confidence) written to .ingest-metadata.json
       // QC person reviews/corrects → separate JSON with corrections → analyze AI accuracy
@@ -1144,6 +1173,14 @@ ipcMain.handle('batch:start', async (_event, fileIds: string[]) => {
           await securityValidator.validateFileSize(validatedPath, 100 * 1024 * 1024);
           console.log('[IPC] Batch analyzing image file:', validatedPath);
           result = await aiService!.analyzeImage(validatedPath, lexicon);
+        }
+
+        // Issue #128: Validate AI result before marking as processed
+        // Detect TRUE FAILURE (confidence=0 + all empty) vs valid low-confidence results (PR #131)
+        if (isAIFailure(result)) {
+          console.error(`[batch] AI analysis failed for ${fileId}: confidence=0, no structured data`);
+          // Return failure to allow BatchQueueManager to track failed items
+          return { success: false };
         }
 
         // Write ALL AI results regardless of confidence for QC analysis workflow
