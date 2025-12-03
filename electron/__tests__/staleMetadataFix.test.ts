@@ -88,8 +88,8 @@ describe('Stale Metadata Fix', () => {
     } else {
       // Use existing metadata (which may have been AI-processed)
       // Stale Metadata Fix: Reconcile using the actual production helper
-      const reconciledMetadata = reconcileMetadata(existingMetadata, freshMetadataFromScan);
-      if (reconciledMetadata.currentFilename !== existingMetadata.currentFilename) {
+      const { metadata: reconciledMetadata, updated } = reconcileMetadata(existingMetadata, freshMetadataFromScan);
+      if (updated) {
         await store.updateFileMetadata('EA002033', reconciledMetadata);
       }
     }
@@ -149,8 +149,8 @@ describe('Stale Metadata Fix', () => {
 
     // Use the actual production reconciliation helper
     if (existingMetadata) {
-      const reconciledMetadata = reconcileMetadata(existingMetadata, scannedMetadata);
-      if (reconciledMetadata.currentFilename !== existingMetadata.currentFilename) {
+      const { metadata: reconciledMetadata, updated } = reconcileMetadata(existingMetadata, scannedMetadata);
+      if (updated) {
         await store.updateFileMetadata('EA002034', reconciledMetadata);
       }
     }
@@ -215,9 +215,9 @@ describe('Stale Metadata Fix', () => {
 
     // Use the actual production reconciliation helper
     if (existingMetadata) {
-      const reconciledMetadata = reconcileMetadata(existingMetadata, scannedMetadata);
+      const { metadata: reconciledMetadata, updated } = reconcileMetadata(existingMetadata, scannedMetadata);
       // Should NOT update (filenames match)
-      if (reconciledMetadata.currentFilename !== existingMetadata.currentFilename) {
+      if (updated) {
         await store.updateFileMetadata('EA002035', reconciledMetadata);
       }
     }

@@ -20,7 +20,7 @@ describe('metadataReconciler', () => {
   });
 
   describe('reconcileMetadata', () => {
-    it('should update currentFilename when scanned filename differs', () => {
+    it('should return updated=true and update currentFilename when scanned filename differs', () => {
       // ARRANGE: Existing metadata has old filename
       const existingMetadata: FileMetadata = {
         id: 'EA002033',
@@ -54,13 +54,16 @@ describe('metadataReconciler', () => {
       // ACT: Reconcile metadata
       const result = reconcileMetadata(existingMetadata, scannedMetadata);
 
+      // ASSERT: Should return updated=true flag
+      expect(result.updated).toBe(true);
+
       // ASSERT: currentFilename and filePath should be updated
-      expect(result.currentFilename).toBe('EA002033_proxy.MOV');
-      expect(result.filePath).toBe('/path/to/new/EA002033_proxy.MOV');
+      expect(result.metadata.currentFilename).toBe('EA002033_proxy.MOV');
+      expect(result.metadata.filePath).toBe('/path/to/new/EA002033_proxy.MOV');
       expect(MetadataStore.updateAuditTrail).toHaveBeenCalledWith(existingMetadata);
     });
 
-    it('should NOT update currentFilename when scanned filename is the same', () => {
+    it('should return updated=false when scanned filename is the same', () => {
       // ARRANGE: Existing metadata has same filename as scanned
       const existingMetadata: FileMetadata = {
         id: 'EA002033',
@@ -93,9 +96,12 @@ describe('metadataReconciler', () => {
       // ACT: Reconcile metadata
       const result = reconcileMetadata(existingMetadata, scannedMetadata);
 
+      // ASSERT: Should return updated=false flag
+      expect(result.updated).toBe(false);
+
       // ASSERT: currentFilename should remain unchanged
-      expect(result.currentFilename).toBe('EA002033.MOV');
-      expect(result.filePath).toBe('/path/to/EA002033.MOV');
+      expect(result.metadata.currentFilename).toBe('EA002033.MOV');
+      expect(result.metadata.filePath).toBe('/path/to/EA002033.MOV');
       expect(MetadataStore.updateAuditTrail).not.toHaveBeenCalled();
     });
 
@@ -134,17 +140,17 @@ describe('metadataReconciler', () => {
       const result = reconcileMetadata(existingMetadata, scannedMetadata);
 
       // ASSERT: All original metadata fields preserved
-      expect(result.shotName).toBe('kitchen-oven-cleaning-ESTAB');
-      expect(result.keywords).toEqual(['cooking', 'appliance']);
-      expect(result.lockedFields).toEqual(['location', 'subject']);
-      expect(result.location).toBe('kitchen');
-      expect(result.subject).toBe('oven');
-      expect(result.action).toBe('cleaning');
-      expect(result.shotType).toBe('ESTAB');
-      expect(result.processedByAI).toBe(true);
-      expect(result.shotNumber).toBe(42);
-      expect(result.createdBy).toBe('ingest-assistant');
-      expect(result.modifiedBy).toBe('cep-panel');
+      expect(result.metadata.shotName).toBe('kitchen-oven-cleaning-ESTAB');
+      expect(result.metadata.keywords).toEqual(['cooking', 'appliance']);
+      expect(result.metadata.lockedFields).toEqual(['location', 'subject']);
+      expect(result.metadata.location).toBe('kitchen');
+      expect(result.metadata.subject).toBe('oven');
+      expect(result.metadata.action).toBe('cleaning');
+      expect(result.metadata.shotType).toBe('ESTAB');
+      expect(result.metadata.processedByAI).toBe(true);
+      expect(result.metadata.shotNumber).toBe(42);
+      expect(result.metadata.createdBy).toBe('ingest-assistant');
+      expect(result.metadata.modifiedBy).toBe('cep-panel');
     });
   });
 });
