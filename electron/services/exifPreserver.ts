@@ -92,22 +92,69 @@ export class ExifPreserver {
   /**
    * Phase 3a: Write DateTimeOriginal to proxy videos using exiftool
    * Accepts Map of proxyPath -> DateTimeOriginal
+   *
+   * FIX (I1 compliance): Calls exiftool separately for each file to preserve per-file timestamps.
+   * Previous implementation called exiftool once with all files, which applied LAST value to ALL files.
+   *
+   * Concurrency limiting: Processes files in chunks of 8 to prevent EMFILE errors on large batches.
+   * Risk mitigation: 500+ proxies with unbounded Promise.all() causes OS file descriptor exhaustion.
+   *
+   * Fail-continue behavior: Uses Promise.allSettled to attempt all files even if some fail (I1 best-effort).
+   * Collects failures and throws aggregated error at end if any failures occurred.
    */
   async writeBatch(proxyDateMap: Map<string, string>): Promise<void> {
     if (proxyDateMap.size === 0) {
       return;
     }
 
-    return new Promise((resolve, reject) => {
-      // Build exiftool args: -overwrite_original -QuickTime:DateTimeOriginal=DATE1 FILE1 -QuickTime:DateTimeOriginal=DATE2 FILE2 ...
-      const args = ['-overwrite_original'];
+    console.log('[ExifPreserver] Writing DateTimeOriginal to', proxyDateMap.size, 'proxy videos');
 
-      for (const [proxyPath, dateTime] of proxyDateMap.entries()) {
-        args.push(`-QuickTime:DateTimeOriginal=${dateTime}`);
-        args.push(proxyPath);
-      }
+    const CONCURRENCY_LIMIT = 8;
+    const entries = Array.from(proxyDateMap.entries());
+    const failures: Array<{ path: string; error: string }> = [];
 
-      console.log('[ExifPreserver] Writing DateTimeOriginal to', proxyDateMap.size, 'proxy videos');
+    // Process files in chunks to limit concurrent exiftool processes
+    for (let i = 0; i < entries.length; i += CONCURRENCY_LIMIT) {
+      const chunk = entries.slice(i, i + CONCURRENCY_LIMIT);
+      const chunkPromises = chunk.map(([proxyPath, dateTime]) =>
+        this.writeSingleFile(proxyPath, dateTime)
+          .then(() => ({ status: 'fulfilled' as const, path: proxyPath }))
+          .catch((err) => ({ status: 'rejected' as const, path: proxyPath, error: err.message }))
+      );
+
+      // Use Promise.allSettled to continue processing even if some files fail
+      const results = await Promise.all(chunkPromises);
+
+      // Collect failures for reporting at end
+      results.forEach((result) => {
+        if (result.status === 'rejected') {
+          failures.push({ path: result.path, error: result.error });
+        }
+      });
+    }
+
+    // If any failures occurred, throw aggregated error
+    if (failures.length > 0) {
+      const errorMessage = `Failed to write EXIF data to ${failures.length} file(s): ${failures.map(f => f.path).join(', ')}`;
+      console.error('[ExifPreserver] Batch write completed with failures:', failures);
+      throw new Error(errorMessage);
+    }
+
+    console.log('[ExifPreserver] Write complete');
+  }
+
+  /**
+   * Write DateTimeOriginal to a single proxy file using exiftool
+   * Extracted for concurrency limiting and testability
+   */
+  private async writeSingleFile(proxyPath: string, dateTime: string): Promise<void> {
+    return new Promise<void>((resolve, reject) => {
+      const args = [
+        '-overwrite_original',
+        `-QuickTime:DateTimeOriginal=${dateTime}`,
+        proxyPath
+      ];
+
       const exiftoolProcess = spawn('exiftool', args);
 
       let stderr = '';
@@ -118,17 +165,16 @@ export class ExifPreserver {
 
       exiftoolProcess.on('close', (code) => {
         if (code !== 0) {
-          console.error('[ExifPreserver] exiftool write failed:', stderr);
+          console.error('[ExifPreserver] exiftool write failed for', proxyPath, ':', stderr);
           reject(new Error('Failed to write EXIF data'));
           return;
         }
 
-        console.log('[ExifPreserver] Write complete');
         resolve();
       });
 
       exiftoolProcess.on('error', (err) => {
-        console.error('[ExifPreserver] exiftool spawn error:', err);
+        console.error('[ExifPreserver] exiftool spawn error for', proxyPath, ':', err);
         reject(err);
       });
     });
