@@ -20,7 +20,7 @@ interface BatchOperationsPanelProps {
 
 export function BatchOperationsPanel({ availableFiles, selectedFileIds, filenameRewrite = false, onBatchComplete, currentFolderPath }: BatchOperationsPanelProps) {
   // Consume BatchQueueContext instead of local IPC subscriptions
-  const { state: queueState, progress: currentProgress } = useBatchQueue();
+  const { state: queueState, progress: currentProgress, startBatchProcessing, cancelBatchProcessing } = useBatchQueue();
 
   // Subscribe to proxy generation progress events via hook
   const proxyProgress = useProxyProgress();
@@ -55,8 +55,6 @@ export function BatchOperationsPanel({ availableFiles, selectedFileIds, filename
   }, [queueState.status, previousStatus, onBatchComplete]);
 
   const handleStartBatch = async () => {
-    if (!window.electronAPI) return;
-
     // Select unprocessed files
     const unprocessedFiles = availableFiles
       .filter(f => !f.processedByAI)
@@ -95,7 +93,7 @@ export function BatchOperationsPanel({ availableFiles, selectedFileIds, filename
     }
 
     try {
-      await window.electronAPI.batchStart(filesToProcess);
+      await startBatchProcessing(filesToProcess);
       setIsExpanded(true);
     } catch (error) {
       console.error('Failed to start batch:', error);
@@ -104,10 +102,8 @@ export function BatchOperationsPanel({ availableFiles, selectedFileIds, filename
   };
 
   const handleCancel = async () => {
-    if (!window.electronAPI) return;
-
     try {
-      const result = await window.electronAPI.batchCancel();
+      const result = await cancelBatchProcessing();
       if (result.success) {
         console.log('Batch cancelled successfully');
       }
@@ -117,7 +113,7 @@ export function BatchOperationsPanel({ availableFiles, selectedFileIds, filename
   };
 
   const handleProcessSelected = async () => {
-    if (!window.electronAPI || !selectedFileIds || selectedFileIds.size === 0) {
+    if (!selectedFileIds || selectedFileIds.size === 0) {
       return;
     }
 
@@ -135,7 +131,7 @@ export function BatchOperationsPanel({ availableFiles, selectedFileIds, filename
     }
 
     try {
-      await window.electronAPI.batchStart(filesToProcess);
+      await startBatchProcessing(filesToProcess);
       setIsExpanded(true);
     } catch (error) {
       console.error('[BatchPanel] Failed to start selected batch:', error);
@@ -145,11 +141,6 @@ export function BatchOperationsPanel({ availableFiles, selectedFileIds, filename
 
   const handleReprocess = async (e: React.MouseEvent) => {
     console.log('[BatchPanel] Reprocess button clicked', e);
-
-    if (!window.electronAPI) {
-      console.error('[BatchPanel] window.electronAPI is not available');
-      return;
-    }
 
     // Reprocess ALL files, regardless of processing status
     const filesToProcess = availableFiles.map(f => f.id);
@@ -198,7 +189,7 @@ export function BatchOperationsPanel({ availableFiles, selectedFileIds, filename
 
     console.log('[BatchPanel] Starting reprocess with files:', actualFiles);
     try {
-      await window.electronAPI.batchStart(actualFiles);
+      await startBatchProcessing(actualFiles);
       console.log('[BatchPanel] Reprocess batch started successfully');
       setIsExpanded(true);
     } catch (error) {

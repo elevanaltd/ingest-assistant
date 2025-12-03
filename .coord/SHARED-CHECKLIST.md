@@ -2,6 +2,43 @@
 
 ## Current Status (2025-12-03 Updated)
 
+### 🔴 Active Tech Debt - Prioritized (HO Coherence Review 2025-12-03)
+
+**Issue #113: BatchOperationsPanel bypasses BatchQueueContext** - **HIGH**
+- **Status:** NOT FIXED - Direct IPC calls present at lines 98, 110, 138, 201
+- **Problem:** Component calls `window.electronAPI.batchStart/batchCancel` directly instead of using `useBatchQueue()` context actions
+- **Impact:** Queue state ↔ IPC divergence (55% × high risk), duplicated error handling, breaks "single entry point" pattern
+- **Fix:** Refactor to dispatch through context; remove all direct `window.electronAPI.batch*` calls
+- **Owner:** implementation-lead (delegated)
+- **Success Criterion:** No direct IPC calls in BatchOperationsPanel.tsx; tests verify queue state updates
+- **Est. Cost:** 1 day
+
+**Issue #116: Reset transfer counters on cancel/start** - **MEDIUM**
+- **Status:** NOT FIXED - `cancelTransfer` (L285-290) only resets `isTransferring`, `transferStatus`, `currentFile`
+- **Problem:** `filesTransferred`, `progress`, `bytesTransferred` persist after cancel → stale metrics displayed
+- **Impact:** UI reports stale totals during scanning phase (45% × medium-high risk)
+- **Fix:** Reset counters in both `cancelTransfer` and `startTransfer` (or call `resetTransfer`)
+- **Owner:** CfexTransfer engineer
+- **Success Criterion:** Test verifies counters=0 after cancel/restart before first progress event
+- **Est. Cost:** 0.5 day
+
+**Issue #117: main.ts tech debt extraction** - **LOW**
+- **Status:** NOT FIXED - main.ts now 1458 LOC (grew +13 lines since issue created)
+- **Problem:** Embedded utilities (RateLimiter, timestamp helpers, media server) + inline IPC handlers
+- **Impact:** Integration debt accumulating; cognitive load navigating 1458 LOC file
+- **Fix:** Extract to `utils/rateLimiter.ts`, `utils/timestampUtils.ts`, following `cfexTransferHandlers.ts` pattern
+- **Owner:** technical-architect (spike)
+- **Success Criterion:** main.ts < 1400 LOC; extracted utilities have unit tests
+- **Est. Cost:** 2-4 hours per extraction target
+
+**Backlog Cleanup (2025-12-03):**
+- ✅ #21: Closed as RESOLVED (tier mapping doc complete)
+- ✅ #26: Closed as SUPERSEDED by #102 (Feature-Context Architecture delivered scope)
+- ✅ #25: Closed as WONTFIX (Result/Either - no ROI, current error handling works)
+- ✅ #28: Closed as WONTFIX (State machine - no undo/redo requirement)
+
+---
+
 ### ✅ Proxy Filename Resolution Fix - COMPLETE (PR #123 merged 2025-12-03)
 
 **Problem:** ENOENT error when AI processing proxy files (`EA002033_proxy.mov`) because stale `.ingest-metadata.json` stored raw filename (`EA002033.MOV`).
@@ -70,8 +107,8 @@
 
 **Architectural Gaps Discovered (pre-existing, now tracked):**
 - Issue #111: CFEx Cancel button is no-op (HIGH) - **RESOLVED via #106**
-- Issue #112: CFEx Proxies settings not propagated (HIGH)
-- Issue #113: BatchOperationsPanel bypasses context (MEDIUM)
+- Issue #112: CFEx Proxies settings not propagated (HIGH) - **RESOLVED via PR #118**
+- Issue #113: BatchOperationsPanel bypasses context - **ELEVATED TO HIGH** (see Active Tech Debt above)
 
 **Tech Debt Resolved (2025-12-02):**
 - ✅ Issue #105: Centralize Proxy Progress Listener → `useProxyProgress` hook
@@ -111,7 +148,8 @@
 ---
 
 ## Last Updated
-2025-12-03 (Merge conflict resolution - PR #124)
+2025-12-03 (HO Coherence Review - Issue triage + backlog cleanup)
 **Tests:** 1251 passing
 **Branch:** main
 **Lint:** 0 errors, 6 warnings
+**Open Issues:** 8 (4 closed: #21, #26, #25, #28)
