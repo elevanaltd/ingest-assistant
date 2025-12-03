@@ -79,7 +79,7 @@ describe('transferFileWithRetry', () => {
       expect(mockTransferFile).toHaveBeenCalledTimes(4);
     });
 
-    test('should use extended retries for network paths (Ubuntu NFS)', async () => {
+    test('should use extended retries for network paths (Ubuntu SMB)', async () => {
       const mockTask: FileTransferTask = {
         source: '/Volumes/CFEx/DCIM/C0001.MOV',
         destination: '/Ubuntu/EAV014/videos-raw/C0001.MOV',

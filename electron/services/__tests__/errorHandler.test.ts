@@ -60,7 +60,7 @@ describe('ErrorHandler', () => {
       expect(classification.userMessage).toContain('Permission denied');
     });
 
-    it('should classify ESTALE as TRANSIENT (stale NFS handle)', () => {
+    it('should classify ESTALE as TRANSIENT (stale network handle)', () => {
       const errorHandler = new ErrorHandler();
       const error = Object.assign(new Error('Stale file handle'), { code: 'ESTALE' });
 
@@ -69,7 +69,7 @@ describe('ErrorHandler', () => {
       expect(classification.category).toBe('TRANSIENT');
       expect(classification.code).toBe('ESTALE');
       expect(classification.retriable).toBe(true);
-      expect(classification.userMessage).toContain('NFS');
+      expect(classification.userMessage).toContain('network share');
     });
 
     it('should classify ENETUNREACH as NETWORK (network unreachable)', () => {
@@ -159,7 +159,7 @@ describe('ErrorHandler', () => {
       expect(maxRetries).toBe(5);
     });
 
-    it('should return 5 retries for Ubuntu NFS paths', () => {
+    it('should return 5 retries for Ubuntu SMB paths', () => {
       const errorHandler = new ErrorHandler();
       const maxRetries = errorHandler.getMaxRetries('/Ubuntu/EAV014/videos-raw/');
 
@@ -244,8 +244,8 @@ describe('ErrorHandler', () => {
 
       const classification = errorHandler.classify(error);
 
-      expect(classification.userMessage).toBe('Network file handle stale. Retrying... (NFS temporary issue)');
-      expect(classification.recoveryAction).toBe('Wait for retry - NFS mount will recover');
+      expect(classification.userMessage).toBe('Network file handle stale. Retrying... (network share temporary issue)');
+      expect(classification.recoveryAction).toBe('Wait for retry - network share will recover');
     });
 
     it('should provide helpful message for ENETUNREACH', () => {
@@ -254,8 +254,8 @@ describe('ErrorHandler', () => {
 
       const classification = errorHandler.classify(error);
 
-      expect(classification.userMessage).toBe('Network unreachable. Retrying... (Check NFS mount)');
-      expect(classification.recoveryAction).toBe('Check network connection and NFS mount status');
+      expect(classification.userMessage).toBe('Network unreachable. Retrying... (Check network share)');
+      expect(classification.recoveryAction).toBe('Check network connection and network share status');
     });
   });
 

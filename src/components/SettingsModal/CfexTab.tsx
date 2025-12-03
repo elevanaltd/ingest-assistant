@@ -120,7 +120,7 @@ export function CfexTab({
             Browse
           </button>
         </div>
-        <small style={{ color: '#666' }}>Ubuntu NFS mount for raw video archival</small>
+        <small style={{ color: '#666' }}>Ubuntu SMB share for raw video archival</small>
       </div>
 
       {error && <div style={{ color: 'red' }}>{error}</div>}

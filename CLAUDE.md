@@ -48,7 +48,7 @@ IMMUTABLES::[
   I2::HUMAN_OVERSIGHT[AI suggests → human approves]→WHY[AI confidence < 1.0],
   I3::JSON_SOURCE_OF_TRUTH[.ingest-metadata.json authoritative → files minimal XMP]→WHY[corrections without file I/O],
   I4::PROXY_WORKFLOW[2560×1440 ProRes Proxy → optimal]→WHY[professional grading + smooth playback + reasonable size],
-  I5::SPLIT_STORAGE[photos/proxies→LucidLink | raw→Ubuntu NFS]→WHY[fast editor access + cheap archival],
+  I5::SPLIT_STORAGE[photos/proxies→LucidLink | raw→Ubuntu SMB]→WHY[fast editor access + cheap archival],
   I6::IMMUTABLE_ANCHOR[TapeName=original filename]→WHY[CEP Panel matching + rename safety],
   I7::FOLDER_LOCK[COMPLETE flag → shot numbers frozen]→WHY[prevents chronological re-sort chaos]
 ]
