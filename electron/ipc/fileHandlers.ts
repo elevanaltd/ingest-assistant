@@ -238,90 +238,126 @@ export function registerFileHandlers(
   // ============================================================================
   // CRITICAL-1 FIX: Remove folderPath parameter (renderer cannot override security boundary)
   ipcMain.handle('file:load-files', async () => {
-    if (!currentFolderPath) {
-      throw new Error('No folder selected');
-    }
-
-    // Use stored folder path (trusted source from dialog)
-    const files = await fileManager.scanFolder(currentFolderPath);
-    const store = getMetadataStoreForFolder(currentFolderPath);
-
-    // Load or create metadata for each file (Issue #24)
-    for (const file of files) {
-      const existingMetadata = await store.getFileMetadata(file.id);
-
-      if (!existingMetadata) {
-        // Save the file metadata from scanFolder to the store
-        // scanFolder already created a complete FileMetadata object
-        await store.updateFileMetadata(file.id, file);
-      } else {
-        // Use existing metadata (which may have been AI-processed)
-        // Stale Metadata Fix: Reconcile filename differences using shared helper
-        const { metadata: reconciledMetadata, updated } = reconcileMetadata(existingMetadata, file);
-        if (updated) {
-          await store.updateFileMetadata(file.id, reconciledMetadata);
-        }
-
-        // Bug #1 Fix: Fallback to mainName for legacy pre-R1.1 records, then to empty string if both missing
-        file.shotName = existingMetadata.shotName || existingMetadata.mainName || '';
-        file.keywords = existingMetadata.keywords;
-        file.processedByAI = existingMetadata.processedByAI;
-        // Bug #2 Fix: Propagate lockedFields to renderer
-        file.lockedFields = existingMetadata.lockedFields || [];
-        // Preserve structured naming components
-        file.location = existingMetadata.location;
-        file.subject = existingMetadata.subject;
-        file.action = existingMetadata.action;
-        file.shotType = existingMetadata.shotType;
+    try {
+      if (!currentFolderPath) {
+        throw new Error('No folder selected');
       }
-    }
 
-    return files;
+      // Use stored folder path (trusted source from dialog)
+      const files = await fileManager.scanFolder(currentFolderPath);
+      const store = getMetadataStoreForFolder(currentFolderPath);
+
+      // Load or create metadata for each file (Issue #24)
+      for (const file of files) {
+        const existingMetadata = await store.getFileMetadata(file.id);
+
+        if (!existingMetadata) {
+          // Save the file metadata from scanFolder to the store
+          // scanFolder already created a complete FileMetadata object
+          await store.updateFileMetadata(file.id, file);
+        } else {
+          // Use existing metadata (which may have been AI-processed)
+          // Stale Metadata Fix: Reconcile filename differences using shared helper
+          const { metadata: reconciledMetadata, updated } = reconcileMetadata(existingMetadata, file);
+          if (updated) {
+            await store.updateFileMetadata(file.id, reconciledMetadata);
+          }
+
+          // Bug #1 Fix: Fallback to mainName for legacy pre-R1.1 records, then to empty string if both missing
+          file.shotName = existingMetadata.shotName || existingMetadata.mainName || '';
+          file.keywords = existingMetadata.keywords;
+          file.processedByAI = existingMetadata.processedByAI;
+          // Bug #2 Fix: Propagate lockedFields to renderer
+          file.lockedFields = existingMetadata.lockedFields || [];
+          // Preserve structured naming components
+          file.location = existingMetadata.location;
+          file.subject = existingMetadata.subject;
+          file.action = existingMetadata.action;
+          file.shotType = existingMetadata.shotType;
+        }
+      }
+
+      return files;
+    } catch (error) {
+      console.error('Failed to load files:', error);
+
+      // Special handling for validation errors
+      if (error instanceof z.ZodError) {
+        console.error('Invalid IPC message:', error.errors);
+        throw new Error('Invalid request parameters');
+      }
+
+      // Special handling for security violations
+      if (error instanceof SecurityViolationError) {
+        console.error('Security violation:', error.type, error.details);
+        throw new Error('File access denied');
+      }
+
+      throw sanitizeError(error);
+    }
   });
 
   // ============================================================================
   // file:list-range - Paginated file listing (issue #19)
   // ============================================================================
   ipcMain.handle('file:list-range', async (_event, startIndex: number, pageSize: number) => {
-    // Validate inputs
-    const { FileListRangeSchema } = await import('../schemas/ipcSchemas');
-    const validated = FileListRangeSchema.parse({ startIndex, pageSize });
+    try {
+      // Validate inputs
+      const { FileListRangeSchema } = await import('../schemas/ipcSchemas');
+      const validated = FileListRangeSchema.parse({ startIndex, pageSize });
 
-    if (!currentFolderPath) {
-      throw new Error('No folder selected');
-    }
-
-    // Get paginated files
-    const result = await fileManager.scanFolderRange(
-      currentFolderPath,
-      validated.startIndex,
-      validated.pageSize
-    );
-
-    // Hydrate metadata for files in this range
-    const store = getMetadataStoreForFolder(currentFolderPath);
-    for (const file of result.files) {
-      const existingMetadata = await store.getFileMetadata(file.id);
-      if (existingMetadata) {
-        // Stale Metadata Fix: Reconcile filename differences using shared helper
-        const { metadata: reconciledMetadata, updated } = reconcileMetadata(existingMetadata, file);
-        if (updated) {
-          await store.updateFileMetadata(file.id, reconciledMetadata);
-        }
-
-        // Bug #1 Fix: Fallback to mainName for legacy pre-R1.1 records, then to empty string if both missing
-        file.shotName = existingMetadata.shotName || existingMetadata.mainName || '';
-        file.keywords = existingMetadata.keywords;
-        file.processedByAI = existingMetadata.processedByAI;
-        // Bug #2 Fix: Propagate lockedFields to renderer
-        file.lockedFields = existingMetadata.lockedFields || [];
-        file.location = existingMetadata.location;
-        file.subject = existingMetadata.subject;
-        file.shotType = existingMetadata.shotType;
+      if (!currentFolderPath) {
+        throw new Error('No folder selected');
       }
-    }
 
-    return result;
+      // Get paginated files
+      const result = await fileManager.scanFolderRange(
+        currentFolderPath,
+        validated.startIndex,
+        validated.pageSize
+      );
+
+      // Hydrate metadata for files in this range
+      const store = getMetadataStoreForFolder(currentFolderPath);
+      for (const file of result.files) {
+        const existingMetadata = await store.getFileMetadata(file.id);
+        if (existingMetadata) {
+          // Stale Metadata Fix: Reconcile filename differences using shared helper
+          const { metadata: reconciledMetadata, updated } = reconcileMetadata(existingMetadata, file);
+          if (updated) {
+            await store.updateFileMetadata(file.id, reconciledMetadata);
+          }
+
+          // Bug #1 Fix: Fallback to mainName for legacy pre-R1.1 records, then to empty string if both missing
+          file.shotName = existingMetadata.shotName || existingMetadata.mainName || '';
+          file.keywords = existingMetadata.keywords;
+          file.processedByAI = existingMetadata.processedByAI;
+          // Bug #2 Fix: Propagate lockedFields to renderer
+          file.lockedFields = existingMetadata.lockedFields || [];
+          file.location = existingMetadata.location;
+          file.subject = existingMetadata.subject;
+          file.shotType = existingMetadata.shotType;
+        }
+      }
+
+      return result;
+    } catch (error) {
+      console.error('Failed to list files:', error);
+
+      // Special handling for validation errors
+      if (error instanceof z.ZodError) {
+        console.error('Invalid IPC message:', error.errors);
+        throw new Error('Invalid request parameters');
+      }
+
+      // Special handling for security violations
+      if (error instanceof SecurityViolationError) {
+        console.error('Security violation:', error.type, error.details);
+        throw new Error('File access denied');
+      }
+
+      throw sanitizeError(error);
+    }
   });
 
   // ============================================================================

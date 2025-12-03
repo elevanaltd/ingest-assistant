@@ -372,3 +372,18 @@ export function registerAiHandlers(
     }
   };
 }
+
+/**
+ * Get current AI service instance
+ *
+ * SINGLE SOURCE OF TRUTH for aiService state.
+ * This function provides access to the module-level aiService which is updated
+ * by ai:update-config handler. Other modules (e.g., batch:start in main.ts)
+ * should use this getter instead of maintaining separate aiService references
+ * that can become stale.
+ *
+ * @returns Current AIService instance or null if not configured
+ */
+export function getAiService(): AIService | null {
+  return aiService;
+}

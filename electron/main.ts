@@ -25,7 +25,7 @@ import { BatchQueueManager } from './services/batchQueueManager';
 import { registerCfexTransferHandlers } from './ipc/cfexTransferHandlers';
 import { registerProxyGenerationHandlers } from './ipc/proxyGenerationHandlers';
 import { registerFileHandlers } from './ipc/fileHandlers';
-import { registerAiHandlers } from './ipc/aiHandlers';
+import { registerAiHandlers, getAiService } from './ipc/aiHandlers';
 import { FilenameTemplateParser } from './services/filenameTemplate';
 import { RateLimiter } from './utils/rateLimiter';
 import { isAIFailure } from './utils/aiResultValidation';
@@ -262,7 +262,8 @@ async function createWindow() {
   });
 
   // Register AI IPC handlers
-  const { setAiService: _updateAiService } = registerAiHandlers(mainWindow, {
+  // Note: Don't use setAiService return value - use getAiService() instead for single source of truth
+  registerAiHandlers(mainWindow, {
     aiService,
     securityValidator,
     fileManager,
@@ -374,7 +375,10 @@ ipcMain.handle('batch:start', async (_event, fileIds: string[]) => {
     // Note: Rate limiting is applied per-file during processing (not upfront)
     // This allows the rate limiter to properly pace the batch
 
-    if (!aiService) {
+    // CRITICAL FIX: Use getAiService() for single source of truth
+    // Previously used local aiService variable which became stale after ai:update-config
+    const currentAiService = getAiService();
+    if (!currentAiService) {
       throw new Error('AI service not configured.');
     }
 
@@ -421,11 +425,11 @@ ipcMain.handle('batch:start', async (_event, fileIds: string[]) => {
         let result: AIAnalysisResult;
         if (fileType === 'video') {
           console.log('[IPC] Batch analyzing video file:', validatedPath);
-          result = await aiService!.analyzeVideo(validatedPath, lexicon);
+          result = await currentAiService.analyzeVideo(validatedPath, lexicon);
         } else {
           await securityValidator.validateFileSize(validatedPath, 100 * 1024 * 1024);
           console.log('[IPC] Batch analyzing image file:', validatedPath);
-          result = await aiService!.analyzeImage(validatedPath, lexicon);
+          result = await currentAiService.analyzeImage(validatedPath, lexicon);
         }
 
         // Issue #128: Validate AI result before marking as processed
