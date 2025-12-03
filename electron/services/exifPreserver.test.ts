@@ -280,6 +280,55 @@ describe('ExifPreserver', () => {
 
       await expect(writePromise).rejects.toThrow('Failed to write EXIF data');
     });
+
+    it('should limit concurrent exiftool processes to prevent EMFILE errors', async () => {
+      // CRITICAL: Prevents O(n) simultaneous processes which causes EMFILE on large batches
+      // Risk: 500+ proxies → 500+ spawn() → OS file descriptor exhaustion
+      const mockProcesses: any[] = [];
+      let maxConcurrent = 0;
+      let currentConcurrent = 0;
+
+      vi.mocked(spawn).mockImplementation(() => {
+        const mockProcess = new EventEmitter() as any;
+        mockProcess.stdout = new EventEmitter();
+        mockProcess.stderr = new EventEmitter();
+
+        // Track concurrent process count
+        currentConcurrent++;
+        if (currentConcurrent > maxConcurrent) {
+          maxConcurrent = currentConcurrent;
+        }
+
+        mockProcesses.push(mockProcess);
+
+        // Simulate process completing (decrement counter)
+        mockProcess.on('close', () => {
+          currentConcurrent--;
+        });
+
+        // Auto-complete process immediately (chunked implementation waits for each chunk)
+        setTimeout(() => {
+          mockProcess.emit('close', 0);
+        }, 1);
+
+        return mockProcess;
+      });
+
+      // Create large batch (20 files to verify chunking)
+      const proxyDateMap = new Map<string, string>();
+      for (let i = 1; i <= 20; i++) {
+        proxyDateMap.set(`/Volumes/videos-current/project/video${i}_proxy.MOV`, `2024:11:20 14:${i.toString().padStart(2, '0')}:00`);
+      }
+
+      await preserver.writeBatch(proxyDateMap);
+
+      // ASSERTION: Max concurrent processes should be limited to 8 (not 20)
+      expect(maxConcurrent).toBeLessThanOrEqual(8);
+      expect(maxConcurrent).toBeGreaterThan(0); // Sanity check: at least 1 concurrent process
+
+      // ASSERTION: All 20 files should still be processed
+      expect(spawn).toHaveBeenCalledTimes(20);
+    });
   });
 
   describe('Phase 3b: Batch Verification', () => {
