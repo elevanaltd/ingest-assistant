@@ -96,7 +96,10 @@ export function registerFileHandlers(
   ipcMain.handle('file:select-folder', async (_event, startPath?: string) => {
     console.log('[fileHandlers] file:select-folder - Opening folder dialog', { startPath });
     const result = await dialog.showOpenDialog({
-      properties: ['openDirectory', 'createDirectory'], // createDirectory enables "New Folder" button on macOS
+      properties: [
+        'openDirectory',
+        ...(process.platform === 'darwin' ? ['createDirectory' as const] : [])
+      ],
       ...(startPath && { defaultPath: startPath }), // Open at current path if provided
     });
 
