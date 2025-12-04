@@ -426,7 +426,8 @@ describe('Batch Process Security Validation', () => {
 
       // Consume all tokens
       await rateLimiter.consume(100);
-      expect(rateLimiter.getTokens()).toBe(0);
+      // Use toBeCloseTo because token bucket refills continuously - tiny time between consume() and getTokens()
+      expect(rateLimiter.getTokens()).toBeCloseTo(0, 1);
 
       // Wait for 3 seconds (should refill ~5 tokens)
       await new Promise(resolve => setTimeout(resolve, 3000));

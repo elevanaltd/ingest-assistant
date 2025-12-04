@@ -1,22 +1,25 @@
 # Ingest Assistant - Shared Checklist
 
-## Current Focus: Issue #137 IPC Handler Extraction - NEXT PRIORITY
+## Current Focus: Issue #137 IPC Handler Extraction - PR IN REVIEW
 
-**Selected for implementation:** main.ts Phase 2 extraction (1394 LOC → < 800 LOC)
+**Status:** PR open, code review feedback addressed, awaiting final approval
 
-**Fix approach:**
-1. Extract `file:*` handlers → `ipc/fileHandlers.ts` with unit tests
-2. Extract `ai:*` handlers → `ipc/aiHandlers.ts` with unit tests
-3. Extract `batch:*` handlers → `ipc/batchHandlers.ts` with unit tests
-4. Extract `config:*` handlers → `ipc/configHandlers.ts` with unit tests
-5. Follow `cfexTransferHandlers.ts` and `proxyGenerationHandlers.ts` patterns
-6. Success criterion: main.ts < 800 LOC
+**Completed Extractions:**
+- [x] Extract `file:*` handlers → `ipc/fileHandlers.ts` (7 handlers)
+- [x] Extract `ai:*` handlers → `ipc/aiHandlers.ts` (8 handlers)
+- [x] Extract `batch:*` handlers → `ipc/batchHandlers.ts` (3 handlers)
+- [x] Extract `config:*` handlers → `ipc/configHandlers.ts` (8 handlers)
 
-**Predecessor:** Issue #117 COMPLETE (RateLimiter + timestamp utils extracted)
+**Code Review Fixes Applied (2025-12-04):**
+- [x] Error sanitization for `lexicon:load` handler
+- [x] Ubuntu `createDirectory` fix (conditional on darwin)
+- [x] **P1:** IPC handler re-registration guards (31 handlers protected)
+
+**Quality Gates:** Tests 1342✅ Lint 0✅ Types 0✅
 
 ---
 
-## Current Status (2025-12-03 Updated)
+## Current Status (2025-12-04 Updated)
 
 ### ✅ PR #134: Proxy Preset Propagation Fix - COMPLETE (merged 2025-12-03)
 
@@ -80,15 +83,13 @@
 
 ---
 
-### ⏭️ Issue #137: Extract remaining IPC handlers - NEXT PRIORITY
+### 🔄 Issue #137: Extract remaining IPC handlers - PR IN REVIEW
 
-- **Status:** CREATED - Phase 2 of main.ts refactoring
-- **Problem:** Remaining IPC handlers still inline (file, ai, batch, config)
-- **Impact:** main.ts still 1394 LOC; REPO_REVIEW.md (2025-11-05) recommended handler extraction
-- **Fix:** Extract to `electron/ipc/fileHandlers.ts`, `aiHandlers.ts`, `batchHandlers.ts`, `configHandlers.ts`
-- **Owner:** technical-architect (spike) → implementation-lead (extraction)
-- **Success Criterion:** main.ts < 800 LOC; each handler has unit tests
-- **Est. Cost:** 2-4 hours per extraction target
+- **Status:** PR open, code review feedback resolved
+- **Branch:** `fix/code-review-blocking-issues`
+- **Extractions:** 4 handler modules (file, ai, batch, config) - 26 handlers total
+- **P1 Fix:** macOS window reopen crash - 31 handlers protected with removeHandler guards
+- **Tests:** 1342 passing (+6 new re-registration safety tests)
 - **GitHub:** https://github.com/elevanaltd/ingest-assistant/issues/137
 
 **Backlog Cleanup (2025-12-03):**
@@ -208,15 +209,15 @@
 ---
 
 ## Last Updated
-2025-12-03 (Issue #117 COMPLETE, PR pending)
-**Tests:** 1304 total (1304 passing, 15 skipped)
-**Branch:** fix/117-main-ts-extraction
+2025-12-04 (Issue #137 PR in review, code review fixes applied)
+**Tests:** 1342 total (1342 passing, 15 skipped)
+**Branch:** fix/code-review-blocking-issues
 **Lint:** 0 errors
 **Typecheck:** 0 errors
 **Quality Gates:** ALL GREEN
 
-**Today's Session:**
-- ✅ PR #134: Proxy preset propagation fix (+4 tests)
-- ✅ PR #135: NFS → SMB 3.1.1 documentation update
-- ✅ Issue #117: COMPLETE - main.ts 1458→1394 LOC (+20 tests)
-- 🆕 Issue #137: Created for Phase 2 (IPC handler extraction)
+**Session 2025-12-04:**
+- ✅ Merged main into branch (Ubuntu createDirectory fix)
+- ✅ P1 FIX: IPC handler re-registration guards (31 handlers)
+- ✅ +6 new tests for re-registration safety
+- 🔄 PR #137: Awaiting final code review approval
