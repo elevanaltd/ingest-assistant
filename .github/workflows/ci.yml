@@ -14,7 +14,7 @@ concurrency:
 
 env:
   NODE_VERSION: '20'
-  ELECTRON_MIN_VERSION: '35.7.5'
+  ELECTRON_MIN_VERSION: '39.2.5'
 
 jobs:
   # ============================================================================
