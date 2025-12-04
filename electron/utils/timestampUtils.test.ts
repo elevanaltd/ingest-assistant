@@ -4,7 +4,6 @@ import {
   getOrExtractCreationTimestamp,
   generateTitleWithTimestamp
 } from './timestampUtils';
-import type { FileMetadata } from '../../src/types';
 
 describe('formatTimestampForTitle', () => {
   it('should format timestamp as 14-digit string (YYYYMMDDHHMMSS)', () => {

@@ -5,7 +5,6 @@ import {
   unregisterProxyGenerationHandlers,
   __resetForTesting
 } from '../proxyGenerationHandlers'
-import { ProxyOrchestrator } from '../../services/proxyOrchestrator'
 
 // Mock constructor - use vi.hoisted to ensure mock is available during hoisting
 const { MockProxyOrchestrator } = vi.hoisted(() => ({
