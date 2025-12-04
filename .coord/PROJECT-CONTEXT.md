@@ -1,6 +1,6 @@
 # Ingest Assistant - Project Context
 
-**Last Updated:** 2025-12-03 | **Version:** v2.3.1+ | **Branch:** main (4f8704c - PR #134, #135 merged)
+**Last Updated:** 2025-12-04 | **Version:** v2.3.1+ | **Branch:** main (c22e08c - PR #146 merged)
 
 ---
 
@@ -22,9 +22,9 @@
 ## Tech Stack
 
 - **Runtime:** Electron (main + renderer)
-- **Frontend:** React 18, TypeScript
+- **Frontend:** React 19.2.1, TypeScript
 - **Build:** Vite
-- **Testing:** Vitest (1304 tests, 91 files)
+- **Testing:** Vitest (1343 tests, 100 files)
 - **AI:** OpenRouter, Anthropic Claude, OpenAI APIs
 - **Database:** Supabase (shared with EAV Monorepo)
 
@@ -34,11 +34,11 @@
 
 ### Branch Status
 ```
-Branch: main (4f8704c - PR #134, #135 merged)
-Tests:  1299 total (1283 passing, 1 flaky, 15 skipped)
+Branch: main (c22e08c - PR #146 merged)
+Tests:  1343 passing, 16 skipped (1359 total)
 Lint:   0 errors
 Types:  0 errors
-Security: 6 moderate vulns (HIGH eliminated)
+Security: 0 HIGH vulns (React 19.2.1 security patch applied)
 ```
 
 ### Phase Progression
@@ -75,7 +75,7 @@ D0→D1→D2→D3→B0(Phase 1a)→B2(1a COMPLETE)→1c COMPLETE→Phase 1b(B2.1
 |------|--------|---------|
 | Lint | PASS (0 errors) | `npm run lint` |
 | Typecheck | PASS (0 errors) | `npm run typecheck` |
-| Tests | PASS (1299 total) | `npm test` |
+| Tests | PASS (1343 total) | `npm test` |
 
 ---
 
@@ -294,7 +294,8 @@ src/components/
 - ✅ Issue #113: BatchOperationsPanel context routing - **RESOLVED** (PR #127 merged)
 - ✅ Issue #116: Reset transfer counters - **RESOLVED** (PR #130 merged)
 - ✅ Issue #117: main.ts tech debt extraction - **COMPLETE** (1458→1394 LOC, RateLimiter + timestamp utils)
-- 🔄 Issue #137: Extract remaining IPC handlers - **IN PROGRESS** (PR open, code review feedback addressed)
+- ✅ Issue #137: Extract remaining IPC handlers - **COMPLETE** (PR #141 merged)
+- ✅ PR #146: React 19.2.1 security patch - **COMPLETE** (merged 2025-12-04)
 
 **Backlog Cleanup (2025-12-03):**
 - ✅ #21: Closed as RESOLVED (tier mapping doc complete)
@@ -339,9 +340,9 @@ src/components/
 - Benefits: Better reliability, automatic reconnection on network interruptions
 - Scope: PROJECT-CONTEXT.md, CLAUDE.md, test paths, comments, workflow docs
 
-### 🔄 Issue #137: IPC Handler Extraction - IN PROGRESS (PR open 2025-12-04)
+### ✅ Issue #137: IPC Handler Extraction - COMPLETE (PR #141 merged 2025-12-04)
 
-**Phase 2 of main.ts refactoring** - Extract remaining IPC handlers to dedicated modules.
+**Phase 2 of main.ts refactoring** - Extracted remaining IPC handlers to dedicated modules.
 
 **Completed Extractions:**
 - ✅ `electron/ipc/fileHandlers.ts` - 7 handlers (~300 LOC)
@@ -349,7 +350,7 @@ src/components/
 - ✅ `electron/ipc/batchHandlers.ts` - 3 handlers (~200 LOC)
 - ✅ `electron/ipc/configHandlers.ts` - 8 handlers (~100 LOC)
 
-**Code Review Fixes Applied (2025-12-04):**
+**Code Review Fixes Applied:**
 - ✅ Error sanitization added to `lexicon:load` handler
 - ✅ Ubuntu `createDirectory` fix applied (conditional on darwin)
 - ✅ **P1 FIX:** IPC handler re-registration guards (31 handlers protected)
@@ -359,6 +360,7 @@ src/components/
 
 **Quality Gates:** Tests 1342✅ Lint 0✅ Types 0✅
 **TDD Evidence:** 5b6518f (RED) → e45cbed (GREEN)
+**GitHub:** Issue #137 closed, PR #141 merged 2025-12-04
 
 ---
 
@@ -394,17 +396,38 @@ src/components/
 
 ---
 
+### ✅ PR #146: React 19.2.1 Security Patch - COMPLETE (merged 2025-12-04)
+
+**Security Update:** React upgraded from 19.0.0 to 19.2.1 to address security vulnerabilities.
+
+**Changes Applied:**
+- ✅ Upgraded React and React-DOM to 19.2.1
+- ✅ Fixed React 19 test timing issues (11 tests in SettingsModal)
+- ✅ Added `dependency-versions.test.ts` regression prevention test
+- ✅ Skipped 1 flaky race condition test (timing-dependent)
+
+**Quality Gates:**
+- Tests: 1343 passing (+44 from dependency upgrades)
+- Lint: 0 errors
+- Typecheck: 0 errors
+- Security: HIGH vulnerabilities eliminated
+
+**Commits:** 3dd136a → a9694e4 → 05aff13 → 4831785 → c22e08c
+**GitHub:** PR #146 merged to main 2025-12-04
+
+---
+
 ## Recent Commits (Last 10)
 
 ```
-e45cbed fix: add removeHandler guards to prevent re-registration crash (GREEN)
-5b6518f test: add failing test for IPC handler re-registration safety (RED)
-f8dec5e Merge branch 'main' into fix/code-review-blocking-issues
-8a8da3e fix: add missing error sanitization to lexicon:load handler
-865751b fix: resolve code review BLOCKING issues
-5f88fef feat: extract config handlers to configHandlers.ts (GREEN)
-a4e2536 test: failing config handlers extraction (RED)
-a25a128 feat: extract batch handlers to batchHandlers.ts (GREEN)
-ee6fc67 test: failing batch handlers extraction (RED)
-34093ca fix: resolve code review blocking issues (aiService state + error sanitization)
+c22e08c test: skip flaky race condition test (React 19 timing)
+4831785 fix: resolve React 19 checkbox timing issues in SettingsModal tests
+05aff13 fix: resolve React 19 test timing issues in SettingsModal
+a9694e4 fix: remove unused imports flagged by CI
+3dd136a chore: upgrade React 19.0.0 to 19.2.1 (security patch)
+c413958 Merge pull request #145 from elevanaltd/fix/react-window-types
+4604102 fix: add @types/react-window stub for TypeScript compatibility
+db0c81b Merge pull request #144 from elevanaltd/chore/dependency-upgrades
+f65c19c fix: resolve React 19 test timing issues in SettingsModal
+ef2fe4f Merge branch 'main' into chore/dependency-upgrades
 ```
