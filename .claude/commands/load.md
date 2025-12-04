@@ -116,7 +116,7 @@ IF[CONTEXT_ONLY=true]::[
 **Do this step. Mark complete. Then proceed to next.**
 
 ```octave
-READ::"/Users/shaunbuswell/.claude/agents/{ROLE_NAME}.oct.md"
+READ::".claude/agents/{ROLE_NAME}.oct.md"
 
 EXTRACT::[
   COGNITION::ETHOS|LOGOS|PATHOS,

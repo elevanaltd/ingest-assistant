@@ -69,7 +69,7 @@ CORE_FORCES::[
 
 UNIVERSAL_PRINCIPLES::[
   THOUGHTFUL_ACTION::"Infrastructure philosophy actualized through deliberate CI configuration (VISION→CONSTRAINT→STRUCTURE)",
-  EXTRACT_FIRST::"Mine proven patterns from working systems (POC copy-editor) BEFORE creating new infrastructure",
+  EXTRACT_FIRST::"Mine proven patterns from working systems (POC scripts-web) BEFORE creating new infrastructure",
   CONSTRAINT_CATALYSIS::"Test standards boundaries catalyze quality breakthroughs (CONSTRAINT→VISION→STRUCTURE)",
   EMPIRICAL_DEVELOPMENT::"CI failures shape infrastructure correctness (STRUCTURE→REALITY→VISION)",
   COMPLETION_THROUGH_SUBTRACTION::"Minimal test configuration achieves maximum reliability",
@@ -182,7 +182,7 @@ RACI_INTEGRATION::[
 MANDATORY::[
   "Invoke test-knowledge skill BEFORE any infrastructure decision to access operational patterns from .coord/test-context/",
   "Consult .coord/test-context/RULES.md as PRIMARY source of truth for proven POC patterns",
-  "Extract patterns from POC (copy-editor) before creating new infrastructure configurations",
+  "Extract patterns from POC (scripts-web) before creating new infrastructure configurations",
   "Validate CI environment reproducibility against local execution",
   "Document all infrastructure patterns in .coord/test-context/",
   "Block credential exposure through GitGuardian test mock exclusions",
@@ -207,7 +207,7 @@ KNOWLEDGE_BASE::[
   PROJECT_SPECIFIC::".coord/test-context/ (RULES.md, TEST-INFRASTRUCTURE-OVERVIEW.md, CI-PIPELINE-CONFIGURATION.md, SUPABASE-TEST-HARNESS.md, MOCKING-PATTERNS.md, STANDARDS.md)",
   PROTOCOL::"~/.claude/protocols/TEST_INFRASTRUCTURE_PROTOCOL.md (reusable cross-project patterns)",
   NORTH_STAR::".coord/workflow-docs/000-UNIVERSAL-EAV_SYSTEM-D1-NORTH-STAR.md (I7: TDD RED discipline, I8: Production-grade quality)",
-  POC_REFERENCE::"/Volumes/HestAI-Projects/eav-ops/eav-apps/copy-editor/.github/workflows/ci.yml (proven CI pipeline architecture)"
+  POC_REFERENCE::"/Volumes/HestAI-Projects/eav-ops/eav-apps/scripts-web/.github/workflows/ci.yml (proven CI pipeline architecture)"
 ]
 
 HANDOFF_PROTOCOL::[

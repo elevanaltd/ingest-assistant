@@ -59,7 +59,7 @@ echo "✓ Activating: $ROLE_NAME [mode: ${RAPH_MODE}]"
 ```
 # Read the agent's constitutional document into memory
 # Constitution is LOADED - do not re-display in prompt (agent has access via Read)
-Read("/Users/shaunbuswell/.claude/agents/$ROLE_NAME.oct.md")
+Read(".claude/agents/$ROLE_NAME.oct.md")
 # Constitution now in context. Reference by line number, not re-display.
 ```
 
@@ -319,7 +319,7 @@ fi
 
 ## FALLBACK PATHS:
 If file not found, try:
-1. `/Users/shaunbuswell/.claude/agents/$ROLE_NAME.oct.md`
+1. `~/.claude/agents/$ROLE_NAME.oct.md` (global fallback)
 2. `/Volumes/HestAI/hestai-orchestrator/assembly/protocols/gold/$ROLE_NAME-gold.md`
 
 ## USAGE MODES:

@@ -3,7 +3,11 @@ import * as fs from 'fs/promises';
 import { MetadataStore } from './metadataStore';
 import type { FileMetadata } from '../../src/types';
 
-vi.mock('fs/promises');
+vi.mock('fs/promises', () => ({
+  readFile: vi.fn(),
+  mkdir: vi.fn(),
+  writeFile: vi.fn(),
+}));
 
 describe('MetadataStore', () => {
   let metadataStore: MetadataStore;
@@ -51,7 +55,7 @@ describe('MetadataStore', () => {
       const mockData = {
         'EB001537': createMockFileMetadata('EB001537', 'oven-control-panel', ['oven']),
       };
-      mockFs.readFile.mockResolvedValue(JSON.stringify(mockData));
+      mockFs.readFile.mockImplementation(() => Promise.resolve(JSON.stringify(mockData)));
 
       const metadata = await metadataStore.loadMetadata();
 
@@ -60,7 +64,7 @@ describe('MetadataStore', () => {
     });
 
     it('should return empty object if file does not exist', async () => {
-      mockFs.readFile.mockRejectedValue({ code: 'ENOENT' });
+      mockFs.readFile.mockImplementation(() => Promise.reject({ code: 'ENOENT' }));
 
       const metadata = await metadataStore.loadMetadata();
 
@@ -68,7 +72,7 @@ describe('MetadataStore', () => {
     });
 
     it('should throw error for invalid JSON', async () => {
-      mockFs.readFile.mockResolvedValue('{invalid json}');
+      mockFs.readFile.mockImplementation(() => Promise.resolve('{invalid json}'));
 
       await expect(metadataStore.loadMetadata()).rejects.toThrow();
     });
@@ -99,7 +103,7 @@ describe('MetadataStore', () => {
         }
       };
 
-      mockFs.readFile.mockResolvedValue(JSON.stringify(legacyV1Data));
+      mockFs.readFile.mockImplementation(() => Promise.resolve(JSON.stringify(legacyV1Data)));
 
       const metadata = await metadataStore.loadMetadata();
 
@@ -135,7 +139,7 @@ describe('MetadataStore', () => {
         }
       };
 
-      mockFs.readFile.mockResolvedValue(JSON.stringify(legacyV1Data));
+      mockFs.readFile.mockImplementation(() => Promise.resolve(JSON.stringify(legacyV1Data)));
 
       const metadata = await metadataStore.loadMetadata();
 
@@ -150,8 +154,8 @@ describe('MetadataStore', () => {
         'EB001537': createMockFileMetadata('EB001537', 'test', ['tag1']),
       };
 
-      mockFs.mkdir.mockResolvedValue(undefined);
-      mockFs.writeFile.mockResolvedValue(undefined);
+      mockFs.mkdir.mockImplementation(() => Promise.resolve(undefined));
+      mockFs.writeFile.mockImplementation(() => Promise.resolve(undefined));
 
       const result = await metadataStore.saveMetadata(metadata);
 
@@ -165,8 +169,8 @@ describe('MetadataStore', () => {
     });
 
     it('should return false on write error', async () => {
-      mockFs.mkdir.mockResolvedValue(undefined);
-      mockFs.writeFile.mockRejectedValue(new Error('Write failed'));
+      mockFs.mkdir.mockImplementation(() => Promise.resolve(undefined));
+      mockFs.writeFile.mockImplementation(() => Promise.reject(new Error('Write failed')));
 
       const result = await metadataStore.saveMetadata({});
 
@@ -179,7 +183,7 @@ describe('MetadataStore', () => {
       const mockData = {
         'EB001537': createMockFileMetadata('EB001537', 'test-name', ['tag']),
       };
-      mockFs.readFile.mockResolvedValue(JSON.stringify(mockData));
+      mockFs.readFile.mockImplementation(() => Promise.resolve(JSON.stringify(mockData)));
 
       const fileMetadata = await metadataStore.getFileMetadata('EB001537');
 
@@ -188,7 +192,7 @@ describe('MetadataStore', () => {
     });
 
     it('should return null for non-existent file', async () => {
-      mockFs.readFile.mockResolvedValue(JSON.stringify({}));
+      mockFs.readFile.mockImplementation(() => Promise.resolve(JSON.stringify({})));
 
       const fileMetadata = await metadataStore.getFileMetadata('NOTFOUND');
 
@@ -201,9 +205,9 @@ describe('MetadataStore', () => {
       const existing = {
         'EB001537': createMockFileMetadata('EB001537'),
       };
-      mockFs.readFile.mockResolvedValue(JSON.stringify(existing));
-      mockFs.mkdir.mockResolvedValue(undefined);
-      mockFs.writeFile.mockResolvedValue(undefined);
+      mockFs.readFile.mockImplementation(() => Promise.resolve(JSON.stringify(existing)));
+      mockFs.mkdir.mockImplementation(() => Promise.resolve(undefined));
+      mockFs.writeFile.mockImplementation(() => Promise.resolve(undefined));
 
       const updated = createMockFileMetadata('EB001537', 'new-name', ['new-tag']);
       const result = await metadataStore.updateFileMetadata('EB001537', updated);
@@ -217,9 +221,9 @@ describe('MetadataStore', () => {
     });
 
     it('should create new entry if file does not exist', async () => {
-      mockFs.readFile.mockResolvedValue(JSON.stringify({}));
-      mockFs.mkdir.mockResolvedValue(undefined);
-      mockFs.writeFile.mockResolvedValue(undefined);
+      mockFs.readFile.mockImplementation(() => Promise.resolve(JSON.stringify({})));
+      mockFs.mkdir.mockImplementation(() => Promise.resolve(undefined));
+      mockFs.writeFile.mockImplementation(() => Promise.resolve(undefined));
 
       const newFile = createMockFileMetadata('NEW00001', 'test', []);
       const result = await metadataStore.updateFileMetadata('NEW00001', newFile);

@@ -23,8 +23,27 @@ import { EventEmitter } from 'events';
  */
 
 // Mock modules
-vi.mock('fs');
-vi.mock('child_process');
+vi.mock('fs', () => ({
+  existsSync: vi.fn(),
+  mkdirSync: vi.fn(),
+  readdirSync: vi.fn(),
+  statSync: vi.fn(),
+  unlinkSync: vi.fn(),
+  default: {
+    existsSync: vi.fn(),
+    mkdirSync: vi.fn(),
+    readdirSync: vi.fn(),
+    statSync: vi.fn(),
+    unlinkSync: vi.fn(),
+  },
+}));
+vi.mock('child_process', () => {
+  const spawn = vi.fn();
+  return {
+    spawn,
+    default: { spawn },
+  };
+});
 vi.mock('crypto', async () => {
   const actual = await vi.importActual<typeof crypto>('crypto');
   return {

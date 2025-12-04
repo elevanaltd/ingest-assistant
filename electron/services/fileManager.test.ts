@@ -4,7 +4,12 @@ import * as path from 'path';
 import { FileManager } from './fileManager';
 import { SecurityValidator } from './securityValidator';
 
-vi.mock('fs/promises');
+vi.mock('fs/promises', () => ({
+  readdir: vi.fn(),
+  stat: vi.fn(),
+  rename: vi.fn(),
+  readFile: vi.fn(),
+}));
 
 describe('FileManager', () => {
   let fileManager: FileManager;

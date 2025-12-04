@@ -4,6 +4,12 @@ import { registerCfexTransferHandlers, unregisterCfexTransferHandlers, __resetFo
 import { CfexTransferService } from '../../services/cfexTransfer'
 import { CfexAutoDetect } from '../../services/cfexAutoDetect'
 
+// Mock constructors - use vi.hoisted to ensure mocks are available during hoisting
+const { MockCfexTransferService, MockCfexAutoDetect } = vi.hoisted(() => ({
+  MockCfexTransferService: vi.fn(),
+  MockCfexAutoDetect: vi.fn(),
+}));
+
 // Mock Electron IPC
 vi.mock('electron', () => ({
   ipcMain: {
@@ -15,12 +21,12 @@ vi.mock('electron', () => ({
 
 // Mock CfexTransferService
 vi.mock('../../services/cfexTransfer', () => ({
-  CfexTransferService: vi.fn()
+  CfexTransferService: MockCfexTransferService
 }))
 
 // Mock CfexAutoDetect
 vi.mock('../../services/cfexAutoDetect', () => ({
-  CfexAutoDetect: vi.fn()
+  CfexAutoDetect: MockCfexAutoDetect
 }))
 
 describe('CFEx Transfer IPC Handlers', () => {
@@ -45,10 +51,12 @@ describe('CFEx Transfer IPC Handlers', () => {
     mockService = {
       startTransfer: vi.fn(),
       getTransferState: vi.fn()
-    }
+    };
 
-    // Setup mock implementation - this will be called when getTransferService() runs
-    ;(CfexTransferService as any).mockImplementation(() => mockService)
+    // Reset and configure mock constructor to return instance when called with 'new'
+    MockCfexTransferService.mockReset().mockImplementation(function(this: any) {
+      return mockService;
+    });
   })
 
   afterEach(() => {
@@ -337,7 +345,9 @@ describe('CFEx Transfer IPC Handlers', () => {
         getTransferState: vi.fn()
       }
 
-      ;(CfexTransferService as any).mockImplementation(() => mockService)
+      MockCfexTransferService.mockReset().mockImplementation(function(this: any) {
+        return mockService;
+      })
 
       registerCfexTransferHandlers(mockWindow)
       const handler = (ipcMain.handle as any).mock.calls.find(
@@ -552,7 +562,9 @@ describe('CFEx Transfer IPC Handlers', () => {
         shouldAutoPopulate: vi.fn(),
         getSelectedCard: vi.fn()
       }
-      ;(CfexAutoDetect as any).mockImplementation(() => mockAutoDetect)
+      MockCfexAutoDetect.mockReset().mockImplementation(function(this: any) {
+        return mockAutoDetect;
+      })
     })
 
     test('registers cfex:detect-sources handler on initialization', () => {

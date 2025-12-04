@@ -15,7 +15,11 @@ import { BatchQueueManager } from './batchQueueManager';
  */
 
 // Mock fs/promises for persistence testing
-vi.mock('fs/promises');
+vi.mock('fs/promises', () => ({
+  writeFile: vi.fn(),
+  readFile: vi.fn(),
+  access: vi.fn(),
+}));
 
 describe('BatchQueueManager - clearQueue()', () => {
   let queueManager: BatchQueueManager;
@@ -24,10 +28,10 @@ describe('BatchQueueManager - clearQueue()', () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
-    // Mock fs operations
-    vi.mocked(fs.writeFile).mockResolvedValue(undefined);
-    vi.mocked(fs.readFile).mockResolvedValue('{"items":[],"status":"idle","currentFile":null}');
-    vi.mocked(fs.access).mockResolvedValue(undefined);
+    // Mock fs operations with mockImplementation
+    vi.mocked(fs.writeFile).mockImplementation(() => Promise.resolve(undefined));
+    vi.mocked(fs.readFile).mockImplementation(() => Promise.resolve('{"items":[],"status":"idle","currentFile":null}'));
+    vi.mocked(fs.access).mockImplementation(() => Promise.resolve(undefined));
 
     queueManager = new BatchQueueManager(testQueuePath);
   });
@@ -167,14 +171,14 @@ describe('BatchQueueManager - clearQueue()', () => {
 
       // ARRANGE: Simulate persisted queue from "Folder A"
       const folderAFileIds = Array.from({ length: 100 }, (_, i) => `folderA-file${i}.mov`);
-      vi.mocked(fs.readFile).mockResolvedValueOnce(JSON.stringify({
+      vi.mocked(fs.readFile).mockImplementationOnce(() => Promise.resolve(JSON.stringify({
         items: folderAFileIds.map(fileId => ({
           fileId,
           status: 'pending',
         })),
         status: 'idle',
         currentFile: null,
-      }));
+      })));
 
       // ACT: Create new queue manager (simulates app restart)
       const restoredQueue = new BatchQueueManager(testQueuePath);

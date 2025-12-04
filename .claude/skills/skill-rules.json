@@ -181,40 +181,18 @@
       "type": "domain",
       "autoInject": true,
       "enforcement": "suggest",
-      "priority": "medium",
+      "priority": "low",
       "requiredSkills": [],
-      "description": "Semantic compression of verbose documentation into OCTAVE format achieving 60-80% reduction with 100% decision-logic fidelity. OCTAVE is the native LLM-to-LLM communication format for internal coordination docs (.coord files). Safe to apply liberally for non-user-facing documents (skills, workflows, handoffs, dashboards, technical specs). DO NOT use for README, user guides, or human-facing documentation.",
+      "description": "Semantic compression of verbose documentation into OCTAVE format achieving 60-80% reduction with 100% decision-logic fidelity. Use when converting natural language to OCTAVE, streamlining documentation, or creating semantic density.",
       "promptTriggers": {
         "keywords": [
-          "octave",
-          "OCTAVE",
-          "compress to octave",
+          "OCTAVE compression",
+          "compress to OCTAVE",
           "semantic compression",
           "documentation streamlining",
           "OCTAVE optimization",
           "compress documentation",
-          "semantic density",
-          "create skill",
-          "new skill",
-          "skill file",
-          "refine skill",
-          "update skill",
-          "agent constitution",
-          "create agent",
-          ".oct.md",
-          "workflow spec",
-          "technical spec",
-          "process documentation",
-          "internal documentation",
-          ".coord file",
-          "handoff document",
-          "coordination doc",
-          "verbose doc",
-          "streamline doc",
-          "reduce file size",
-          "make more dense",
-          "compress this",
-          "reformat for agents"
+          "semantic density"
         ]
       }
     },
@@ -392,6 +370,56 @@
           "invoke agent",
           "coordinate with",
           "consult specialist"
+        ]
+      }
+    },
+    "holistic-orchestrator-mode": {
+      "type": "guardrail",
+      "autoInject": true,
+      "enforcement": "required",
+      "priority": "critical",
+      "requiredSkills": ["subagent-rules", "workflow-phases"],
+      "affinity": ["subagent-rules"],
+      "injectionOrder": 5,
+      "description": "HO lane discipline enforcement. Coordination-only tools. Prevents direct code implementation, enforces delegation to specialists. CRITICAL for preventing orchestrator drift into implementation. Blocks Edit/Write/NotebookEdit tools.",
+      "promptTriggers": {
+        "keywords": [
+          "/role ho",
+          "/role holistic-orchestrator",
+          "/role holistic orchestrator",
+          "holistic orchestrator",
+          "holistic-orchestrator",
+          "orchestrator mode",
+          "HO mode",
+          "system coherence",
+          "gap ownership",
+          "cross-boundary",
+          "lane discipline"
+        ]
+      }
+    },
+    "sync-coord": {
+      "type": "domain",
+      "autoInject": true,
+      "enforcement": "suggest",
+      "priority": "medium",
+      "requiredSkills": ["documentation-placement"],
+      "affinity": ["documentation-placement", "workflow-phases"],
+      "description": "Coordination documentation synchronization patterns. Covers .coord/ structure, PROJECT-CONTEXT/APP-CONTEXT updates, worktree-based doc PRs, and 8xx report naming. Use for HO delegation to system-steward for documentation updates.",
+      "promptTriggers": {
+        "keywords": [
+          "sync coord",
+          "sync-coord",
+          ".coord",
+          "PROJECT-CONTEXT",
+          "APP-CONTEXT",
+          "coordination docs",
+          "update documentation",
+          "doc sync",
+          "worktree docs",
+          "8xx report",
+          "report naming",
+          "system-steward docs"
         ]
       }
     }

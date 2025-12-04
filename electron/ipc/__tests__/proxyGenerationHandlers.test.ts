@@ -7,6 +7,11 @@ import {
 } from '../proxyGenerationHandlers'
 import { ProxyOrchestrator } from '../../services/proxyOrchestrator'
 
+// Mock constructor - use vi.hoisted to ensure mock is available during hoisting
+const { MockProxyOrchestrator } = vi.hoisted(() => ({
+  MockProxyOrchestrator: vi.fn(),
+}));
+
 // Mock Electron IPC
 vi.mock('electron', () => ({
   ipcMain: {
@@ -16,9 +21,8 @@ vi.mock('electron', () => ({
   BrowserWindow: vi.fn()
 }))
 
-// Mock ProxyOrchestrator
 vi.mock('../../services/proxyOrchestrator', () => ({
-  ProxyOrchestrator: vi.fn()
+  ProxyOrchestrator: MockProxyOrchestrator
 }))
 
 describe('Proxy Generation IPC Handlers', () => {
@@ -42,10 +46,12 @@ describe('Proxy Generation IPC Handlers', () => {
 
     mockOrchestrator = {
       executeJob: vi.fn()
-    }
+    };
 
-    // Setup mock implementation - this will be called when getOrchestrator() runs
-    ;(ProxyOrchestrator as any).mockImplementation(() => mockOrchestrator)
+    // Reset and configure mock constructor to return instance when called with 'new'
+    MockProxyOrchestrator.mockReset().mockImplementation(function(this: any) {
+      return mockOrchestrator;
+    });
   })
 
   afterEach(() => {

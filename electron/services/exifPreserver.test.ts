@@ -17,7 +17,13 @@ import { EventEmitter } from 'events';
  */
 
 // Mock modules
-vi.mock('child_process');
+vi.mock('child_process', () => {
+  const spawn = vi.fn();
+  return {
+    spawn,
+    default: { spawn },
+  };
+});
 
 describe('ExifPreserver', () => {
   let preserver: ExifPreserver;
@@ -37,7 +43,7 @@ describe('ExifPreserver', () => {
       const mockProcess = new EventEmitter() as any;
       mockProcess.stdout = new EventEmitter();
       mockProcess.stderr = new EventEmitter();
-      vi.mocked(spawn).mockReturnValue(mockProcess);
+      (spawn as ReturnType<typeof vi.fn>).mockReturnValue(mockProcess);
 
       const extractPromise = preserver.extractBatch(['/valid/video.MOV']);
 
@@ -56,7 +62,7 @@ describe('ExifPreserver', () => {
       mockProcess.stdout = new EventEmitter();
       mockProcess.stderr = new EventEmitter();
 
-      vi.mocked(spawn).mockReturnValue(mockProcess);
+      (spawn as ReturnType<typeof vi.fn>).mockReturnValue(mockProcess);
 
       const rawPaths = [
         '/Volumes/EAV_Video_RAW/project/video1.MOV',
@@ -112,7 +118,7 @@ describe('ExifPreserver', () => {
       mockProcess.stdout = new EventEmitter();
       mockProcess.stderr = new EventEmitter();
 
-      vi.mocked(spawn).mockReturnValue(mockProcess);
+      (spawn as ReturnType<typeof vi.fn>).mockReturnValue(mockProcess);
 
       const rawPaths = [
         '/Volumes/EAV_Video_RAW/project/video1.MOV',
@@ -150,7 +156,7 @@ describe('ExifPreserver', () => {
       mockProcess.stdout = new EventEmitter();
       mockProcess.stderr = new EventEmitter();
 
-      vi.mocked(spawn).mockReturnValue(mockProcess);
+      (spawn as ReturnType<typeof vi.fn>).mockReturnValue(mockProcess);
 
       const extractPromise = preserver.extractBatch(['/invalid/path.MOV']);
 
@@ -169,7 +175,7 @@ describe('ExifPreserver', () => {
       // This ensures per-file timestamp preservation (I1 compliance)
       const mockProcesses: any[] = [];
 
-      vi.mocked(spawn).mockImplementation(() => {
+      (spawn as ReturnType<typeof vi.fn>).mockImplementation(() => {
         const mockProcess = new EventEmitter() as any;
         mockProcess.stdout = new EventEmitter();
         mockProcess.stderr = new EventEmitter();
@@ -215,7 +221,7 @@ describe('ExifPreserver', () => {
     it('should write DateTimeOriginal to multiple proxy videos via exiftool', async () => {
       const mockProcesses: any[] = [];
 
-      vi.mocked(spawn).mockImplementation(() => {
+      (spawn as ReturnType<typeof vi.fn>).mockImplementation(() => {
         const mockProcess = new EventEmitter() as any;
         mockProcess.stdout = new EventEmitter();
         mockProcess.stderr = new EventEmitter();
@@ -265,7 +271,7 @@ describe('ExifPreserver', () => {
       mockProcess.stdout = new EventEmitter();
       mockProcess.stderr = new EventEmitter();
 
-      vi.mocked(spawn).mockReturnValue(mockProcess);
+      (spawn as ReturnType<typeof vi.fn>).mockReturnValue(mockProcess);
 
       const proxyDateMap = new Map([
         ['/invalid/proxy.MOV', '2024:11:20 14:30:45']
@@ -288,7 +294,7 @@ describe('ExifPreserver', () => {
       let maxConcurrent = 0;
       let currentConcurrent = 0;
 
-      vi.mocked(spawn).mockImplementation(() => {
+      (spawn as ReturnType<typeof vi.fn>).mockImplementation(() => {
         const mockProcess = new EventEmitter() as any;
         mockProcess.stdout = new EventEmitter();
         mockProcess.stderr = new EventEmitter();
@@ -337,7 +343,7 @@ describe('ExifPreserver', () => {
       // If file #3 fails, files #9-500 should still be attempted
       const processedFiles: string[] = [];
 
-      vi.mocked(spawn).mockImplementation((_cmd, args) => {
+      (spawn as ReturnType<typeof vi.fn>).mockImplementation((_cmd, args) => {
         const mockProcess = new EventEmitter() as any;
         mockProcess.stdout = new EventEmitter();
         mockProcess.stderr = new EventEmitter();
@@ -384,7 +390,7 @@ describe('ExifPreserver', () => {
       mockProcess.stdout = new EventEmitter();
       mockProcess.stderr = new EventEmitter();
 
-      vi.mocked(spawn).mockReturnValue(mockProcess);
+      (spawn as ReturnType<typeof vi.fn>).mockReturnValue(mockProcess);
 
       const rawDateMap = new Map([
         ['/Volumes/EAV_Video_RAW/project/video1.MOV', '2024:11:20 14:30:45'],
@@ -437,7 +443,7 @@ describe('ExifPreserver', () => {
       mockProcess.stdout = new EventEmitter();
       mockProcess.stderr = new EventEmitter();
 
-      vi.mocked(spawn).mockReturnValue(mockProcess);
+      (spawn as ReturnType<typeof vi.fn>).mockReturnValue(mockProcess);
 
       const rawDateMap = new Map([
         ['/Volumes/EAV_Video_RAW/project/video1.MOV', '2024:11:20 14:30:45']
@@ -477,7 +483,7 @@ describe('ExifPreserver', () => {
       mockProcess.stdout = new EventEmitter();
       mockProcess.stderr = new EventEmitter();
 
-      vi.mocked(spawn).mockReturnValue(mockProcess);
+      (spawn as ReturnType<typeof vi.fn>).mockReturnValue(mockProcess);
 
       const rawDateMap = new Map([
         ['/Volumes/EAV_Video_RAW/project/video1.MOV', '2024:11:20 14:30:45']
@@ -519,7 +525,7 @@ describe('ExifPreserver', () => {
       mockProcess.stdout = new EventEmitter();
       mockProcess.stderr = new EventEmitter();
 
-      vi.mocked(spawn).mockReturnValue(mockProcess);
+      (spawn as ReturnType<typeof vi.fn>).mockReturnValue(mockProcess);
 
       const rawDateMap = new Map([
         ['/Volumes/EAV_Video_RAW/project/video1.mov', '2024:11:20 14:30:45']
@@ -554,7 +560,7 @@ describe('ExifPreserver', () => {
       mockProcess.stdout = new EventEmitter();
       mockProcess.stderr = new EventEmitter();
 
-      vi.mocked(spawn).mockReturnValue(mockProcess);
+      (spawn as ReturnType<typeof vi.fn>).mockReturnValue(mockProcess);
 
       const rawDateMap = new Map([
         ['/Volumes/EAV_Video_RAW/project/video1.mp4', '2024:11:20 14:30:45']
@@ -589,7 +595,7 @@ describe('ExifPreserver', () => {
       mockProcess.stdout = new EventEmitter();
       mockProcess.stderr = new EventEmitter();
 
-      vi.mocked(spawn).mockReturnValue(mockProcess);
+      (spawn as ReturnType<typeof vi.fn>).mockReturnValue(mockProcess);
 
       const rawDateMap = new Map([
         ['/Volumes/EAV_Video_RAW/project/video1.m4v', '2024:11:20 14:30:45']
@@ -624,7 +630,7 @@ describe('ExifPreserver', () => {
       mockProcess.stdout = new EventEmitter();
       mockProcess.stderr = new EventEmitter();
 
-      vi.mocked(spawn).mockReturnValue(mockProcess);
+      (spawn as ReturnType<typeof vi.fn>).mockReturnValue(mockProcess);
 
       const rawDateMap = new Map([
         ['/Volumes/EAV_Video_RAW/project/video1.Mov', '2024:11:20 14:30:45']
@@ -674,7 +680,7 @@ describe('ExifPreserver', () => {
       mockVerifyProcess.stderr = new EventEmitter();
 
       let callCount = 0;
-      vi.mocked(spawn).mockImplementation(() => {
+      (spawn as ReturnType<typeof vi.fn>).mockImplementation(() => {
         callCount++;
         if (callCount === 1) return mockExtractProcess; // Extract
         if (callCount === 2) return mockWriteProcess;   // Write
@@ -739,7 +745,7 @@ describe('ExifPreserver', () => {
       mockVerifyProcess.stderr = new EventEmitter();
 
       let callCount = 0;
-      vi.mocked(spawn).mockImplementation(() => {
+      (spawn as ReturnType<typeof vi.fn>).mockImplementation(() => {
         callCount++;
         if (callCount === 1) return mockExtractProcess;
         if (callCount === 2) return mockWriteProcess;
@@ -806,7 +812,7 @@ describe('ExifPreserver', () => {
       mockVerifyProcess.stderr = new EventEmitter();
 
       let callCount = 0;
-      vi.mocked(spawn).mockImplementation(() => {
+      (spawn as ReturnType<typeof vi.fn>).mockImplementation(() => {
         callCount++;
         if (callCount === 1) return mockExtractProcess;
         if (callCount === 2) return mockWriteProcess;

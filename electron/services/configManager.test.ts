@@ -16,7 +16,11 @@ interface ConfigManagerTestInterface {
 }
 
 // Mock fs module
-vi.mock('fs/promises');
+vi.mock('fs/promises', () => ({
+  readFile: vi.fn(),
+  writeFile: vi.fn(),
+  mkdir: vi.fn(),
+}));
 
 // Mock keytar
 vi.mock('keytar', () => ({

@@ -5,480 +5,261 @@ description: Python development best practices including PEP 8 style guidelines,
 
 # Python Best Practices
 
-## Purpose
+PYTHON_MASTERY::[PEP8_COMPLIANCE+TYPE_HINTS+NUMPY_DOCSTRINGS+MODERN_PATTERNS]→PRODUCTION_QUALITY
 
-This skill provides guidance on Python development best practices to ensure code quality, maintainability, and consistency across your Python projects.
+---
 
-## When to Use This Skill
+## STYLE GUIDELINES (PEP 8)
 
-Auto-activates when:
+```octave
+PEP8_RULES::[
+  indentation::4_spaces_per_level,
+  line_length::79_chars_code[72_docstrings],
+  blank_lines::2_between_top_level[1_between_methods],
+  imports::top_of_file[stdlib→third_party→local],
+  naming::[
+    snake_case→functions+variables+modules,
+    PascalCase→classes,
+    UPPER_SNAKE_CASE→constants,
+    _leading_underscore→internal/private
+  ]
+]
 
-- Working with Python files (*.py)
-- Mentions of "python", "best practices", "style guide"
-- Adding type hints or docstrings
-- Code refactoring in Python
+IMPORT_ORGANIZATION::
+  # 1. Standard library
+  import os, sys
+  from pathlib import Path
 
-## Style Guidelines
+  # 2. Third-party
+  import requests, numpy as np
 
-### PEP 8 Compliance
+  # 3. Local
+  from myapp.core import MyClass
 
-Follow PEP 8 style guide for Python code:
-
-- **Indentation**: 4 spaces per indentation level
-- **Line Length**: Maximum 79 characters for code, 72 for docstrings/comments
-- **Blank Lines**: 2 blank lines between top-level definitions, 1 between methods
-- **Imports**: Always at top of file, grouped (stdlib, third-party, local)
-- **Naming Conventions**:
-  - `snake_case` for functions, variables, modules
-  - `PascalCase` for classes
-  - `UPPER_SNAKE_CASE` for constants
-  - Leading underscore `_name` for internal/private
-
-### Import Organization
-
-Always organize imports in this order:
-
-```python
-# 1. Standard library imports
-import os
-import sys
-from pathlib import Path
-
-# 2. Third-party imports
-import requests
-import numpy as np
-
-# 3. Local application imports
-from myapp.core import MyClass
-from myapp.utils import helper_function
+CIRCULAR_IMPORTS::
+  from typing import TYPE_CHECKING
+  if TYPE_CHECKING:
+      from myapp.other import OtherClass  # Type hints only
 ```
 
-Avoid circular imports by using `TYPE_CHECKING`:
+---
 
-```python
-from typing import TYPE_CHECKING
+## TYPE HINTS (CRITICAL)
 
-if TYPE_CHECKING:
-    from myapp.other_module import OtherClass
+```octave
+TYPE_HINT_MANDATE::[
+  ALWAYS::function_signatures[params+return_types],
+  MODERN_SYNTAX::use_|_not_Union[Python_3.10+],
+  GENERIC_BUILTIN::list[str]_not_List[str][Python_3.9+],
+  VARIABLES::annotate_complex_types[dict[str, list[int]]]
+]
 
-def my_function(obj: "OtherClass") -> None:
-    """Function that uses OtherClass only for type hints."""
-    pass
+EXAMPLE_TYPED_FUNCTION::
+  def process_data(
+      items: list[str],
+      max_count: int | None = None,
+      verbose: bool = False
+  ) -> dict[str, int]:
+      """Process items and return counts.
+
+      Parameters
+      ----------
+      items : list[str]
+          List of items to process
+      max_count : int | None, optional
+          Maximum items to process (default: None)
+      verbose : bool, optional
+          Enable verbose output (default: False)
+
+      Returns
+      -------
+      dict[str, int]
+          Dictionary mapping items to counts
+      """
+      result: dict[str, int] = {}
+      for item in items[:max_count]:
+          result[item] = result.get(item, 0) + 1
+          if verbose:
+              print(f"Processed: {item}")
+      return result
 ```
 
-## Type Hints
+---
 
-### Always Use Type Hints
+## DOCSTRINGS (NumPy Style)
 
-Type hints improve code clarity and catch errors early:
+```octave
+DOCSTRING_FORMAT::NumPy_style[
+  summary::one_line_description,
+  extended::detailed_explanation[optional],
+  sections::[Parameters, Returns, Raises, Examples, Notes]
+]
 
-```python
-def process_data(
-    items: list[str],
-    max_count: int | None = None,
-    verbose: bool = False
-) -> dict[str, int]:
-    """Process items and return counts.
+CLASS_DOCSTRING::
+  class DataProcessor:
+      """Process and transform data from various sources.
 
-    Parameters
-    ----------
-    items : list[str]
-        List of items to process
-    max_count : int | None, optional
-        Maximum items to process, by default None
-    verbose : bool, optional
-        Enable verbose output, by default False
+      Parameters
+      ----------
+      source_dir : Path
+          Directory containing source data files
+      cache_enabled : bool, optional
+          Enable result caching (default: True)
 
-    Returns
-    -------
-    dict[str, int]
-        Dictionary mapping items to counts
-    """
-    result: dict[str, int] = {}
-
-    for item in items[:max_count]:
-        result[item] = result.get(item, 0) + 1
-        if verbose:
-            print(f"Processed: {item}")
-
-    return result
+      Attributes
+      ----------
+      source_dir : Path
+          Directory path for source files
+      cache : dict[str, Any]
+          Cache for processed results
+      """
 ```
 
-### Modern Type Syntax (Python 3.10+)
+---
 
-Use modern union syntax with `|` instead of `Union`:
+## ERROR HANDLING
 
-```python
-# Good (Python 3.10+)
-def get_value(key: str) -> int | None:
-    pass
+```octave
+ERROR_PATTERNS::[
+  SPECIFIC_EXCEPTIONS::catch_specific≠bare_except,
+  CONTEXT_MANAGERS::use_with_for_resources[files, locks, connections],
+  CUSTOM_EXCEPTIONS::domain_specific_errors[ValidationError, DataProcessingError]
+]
 
-# Avoid (old style)
-from typing import Union, Optional
-def get_value(key: str) -> Optional[int]:
-    pass
+EXAMPLE_ERROR_HANDLING::
+  # Good - Specific exceptions
+  try:
+      with open(file_path) as f:
+          data = f.read()
+  except FileNotFoundError:
+      logger.error(f"File not found: {file_path}")
+      raise
+  except PermissionError:
+      logger.error(f"Permission denied: {file_path}")
+      raise
+
+  # Avoid - Too broad
+  try:
+      do_something()
+  except:  # Catches everything, including KeyboardInterrupt!
+      pass
 ```
 
-### Generic Types
+---
 
-Use built-in generic types (Python 3.9+):
+## COMMON PATTERNS
 
-```python
-# Good (Python 3.9+)
-def process_list(items: list[str]) -> dict[str, int]:
-    pass
+```octave
+DATACLASSES::[
+  USE_FOR::simple_data_containers,
+  FEATURES::[auto_init, auto_repr, field_defaults, post_init_validation]
+]
 
-# Avoid (old style)
-from typing import List, Dict
-def process_list(items: List[str]) -> Dict[str, int]:
-    pass
+EXAMPLE_DATACLASS::
+  from dataclasses import dataclass, field
+
+  @dataclass
+  class User:
+      username: str
+      email: str
+      age: int
+      tags: list[str] = field(default_factory=list)
+      is_active: bool = True
+
+      def __post_init__(self):
+          if self.age < 0:
+              raise ValueError("Age cannot be negative")
+
+ENUMS::[
+  USE_FOR::fixed_sets_of_values,
+  PATTERN::Enum_or_auto()_for_sequential
+]
+
+PATHLIB::[
+  PREFER::Path_over_os.path,
+  OPERATIONS::[exists(), read_text(), write_text(), /, glob()]
+]
+
+EXAMPLE_PATHLIB::
+  from pathlib import Path
+  data_dir = Path("/data")
+  file_path = data_dir / "input.txt"
+  if file_path.exists():
+      content = file_path.read_text()
+
+COMPREHENSIONS::[
+  USE::clarity+performance,
+  FORMAT::[x for x in items if condition]
+]
 ```
 
-## Docstrings
+---
 
-### NumPy Style Docstrings
+## CODE ORGANIZATION
 
-Use NumPy-style docstrings for consistency:
+```octave
+MODULE_STRUCTURE::[
+  1::docstring[module_purpose],
+  2::imports[stdlib→third_party→local],
+  3::constants[UPPER_SNAKE_CASE],
+  4::exceptions[custom_error_classes],
+  5::functions[public_then_private],
+  6::classes[organized_by_dependency],
+  7::main[if __name__ == "__main__"]
+]
 
-```python
-def calculate_statistics(
-    data: list[float],
-    include_median: bool = True
-) -> dict[str, float]:
-    """Calculate statistical measures for a dataset.
-
-    This function computes mean, standard deviation, and optionally
-    median for the provided dataset.
-
-    Parameters
-    ----------
-    data : list[float]
-        List of numerical values to analyze
-    include_median : bool, optional
-        Whether to calculate median, by default True
-
-    Returns
-    -------
-    dict[str, float]
-        Dictionary containing:
-        - 'mean': arithmetic mean
-        - 'std': standard deviation
-        - 'median': median value (if include_median=True)
-
-    Raises
-    ------
-    ValueError
-        If data is empty or contains non-numeric values
-
-    Examples
-    --------
-    >>> calculate_statistics([1.0, 2.0, 3.0, 4.0, 5.0])
-    {'mean': 3.0, 'std': 1.414, 'median': 3.0}
-
-    Notes
-    -----
-    Standard deviation uses Bessel's correction (ddof=1).
-    """
-    if not data:
-        raise ValueError("Data cannot be empty")
-
-    # Implementation here
-    pass
+AVOID_MAGIC_NUMBERS::[
+  BAD::for attempt in range(3):  # What is 3?
+  GOOD::MAX_RETRIES = 3; for attempt in range(MAX_RETRIES):
+]
 ```
 
-### Class Docstrings
+---
 
-```python
-class DataProcessor:
-    """Process and transform data from various sources.
+## TESTING (pytest)
 
-    This class provides methods for loading, transforming, and
-    validating data from multiple input formats.
+```octave
+PYTEST_PATTERN::[
+  STRUCTURE::test_functions[test_verb_noun],
+  FIXTURES::reusable_setup[@pytest.fixture],
+  ASSERTIONS::pytest.raises[expected_exceptions],
+  ORGANIZATION::tests/mirror_src/structure
+]
 
-    Parameters
-    ----------
-    source_dir : Path
-        Directory containing source data files
-    cache_enabled : bool, optional
-        Enable result caching, by default True
+EXAMPLE_TEST::
+  import pytest
+  from myapp.processor import DataProcessor
 
-    Attributes
-    ----------
-    source_dir : Path
-        Directory path for source files
-    cache : dict[str, Any]
-        Cache for processed results
+  def test_process_valid_data():
+      processor = DataProcessor()
+      result = processor.process([1, 2, 3])
+      assert result == [2, 4, 6]
 
-    Examples
-    --------
-    >>> processor = DataProcessor(Path("/data"))
-    >>> results = processor.process_files()
-    """
+  def test_process_empty_raises():
+      processor = DataProcessor()
+      with pytest.raises(ValueError):
+          processor.process([])
 
-    def __init__(self, source_dir: Path, cache_enabled: bool = True):
-        """Initialize the DataProcessor."""
-        self.source_dir = source_dir
-        self.cache: dict[str, Any] = {} if cache_enabled else None
+  @pytest.fixture
+  def sample_data():
+      return [1, 2, 3, 4, 5]
 ```
 
-## Error Handling
+---
 
-### Specific Exception Types
+## KEY PRINCIPLES
 
-Use specific exception types, not bare `except`:
-
-```python
-# Good
-try:
-    with open(file_path) as f:
-        data = f.read()
-except FileNotFoundError:
-    logger.error(f"File not found: {file_path}")
-    raise
-except PermissionError:
-    logger.error(f"Permission denied: {file_path}")
-    raise
-
-# Avoid
-try:
-    with open(file_path) as f:
-        data = f.read()
-except:  # Too broad!
-    pass
+```octave
+PYTHON_PHILOSOPHY::[
+  1::PEP8_compliance→consistent_style,
+  2::type_hints→function_signatures_always,
+  3::NumPy_docstrings→all_public_functions,
+  4::specific_exceptions→not_bare_except,
+  5::pathlib→over_os.path,
+  6::dataclasses+enums→structured_data,
+  7::comprehensions→readable_transformations,
+  8::named_constants→no_magic_numbers,
+  9::pytest→all_testing,
+  10::modern_syntax→Python_3.9+_features
+]
 ```
-
-### Context Managers
-
-Always use context managers for resources:
-
-```python
-# Good
-with open(file_path) as f:
-    content = f.read()
-
-# Avoid
-f = open(file_path)
-content = f.read()
-f.close()  # Easy to forget!
-```
-
-### Custom Exceptions
-
-Define custom exceptions for domain-specific errors:
-
-```python
-class ValidationError(Exception):
-    """Raised when data validation fails."""
-    pass
-
-class DataProcessingError(Exception):
-    """Raised when data processing encounters an error."""
-
-    def __init__(self, message: str, item_id: str):
-        super().__init__(message)
-        self.item_id = item_id
-```
-
-## Common Patterns
-
-### Dataclasses for Data Structures
-
-Use `dataclasses` for simple data containers:
-
-```python
-from dataclasses import dataclass, field
-
-@dataclass
-class User:
-    """User profile information."""
-
-    username: str
-    email: str
-    age: int
-    tags: list[str] = field(default_factory=list)
-    is_active: bool = True
-
-    def __post_init__(self):
-        """Validate fields after initialization."""
-        if self.age < 0:
-            raise ValueError("Age cannot be negative")
-```
-
-### Enums for Fixed Sets
-
-Use `Enum` for fixed sets of values:
-
-```python
-from enum import Enum, auto
-
-class Status(Enum):
-    """Processing status values."""
-
-    PENDING = auto()
-    PROCESSING = auto()
-    COMPLETED = auto()
-    FAILED = auto()
-
-# Usage
-current_status = Status.PENDING
-if current_status == Status.COMPLETED:
-    print("Done!")
-```
-
-### Pathlib for File Operations
-
-Use `pathlib.Path` instead of `os.path`:
-
-```python
-from pathlib import Path
-
-# Good
-data_dir = Path("/data")
-file_path = data_dir / "input.txt"
-
-if file_path.exists():
-    content = file_path.read_text()
-
-# Avoid
-import os
-data_dir = "/data"
-file_path = os.path.join(data_dir, "input.txt")
-
-if os.path.exists(file_path):
-    with open(file_path) as f:
-        content = f.read()
-```
-
-### List Comprehensions
-
-Use comprehensions for clarity and performance:
-
-```python
-# Good
-squared = [x**2 for x in range(10) if x % 2 == 0]
-
-# Avoid
-squared = []
-for x in range(10):
-    if x % 2 == 0:
-        squared.append(x**2)
-```
-
-## Code Organization
-
-### Module Structure
-
-Organize modules with clear sections:
-
-```python
-"""Module for data processing utilities.
-
-This module provides functions for loading, transforming, and
-validating data from various sources.
-"""
-
-# Standard library imports
-import os
-import sys
-from pathlib import Path
-
-# Third-party imports
-import requests
-import pandas as pd
-
-# Local imports
-from myapp.core import BaseProcessor
-from myapp.utils import validate_input
-
-# Constants
-MAX_RETRIES = 3
-DEFAULT_TIMEOUT = 30
-
-# Exceptions
-class ProcessingError(Exception):
-    """Raised when processing fails."""
-    pass
-
-# Functions
-def load_data(source: str) -> pd.DataFrame:
-    """Load data from source."""
-    pass
-
-# Classes
-class DataProcessor(BaseProcessor):
-    """Process and validate data."""
-    pass
-
-# Module initialization
-if __name__ == "__main__":
-    # CLI entry point
-    main()
-```
-
-### Avoid Magic Numbers
-
-Use named constants instead of magic numbers:
-
-```python
-# Good
-MAX_RETRIES = 3
-TIMEOUT_SECONDS = 30
-
-def fetch_data(url: str) -> dict:
-    for attempt in range(MAX_RETRIES):
-        response = requests.get(url, timeout=TIMEOUT_SECONDS)
-        if response.status_code == 200:
-            return response.json()
-
-# Avoid
-def fetch_data(url: str) -> dict:
-    for attempt in range(3):  # What is 3?
-        response = requests.get(url, timeout=30)  # Why 30?
-        if response.status_code == 200:
-            return response.json()
-```
-
-## Testing
-
-### Use pytest for Testing
-
-```python
-import pytest
-from myapp.processor import DataProcessor
-
-def test_process_valid_data():
-    """Test processing with valid input."""
-    processor = DataProcessor()
-    result = processor.process([1, 2, 3])
-    assert result == [2, 4, 6]
-
-def test_process_empty_data():
-    """Test processing with empty input."""
-    processor = DataProcessor()
-    with pytest.raises(ValueError):
-        processor.process([])
-
-@pytest.fixture
-def sample_data():
-    """Provide sample data for tests."""
-    return [1, 2, 3, 4, 5]
-
-def test_with_fixture(sample_data):
-    """Test using fixture."""
-    processor = DataProcessor()
-    result = processor.process(sample_data)
-    assert len(result) == len(sample_data)
-```
-
-## Key Takeaways
-
-1. Follow PEP 8 style guidelines consistently
-2. Always use type hints for function signatures
-3. Write NumPy-style docstrings for all public functions/classes
-4. Use specific exception types, not bare `except`
-5. Prefer `pathlib.Path` over `os.path`
-6. Use dataclasses and enums for structured data
-7. Organize imports: stdlib → third-party → local
-8. Avoid magic numbers, use named constants
-9. Write tests using pytest
-10. Use modern Python syntax (3.9+)
