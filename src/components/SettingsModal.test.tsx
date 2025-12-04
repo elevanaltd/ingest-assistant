@@ -1,5 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { screen, fireEvent, waitFor } from '@testing-library/react';
+import { screen, fireEvent, waitFor, act } from '@testing-library/react';
+import { flushSync } from 'react-dom';
+import userEvent from '@testing-library/user-event';
 import { renderWithProviders } from '../test/test-utils'; // Phase 5.2: Use renderWithProviders for context
 import { SettingsModal } from './SettingsModal';
 import type { LexiconConfig } from '../types';
@@ -424,15 +426,19 @@ describe('SettingsModal', () => {
       const modelSelect = selects[1]; // Second select is Model
       const apiKeyInput = screen.getByPlaceholderText(/Enter API key|Leave empty|saved in Keychain/i);
 
-      fireEvent.change(providerSelect, { target: { value: 'openai' } });
+      flushSync(() => {
+        fireEvent.change(providerSelect, { target: { value: 'openai' } });
+      });
 
       // Wait for models to reload after provider change
       await waitFor(() => {
         expect(window.electronAPI.getAIModels).toHaveBeenCalledWith('openai');
       });
 
-      fireEvent.change(modelSelect, { target: { value: 'openai/gpt-4' } });
-      fireEvent.change(apiKeyInput, { target: { value: 'sk-test-key' } });
+      flushSync(() => {
+        fireEvent.change(modelSelect, { target: { value: 'openai/gpt-4' } });
+        fireEvent.change(apiKeyInput, { target: { value: 'sk-test-key' } });
+      });
 
       const saveButton = screen.getByText('Save AI Config');
       fireEvent.click(saveButton);
@@ -636,14 +642,20 @@ describe('SettingsModal', () => {
       const providerSelect = selects[0];
 
       // Quickly switch from openrouter -> openai (both requests in flight)
-      fireEvent.change(providerSelect, { target: { value: 'openrouter' } });
-      fireEvent.change(providerSelect, { target: { value: 'openai' } });
+      flushSync(() => {
+        fireEvent.change(providerSelect, { target: { value: 'openrouter' } });
+        fireEvent.change(providerSelect, { target: { value: 'openai' } });
+      });
 
       // Resolve openrouter AFTER switching to openai (stale response)
-      openRouterResolve?.(openRouterModels);
+      await act(async () => {
+        openRouterResolve?.(openRouterModels);
+      });
 
       // Resolve openai (current provider)
-      openAIResolve?.(openAIModels);
+      await act(async () => {
+        openAIResolve?.(openAIModels);
+      });
 
       // Final state should show OpenAI models (not stale OpenRouter models)
       await waitFor(() => {
@@ -819,6 +831,11 @@ describe('SettingsModal', () => {
       const browseButtons = screen.getAllByRole('button', { name: /browse/i });
       fireEvent.click(browseButtons[0]); // Click first Browse button (source)
 
+      // Wait for selectFolder to be called AND for the UI to update
+      await waitFor(() => {
+        expect(window.electronAPI.selectFolder).toHaveBeenCalled();
+      });
+
       await waitFor(() => {
         expect(screen.getByDisplayValue('/Volumes/NewCard/DCIM')).toBeInTheDocument();
       });
@@ -835,7 +852,14 @@ describe('SettingsModal', () => {
 
       // Modify a field
       const sourceInput = screen.getByLabelText(/default source folder/i);
-      fireEvent.change(sourceInput, { target: { value: '/Volumes/NewSource/' } });
+      flushSync(() => {
+        fireEvent.change(sourceInput, { target: { value: '/Volumes/NewSource/' } });
+      });
+
+      // Wait for the input to reflect the new value
+      await waitFor(() => {
+        expect(sourceInput).toHaveValue('/Volumes/NewSource/');
+      });
 
       const saveButton = screen.getByText('Save CFEx Settings');
       fireEvent.click(saveButton);
@@ -926,9 +950,18 @@ describe('SettingsModal', () => {
       const photosInput = screen.getByLabelText(/default photos destination/i);
       const videosInput = screen.getByLabelText(/default raw videos destination/i);
 
-      fireEvent.change(sourceInput, { target: { value: '' } });
-      fireEvent.change(photosInput, { target: { value: '' } });
-      fireEvent.change(videosInput, { target: { value: '' } });
+      flushSync(() => {
+        fireEvent.change(sourceInput, { target: { value: '' } });
+        fireEvent.change(photosInput, { target: { value: '' } });
+        fireEvent.change(videosInput, { target: { value: '' } });
+      });
+
+      // Wait for inputs to reflect the changes
+      await waitFor(() => {
+        expect(sourceInput).toHaveValue('');
+        expect(photosInput).toHaveValue('');
+        expect(videosInput).toHaveValue('');
+      });
 
       // Try to save
       const saveButton = screen.getByText('Save CFEx Settings');
@@ -1098,12 +1131,16 @@ describe('SettingsModal', () => {
       expect(metadataWriteCheckbox.checked).toBe(false);
 
       // Click toggles
-      fireEvent.click(aiAutoAnalyzeCheckbox);
-      fireEvent.click(metadataWriteCheckbox);
+      flushSync(() => {
+        fireEvent.click(aiAutoAnalyzeCheckbox);
+        fireEvent.click(metadataWriteCheckbox);
+      });
 
       // Should be checked now
-      expect(aiAutoAnalyzeCheckbox.checked).toBe(true);
-      expect(metadataWriteCheckbox.checked).toBe(true);
+      await waitFor(() => {
+        expect(aiAutoAnalyzeCheckbox.checked).toBe(true);
+        expect(metadataWriteCheckbox.checked).toBe(true);
+      });
     });
 
     it('should save toggle state when Save Ingestion Settings clicked', async () => {
@@ -1117,11 +1154,20 @@ describe('SettingsModal', () => {
 
       // Enable AI Auto-Analyze
       const aiAutoAnalyzeCheckbox = screen.getByLabelText(/AI Auto-Analyze after transfer/i);
-      fireEvent.click(aiAutoAnalyzeCheckbox);
 
       // Enable Metadata Write
       const metadataWriteCheckbox = screen.getByLabelText(/Write metadata to files/i);
-      fireEvent.click(metadataWriteCheckbox);
+
+      flushSync(() => {
+        fireEvent.click(aiAutoAnalyzeCheckbox);
+        fireEvent.click(metadataWriteCheckbox);
+      });
+
+      // Wait for checkboxes to reflect the changes
+      await waitFor(() => {
+        expect((aiAutoAnalyzeCheckbox as HTMLInputElement).checked).toBe(true);
+        expect((metadataWriteCheckbox as HTMLInputElement).checked).toBe(true);
+      });
 
       // Save
       const saveButton = screen.getByText('Save Ingestion Settings');
@@ -1326,7 +1372,14 @@ describe('SettingsModal', () => {
 
       // Enable AI Auto-Analyze toggle
       const aiToggle = screen.getByLabelText(/AI Auto-Analyze after transfer/i);
-      fireEvent.click(aiToggle);
+      flushSync(() => {
+        fireEvent.click(aiToggle);
+      });
+
+      // Wait for checkbox to reflect the change
+      await waitFor(() => {
+        expect((aiToggle as HTMLInputElement).checked).toBe(true);
+      });
 
       // Save
       const saveButton = screen.getByText('Save Ingestion Settings');
@@ -1718,8 +1771,14 @@ describe('SettingsModal', () => {
 
       // Change proxy format
       const proxySelect = screen.getByLabelText(/Proxy Format/i) as HTMLSelectElement;
-      fireEvent.change(proxySelect, { target: { value: '4k-prores-proxy' } });
-      expect(proxySelect.value).toBe('4k-prores-proxy');
+      flushSync(() => {
+        fireEvent.change(proxySelect, { target: { value: '4k-prores-proxy' } });
+      });
+
+      // Wait for the select to reflect the new value
+      await waitFor(() => {
+        expect(proxySelect.value).toBe('4k-prores-proxy');
+      });
 
       // Save settings
       const saveButton = screen.getByText('Save Ingestion Settings');
@@ -1924,15 +1983,19 @@ describe('SettingsModal', () => {
       const modelSelect = selects[1]; // Second select is Model
       const apiKeyInput = screen.getByPlaceholderText(/Enter API key|Leave empty/i);
 
-      fireEvent.change(providerSelect, { target: { value: 'openai' } });
+      flushSync(() => {
+        fireEvent.change(providerSelect, { target: { value: 'openai' } });
+      });
 
       // Wait for models to reload after provider change
       await waitFor(() => {
         expect(window.electronAPI.getAIModels).toHaveBeenCalledWith('openai');
       });
 
-      fireEvent.change(modelSelect, { target: { value: 'openai/gpt-4' } });
-      fireEvent.change(apiKeyInput, { target: { value: 'test-api-key' } });
+      await act(async () => {
+        fireEvent.change(modelSelect, { target: { value: 'openai/gpt-4' } });
+        fireEvent.change(apiKeyInput, { target: { value: 'test-api-key' } });
+      });
 
       // Save AI config
       const saveButton = screen.getByText('Save AI Config');
