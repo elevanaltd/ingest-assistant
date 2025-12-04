@@ -25,7 +25,7 @@ import { AppProviders } from '../providers/AppProviders';
  * ```
  */
 export function renderWithProviders(
-  ui: ReactElement,
+  ui: ReactElement<any>,
   options?: Omit<RenderOptions, 'wrapper'>
 ) {
   return render(ui, { wrapper: AppProviders, ...options });

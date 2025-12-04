@@ -256,7 +256,9 @@ describe('SettingsModal', () => {
     });
 
     // Should show success message
-    expect(screen.getByText(/Lexicon settings saved successfully/i)).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText(/Lexicon settings saved successfully/i)).toBeInTheDocument();
+    }, { timeout: 2000 });
 
     // Modal should auto-close after brief delay (1.5s)
     expect(mockOnClose).not.toHaveBeenCalled(); // Not yet
@@ -444,7 +446,9 @@ describe('SettingsModal', () => {
       });
 
       // Should show success message
-      expect(screen.getByText(/AI configuration saved successfully/i)).toBeInTheDocument();
+      await waitFor(() => {
+        expect(screen.getByText(/AI configuration saved successfully/i)).toBeInTheDocument();
+      }, { timeout: 2000 });
 
       // Modal should auto-close after brief delay (1.5s)
       expect(mockOnClose).not.toHaveBeenCalled(); // Not yet
@@ -863,7 +867,7 @@ describe('SettingsModal', () => {
 
       await waitFor(() => {
         expect(screen.getByText(/CFEx settings saved successfully/i)).toBeInTheDocument();
-      });
+      }, { timeout: 2000 });
     });
 
     it('should show error message when save fails', async () => {

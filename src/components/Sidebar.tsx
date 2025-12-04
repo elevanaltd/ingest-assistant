@@ -1,5 +1,5 @@
 import { useRef, useEffect, useState } from 'react';
-import { FixedSizeList, type ListChildComponentProps } from 'react-window';
+import { List, type RowComponentProps, type ListImperativeAPI } from 'react-window';
 import type { FileMetadata } from '../types';
 import './Sidebar.css';
 
@@ -25,14 +25,14 @@ export function Sidebar({
 }: SidebarProps) {
   const hasFiles = files.length > 0;
   const isValidIndex = currentFileIndex >= 0 && currentFileIndex < files.length;
-  const listRef = useRef<FixedSizeList>(null);
+  const listRef = useRef<ListImperativeAPI>(null);
   const useVirtualScrolling = files.length > VIRTUAL_SCROLL_THRESHOLD;
   const [lastSelectedIndex, setLastSelectedIndex] = useState<number | null>(null);
 
   // Auto-scroll to selected item when currentFileIndex changes
   useEffect(() => {
     if (listRef.current && isValidIndex && useVirtualScrolling) {
-      listRef.current.scrollToItem(currentFileIndex, 'smart');
+      listRef.current.scrollToRow({ index: currentFileIndex, align: 'smart' });
     }
   }, [currentFileIndex, isValidIndex, useVirtualScrolling]);
 
@@ -145,20 +145,19 @@ export function Sidebar({
       )}
 
       {hasFiles && useVirtualScrolling && (
-        <FixedSizeList
-          ref={listRef}
-          height={600} // Height of the scrollable area
-          itemCount={files.length}
-          itemSize={ITEM_HEIGHT}
-          width="100%"
+        <List
+          listRef={listRef}
+          defaultHeight={600} // Height of the scrollable area
+          rowCount={files.length}
+          rowHeight={ITEM_HEIGHT}
+          rowProps={{}}
           className="sidebar-file-list"
-        >
-          {({ index, style }: ListChildComponentProps) => (
+          rowComponent={({ index, style }: RowComponentProps) => (
             <div style={style}>
               {renderFileItem(files[index], index)}
             </div>
           )}
-        </FixedSizeList>
+        />
       )}
 
       {hasFiles && !useVirtualScrolling && (
