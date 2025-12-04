@@ -5,28 +5,29 @@ import type { FileMetadata } from '../types';
 
 // Mock react-window for testing environment (jsdom doesn't support all layout calculations)
 vi.mock('react-window', () => {
-  interface FixedSizeListProps {
-    children: (props: { index: number; style: React.CSSProperties }) => React.ReactNode;
-    itemCount: number;
-    itemSize: number;
-    height: number;
+  interface ListProps {
+    rowComponent: (props: { index: number; style: React.CSSProperties }) => React.ReactNode;
+    rowCount: number;
+    rowHeight: number;
+    defaultHeight: number;
     className?: string;
+    rowProps?: object;
   }
 
   return {
-    FixedSizeList: ({ children, itemCount, itemSize, height, className }: FixedSizeListProps) => {
+    List: ({ rowComponent, rowCount, rowHeight, defaultHeight, className }: ListProps) => {
       // Render a subset of items for testing (simulate virtual scrolling behavior)
-      const visibleItems = Math.min(itemCount, Math.ceil(height / itemSize));
+      const visibleItems = Math.min(rowCount, Math.ceil(defaultHeight / rowHeight));
       return (
-        <div className={className} style={{ height, overflow: 'auto' }}>
+        <div className={className} style={{ height: defaultHeight, overflow: 'auto' }}>
           {Array.from({ length: visibleItems }, (_, index) => {
             const style = {
               position: 'absolute' as const,
-              top: index * itemSize,
-              height: itemSize,
+              top: index * rowHeight,
+              height: rowHeight,
               width: '100%'
             };
-            return children({ index, style });
+            return rowComponent({ index, style });
           })}
         </div>
       );
