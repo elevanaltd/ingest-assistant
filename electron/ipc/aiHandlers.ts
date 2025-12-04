@@ -87,6 +87,7 @@ export function registerAiHandlers(
   // ============================================================================
   // ai:analyze-file - Single file AI analysis with security validation
   // ============================================================================
+  ipcMain.removeHandler('ai:analyze-file');
   ipcMain.handle('ai:analyze-file', async (_event, filePath: string) => {
     try {
       if (!aiService) {
@@ -133,6 +134,7 @@ export function registerAiHandlers(
   // ============================================================================
   // ai:batch-process - Multi-file AI batch processing with rate limiting
   // ============================================================================
+  ipcMain.removeHandler('ai:batch-process');
   ipcMain.handle('ai:batch-process', async (_event, fileIds: string[]) => {
     try {
       // Security: Validate input schema
@@ -250,6 +252,7 @@ export function registerAiHandlers(
   // ============================================================================
   // ai:is-configured - Check if AI service configured
   // ============================================================================
+  ipcMain.removeHandler('ai:is-configured');
   ipcMain.handle('ai:is-configured', async () => {
     return aiService !== null;
   });
@@ -257,6 +260,7 @@ export function registerAiHandlers(
   // ============================================================================
   // ai:get-config - Get AI config for UI (with masked API key)
   // ============================================================================
+  ipcMain.removeHandler('ai:get-config');
   ipcMain.handle('ai:get-config', async () => {
     return configManager.getAIConfigForUI();
   });
@@ -264,6 +268,7 @@ export function registerAiHandlers(
   // ============================================================================
   // ai:update-config - Update AI configuration + hot reload
   // ============================================================================
+  ipcMain.removeHandler('ai:update-config');
   ipcMain.handle('ai:update-config', async (_event, config: { provider: 'openai' | 'anthropic' | 'openrouter'; model: string; apiKey: string }) => {
     try {
       console.log('[ai:update-config] Received config update:', {
@@ -326,6 +331,7 @@ export function registerAiHandlers(
   // ============================================================================
   // ai:test-connection - Test AI provider connection
   // ============================================================================
+  ipcMain.removeHandler('ai:test-connection');
   ipcMain.handle('ai:test-connection', async (_event, provider: 'openai' | 'anthropic' | 'openrouter', model: string, apiKey: string) => {
     try {
       return await configManager.testAIConnection(provider, model, apiKey);
@@ -341,6 +347,7 @@ export function registerAiHandlers(
   // ============================================================================
   // ai:test-saved-connection - Test AI connection with saved Keychain key
   // ============================================================================
+  ipcMain.removeHandler('ai:test-saved-connection');
   ipcMain.handle('ai:test-saved-connection', async () => {
     try {
       return await configManager.testSavedAIConnection();
@@ -356,6 +363,7 @@ export function registerAiHandlers(
   // ============================================================================
   // ai:get-models - Get available models for provider
   // ============================================================================
+  ipcMain.removeHandler('ai:get-models');
   ipcMain.handle('ai:get-models', async (_event, provider: string) => {
     try {
       return await configManager.getAIModels(provider);

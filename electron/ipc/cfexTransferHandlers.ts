@@ -199,6 +199,7 @@ export function registerCfexTransferHandlers(mainWindow: BrowserWindow) {
    * - cfex:file-complete - File completion notifications
    * - cfex:validation-result - Validation phase results
    */
+  ipcMain.removeHandler('cfex:start-transfer');
   ipcMain.handle('cfex:start-transfer', async (event, config) => {
     try {
       // Validate config schema
@@ -296,6 +297,7 @@ export function registerCfexTransferHandlers(mainWindow: BrowserWindow) {
    *   error?: Error
    * }
    */
+  ipcMain.removeHandler('cfex:get-transfer-state');
   ipcMain.handle('cfex:get-transfer-state', async (_event) => {
     return transferState
   })
@@ -313,6 +315,7 @@ export function registerCfexTransferHandlers(mainWindow: BrowserWindow) {
    *   selectedCard: string | undefined
    * }
    */
+  ipcMain.removeHandler('cfex:detect-sources');
   ipcMain.handle('cfex:detect-sources', async (_event) => {
     const service = getAutoDetectService()
 
@@ -358,6 +361,7 @@ export function registerCfexTransferHandlers(mainWindow: BrowserWindow) {
    *   success: boolean  // true if transfer was in progress, false otherwise
    * }
    */
+  ipcMain.removeHandler('cfex:cancel');
   ipcMain.handle('cfex:cancel', async (_event) => {
     const service = getTransferService()
     const result = service.cancel()

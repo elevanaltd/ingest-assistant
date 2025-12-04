@@ -63,6 +63,7 @@ export function registerBatchHandlers(
   } = dependencies;
 
   // Batch operations (Issue #24)
+  ipcMain.removeHandler('batch:start');
   ipcMain.handle('batch:start', async (_event, fileIds: string[]) => {
     try {
       // Security: Validate input schema
@@ -274,6 +275,7 @@ export function registerBatchHandlers(
     }
   });
 
+  ipcMain.removeHandler('batch:cancel');
   ipcMain.handle('batch:cancel', async () => {
     try {
       const result = batchQueueManager.cancel();
@@ -284,6 +286,7 @@ export function registerBatchHandlers(
     }
   });
 
+  ipcMain.removeHandler('batch:get-status');
   ipcMain.handle('batch:get-status', async () => {
     try {
       return batchQueueManager.getStatus();

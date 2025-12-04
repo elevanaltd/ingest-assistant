@@ -108,9 +108,10 @@ describe('IPC handler re-registration safety', () => {
       securityValidator: {} as any,
       fileManager: {} as any,
       configManager: {} as any,
-      aiProcessRateLimiter: {} as any,
+      batchProcessRateLimiter: {} as any,
       getCurrentFolderPath: () => null,
-      getMetadataStoreForFolder: vi.fn()
+      getMetadataStoreForFolder: vi.fn(),
+      normalizeFilePath: vi.fn()
     };
 
     registerAiHandlers(mockWindow, mockDeps);
@@ -128,7 +129,19 @@ describe('IPC handler re-registration safety', () => {
     });
 
     vi.clearAllMocks();
-    registerAiHandlers(mockWindow, mockDeps);
+
+    const mockDeps2 = {
+      aiService: null,
+      securityValidator: {} as any,
+      fileManager: {} as any,
+      configManager: {} as any,
+      batchProcessRateLimiter: {} as any,
+      getCurrentFolderPath: () => null,
+      getMetadataStoreForFolder: vi.fn(),
+      normalizeFilePath: vi.fn()
+    };
+
+    registerAiHandlers(mockWindow, mockDeps2);
 
     const secondRemoveCalls = (ipcMain.removeHandler as any).mock.calls;
     expect(secondRemoveCalls.length).toBeGreaterThan(0);
@@ -175,7 +188,8 @@ describe('IPC handler re-registration safety', () => {
 
     const mockDeps = {
       configManager: {} as any,
-      setAiService: vi.fn()
+      getCurrentFolderPath: () => null,
+      getMetadataStore: () => null
     };
 
     registerConfigHandlers(mockDeps);
@@ -193,7 +207,14 @@ describe('IPC handler re-registration safety', () => {
     });
 
     vi.clearAllMocks();
-    registerConfigHandlers(mockDeps);
+
+    const mockDeps2 = {
+      configManager: {} as any,
+      getCurrentFolderPath: () => null,
+      getMetadataStore: () => null
+    };
+
+    registerConfigHandlers(mockDeps2);
 
     const secondRemoveCalls = (ipcMain.removeHandler as any).mock.calls;
     expect(secondRemoveCalls.length).toBeGreaterThan(0);

@@ -93,6 +93,7 @@ export function registerFileHandlers(
   // ============================================================================
   // file:select-folder - Open folder dialog and set security boundary
   // ============================================================================
+  ipcMain.removeHandler('file:select-folder');
   ipcMain.handle('file:select-folder', async (_event, startPath?: string) => {
     console.log('[fileHandlers] file:select-folder - Opening folder dialog', { startPath });
     const result = await dialog.showOpenDialog({
@@ -132,6 +133,7 @@ export function registerFileHandlers(
   // ============================================================================
   // Read file as base64 data URL for display in renderer
   // Note: For videos, returns file:// URL to avoid loading large files into memory
+  ipcMain.removeHandler('file:read-as-data-url');
   ipcMain.handle('file:read-as-data-url', async (_event, filePath: string) => {
     try {
       // Security: Validate path (prevents path traversal)
@@ -240,6 +242,7 @@ export function registerFileHandlers(
   // file:load-files - Load all files in selected folder with metadata
   // ============================================================================
   // CRITICAL-1 FIX: Remove folderPath parameter (renderer cannot override security boundary)
+  ipcMain.removeHandler('file:load-files');
   ipcMain.handle('file:load-files', async () => {
     try {
       if (!currentFolderPath) {
@@ -303,6 +306,7 @@ export function registerFileHandlers(
   // ============================================================================
   // file:list-range - Paginated file listing (issue #19)
   // ============================================================================
+  ipcMain.removeHandler('file:list-range');
   ipcMain.handle('file:list-range', async (_event, startIndex: number, pageSize: number) => {
     try {
       // Validate inputs
@@ -366,6 +370,7 @@ export function registerFileHandlers(
   // ============================================================================
   // file:rename - Rename file and update metadata
   // ============================================================================
+  ipcMain.removeHandler('file:rename');
   ipcMain.handle('file:rename', async (_event, fileId: string, shotName: string, currentPath: string, structured?: { location?: string; subject?: string; action?: string; shotType?: string }) => {
     try {
       console.log('[fileHandlers] file:rename called with:', { fileId, shotName, structured });
@@ -471,6 +476,7 @@ export function registerFileHandlers(
   // ============================================================================
   // file:update-metadata - Update file metadata (keywords)
   // ============================================================================
+  ipcMain.removeHandler('file:update-metadata');
   ipcMain.handle('file:update-metadata', async (_event, fileId: string, metadata: string[]) => {
     try {
       console.log('[fileHandlers] file:update-metadata called with fileId:', fileId, 'metadata:', metadata);
@@ -548,6 +554,7 @@ export function registerFileHandlers(
   // ============================================================================
   // file:update-structured-metadata - Update structured naming components
   // ============================================================================
+  ipcMain.removeHandler('file:update-structured-metadata');
   ipcMain.handle('file:update-structured-metadata', async (_event, fileId: string, structured: { location: string; subject: string; action?: string; shotType: string }, filePath?: string, fileType?: 'image' | 'video') => {
     try {
       console.log('[fileHandlers] file:update-structured-metadata called with:', { fileId, structured, filePath, fileType });

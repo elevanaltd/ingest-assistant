@@ -35,6 +35,7 @@ export function registerConfigHandlers(
   } = dependencies;
 
   // Config operations
+  ipcMain.removeHandler('config:load');
   ipcMain.handle('config:load', async () => {
     try {
       return await configManager.loadConfig();
@@ -44,6 +45,7 @@ export function registerConfigHandlers(
     }
   });
 
+  ipcMain.removeHandler('config:save');
   ipcMain.handle('config:save', async (_event, config: AppConfig) => {
     try {
       return await configManager.saveConfig(config);
@@ -53,6 +55,7 @@ export function registerConfigHandlers(
     }
   });
 
+  ipcMain.removeHandler('config:get-lexicon');
   ipcMain.handle('config:get-lexicon', async () => {
     try {
       return await configManager.getLexicon();
@@ -62,6 +65,7 @@ export function registerConfigHandlers(
     }
   });
 
+  ipcMain.removeHandler('config:get-shot-types');
   ipcMain.handle('config:get-shot-types', async () => {
     try {
       // Load config first to ensure it's cached
@@ -74,6 +78,7 @@ export function registerConfigHandlers(
   });
 
   // Lexicon operations (UI format)
+  ipcMain.removeHandler('lexicon:load');
   ipcMain.handle('lexicon:load', async () => {
     try {
       const lexicon = await configManager.getLexicon();
@@ -84,6 +89,7 @@ export function registerConfigHandlers(
     }
   });
 
+  ipcMain.removeHandler('lexicon:save');
   ipcMain.handle('lexicon:save', async (_event, uiConfig: LexiconConfig) => {
     try {
       const lexicon = convertToYAMLFormat(uiConfig);
@@ -96,6 +102,7 @@ export function registerConfigHandlers(
   });
 
   // Folder completion operations (Phase C)
+  ipcMain.removeHandler('folder:set-completed');
   ipcMain.handle('folder:set-completed', async (_event, completed: boolean) => {
     try {
       const currentFolderPath = getCurrentFolderPath();
@@ -113,6 +120,7 @@ export function registerConfigHandlers(
     }
   });
 
+  ipcMain.removeHandler('folder:get-completed');
   ipcMain.handle('folder:get-completed', async () => {
     try {
       const currentFolderPath = getCurrentFolderPath();
