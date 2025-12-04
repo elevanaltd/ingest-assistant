@@ -153,7 +153,7 @@ npm run package
 
 ### App won't start
 → Run `npm install` first
-→ Check Node.js version (need 18+)
+→ Check Node.js version (need 20+)
 
 ## Keyboard Shortcuts (Power Users)
 

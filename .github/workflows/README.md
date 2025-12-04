@@ -315,7 +315,7 @@ Each tier reports:
    strategy:
      matrix:
        os: [macos-latest, windows-latest]
-       node: [18, 20, 22]
+       node: [20, 22]
    ```
 
 3. **Performance Benchmarks**

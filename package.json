@@ -26,6 +26,9 @@
   ],
   "author": "",
   "license": "MIT",
+  "engines": {
+    "node": ">=20.0.0"
+  },
   "devDependencies": {
     "@electron/rebuild": "^4.0.1",
     "@testing-library/jest-dom": "^6.9.1",
