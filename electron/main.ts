@@ -345,7 +345,10 @@ app.on('quit', () => {
 ipcMain.handle('file:select-folder', async (_event, startPath?: string) => {
   console.log('[main.ts] file:select-folder - Opening folder dialog', { startPath });
   const result = await dialog.showOpenDialog({
-    properties: ['openDirectory', 'createDirectory'], // createDirectory enables "New Folder" button on macOS
+    properties: [
+      'openDirectory',
+      ...(process.platform === 'darwin' ? ['createDirectory' as const] : [])
+    ],
     ...(startPath && { defaultPath: startPath }), // Open at current path if provided
   });
 
