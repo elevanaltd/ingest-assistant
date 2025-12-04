@@ -290,11 +290,11 @@ src/components/
 2. Create proxies (`{name}_proxy.mov`)
 3. AI process proxy files → JSON in proxy folder ✅
 
-**Active Tech Debt (Updated 2025-12-03):**
+**Active Tech Debt (Updated 2025-12-04):**
 - ✅ Issue #113: BatchOperationsPanel context routing - **RESOLVED** (PR #127 merged)
 - ✅ Issue #116: Reset transfer counters - **RESOLVED** (PR #130 merged)
 - ✅ Issue #117: main.ts tech debt extraction - **COMPLETE** (1458→1394 LOC, RateLimiter + timestamp utils)
-- ⏭️ Issue #137: Extract remaining IPC handlers - **NEXT PRIORITY** (target: main.ts < 800 LOC)
+- 🔄 Issue #137: Extract remaining IPC handlers - **IN PROGRESS** (PR open, code review feedback addressed)
 
 **Backlog Cleanup (2025-12-03):**
 - ✅ #21: Closed as RESOLVED (tier mapping doc complete)
@@ -339,6 +339,27 @@ src/components/
 - Benefits: Better reliability, automatic reconnection on network interruptions
 - Scope: PROJECT-CONTEXT.md, CLAUDE.md, test paths, comments, workflow docs
 
+### 🔄 Issue #137: IPC Handler Extraction - IN PROGRESS (PR open 2025-12-04)
+
+**Phase 2 of main.ts refactoring** - Extract remaining IPC handlers to dedicated modules.
+
+**Completed Extractions:**
+- ✅ `electron/ipc/fileHandlers.ts` - 7 handlers (~300 LOC)
+- ✅ `electron/ipc/aiHandlers.ts` - 8 handlers (~150 LOC)
+- ✅ `electron/ipc/batchHandlers.ts` - 3 handlers (~200 LOC)
+- ✅ `electron/ipc/configHandlers.ts` - 8 handlers (~100 LOC)
+
+**Code Review Fixes Applied (2025-12-04):**
+- ✅ Error sanitization added to `lexicon:load` handler
+- ✅ Ubuntu `createDirectory` fix applied (conditional on darwin)
+- ✅ **P1 FIX:** IPC handler re-registration guards (31 handlers protected)
+  - macOS window reopen from dock no longer crashes
+  - Added `ipcMain.removeHandler()` before each `ipcMain.handle()`
+  - +6 new tests for re-registration safety
+
+**Quality Gates:** Tests 1342✅ Lint 0✅ Types 0✅
+**TDD Evidence:** 5b6518f (RED) → e45cbed (GREEN)
+
 ---
 
 ## Assumptions to Validate
@@ -376,14 +397,14 @@ src/components/
 ## Recent Commits (Last 10)
 
 ```
-4f8704c Merge pull request #135 from elevanaltd/docs/update-nfs-to-smb-references
-5bf732a docs: update .coord documentation from NFS to SMB 3.1.1
-65b83ec docs: update NFS references to SMB 3.1.1
-0353612 Merge pull request #134 from elevanaltd/fix/proxy-preset-propagation
-6254e92 feat: wire proxyPresetId through UI → IPC → Orchestrator → Generator (GREEN)
-7cc524d test: add failing tests for proxyPresetId propagation (RED)
-ce2ab80 Merge pull request #133 from elevanaltd/fix/128-post-ai-validation
-4b694cb fix: clarify test name to match assertion (code review)
-63ca253 refactor: extract isAIFailure to shared module (code review)
-c2f4b89 feat: add AI failure validation gate to prevent silent failures (GREEN)
+e45cbed fix: add removeHandler guards to prevent re-registration crash (GREEN)
+5b6518f test: add failing test for IPC handler re-registration safety (RED)
+f8dec5e Merge branch 'main' into fix/code-review-blocking-issues
+8a8da3e fix: add missing error sanitization to lexicon:load handler
+865751b fix: resolve code review BLOCKING issues
+5f88fef feat: extract config handlers to configHandlers.ts (GREEN)
+a4e2536 test: failing config handlers extraction (RED)
+a25a128 feat: extract batch handlers to batchHandlers.ts (GREEN)
+ee6fc67 test: failing batch handlers extraction (RED)
+34093ca fix: resolve code review blocking issues (aiService state + error sanitization)
 ```
