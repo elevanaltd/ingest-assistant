@@ -1,7 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { ProxyOrchestrator, ProxyJobConfig } from './proxyOrchestrator';
-import { ProxyGenerator } from './proxyGenerator';
-import { ExifPreserver } from './exifPreserver';
 
 /**
  * ProxyOrchestrator Tests (Phase 1b B2.3)

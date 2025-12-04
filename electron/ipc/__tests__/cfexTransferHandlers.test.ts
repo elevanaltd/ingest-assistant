@@ -2,7 +2,6 @@ import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest'
 import { ipcMain } from 'electron'
 import { registerCfexTransferHandlers, unregisterCfexTransferHandlers, __resetForTesting } from '../cfexTransferHandlers'
 import { CfexTransferService } from '../../services/cfexTransfer'
-import { CfexAutoDetect } from '../../services/cfexAutoDetect'
 
 // Mock constructors - use vi.hoisted to ensure mocks are available during hoisting
 const { MockCfexTransferService, MockCfexAutoDetect } = vi.hoisted(() => ({
