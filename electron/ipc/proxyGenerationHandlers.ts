@@ -101,6 +101,7 @@ export function registerProxyGenerationHandlers(mainWindow: BrowserWindow) {
    * EVENTS:
    * - proxy:progress - Real-time progress updates
    */
+  ipcMain.removeHandler('proxy:generate');
   ipcMain.handle('proxy:generate', async (event, request) => {
     try {
       // Validate request schema

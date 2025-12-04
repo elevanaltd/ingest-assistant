@@ -8,8 +8,8 @@ import * as path from 'path';
  * BUG: Filename rewrite toggle not working in batch operations
  * Issue: Phase 1c delivered components in isolation without integration wiring
  *
- * Integration Gaps (verified by checking main.ts source):
- * 1. FilenameTemplateParser NOT imported in main.ts
+ * Integration Gaps (verified by checking batchHandlers.ts source):
+ * 1. FilenameTemplateParser NOT imported in batchHandlers.ts
  * 2. getCfexToggles() NOT called in batch:start handler
  * 3. metadataWriter unconditional (should respect metadataWrite toggle)
  * 4. No rename operation (should rename when filenameRewrite toggle enabled)
@@ -17,15 +17,16 @@ import * as path from 'path';
  *
  * TDD Evidence: RED phase - These tests FAIL before implementation
  * Strategy: Check source code for presence of integration wiring
+ * Note: batch handlers moved from main.ts to electron/ipc/batchHandlers.ts
  */
 
 describe('Batch Toggle Integration - Source Code Checks', () => {
-  const mainTsPath = path.join(__dirname, '../../main.ts');
-  let mainTsContent: string;
+  const batchHandlersPath = path.join(__dirname, '../../ipc/batchHandlers.ts');
+  let batchHandlersContent: string;
 
-  // Read main.ts once for all tests
+  // Read batchHandlers.ts once for all tests
   beforeAll(() => {
-    mainTsContent = fs.readFileSync(mainTsPath, 'utf-8');
+    batchHandlersContent = fs.readFileSync(batchHandlersPath, 'utf-8');
   });
 
   describe('Integration Gap 1: FilenameTemplateParser import', () => {
@@ -33,9 +34,9 @@ describe('Batch Toggle Integration - Source Code Checks', () => {
       // EXPECTED: import { FilenameTemplateParser } from './services/filenameTemplate';
       // ACTUAL: Missing (will fail - RED phase)
 
-      const hasImport = mainTsContent.includes("import { FilenameTemplateParser }") ||
-                       mainTsContent.includes("import { FilenameTemplateParser,") ||
-                       mainTsContent.includes("FilenameTemplateParser }");
+      const hasImport = batchHandlersContent.includes("import { FilenameTemplateParser }") ||
+                       batchHandlersContent.includes("import { FilenameTemplateParser,") ||
+                       batchHandlersContent.includes("FilenameTemplateParser }");
 
       expect(hasImport).toBe(true);
     });
@@ -47,11 +48,11 @@ describe('Batch Toggle Integration - Source Code Checks', () => {
       // ACTUAL: Missing (will fail - RED phase)
 
       // Check for getCfexToggles call after batch:start declaration
-      const batchStartIndex = mainTsContent.indexOf("ipcMain.handle('batch:start'");
+      const batchStartIndex = batchHandlersContent.indexOf("ipcMain.handle('batch:start'");
       expect(batchStartIndex).toBeGreaterThan(-1); // Sanity check
 
       // Look for getCfexToggles after batch:start
-      const afterBatchStart = mainTsContent.substring(batchStartIndex);
+      const afterBatchStart = batchHandlersContent.substring(batchStartIndex);
       const nextHandlerIndex = afterBatchStart.indexOf("ipcMain.handle(", 100); // Find next handler
       const batchStartHandlerContent = nextHandlerIndex > 0
         ? afterBatchStart.substring(0, nextHandlerIndex)
@@ -69,10 +70,10 @@ describe('Batch Toggle Integration - Source Code Checks', () => {
       // ACTUAL: Unconditional (will fail - RED phase)
 
       // Find the processor function inside batch:start
-      const processorIndex = mainTsContent.indexOf('const processor = async (fileId: string)');
+      const processorIndex = batchHandlersContent.indexOf('const processor = async (fileId: string)');
       expect(processorIndex).toBeGreaterThan(-1); // Sanity check
 
-      const afterProcessor = mainTsContent.substring(processorIndex);
+      const afterProcessor = batchHandlersContent.substring(processorIndex);
 
       // Look for conditional metadata write
       const hasConditionalWrite =
@@ -88,8 +89,8 @@ describe('Batch Toggle Integration - Source Code Checks', () => {
       // EXPECTED: if (toggles.filenameRewrite) { ... await fs.rename(...) }
       // ACTUAL: Missing (will fail - RED phase)
 
-      const processorIndex = mainTsContent.indexOf('const processor = async (fileId: string)');
-      const afterProcessor = mainTsContent.substring(processorIndex);
+      const processorIndex = batchHandlersContent.indexOf('const processor = async (fileId: string)');
+      const afterProcessor = batchHandlersContent.substring(processorIndex);
 
       // Look for filename rewrite block
       const hasFilenameRewrite =
@@ -103,8 +104,8 @@ describe('Batch Toggle Integration - Source Code Checks', () => {
       // EXPECTED: parser.parse(toggles.filenameTemplate, {...})
       // ACTUAL: Missing (will fail - RED phase)
 
-      const processorIndex = mainTsContent.indexOf('const processor = async (fileId: string)');
-      const afterProcessor = mainTsContent.substring(processorIndex);
+      const processorIndex = batchHandlersContent.indexOf('const processor = async (fileId: string)');
+      const afterProcessor = batchHandlersContent.substring(processorIndex);
 
       // Look for parser usage
       const hasParserUsage =
@@ -120,8 +121,8 @@ describe('Batch Toggle Integration - Source Code Checks', () => {
       // EXPECTED: await metadataWriter.writeTapeName(...); ... await fs.rename(...);
       // ACTUAL: Missing (will fail - RED phase)
 
-      const processorIndex = mainTsContent.indexOf('const processor = async (fileId: string)');
-      const afterProcessor = mainTsContent.substring(processorIndex);
+      const processorIndex = batchHandlersContent.indexOf('const processor = async (fileId: string)');
+      const afterProcessor = batchHandlersContent.substring(processorIndex);
 
       // Look for TapeName write in filename rewrite block
       // Note: writeTapeName method may not exist yet, so this test may need adjustment
@@ -139,8 +140,8 @@ describe('Batch Toggle Integration - Source Code Checks', () => {
       //           await store.updateFileMetadata(fileId, fileMetadata);
       // ACTUAL: Missing (will fail - RED phase)
 
-      const processorIndex = mainTsContent.indexOf('const processor = async (fileId: string)');
-      const afterProcessor = mainTsContent.substring(processorIndex);
+      const processorIndex = batchHandlersContent.indexOf('const processor = async (fileId: string)');
+      const afterProcessor = batchHandlersContent.substring(processorIndex);
 
       // Look for metadata update after rename
       const hasMetadataUpdate =
@@ -154,17 +155,17 @@ describe('Batch Toggle Integration - Source Code Checks', () => {
 
   describe('Sanity checks', () => {
     it('should have batch:start handler defined', () => {
-      const hasBatchStart = mainTsContent.includes("ipcMain.handle('batch:start'");
+      const hasBatchStart = batchHandlersContent.includes("ipcMain.handle('batch:start'");
       expect(hasBatchStart).toBe(true);
     });
 
     it('should have processor function defined', () => {
-      const hasProcessor = mainTsContent.includes('const processor = async (fileId: string)');
+      const hasProcessor = batchHandlersContent.includes('const processor = async (fileId: string)');
       expect(hasProcessor).toBe(true);
     });
 
     it('should have metadataWriter.writeMetadataToFile call', () => {
-      const hasMetadataWrite = mainTsContent.includes('metadataWriter.writeMetadataToFile');
+      const hasMetadataWrite = batchHandlersContent.includes('metadataWriter.writeMetadataToFile');
       expect(hasMetadataWrite).toBe(true);
     });
   });
