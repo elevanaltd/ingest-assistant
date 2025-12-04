@@ -45,7 +45,7 @@ describe('Proxy Generation Integration', () => {
   })
 
   describe('I1 Compliance: DateTimeOriginal Preservation', () => {
-    test('should preserve DateTimeOriginal after transcode', async () => {
+    test.skip('should preserve DateTimeOriginal after transcode', async () => {
       // SKIP: Requires real video file with EXIF metadata
       // This test validates I1 compliance but needs test fixtures
       //
@@ -58,11 +58,11 @@ describe('Proxy Generation Integration', () => {
       // - Test fixture: Real ProRes raw video with embedded EXIF
       // - exiftool validation: Extract DateTimeOriginal from raw and proxy
       // - Assertion: Raw date === Proxy date
-    }, { skip: true })
+    })
   })
 
   describe('Fail-Log-Continue Workflow', () => {
-    test('should continue batch after single file failure', async () => {
+    test.skip('should continue batch after single file failure', async () => {
       // SKIP: Requires mock corrupted video file
       // This test validates fail-log-continue behavior
       //
@@ -78,11 +78,11 @@ describe('Proxy Generation Integration', () => {
       // Implementation requires:
       // - Test fixtures: 2 valid + 1 corrupted video
       // - Or: Mock ProxyGenerator to throw on middle file
-    }, { skip: true })
+    })
   })
 
   describe('Cleanup on Failure', () => {
-    test('should cleanup partial proxy on transcode failure', async () => {
+    test.skip('should cleanup partial proxy on transcode failure', async () => {
       // SKIP: Requires mock transcode interruption
       // This test validates SecurityValidator cleanup logic
       //
@@ -95,11 +95,11 @@ describe('Proxy Generation Integration', () => {
       // - Mock ProxyGenerator to fail after partial write
       // - Or: Simulate ffmpeg interruption
       // - Verify: proxyOutputDir contains no partial files
-    }, { skip: true })
+    })
   })
 
   describe('Progress Event Emission', () => {
-    test('should emit progress events during batch processing', async () => {
+    test.skip('should emit progress events during batch processing', async () => {
       // SKIP: Requires real video files
       // This test validates progress callback behavior
       //
@@ -120,11 +120,11 @@ describe('Proxy Generation Integration', () => {
       // - Test fixtures: 2 short video files
       // - Progress callback spy
       // - Ordered event sequence validation
-    }, { skip: true })
+    })
   })
 
   describe('End-to-End Workflow', () => {
-    test('should generate 2K ProRes proxies with EXIF preservation', async () => {
+    test.skip('should generate 2K ProRes proxies with EXIF preservation', async () => {
       // SKIP: Requires real video files and ffmpeg
       // This is the ultimate integration test
       //
@@ -143,6 +143,6 @@ describe('Proxy Generation Integration', () => {
       // - ffmpeg probe: Verify resolution, codec, audio
       // - exiftool: Verify DateTimeOriginal
       // - File size validation
-    }, { skip: true })
+    })
   })
 })

@@ -17,9 +17,18 @@ import { ExifPreserver } from './exifPreserver';
  * 5. Progress callbacks for UI updates
  */
 
-// Mock dependencies
-vi.mock('./proxyGenerator');
-vi.mock('./exifPreserver');
+// Mock dependencies - use vi.hoisted to ensure mocks are available during hoisting
+const { MockProxyGenerator, MockExifPreserver } = vi.hoisted(() => ({
+  MockProxyGenerator: vi.fn(),
+  MockExifPreserver: vi.fn(),
+}));
+
+vi.mock('./proxyGenerator', () => ({
+  ProxyGenerator: MockProxyGenerator,
+}));
+vi.mock('./exifPreserver', () => ({
+  ExifPreserver: MockExifPreserver,
+}));
 
 describe('ProxyOrchestrator', () => {
   let orchestrator: ProxyOrchestrator;
@@ -41,9 +50,13 @@ describe('ProxyOrchestrator', () => {
       verifyBatch: vi.fn()
     };
 
-    // Mock constructors
-    vi.mocked(ProxyGenerator).mockImplementation(() => mockProxyGenerator);
-    vi.mocked(ExifPreserver).mockImplementation(() => mockExifPreserver);
+    // Reset and configure mock constructors to return instances when called with 'new'
+    MockProxyGenerator.mockReset().mockImplementation(function(this: any) {
+      return mockProxyGenerator;
+    });
+    MockExifPreserver.mockReset().mockImplementation(function(this: any) {
+      return mockExifPreserver;
+    });
 
     orchestrator = new ProxyOrchestrator();
   });
@@ -454,12 +467,12 @@ describe('ProxyOrchestrator', () => {
 
       // Find transcode_progress events
       const transcodeProgressCalls = progressCallback.mock.calls
-        .filter((call: [{ type: string }]) => call[0].type === 'transcode_progress');
+        .filter((call) => call[0]?.type === 'transcode_progress');
 
       expect(transcodeProgressCalls.length).toBeGreaterThan(0);
 
       // CRITICAL: transcode_progress MUST include index and total for UI
-      transcodeProgressCalls.forEach((call: [{ type: string; index?: number; total?: number }]) => {
+      transcodeProgressCalls.forEach((call) => {
         expect(call[0]).toMatchObject({
           type: 'transcode_progress',
           index: expect.any(Number),

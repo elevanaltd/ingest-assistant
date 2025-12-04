@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi, type Mock } from 'vitest';
 import * as fs from 'fs/promises';
 import { BatchQueueManager } from './batchQueueManager';
 
@@ -17,12 +17,16 @@ import { BatchQueueManager } from './batchQueueManager';
  */
 
 // Mock fs/promises for persistence testing
-vi.mock('fs/promises');
+vi.mock('fs/promises', () => ({
+  writeFile: vi.fn(),
+  readFile: vi.fn(),
+  access: vi.fn(),
+}));
 
 describe('BatchQueueManager', () => {
   let queueManager: BatchQueueManager;
-  let mockProgressCallback: ReturnType<typeof vi.fn>;
-  let mockCompleteCallback: ReturnType<typeof vi.fn>;
+  let mockProgressCallback: Mock;
+  let mockCompleteCallback: Mock;
   const testQueuePath = '/tmp/.test-batch-queue.json';
 
   beforeEach(() => {
@@ -30,10 +34,10 @@ describe('BatchQueueManager', () => {
     mockProgressCallback = vi.fn();
     mockCompleteCallback = vi.fn();
 
-    // Mock fs operations
-    vi.mocked(fs.writeFile).mockResolvedValue(undefined);
-    vi.mocked(fs.readFile).mockResolvedValue('{"items":[],"status":"idle"}');
-    vi.mocked(fs.access).mockResolvedValue(undefined);
+    // Mock fs operations with mockImplementation
+    vi.mocked(fs.writeFile).mockImplementation(() => Promise.resolve(undefined));
+    vi.mocked(fs.readFile).mockImplementation(() => Promise.resolve('{"items":[],"status":"idle"}'));
+    vi.mocked(fs.access).mockImplementation(() => Promise.resolve(undefined));
 
     queueManager = new BatchQueueManager(testQueuePath);
   });
@@ -242,8 +246,8 @@ describe('BatchQueueManager', () => {
         currentFile: null,
       };
 
-      vi.mocked(fs.readFile).mockResolvedValue(JSON.stringify(persistedState));
-      vi.mocked(fs.access).mockResolvedValue(undefined);
+      vi.mocked(fs.readFile).mockImplementation(() => Promise.resolve(JSON.stringify(persistedState)));
+      vi.mocked(fs.access).mockImplementation(() => Promise.resolve(undefined));
 
       const restoredManager = new BatchQueueManager(testQueuePath);
 

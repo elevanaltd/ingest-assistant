@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi, type Mock } from 'vitest';
 import * as fs from 'fs/promises';
 import type { Dirent, Stats } from 'fs';
 import { FileListRangeSchema } from '../../schemas/ipcSchemas';
@@ -21,7 +21,11 @@ import type { FileMetadata, FileListRangeResponse } from '../../../src/types';
  * 5. Metadata hydration per page
  */
 
-vi.mock('fs/promises');
+vi.mock('fs/promises', () => ({
+  readdir: vi.fn(),
+  stat: vi.fn(),
+  readFile: vi.fn(),
+}));
 
 describe('file:list-range - Pagination', () => {
   describe('Schema Validation (Security)', () => {
@@ -88,8 +92,8 @@ describe('file:list-range - Pagination', () => {
     const testFolderPath = '/test/folder';
 
     const mockFs = fs as unknown as {
-      readdir: ReturnType<typeof vi.fn>;
-      stat: ReturnType<typeof vi.fn>;
+      readdir: Mock;
+      stat: Mock;
     };
 
     beforeEach(() => {
@@ -227,9 +231,9 @@ describe('file:list-range - Pagination', () => {
     const testStorePath = '/test/metadata.json';
 
     const mockFs = fs as unknown as {
-      readFile: ReturnType<typeof vi.fn>;
-      mkdir: ReturnType<typeof vi.fn>;
-      writeFile: ReturnType<typeof vi.fn>;
+      readFile: Mock;
+      mkdir: Mock;
+      writeFile: Mock;
     };
 
     beforeEach(() => {

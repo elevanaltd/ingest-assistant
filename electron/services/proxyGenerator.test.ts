@@ -18,8 +18,21 @@ import * as fs from 'fs';
  */
 
 // Mock modules
-vi.mock('fs');
-vi.mock('child_process');
+vi.mock('fs', () => ({
+  existsSync: vi.fn(),
+  unlinkSync: vi.fn(),
+  default: {
+    existsSync: vi.fn(),
+    unlinkSync: vi.fn(),
+  },
+}));
+vi.mock('child_process', () => {
+  const spawn = vi.fn();
+  return {
+    spawn,
+    default: { spawn },
+  };
+});
 vi.mock('@ffmpeg-installer/ffmpeg', () => ({
   default: { path: '/usr/local/bin/ffmpeg' }
 }));

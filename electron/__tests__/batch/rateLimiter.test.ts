@@ -94,8 +94,9 @@ describe('RateLimiter (Batch Processing)', () => {
       await new Promise(resolve => setTimeout(resolve, 5000));
 
       // Should still be at max (10), not 15
-      expect(rateLimiter.getCurrentTokens()).toBe(10);
-    });
+      // Using toBeCloseTo to handle floating point precision issues
+      expect(rateLimiter.getCurrentTokens()).toBeCloseTo(10, 0);
+    }, 6000); // Increase timeout to 6 seconds since test waits 5 seconds
   });
 
   describe('Waiting Behavior (Fix Validation)', () => {

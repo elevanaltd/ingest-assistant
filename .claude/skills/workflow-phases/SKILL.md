@@ -87,6 +87,43 @@ Auto-activates when:
 - Constraint identification
 - North Star documentation
 
+#### D1 PARALLEL EXPLORATION PATTERN (RECOMMENDED)
+
+**Purpose**: Accelerate D1 understanding through parallel codebase exploration
+
+**When to Use**:
+- D1 phase for projects involving existing codebase
+- Understanding patterns, architecture, or prior art needed
+- Multiple aspects require investigation
+
+**Pattern**:
+```python
+# Launch 2-3 agents in parallel (max 3 for context overhead)
+Task(subagent_type='Explore', prompt="Find similar features/patterns in codebase relevant to [problem]")
+Task(subagent_type='Explore', prompt="Map high-level architecture relevant to [problem area]")
+Task(subagent_type='research-analyst', prompt="Investigate external solutions/prior art for [problem type]")
+
+# After all return:
+# 1. Collect findings from all agents
+# 2. Read key files identified by explorers
+# 3. Synthesize into comprehensive picture for idea-clarifier
+```
+
+**Agent Prompts (Examples)**:
+- "Find features similar to [feature] and trace their implementation comprehensively"
+- "Map the architecture and abstractions for [feature area], tracing through the code comprehensively"
+- "Analyze the current implementation of [existing feature/area], tracing through the code comprehensively"
+- "Identify UI patterns, testing approaches, or extension points relevant to [feature]"
+
+**Benefits**:
+- **Breadth**: Multiple perspectives simultaneously
+- **Speed**: Parallel ≠ sequential exploration
+- **Coverage**: Architecture + patterns + external prior art
+
+**Constraint**: Max 3 parallel agents (context overhead)
+
+**Output**: Each agent should return list of 5-10 key files to read for deep understanding
+
 ### D2: Design Generation
 **Purpose**: Generate solution alternatives, evaluate options
 **Lead**: ideator → validator → synthesizer
