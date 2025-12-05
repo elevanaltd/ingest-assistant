@@ -184,11 +184,22 @@ CHECKLIST::[
 ]
 
 NORTH_STAR::[
-  TRY::Read(".coord/PROJECT-NORTH-STAR.md"),
-  TRY::Read(".coord/NORTH-STAR.md"),
-  TRY::Glob(".coord/workflow-docs/*NORTH-STAR*.md")→Read(first_match),
-  TRY::Glob(".coord/*NORTH-STAR*.md")→Read(first_match),
-  FALLBACK::SKIP["No North Star found - proceeding tactically"]
+  // Check if North Star Summary was pre-loaded via SessionStart hook
+  DETECT::check_conversation_history_for["North Star Summary loaded via SessionStart hook"],
+
+  IF[hook_preloaded]::[
+    SKIP::NORTH_STAR_LOADING,
+    NOTE::"✅ North Star Summary pre-loaded via SessionStart hook - skipping redundant load"
+  ],
+
+  IF[NOT hook_preloaded]::[
+    // Fallback: load North Star if not pre-loaded
+    TRY::Read(".coord/PROJECT-NORTH-STAR.md"),
+    TRY::Read(".coord/NORTH-STAR.md"),
+    TRY::Glob(".coord/workflow-docs/*NORTH-STAR*.md")→Read(first_match),
+    TRY::Glob(".coord/*NORTH-STAR*.md")→Read(first_match),
+    FALLBACK::SKIP["No North Star found - proceeding tactically"]
+  ]
 ]
 
 THEN::mark_todo_4_complete→mark_todo_5_in_progress
