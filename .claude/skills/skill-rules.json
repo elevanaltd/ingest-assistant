@@ -1,5 +1,21 @@
 {
-  "version": "1.0",
+  "version": "1.1",
+  "agentAffinity": {
+    "_comment": "Validated mappings based on explicit SKILL_DELEGATION in agent constitutions or clear domain alignment",
+
+    "implementation-lead": ["build-execution"],
+    "supabase-expert": ["supabase-operations"],
+    "smartsuite-expert": ["smartsuite-patterns"],
+
+    "error-architect": ["error-triage"],
+    "universal-test-engineer": ["test-infrastructure"],
+    "test-infrastructure-steward": ["test-infrastructure", "test-ci-pipeline"],
+    "test-methodology-guardian": ["test-infrastructure"],
+
+    "holistic-orchestrator": ["holistic-orchestrator-mode", "subagent-rules"],
+    "task-decomposer": ["task-decomposition"],
+    "workspace-architect": ["workspace-setup"]
+  },
   "skills": {
     "build-execution": {
       "type": "guardrail",

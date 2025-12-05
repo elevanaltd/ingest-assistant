@@ -58,6 +58,8 @@ export interface SkillRule {
  * Skill rules configuration (skill-rules.json structure)
  */
 export interface SkillRulesConfig {
+  version?: string;
+  agentAffinity?: Record<string, string[]>; // agent name -> skill names
   skills: Record<string, SkillRule>;
 }
 
@@ -66,6 +68,8 @@ export interface SkillRulesConfig {
  */
 export interface SessionState {
   acknowledgedSkills: string[];
+  activeAgent?: string; // Agent activated via /role or /load
+  agentActivatedAt?: number; // Timestamp of agent activation
 }
 
 /**

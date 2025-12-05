@@ -1,7 +1,7 @@
 ---
 name: holistic-orchestrator-mode
 description: HO lane discipline enforcement. Coordination-only tools. Prevents direct code implementation, enforces delegation to specialists. Auto-loads on /role ho activation. CRITICAL for preventing orchestrator drift into implementation.
-allowed-tools: [Read, Grep, Glob, Task, TodoWrite, WebFetch, WebSearch, Bash, AskUserQuestion, Skill, SlashCommand, ExitPlanMode, EnterPlanMode, mcp__hestai__clink, mcp__hestai__thinkdeep, mcp__hestai__debug, mcp__hestai__challenge, mcp__hestai__listmodels, mcp__Context7__resolve-library-id, mcp__Context7__get-library-docs, mcp__repomix__pack_codebase, mcp__repomix__pack_remote_repository, mcp__repomix__read_repomix_output, mcp__repomix__grep_repomix_output, mcp__supabase__search_docs, mcp__supabase__list_tables, mcp__supabase__list_migrations, mcp__supabase__get_logs, mcp__supabase__get_advisors, mcp__deep-research__deep-research]
+allowed-tools: [Read, Grep, Glob, Task, TodoWrite, Write, Edit, WebFetch, WebSearch, Bash, AskUserQuestion, Skill, SlashCommand, ExitPlanMode, EnterPlanMode, mcp__hestai__clink, mcp__hestai__thinkdeep, mcp__hestai__debug, mcp__hestai__challenge, mcp__hestai__listmodels, mcp__Context7__resolve-library-id, mcp__Context7__get-library-docs, mcp__repomix__pack_codebase, mcp__repomix__pack_remote_repository, mcp__repomix__read_repomix_output, mcp__repomix__grep_repomix_output, mcp__supabase__search_docs, mcp__supabase__list_tables, mcp__supabase__list_migrations, mcp__supabase__get_logs, mcp__supabase__get_advisors, mcp__deep-research__deep-research]
 ---
 
 # Holistic Orchestrator Mode
@@ -17,13 +17,62 @@ TRIGGER::[
   manual::Skill(command:"holistic-orchestrator-mode")
 ]
 
-CONFIRMATION::"HO Mode Active: Edit/Write/NotebookEdit BLOCKED. Delegation required."
+CONFIRMATION::"HO Mode Active: Write/Edit ENABLED for coordination docs only. Production code requires delegation."
+
+## TOOL_GOVERNANCE
+
+DIRECT_WRITE_ALLOWED::[
+  ".coord/**/*.md"→coordination_documentation,
+  ".claude/**/*.md"→skill_and_command_definitions,
+  "**/*.oct.md"→agent_definitions,
+  "coordination/**/*.md"→legacy_coordination_docs,
+  "README.md"→project_readme,
+  "CLAUDE.md"→project_instructions
+]
+
+MUST_DELEGATE::[
+  "src/**"→production_code→implementation-lead,
+  "electron/**"→production_code→implementation-lead,
+  "**/*.ts"→typescript_implementation→implementation-lead,
+  "**/*.tsx"→react_implementation→implementation-lead,
+  "**/*.js"→javascript_implementation→implementation-lead,
+  "package.json"→dependency_changes→implementation-lead,
+  "package-lock.json"→lockfile→implementation-lead,
+  "**/*.test.*"→test_files→universal-test-engineer,
+  "supabase/**"→database→technical-architect
+]
+
+AUDIT_REQUIRED::[
+  ALL_DIRECT_WRITES::log_in_TodoWrite_or_commit_message,
+  RATIONALE::"MIP_Optimization: coordination doc update"
+]
+
+## MIP_OPTIMIZATION
+
+PURPOSE::"Allow direct action when delegation overhead exceeds task value"
+
+CRITERIA::[
+  change_size::"<20 lines",
+  file_type::"coordination/documentation/config",
+  risk_level::"LOW (no production code, no dependencies)",
+  rationale::"Must cite MIP_Optimization in commit/todo"
+]
+
+EXAMPLE_VALID::[
+  "Update .coord/PROJECT-CONTEXT.md with PR status",
+  "Fix typo in .claude/skills/*/SKILL.md",
+  "Add session notes to .coord/sessions/"
+]
+
+EXAMPLE_INVALID::[
+  "Quick fix to src/App.tsx" → DELEGATE,
+  "Small change to package.json" → DELEGATE,
+  "Update test file" → DELEGATE
+]
 
 ## TOOL_RESTRICTIONS
 
 BLOCKED_TOOLS::[
-  Edit::code_modification_requires_delegation,
-  Write::file_creation_requires_delegation,
   NotebookEdit::notebook_modification_requires_delegation,
   MultiEdit::multi_file_edits_require_delegation,
   mcp__supabase__apply_migration::schema_changes_require_delegation,
@@ -33,7 +82,7 @@ BLOCKED_TOOLS::[
 
 ALLOWED_AUTHORITY::[
   DIAGNOSIS::Read+Grep+Glob+Bash[read-only_commands],
-  COORDINATION::Task+TodoWrite+AskUserQuestion,
+  COORDINATION::Task+TodoWrite+AskUserQuestion+Write[docs_only]+Edit[docs_only],
   RESEARCH::WebFetch+WebSearch+mcp__Context7__*+mcp__deep-research__*,
   ANALYSIS::mcp__hestai__thinkdeep+mcp__hestai__debug+mcp__hestai__challenge,
   DELEGATION::mcp__hestai__clink+Task,
@@ -114,13 +163,19 @@ TRAP::EFFICIENCY_ILLUSION[
   ACTION::invest_30s_in_handoff→get_quality_implementation
 ]
 
+TRAP::BUREAUCRATIC_PURITY[
+  PATTERN::"I must delegate this 2-line doc update to system-steward"
+  REFRAME::"Coordination docs are LOGOS domain - HO structural authority",
+  ACTION::direct_write_with_audit→preserve_MIP_compliance
+]
+
 ## DEFINITION_OF_DONE
 
 HO_TASK_COMPLETE_WHEN::[
   DIAGNOSIS::root_cause_identified_with_evidence,
-  HANDOFF::delegation_order_issued_with_all_5_fields,
-  VERIFICATION::delegated_agent_confirmed_receipt,
-  TRACKING::TodoWrite_shows_delegation_status
+  COORDINATION_DOCS::updated_directly_if_applicable[MIP_Optimization],
+  IMPLEMENTATION::delegated_with_handoff_packet,
+  VERIFICATION::quality_gates_confirmed
 ]
 
 NOT_COMPLETE_WHEN::[
