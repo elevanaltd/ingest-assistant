@@ -73,23 +73,34 @@ export function formatActivationBanner(): string {
  *
  * @param injectedSkills - Skills that were just injected
  * @param criticalSkills - Skills injected as critical
- * @param affinitySkills - Skills injected via affinity
+ * @param skillAffinitySkills - Skills injected via skill-to-skill affinity
  * @param promotedSkills - Skills promoted from suggested
+ * @param agentAffinitySkills - Skills injected via agent affinity (optional)
+ * @param activeAgent - Name of active agent (optional)
  * @returns Formatted section string
  */
 export function formatJustInjectedSection(
   injectedSkills: string[],
   criticalSkills: string[],
-  affinitySkills: string[],
-  promotedSkills: string[]
+  skillAffinitySkills: string[],
+  promotedSkills: string[],
+  agentAffinitySkills: string[] = [],
+  activeAgent?: string
 ): string {
   if (injectedSkills.length === 0) return '';
 
   let output = '\n📚 JUST LOADED:\n';
 
+  // Show active agent context if present
+  if (activeAgent && agentAffinitySkills.length > 0) {
+    output += `  🎭 Agent: ${activeAgent}\n`;
+  }
+
   injectedSkills.forEach((skill) => {
     let label = '';
-    if (affinitySkills.includes(skill)) {
+    if (agentAffinitySkills.includes(skill)) {
+      label = ` (agent: ${activeAgent})`;
+    } else if (skillAffinitySkills.includes(skill)) {
       label = ' (affinity)';
     } else if (promotedSkills.includes(skill)) {
       label = ' (promoted)';

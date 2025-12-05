@@ -18,8 +18,8 @@ const hooksDir = dirname(fileURLToPath(import.meta.url));
 const envPath = join(hooksDir, '.env');
 const result = dotenv.config({ path: envPath });
 
-// Debug: Log if .env was loaded
-if (process.env.DEBUG_SKILL_HOOK || !process.env.ANTHROPIC_API_KEY) {
+// Debug: Log if .env was loaded (only when DEBUG_SKILL_HOOK is set)
+if (process.env.DEBUG_SKILL_HOOK) {
   console.error('[skill-activation] Dotenv load result:', {
     envPath,
     success: result.error ? false : true,
@@ -32,7 +32,7 @@ import { readFileSync } from 'fs';
 import { analyzeIntent } from './lib/intent-analyzer.js';
 import { resolveSkillDependencies } from './lib/skill-resolution.js';
 import { filterAndPromoteSkills, findAffinityInjections } from './lib/skill-filtration.js';
-import { readAcknowledgedSkills, writeSessionState } from './lib/skill-state-manager.js';
+import { readAcknowledgedSkills, readActiveAgent, writeActiveAgent, writeSessionState } from './lib/skill-state-manager.js';
 import {
   injectSkillContent,
   formatActivationBanner,
@@ -43,6 +43,55 @@ import {
 } from './lib/output-formatter.js';
 import type { SkillRulesConfig } from './lib/types.js';
 import { debugLog } from './lib/debug-logger.js';
+
+/**
+ * Agent name aliases (same as in role.md and load.md)
+ */
+const AGENT_ALIASES: Record<string, string> = {
+  'ce': 'critical-engineer',
+  'ea': 'error-architect',
+  'ta': 'technical-architect',
+  'ca': 'completion-architect',
+  'il': 'implementation-lead',
+  'td': 'task-decomposer',
+  'wa': 'workspace-architect',
+  'ss': 'system-steward',
+  'rs': 'requirements-steward',
+  'ho': 'holistic-orchestrator',
+  'tis': 'test-infrastructure-steward',
+  'test-steward': 'test-infrastructure-steward',
+  'tmg': 'test-methodology-guardian',
+  'testguard': 'test-methodology-guardian',
+  'crs': 'code-review-specialist',
+  'cr': 'code-review-specialist',
+  'ute': 'universal-test-engineer',
+  'test': 'universal-test-engineer',
+};
+
+/**
+ * Extract agent name from /role or /load command
+ */
+function extractAgentFromCommand(prompt: string): string | null {
+  // Match /role or /load followed by agent name
+  const roleMatch = prompt.match(/^\/role\s+(.+?)(?:\s+--|\s*$)/i);
+  const loadMatch = prompt.match(/^\/load\s+(.+?)(?:\s+--|\s*$)/i);
+
+  const match = roleMatch || loadMatch;
+  if (!match) return null;
+
+  // Clean and normalize agent name
+  let agentName = match[1].trim().toLowerCase().replace(/\s+/g, '-');
+
+  // Strip any remaining flags
+  agentName = agentName.replace(/--\S+/g, '').trim();
+
+  // Apply aliases
+  if (AGENT_ALIASES[agentName]) {
+    agentName = AGENT_ALIASES[agentName];
+  }
+
+  return agentName || null;
+}
 
 /**
  * Hook input from Claude
@@ -76,7 +125,18 @@ async function main(): Promise<void> {
 
     if (bypassPatterns.some(pattern => pattern.test(data.prompt))) {
       debugLog(`[BYPASS] Role/command activation detected: "${data.prompt}"`);
-      // Return empty output - no skills injected
+
+      // Extract agent name from /role or /load and record to session state
+      const agentName = extractAgentFromCommand(data.prompt);
+      if (agentName) {
+        const projectDir = process.env.CLAUDE_PROJECT_DIR || process.cwd();
+        const stateDir = join(projectDir, '.claude', 'hooks', 'state');
+        const stateId = data.conversation_id || data.session_id;
+        writeActiveAgent(stateDir, stateId, agentName);
+        debugLog(`[BYPASS] Recorded active agent: ${agentName}`);
+      }
+
+      // Return empty output - no skills injected during RAPH
       return;
     }
 
@@ -84,6 +144,23 @@ async function main(): Promise<void> {
     const projectDir = process.env.CLAUDE_PROJECT_DIR || process.cwd();
     const rulesPath = join(projectDir, '.claude', 'skills', 'skill-rules.json');
     const rules: SkillRulesConfig = JSON.parse(readFileSync(rulesPath, 'utf-8'));
+
+    // State management - moved up for agent affinity check
+    const stateDir = join(projectDir, '.claude', 'hooks', 'state');
+    const stateId = data.conversation_id || data.session_id;
+    const existingAcknowledged = readAcknowledgedSkills(stateDir, stateId);
+
+    // Check for active agent affinity skills (first prompt after /role or /load)
+    const activeAgent = readActiveAgent(stateDir, stateId);
+    let agentAffinitySkills: string[] = [];
+    if (activeAgent && rules.agentAffinity && rules.agentAffinity[activeAgent]) {
+      // Get affinity skills not already acknowledged
+      agentAffinitySkills = rules.agentAffinity[activeAgent].filter(
+        (skill) => !existingAcknowledged.includes(skill) && skill in rules.skills
+      );
+      debugLog(`[AGENT AFFINITY] Active agent: ${activeAgent}`);
+      debugLog(`[AGENT AFFINITY] Affinity skills to inject: ${JSON.stringify(agentAffinitySkills)}`);
+    }
 
     // Analyze user intent with AI
     const analysis = await analyzeIntent(data.prompt, rules.skills);
@@ -102,17 +179,15 @@ async function main(): Promise<void> {
     // Output banner
     let output = formatActivationBanner();
 
-    // Handle skill injection for domain skills only
+    // Handle skill injection - either agent affinity or keyword-matched skills
     const hasMatchedSkills = requiredDomainSkills.length > 0 || suggestedDomainSkills.length > 0;
-    if (hasMatchedSkills) {
-      // State management
-      const stateDir = join(projectDir, '.claude', 'hooks', 'state');
-      const stateId = data.conversation_id || data.session_id;
-      const existingAcknowledged = readAcknowledgedSkills(stateDir, stateId);
+    const hasAgentAffinitySkills = agentAffinitySkills.length > 0;
 
+    if (hasMatchedSkills || hasAgentAffinitySkills) {
       // DEBUG: Log session state
       debugLog('Session State:');
       debugLog(`  Already acknowledged: ${JSON.stringify(existingAcknowledged)}`);
+      debugLog(`  Active agent: ${activeAgent || 'none'}`);
 
       // Filter and promote skills
       const filtration = filterAndPromoteSkills(
@@ -128,20 +203,23 @@ async function main(): Promise<void> {
       debugLog(`  Promoted: ${JSON.stringify(filtration.promoted)}`);
       debugLog(`  Remaining suggested: ${JSON.stringify(filtration.remainingSuggested)}`);
 
-      // Find affinity injections (bidirectional, free of slot cost)
-      const affinitySkills = findAffinityInjections(
+      // Find skill-to-skill affinity injections (bidirectional, free of slot cost)
+      const skillAffinitySkills = findAffinityInjections(
         filtration.toInject,
         existingAcknowledged,
         rules.skills
       );
 
       // DEBUG: Log affinity results
-      debugLog('Affinity Injection:');
-      debugLog(`  Affinity skills found: ${JSON.stringify(affinitySkills)}`);
+      debugLog('Skill Affinity Injection:');
+      debugLog(`  Skill affinity skills found: ${JSON.stringify(skillAffinitySkills)}`);
 
       // Resolve dependencies and inject skills
+      // Combine: keyword-matched + skill-affinity + agent-affinity (all deduplicated)
       let injectedSkills: string[] = [];
-      const allSkillsToInject = [...filtration.toInject, ...affinitySkills];
+      const allSkillsToInject = [
+        ...new Set([...filtration.toInject, ...skillAffinitySkills, ...agentAffinitySkills])
+      ];
 
       // DEBUG: Log combined skills before dependency resolution
       debugLog('Combined Skills (before dependency resolution):');
@@ -174,8 +252,10 @@ async function main(): Promise<void> {
         output += formatJustInjectedSection(
           injectedSkills,
           filtration.toInject,
-          affinitySkills,
-          filtration.promoted
+          skillAffinitySkills,
+          filtration.promoted,
+          agentAffinitySkills,
+          activeAgent
         );
       }
 
@@ -204,7 +284,11 @@ async function main(): Promise<void> {
       }
     }
   } catch (err) {
-    console.error('⚠️ Skill activation hook error:', err);
+    if (process.env.DEBUG_SKILL_HOOK) {
+      console.error('⚠️ Skill activation hook error:', err);
+    } else {
+      console.error('⚠️ Skill activation hook error (enable DEBUG_SKILL_HOOK=1 for details)');
+    }
     process.exit(0); // Don't fail the conversation on hook errors
   }
 }
