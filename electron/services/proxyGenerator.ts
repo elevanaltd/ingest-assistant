@@ -160,6 +160,10 @@ export class ProxyGenerator {
       args.push('-c:a', 'aac');
     }
 
+    // Add faststart for Premiere Pro compatibility
+    // Moves moov atom to beginning of file for proper streaming/import
+    args.push('-movflags', '+faststart');
+
     // Add output path
     args.push(outputPath);
 
