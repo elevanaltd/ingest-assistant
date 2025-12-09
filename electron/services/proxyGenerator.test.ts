@@ -926,5 +926,31 @@ describe('ProxyGenerator', () => {
         ])
       );
     });
+
+    it('should include faststart flag for Premiere Pro compatibility', async () => {
+      const mockProcess = new EventEmitter() as any;
+      mockProcess.stderr = new EventEmitter();
+
+      vi.mocked(spawn).mockReturnValue(mockProcess);
+
+      const transcodePromise = generator.generateProxy(
+        mockSourceFile,
+        mockOutputDir
+      );
+
+      setTimeout(() => {
+        mockProcess.emit('close', 0);
+      }, 10);
+
+      await transcodePromise;
+
+      // Verify faststart flag is included for Premiere Pro compatibility
+      expect(spawn).toHaveBeenCalledWith(
+        '/usr/local/bin/ffmpeg',
+        expect.arrayContaining([
+          '-movflags', '+faststart'
+        ])
+      );
+    });
   });
 });
