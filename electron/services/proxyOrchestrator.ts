@@ -156,6 +156,21 @@ export class ProxyOrchestrator {
         // Write DateTimeOriginal to proxies
         await this.exifPreserver.writeBatch(proxyDateMap);
 
+        // I6 Compliance: Write TapeName (original camera filename) to proxies
+        // This enables CEP Panel to match proxies back to raw footage
+        const proxyTapeNameMap = new Map<string, string>();
+        for (const rawPath of rawVideoPaths) {
+          const rawBasename = path.basename(rawPath, path.extname(rawPath));
+          const proxyPath = successfulProxies.find(p => p.includes(`${rawBasename}_proxy`));
+
+          if (proxyPath) {
+            proxyTapeNameMap.set(proxyPath, rawBasename); // TapeName = original filename (e.g., "EA001827")
+          }
+        }
+
+        await this.exifPreserver.writeTapeNameBatch(proxyTapeNameMap);
+        console.log('[ProxyOrchestrator] TapeName preservation complete -', proxyTapeNameMap.size, 'files');
+
         // Verify DateTimeOriginal matches
         const verificationResults = await this.exifPreserver.verifyBatch(
           rawDateMap,

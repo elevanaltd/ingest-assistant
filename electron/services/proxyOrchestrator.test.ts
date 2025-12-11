@@ -45,6 +45,7 @@ describe('ProxyOrchestrator', () => {
     mockExifPreserver = {
       extractBatch: vi.fn(),
       writeBatch: vi.fn(),
+      writeTapeNameBatch: vi.fn().mockResolvedValue(undefined),
       verifyBatch: vi.fn()
     };
 
