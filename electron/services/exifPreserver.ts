@@ -268,6 +268,86 @@ export class ExifPreserver {
   }
 
   /**
+   * Write TapeName (original camera filename) to proxy videos
+   * Critical for I6 compliance: CEP Panel uses TapeName for matching
+   *
+   * @param proxyTapeNameMap Map of proxyPath -> original filename (e.g., "EA001827")
+   */
+  async writeTapeNameBatch(proxyTapeNameMap: Map<string, string>): Promise<void> {
+    if (proxyTapeNameMap.size === 0) {
+      return;
+    }
+
+    console.log('[ExifPreserver] Writing TapeName to', proxyTapeNameMap.size, 'proxy videos');
+
+    const CONCURRENCY_LIMIT = 8;
+    const entries = Array.from(proxyTapeNameMap.entries());
+    const failures: Array<{ path: string; error: string }> = [];
+
+    // Process files in chunks to limit concurrent exiftool processes
+    for (let i = 0; i < entries.length; i += CONCURRENCY_LIMIT) {
+      const chunk = entries.slice(i, i + CONCURRENCY_LIMIT);
+      const chunkPromises = chunk.map(([proxyPath, tapeName]) =>
+        this.writeTapeNameSingleFile(proxyPath, tapeName)
+          .then(() => ({ status: 'fulfilled' as const, path: proxyPath }))
+          .catch((err) => ({ status: 'rejected' as const, path: proxyPath, error: err.message }))
+      );
+
+      const results = await Promise.all(chunkPromises);
+
+      results.forEach((result) => {
+        if (result.status === 'rejected') {
+          failures.push({ path: result.path, error: result.error });
+        }
+      });
+    }
+
+    if (failures.length > 0) {
+      const errorMessage = `Failed to write TapeName to ${failures.length} file(s): ${failures.map(f => f.path).join(', ')}`;
+      console.error('[ExifPreserver] TapeName write completed with failures:', failures);
+      throw new Error(errorMessage);
+    }
+
+    console.log('[ExifPreserver] TapeName write complete');
+  }
+
+  /**
+   * Write TapeName to a single proxy file using exiftool
+   */
+  private async writeTapeNameSingleFile(proxyPath: string, tapeName: string): Promise<void> {
+    return new Promise<void>((resolve, reject) => {
+      const args = [
+        '-overwrite_original',
+        `-XMP-xmpDM:TapeName=${tapeName}`,
+        proxyPath
+      ];
+
+      const exiftoolProcess = spawn('exiftool', args);
+
+      let stderr = '';
+
+      exiftoolProcess.stderr.on('data', (data) => {
+        stderr += data.toString();
+      });
+
+      exiftoolProcess.on('close', (code) => {
+        if (code !== 0) {
+          console.error('[ExifPreserver] exiftool TapeName write failed for', proxyPath, ':', stderr);
+          reject(new Error('Failed to write TapeName'));
+          return;
+        }
+
+        resolve();
+      });
+
+      exiftoolProcess.on('error', (err) => {
+        console.error('[ExifPreserver] exiftool spawn error for TapeName', proxyPath, ':', err);
+        reject(err);
+      });
+    });
+  }
+
+  /**
    * Full workflow coordinator: Extract → Write → Verify
    * Assumes proxies have been generated between extract and write phases
    */
