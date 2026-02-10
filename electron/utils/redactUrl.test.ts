@@ -37,11 +37,11 @@ describe('redactUrlTokens', () => {
     expect(result).toBe('http://localhost:8765/');
   });
 
-  it('should redact cryptographically random tokens (32-byte hex)', () => {
-    const hexToken = 'a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2';
-    const url = `http://localhost:8765/?path=%2Ffile.mov&token=${hexToken}`;
+  it('should redact long tokens (32-byte hex format)', () => {
+    const longToken = 'deadbeef'.repeat(8); // 64-char dummy hex
+    const url = `http://localhost:8765/?path=%2Ffile.mov&token=${longToken}`;
     const result = redactUrlTokens(url);
-    expect(result).not.toContain(hexToken);
+    expect(result).not.toContain(longToken);
     expect(result).toContain('token=[REDACTED]');
   });
 
