@@ -190,7 +190,8 @@ export class ProxyOrchestrator {
 
     // Cleanup: Remove XMP sidecar files (exiftool -overwrite_original creates these)
     // Metadata is already embedded in the MOV files, sidecars cause Premiere Pro linking errors
-    this.cleanupXmpSidecars(proxyOutputDir);
+    // Only clean up sidecars for proxies generated in THIS job to avoid deleting unrelated XMP files
+    this.cleanupXmpSidecars(successfulProxies);
 
     const result: ProxyJobResult = {
       success: failedCount === 0 && verificationFailures.length === 0,
@@ -205,38 +206,29 @@ export class ProxyOrchestrator {
   }
 
   /**
-   * Cleanup: Remove XMP sidecar files from output directory
-   * exiftool's -overwrite_original creates .mov.xmp and .mp4.xmp sidecars as backups
-   * These cause Premiere Pro linking errors, but metadata is already embedded in the video files
+   * Cleanup: Remove XMP sidecar files created for proxies in this job only.
+   * exiftool creates .xmp sidecars alongside the video files it writes to.
+   * These cause Premiere Pro linking errors, but metadata is already embedded in the video files.
+   * Only targets sidecars matching successfulProxies to avoid deleting unrelated XMP files.
    */
-  private cleanupXmpSidecars(outputDir: string): void {
-    try {
-      if (!fs.existsSync(outputDir)) {
-        return;
-      }
+  private cleanupXmpSidecars(proxyPaths: string[]): void {
+    let deletedCount = 0;
 
-      const files = fs.readdirSync(outputDir);
-      let deletedCount = 0;
-
-      for (const file of files) {
-        if (file.endsWith('.mov.xmp') || file.endsWith('.mp4.xmp')) {
-          const filePath = path.join(outputDir, file);
-          try {
-            fs.unlinkSync(filePath);
-            console.log('[ProxyOrchestrator] Cleaned up XMP sidecar:', file);
-            deletedCount++;
-          } catch (err) {
-            console.warn('[ProxyOrchestrator] Failed to delete XMP sidecar:', file, '-', err);
-          }
+    for (const proxyPath of proxyPaths) {
+      const sidecarPath = proxyPath + '.xmp';
+      try {
+        if (fs.existsSync(sidecarPath)) {
+          fs.unlinkSync(sidecarPath);
+          console.log('[ProxyOrchestrator] Cleaned up XMP sidecar:', path.basename(sidecarPath));
+          deletedCount++;
         }
+      } catch (err) {
+        console.warn('[ProxyOrchestrator] Failed to delete XMP sidecar:', path.basename(sidecarPath), '-', err);
       }
+    }
 
-      if (deletedCount > 0) {
-        console.log('[ProxyOrchestrator] Removed', deletedCount, 'XMP sidecar files');
-      }
-    } catch (err) {
-      console.error('[ProxyOrchestrator] Error cleaning up XMP sidecars:', err);
-      // Don't fail the entire job if cleanup fails
+    if (deletedCount > 0) {
+      console.log('[ProxyOrchestrator] Removed', deletedCount, 'XMP sidecar files');
     }
   }
 }
