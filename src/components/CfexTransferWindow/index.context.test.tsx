@@ -314,6 +314,107 @@ describe('CfexTransferWindow - Context Integration (Phase 5.4)', () => {
     });
   });
 
+  describe('Reset Transfer (New Transfer button)', () => {
+    test('shows "New Transfer" button when transfer status is complete', async () => {
+      // ARRANGE: Mock startTransfer to resolve successfully (status -> complete)
+      const mockStartTransfer = vi.fn().mockResolvedValue({
+        success: true,
+        filesTransferred: 10,
+        filesTotal: 10,
+        bytesTransferred: 1000000,
+        duration: 5000,
+        validationWarnings: [],
+        errors: []
+      });
+
+      (window as any).electronAPI.cfex.startTransfer = mockStartTransfer;
+
+      renderWithProviders(<CfexTransferWindow />);
+      const user = userEvent.setup();
+
+      // Wait for component ready
+      await waitFor(() => {
+        const startButton = screen.getByRole('button', { name: /start transfer/i });
+        expect(startButton).not.toBeDisabled();
+      });
+
+      // ACT: Click start transfer to trigger completion
+      const startButton = screen.getByRole('button', { name: /start transfer/i });
+      await user.click(startButton);
+
+      // ASSERT: "New Transfer" button should appear after transfer completes
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: /new transfer/i })).toBeInTheDocument();
+      });
+    });
+
+    test('shows "New Transfer" button when transfer status is error', async () => {
+      // ARRANGE: Mock startTransfer to reject (status -> error)
+      const mockStartTransfer = vi.fn().mockRejectedValue(new Error('Transfer failed'));
+
+      (window as any).electronAPI.cfex.startTransfer = mockStartTransfer;
+
+      renderWithProviders(<CfexTransferWindow />);
+      const user = userEvent.setup();
+
+      // Wait for component ready
+      await waitFor(() => {
+        const startButton = screen.getByRole('button', { name: /start transfer/i });
+        expect(startButton).not.toBeDisabled();
+      });
+
+      // ACT: Click start transfer to trigger error
+      const startButton = screen.getByRole('button', { name: /start transfer/i });
+      await user.click(startButton);
+
+      // ASSERT: "New Transfer" button should appear after transfer errors
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: /new transfer/i })).toBeInTheDocument();
+      });
+    });
+
+    test('clicking "New Transfer" resets transfer status to idle', async () => {
+      // ARRANGE: Complete a transfer first
+      const mockStartTransfer = vi.fn().mockResolvedValue({
+        success: true,
+        filesTransferred: 10,
+        filesTotal: 10,
+        bytesTransferred: 1000000,
+        duration: 5000,
+        validationWarnings: [],
+        errors: []
+      });
+
+      (window as any).electronAPI.cfex.startTransfer = mockStartTransfer;
+
+      renderWithProviders(<CfexTransferWindow />);
+      const user = userEvent.setup();
+
+      // Wait for component ready and start transfer
+      await waitFor(() => {
+        const startButton = screen.getByRole('button', { name: /start transfer/i });
+        expect(startButton).not.toBeDisabled();
+      });
+
+      await user.click(screen.getByRole('button', { name: /start transfer/i }));
+
+      // Wait for "New Transfer" button to appear
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: /new transfer/i })).toBeInTheDocument();
+      });
+
+      // ACT: Click "New Transfer" to reset
+      await user.click(screen.getByRole('button', { name: /new transfer/i }));
+
+      // ASSERT: Should be back to idle state with "Start Transfer" button enabled
+      await waitFor(() => {
+        const startButton = screen.getByRole('button', { name: /start transfer/i });
+        expect(startButton).toBeInTheDocument();
+        expect(startButton).not.toBeDisabled();
+      });
+    });
+  });
+
   describe('IPC Subscription Deduplication', () => {
     test('does NOT subscribe to onTransferProgress in component', () => {
       // CRITICAL: Context already subscribes to onTransferProgress
