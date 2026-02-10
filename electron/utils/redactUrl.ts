@@ -21,7 +21,7 @@ export function redactUrlTokens(url: string): string {
   // This handles both full URLs and relative paths without needing URL parsing,
   // which would require a base URL for relative paths.
   return url.replace(
-    /([?&])token=[^&]*/,
+    /([?&])token=[^&]*/g,
     '$1token=[REDACTED]'
   );
 }

@@ -52,6 +52,14 @@ describe('redactUrlTokens', () => {
     expect(result).not.toContain('mysecret');
   });
 
+  it('should redact ALL token parameters when duplicated', () => {
+    const url = 'http://localhost:8765/?token=fake&path=%2Ffile.mov&token=realSecret';
+    const result = redactUrlTokens(url);
+    expect(result).not.toContain('fake');
+    expect(result).not.toContain('realSecret');
+    expect(result).toContain('token=[REDACTED]');
+  });
+
   it('should handle request URL paths (relative, as seen by http.Server)', () => {
     // http.Server req.url is typically a relative path like /?path=...&token=...
     const reqUrl = '/?path=%2Fsome%2Ffile.mov&token=reqsecret';
