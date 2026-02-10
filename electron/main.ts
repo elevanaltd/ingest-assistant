@@ -25,6 +25,7 @@ import { registerAiHandlers } from './ipc/aiHandlers';
 import { registerBatchHandlers } from './ipc/batchHandlers';
 import { registerConfigHandlers } from './ipc/configHandlers';
 import { RateLimiter } from './utils/rateLimiter';
+import { redactUrlTokens } from './utils/redactUrl';
 
 let mainWindow: BrowserWindow | null = null;
 let mediaServer: http.Server | null = null;
@@ -123,7 +124,7 @@ function getVideoMimeType(filePath: string): string {
 function createMediaServer(): http.Server {
   const server = http.createServer(async (req, res) => {
     try {
-      console.log('[MediaServer] Request:', req.method, req.url);
+      console.log('[MediaServer] Request:', req.method, redactUrlTokens(req.url || ''));
 
       // Extract token and file path from URL query parameters
       const url = new URL(req.url!, `http://localhost:${MEDIA_SERVER_PORT}`);
