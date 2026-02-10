@@ -55,7 +55,7 @@ interface TransferError {
  */
 export function CfexTransferWindow() {
   // Consume context for transfer state and actions
-  const { state: ctxState, updateConfig, startTransfer, cancelTransfer } = useCfexTransfer()
+  const { state: ctxState, updateConfig, startTransfer, cancelTransfer, resetTransfer } = useCfexTransfer()
 
   // Subscribe to proxy generation progress events via hook
   const proxyProgress = useProxyProgress()
@@ -225,6 +225,24 @@ export function CfexTransferWindow() {
             }}
           >
             Cancel
+          </button>
+        )}
+
+        {(ctxState.transferStatus === 'complete' || ctxState.transferStatus === 'error') && (
+          <button
+            onClick={resetTransfer}
+            style={{
+              padding: '12px 24px',
+              fontSize: '14px',
+              fontWeight: 500,
+              backgroundColor: '#28a745',
+              color: 'white',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: 'pointer'
+            }}
+          >
+            New Transfer
           </button>
         )}
       </div>

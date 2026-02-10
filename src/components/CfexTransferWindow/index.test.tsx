@@ -163,13 +163,12 @@ describe('CfexTransferWindow', () => {
       })
     })
 
-    test.skip('invokes cfex.startTransfer with correct config', async () => {
-      // SKIPPED: Component bug - path concatenation instead of replacement
-      // Issue: state.destinationPaths has default values, onChange appends instead of replaces
-      // Expected: photos="/Volumes/LucidLink/photos"
-      // Actual: photos="/Volumes/videos-current/2. WORKING PROJECTS//Volumes/LucidLink/photos"
-      // Fix required in CfexTransferWindow.tsx (lines 213-214) + FolderPicker onChange (line 118)
-      // Separate TDD cycle: RED (this test) → GREEN (fix onChange) → REFACTOR
+    test('invokes cfex.startTransfer with correct config', async () => {
+      // Previously skipped due to misdiagnosed "path concatenation bug".
+      // Root cause: userEvent.type() appends to existing input values (correct keyboard sim).
+      // Fix: clear inputs before typing, and use correct aria selectors for text inputs.
+      // Also updated expected IPC structure to match current context startTransfer implementation.
+
       // ARRANGE: Spy on cfex.startTransfer
       mockStartTransfer.mockResolvedValue({
         success: true,
@@ -185,23 +184,46 @@ describe('CfexTransferWindow', () => {
 
       const user = userEvent.setup()
 
-      // ACT: Fill paths and click start
-      await user.type(screen.getByLabelText(/source.*folder/i), '/Volumes/CFExpress')
-      await user.type(screen.getByLabelText(/photos.*destination/i), '/Volumes/LucidLink/photos')
-      await user.type(screen.getByLabelText(/.*videos.*destination/i), '/Volumes/Ubuntu/videos-raw')
+      // Wait for auto-detection to complete before interacting
+      await waitFor(() => {
+        expect(mockDetectSources).toHaveBeenCalled()
+      })
+
+      // ACT: Clear default values then type new paths
+      // Source input (has default from context DEFAULT_STATE)
+      const sourceInput = screen.getByLabelText(/source.*folder/i)
+      await user.clear(sourceInput)
+      await user.type(sourceInput, '/Volumes/CFExpress')
+
+      // Photos destination input (use placeholder to avoid checkbox/input ambiguity)
+      const photosInput = screen.getByPlaceholderText(/LucidLink.*photos/i)
+      await user.clear(photosInput)
+      await user.type(photosInput, '/Volumes/LucidLink/photos')
+
+      // Videos destination input (use placeholder to avoid checkbox/input ambiguity)
+      const videosInput = screen.getByPlaceholderText(/Ubuntu/i)
+      await user.clear(videosInput)
+      await user.type(videosInput, '/Volumes/Ubuntu/videos-raw')
 
       const startButton = screen.getByRole('button', { name: /start transfer/i })
       await user.click(startButton)
 
       // ASSERT: cfex.startTransfer invoked with correct config
+      // Current context implementation sends full config including enabledDestinations and proxyPresetId
       await waitFor(() => {
-        expect(mockStartTransfer).toHaveBeenCalledWith({
-          source: '/Volumes/CFExpress',
-          destinations: {
-            photos: '/Volumes/LucidLink/photos',
-            rawVideos: '/Volumes/Ubuntu/videos-raw'
-          }
-        })
+        expect(mockStartTransfer).toHaveBeenCalledWith(
+          expect.objectContaining({
+            source: '/Volumes/CFExpress',
+            destinations: expect.objectContaining({
+              photos: '/Volumes/LucidLink/photos',
+              rawVideos: '/Volumes/Ubuntu/videos-raw',
+            }),
+            enabledDestinations: expect.objectContaining({
+              photos: true,
+              rawVideos: true,
+            }),
+          })
+        )
       })
     })
   })

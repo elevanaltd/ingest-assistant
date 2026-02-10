@@ -44,7 +44,7 @@ export function MediaViewer({
                 error: video.error,
                 code: video.error?.code,
                 message: video.error?.message,
-                src: video.src,
+                src: video.src?.replace(/([?&])token=[^&]*/g, '$1token=[REDACTED]'),
                 networkState: video.networkState,
                 readyState: video.readyState
               });

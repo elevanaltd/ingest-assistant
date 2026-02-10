@@ -24,7 +24,6 @@ export default defineConfig({
         '**/*.test.ts',
         '**/*.test.tsx',
         'dist/',
-        'electron/',
         '.claude/',
       ],
     },

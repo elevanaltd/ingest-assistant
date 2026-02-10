@@ -36,6 +36,7 @@ import type { VideoTranscoder } from '../services/videoTranscoder';
 import type { BatchQueueManager } from '../services/batchQueueManager';
 import { VideoFrameExtractor } from '../services/videoFrameExtractor';
 import { sanitizeError } from '../utils/errorSanitization';
+import { redactUrlTokens } from '../utils/redactUrl';
 import {
   FileRenameSchema,
   FileUpdateMetadataSchema,
@@ -183,7 +184,7 @@ export function registerFileHandlers(
             const transcodedPath = await videoTranscoder.transcodeForPreview(validPath, onProgress);
             const encodedPath = encodeURIComponent(transcodedPath);
             const httpUrl = `http://localhost:${MEDIA_SERVER_PORT}/?path=${encodedPath}&token=${MEDIA_SERVER_TOKEN}`;
-            console.log('[IPC] Transcode complete, serving:', httpUrl);
+            console.log('[IPC] Transcode complete, serving:', redactUrlTokens(httpUrl));
 
             // Return URL with success indicator
             const successMessage = 'H.264 Preview (AI analysis on original)';
@@ -201,7 +202,7 @@ export function registerFileHandlers(
         // Codec is supported - return original file URL with token
         const encodedPath = encodeURIComponent(validPath);
         const httpUrl = `http://localhost:${MEDIA_SERVER_PORT}/?path=${encodedPath}&token=${MEDIA_SERVER_TOKEN}`;
-        console.log('[IPC] Codec supported, HTTP URL:', httpUrl);
+        console.log('[IPC] Codec supported, HTTP URL:', redactUrlTokens(httpUrl));
         return httpUrl;
       }
 
