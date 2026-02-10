@@ -1,6 +1,7 @@
 import { ProxyGenerator } from './proxyGenerator';
 import { ExifPreserver, ExifVerificationResult } from './exifPreserver';
 import * as path from 'path';
+import * as fs from 'fs';
 
 /**
  * ProxyOrchestrator - Coordinates ProxyGenerator + ExifPreserver workflow
@@ -187,6 +188,11 @@ export class ProxyOrchestrator {
       }
     }
 
+    // Cleanup: Remove XMP sidecar files (exiftool -overwrite_original creates these)
+    // Metadata is already embedded in the MOV files, sidecars cause Premiere Pro linking errors
+    // Only clean up sidecars for proxies generated in THIS job to avoid deleting unrelated XMP files
+    this.cleanupXmpSidecars(successfulProxies);
+
     const result: ProxyJobResult = {
       success: failedCount === 0 && verificationFailures.length === 0,
       completedCount,
@@ -197,5 +203,32 @@ export class ProxyOrchestrator {
 
     console.log('[ProxyOrchestrator] Job complete:', completedCount, '/', total, 'succeeded');
     return result;
+  }
+
+  /**
+   * Cleanup: Remove XMP sidecar files created for proxies in this job only.
+   * exiftool creates .xmp sidecars alongside the video files it writes to.
+   * These cause Premiere Pro linking errors, but metadata is already embedded in the video files.
+   * Only targets sidecars matching successfulProxies to avoid deleting unrelated XMP files.
+   */
+  private cleanupXmpSidecars(proxyPaths: string[]): void {
+    let deletedCount = 0;
+
+    for (const proxyPath of proxyPaths) {
+      const sidecarPath = proxyPath + '.xmp';
+      try {
+        if (fs.existsSync(sidecarPath)) {
+          fs.unlinkSync(sidecarPath);
+          console.log('[ProxyOrchestrator] Cleaned up XMP sidecar:', path.basename(sidecarPath));
+          deletedCount++;
+        }
+      } catch (err) {
+        console.warn('[ProxyOrchestrator] Failed to delete XMP sidecar:', path.basename(sidecarPath), '-', err);
+      }
+    }
+
+    if (deletedCount > 0) {
+      console.log('[ProxyOrchestrator] Removed', deletedCount, 'XMP sidecar files');
+    }
   }
 }
