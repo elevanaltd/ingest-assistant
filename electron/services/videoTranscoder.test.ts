@@ -51,8 +51,8 @@ vi.mock('crypto', async () => {
     createHash: vi.fn()
   };
 });
-vi.mock('@ffmpeg-installer/ffmpeg', () => ({
-  default: { path: '/usr/local/bin/ffmpeg' }
+vi.mock('../utils/binaryPaths', () => ({
+  getFfmpegPath: () => '/usr/local/bin/ffmpeg',
 }));
 
 describe('VideoTranscoder', () => {

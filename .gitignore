@@ -51,3 +51,6 @@ test-output.log
 .claude/hooks/state/
 .claude/hooks/hook-execution.log
 /.cache
+
+# HestAI system governance (auto-added, not committed)
+.hestai-sys/

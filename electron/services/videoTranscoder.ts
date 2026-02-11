@@ -1,5 +1,5 @@
 import { spawn } from 'child_process';
-import ffmpeg from '@ffmpeg-installer/ffmpeg';
+import { getFfmpegPath } from '../utils/binaryPaths';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as crypto from 'crypto';
@@ -156,9 +156,9 @@ export class VideoTranscoder {
         outPath
       ];
 
-      console.log('[VideoTranscoder] FFmpeg command:', ffmpeg.path, args.join(' '));
+      console.log('[VideoTranscoder] FFmpeg command:', getFfmpegPath(), args.join(' '));
 
-      const ffmpegProcess = spawn(ffmpeg.path, args);
+      const ffmpegProcess = spawn(getFfmpegPath(), args);
       let stderr = '';
       let duration = 0;
 

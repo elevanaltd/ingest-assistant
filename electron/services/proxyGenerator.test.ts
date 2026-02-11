@@ -3,7 +3,7 @@ import { ProxyGenerator } from './proxyGenerator';
 import { spawn } from 'child_process';
 import { EventEmitter } from 'events';
 import * as fs from 'fs';
-import ffprobe from '@ffprobe-installer/ffprobe';
+import { getFfprobePath } from '../utils/binaryPaths';
 
 /**
  * ProxyGenerator Tests (Phase 1b B2.1)
@@ -34,11 +34,9 @@ vi.mock('child_process', () => {
     default: { spawn },
   };
 });
-vi.mock('@ffmpeg-installer/ffmpeg', () => ({
-  default: { path: '/usr/local/bin/ffmpeg' }
-}));
-vi.mock('@ffprobe-installer/ffprobe', () => ({
-  default: { path: '/usr/local/bin/ffprobe' }
+vi.mock('../utils/binaryPaths', () => ({
+  getFfmpegPath: () => '/usr/local/bin/ffmpeg',
+  getFfprobePath: () => '/usr/local/bin/ffprobe',
 }));
 
 describe('ProxyGenerator', () => {
@@ -95,7 +93,7 @@ describe('ProxyGenerator', () => {
 
       expect(duration).toBe(20.5);
       expect(spawn).toHaveBeenCalledWith(
-        ffprobe.path,
+        getFfprobePath(),
         expect.arrayContaining([
           '-v', 'error',
           '-show_entries', 'format=duration',

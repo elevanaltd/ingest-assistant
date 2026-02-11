@@ -1,8 +1,7 @@
 import { spawn } from 'child_process';
 import * as path from 'path';
 import { tmpdir } from 'os';
-import ffmpeg from '@ffmpeg-installer/ffmpeg';
-import ffprobe from '@ffprobe-installer/ffprobe';
+import { getFfmpegPath, getFfprobePath } from '../utils/binaryPaths';
 
 /**
  * Validate filename to prevent command injection and flag injection
@@ -79,8 +78,8 @@ export class VideoFrameExtractor {
   private ffprobePath: string;
 
   constructor() {
-    this.ffmpegPath = ffmpeg.path;
-    this.ffprobePath = ffprobe.path;
+    this.ffmpegPath = getFfmpegPath();
+    this.ffprobePath = getFfprobePath();
   }
 
   /**
