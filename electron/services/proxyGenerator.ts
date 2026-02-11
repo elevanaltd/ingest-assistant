@@ -1,7 +1,5 @@
 import { spawn } from 'child_process';
-import ffmpeg from '@ffmpeg-installer/ffmpeg';
-// Critical-Engineer: consulted to ensure direct ffprobe reference avoids path mangling
-import ffprobe from '@ffprobe-installer/ffprobe';
+import { getFfmpegPath, getFfprobePath } from '../utils/binaryPaths';
 import * as path from 'path';
 import * as fs from 'fs';
 import { getPresetById } from './proxyPresets';
@@ -51,7 +49,7 @@ export class ProxyGenerator {
       ];
 
       console.log('[ProxyGenerator] Extracting duration via ffprobe:', sourceFile);
-      const ffprobeProcess = spawn(ffprobe.path, args);
+      const ffprobeProcess = spawn(getFfprobePath(), args);
 
       let stdout = '';
       let stderr = '';
@@ -171,7 +169,7 @@ export class ProxyGenerator {
     console.log('[ProxyGenerator] Output:', outputPath);
 
     return new Promise((resolve, reject) => {
-      const ffmpegProcess = spawn(ffmpeg.path, args);
+      const ffmpegProcess = spawn(getFfmpegPath(), args);
       let stderr = '';
 
       // Setup timeout

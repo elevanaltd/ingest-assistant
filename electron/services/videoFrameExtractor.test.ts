@@ -1,13 +1,10 @@
 import { describe, it, expect, vi } from 'vitest';
 import { VideoFrameExtractor } from './videoFrameExtractor';
 
-// Mock ffmpeg installers
-vi.mock('@ffmpeg-installer/ffmpeg', () => ({
-  default: { path: '/usr/bin/ffmpeg' },
-}));
-
-vi.mock('@ffprobe-installer/ffprobe', () => ({
-  default: { path: '/usr/bin/ffprobe' },
+// Mock binary path resolution
+vi.mock('../utils/binaryPaths', () => ({
+  getFfmpegPath: () => '/usr/bin/ffmpeg',
+  getFfprobePath: () => '/usr/bin/ffprobe',
 }));
 
 describe('VideoFrameExtractor', () => {
