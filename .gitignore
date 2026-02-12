@@ -54,3 +54,7 @@ test-output.log
 
 # HestAI system governance (auto-added, not committed)
 .hestai-sys/
+
+# Git worktrees (Crystal)
+/worktrees/
+/worktree-*/
