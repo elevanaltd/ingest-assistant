@@ -4,20 +4,12 @@ const { mockExistsSync } = vi.hoisted(() => ({
   mockExistsSync: vi.fn(),
 }));
 
-vi.mock('@ffmpeg-installer/ffmpeg', () => ({
-  default: { path: '/usr/bin/ffmpeg' },
-}));
-
-vi.mock('@ffprobe-installer/ffprobe', () => ({
-  default: { path: '/usr/bin/ffprobe' },
-}));
-
 vi.mock('fs', async (importOriginal) => {
   const actual = await importOriginal<typeof import('fs')>();
   return { ...actual, default: { ...actual, existsSync: mockExistsSync }, existsSync: mockExistsSync };
 });
 
-import { getFfmpegPath, getFfprobePath } from './binaryPaths';
+import { getFfmpegPath, getFfprobePath, resolveWithAsarFallback } from './binaryPaths';
 
 describe('binaryPaths', () => {
   beforeEach(() => {
@@ -25,48 +17,42 @@ describe('binaryPaths', () => {
   });
 
   describe('getFfmpegPath', () => {
-    it('should return installer path when it exists on disk', () => {
+    it('should return a valid path when installer resolves and binary exists', () => {
       mockExistsSync.mockReturnValue(true);
       const result = getFfmpegPath();
-      expect(result).toBe('/usr/bin/ffmpeg');
+      expect(result).toContain('ffmpeg');
+      expect(typeof result).toBe('string');
     });
 
-    it('should throw when installer path does not exist (non-ASAR context)', () => {
-      // In dev/test, __dirname does not contain 'app.asar', so ASAR fallback
-      // is skipped and we get the error directly
+    it('should throw when no path can be resolved (non-ASAR context)', () => {
       mockExistsSync.mockReturnValue(false);
       expect(() => getFfmpegPath()).toThrow('Could not find ffmpeg binary');
     });
   });
 
   describe('getFfprobePath', () => {
-    it('should return installer path when it exists on disk', () => {
+    it('should return a valid path when installer resolves and binary exists', () => {
       mockExistsSync.mockReturnValue(true);
       const result = getFfprobePath();
-      expect(result).toBe('/usr/bin/ffprobe');
+      expect(result).toContain('ffprobe');
+      expect(typeof result).toBe('string');
     });
 
-    it('should throw when installer path does not exist (non-ASAR context)', () => {
+    it('should throw when no path can be resolved (non-ASAR context)', () => {
       mockExistsSync.mockReturnValue(false);
       expect(() => getFfprobePath()).toThrow('Could not find ffprobe binary');
     });
   });
 
   describe('ASAR fallback (resolveWithAsarFallback)', () => {
-    it('should construct ASAR unpacked path when __dirname contains app.asar', async () => {
-      // To test the ASAR branch, we need to re-import with a mocked __dirname.
-      // We use resolveWithAsarFallback exported for testing.
-      const { resolveWithAsarFallback } = await import('./binaryPaths');
-
-      // Simulate: installer path doesn't exist, ASAR unpacked path does
+    it('should construct ASAR unpacked path when dirname contains app.asar', () => {
+      // Installer require will fail for a fake module, so it falls through to ASAR
       mockExistsSync.mockImplementation((p: string) => {
         return String(p).includes('app.asar.unpacked');
       });
 
-      // In test context __dirname won't contain app.asar, so we test the function directly
-      // by passing a simulated dirname
       const result = resolveWithAsarFallback(
-        '/nonexistent/ffmpeg',
+        'nonexistent-module',
         '@ffmpeg-installer',
         'ffmpeg',
         '/tmp/.mount_Ingest123/resources/app.asar/dist/electron/utils'
@@ -76,12 +62,11 @@ describe('binaryPaths', () => {
       expect(result).toContain('ffmpeg');
     });
 
-    it('should throw when ASAR unpacked path also does not exist', async () => {
-      const { resolveWithAsarFallback } = await import('./binaryPaths');
+    it('should throw when both installer and ASAR fallback fail', () => {
       mockExistsSync.mockReturnValue(false);
 
       expect(() => resolveWithAsarFallback(
-        '/nonexistent/ffmpeg',
+        'nonexistent-module',
         '@ffmpeg-installer',
         'ffmpeg',
         '/tmp/.mount_Ingest123/resources/app.asar/dist/electron/utils'

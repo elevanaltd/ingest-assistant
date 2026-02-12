@@ -1,34 +1,48 @@
 import * as path from 'path';
 import * as fs from 'fs';
 import * as os from 'os';
-import ffmpegInstaller from '@ffmpeg-installer/ffmpeg';
-import ffprobeInstaller from '@ffprobe-installer/ffprobe';
 
 const platform = os.platform() + '-' + os.arch();
 
 /**
+ * Try to load the installer module path. Returns null if the installer
+ * throws (which happens inside ASAR where its path resolution breaks).
+ */
+function tryInstallerPath(moduleName: string): string | null {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const installer = require(moduleName);
+    if (installer?.path && fs.existsSync(installer.path)) {
+      return installer.path;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Resolve a binary path with ASAR fallback.
  *
- * In development or when the installer resolves correctly, the installer path
- * is used directly. Inside a packaged Electron app (ASAR), the installer's
- * path resolution can break because __dirname no longer contains 'node_modules'.
- * In that case we construct the path into app.asar.unpacked where electron-builder
- * places native binaries.
+ * In development, the @ffmpeg-installer package resolves the path directly.
+ * Inside a packaged Electron app (ASAR), the installer's require() throws
+ * because __dirname no longer contains 'node_modules'. In that case we
+ * construct the path into app.asar.unpacked where electron-builder places
+ * native binaries.
  */
 export function resolveWithAsarFallback(
-  installerPath: string,
+  installerModule: string,
   packageScope: string,
   binaryName: string,
   dirname: string = __dirname
 ): string {
-  // 1. Try the installer-provided path first
-  if (fs.existsSync(installerPath)) {
+  // 1. Try the installer-provided path (works in dev, fails in ASAR)
+  const installerPath = tryInstallerPath(installerModule);
+  if (installerPath) {
     return installerPath;
   }
 
   // 2. ASAR fallback: look in app.asar.unpacked
-  // In packaged Electron, __dirname is inside app.asar; native binaries
-  // are extracted to the parallel app.asar.unpacked directory.
   const asarIndex = dirname.indexOf('app.asar');
   if (asarIndex !== -1) {
     const resourcesDir = dirname.substring(0, asarIndex);
@@ -46,16 +60,16 @@ export function resolveWithAsarFallback(
   }
 
   throw new Error(
-    `Could not find ${binaryName} binary. Tried installer path "${installerPath}" and ASAR unpacked fallback.`
+    `Could not find ${binaryName} binary. Installer module "${installerModule}" failed and ASAR fallback not found.`
   );
 }
 
 /** Resolve the ffmpeg binary path, with ASAR fallback for packaged Electron apps. */
 export function getFfmpegPath(): string {
-  return resolveWithAsarFallback(ffmpegInstaller.path, '@ffmpeg-installer', 'ffmpeg');
+  return resolveWithAsarFallback('@ffmpeg-installer/ffmpeg', '@ffmpeg-installer', 'ffmpeg');
 }
 
 /** Resolve the ffprobe binary path, with ASAR fallback for packaged Electron apps. */
 export function getFfprobePath(): string {
-  return resolveWithAsarFallback(ffprobeInstaller.path, '@ffprobe-installer', 'ffprobe');
+  return resolveWithAsarFallback('@ffprobe-installer/ffprobe', '@ffprobe-installer', 'ffprobe');
 }
