@@ -53,9 +53,11 @@ test-output.log
 /.cache
 
 # HestAI three-tier architecture
-.hestai-sys/          # Tier 1: System governance (MCP-delivered, not committed)
-.hestai/state         # Tier 3: Working state (symlink to .hestai-state/)
-.hestai-state/        # Tier 3: Shared working state (context, sessions, reports)
+# Tier 1: System governance (MCP-delivered, not committed)
+.hestai-sys/
+# Tier 3: Working state (symlink to .hestai-state/) and shared state directory
+.hestai/state
+.hestai-state/
 
 # Git worktrees (Crystal)
 /worktrees/
