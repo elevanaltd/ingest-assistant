@@ -17,28 +17,25 @@ YELLOW='\033[33m'
 BOLD='\033[1m'
 RESET='\033[0m'
 
-# Check for .coord coordination structure
+# Check for .hestai three-tier structure (new) or .coord (legacy fallback)
+HESTAI_NORTH_STAR="$PROJECT_DIR/.hestai/north-star"
 COORD_PATH="$PROJECT_DIR/.coord"
 
-if [ ! -e "$COORD_PATH" ]; then
+if [ -d "$HESTAI_NORTH_STAR" ]; then
+  SEARCH_PATH="$HESTAI_NORTH_STAR"
+elif [ -e "$COORD_PATH" ] && ([ -L "$COORD_PATH" ] || [ -d "$COORD_PATH" ]); then
+  SEARCH_PATH="$COORD_PATH/workflow-docs"
+else
   # No coordination - silent exit (this is expected for many projects)
   exit 0
 fi
 
-# Check if .coord is a symlink or directory
-if [ ! -L "$COORD_PATH" ] && [ ! -d "$COORD_PATH" ]; then
-  exit 0
-fi
-
-# Look for workflow-docs folder
-WORKFLOW_DOCS="$COORD_PATH/workflow-docs"
-
-if [ ! -d "$WORKFLOW_DOCS" ]; then
+if [ ! -d "$SEARCH_PATH" ]; then
   exit 0
 fi
 
 # Find North Star Summary file (pattern: *NORTH-STAR-SUMMARY*.md)
-SUMMARY_FILE=$(find "$WORKFLOW_DOCS" -maxdepth 1 -name "*NORTH-STAR-SUMMARY*.md" -type f 2>/dev/null | head -1)
+SUMMARY_FILE=$(find "$SEARCH_PATH" -maxdepth 1 -name "*NORTH-STAR-SUMMARY*.md" -type f 2>/dev/null | head -1)
 
 if [ -z "$SUMMARY_FILE" ]; then
   # No summary found - silent exit
