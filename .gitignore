@@ -52,8 +52,10 @@ test-output.log
 .claude/hooks/hook-execution.log
 /.cache
 
-# HestAI system governance (auto-added, not committed)
-.hestai-sys/
+# HestAI three-tier architecture
+.hestai-sys/          # Tier 1: System governance (MCP-delivered, not committed)
+.hestai/state         # Tier 3: Working state (symlink to .hestai-state/)
+.hestai-state/        # Tier 3: Shared working state (context, sessions, reports)
 
 # Git worktrees (Crystal)
 /worktrees/

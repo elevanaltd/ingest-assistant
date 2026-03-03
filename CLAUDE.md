@@ -53,7 +53,7 @@ IMMUTABLES::[
   I7::FOLDER_LOCK[COMPLETE flag → shot numbers frozen]→WHY[prevents chronological re-sort chaos]
 ]
 
-NORTH_STAR::See `.coord/docs/000-NORTH-STAR.md`[7 immutables + microphase structure]
+NORTH_STAR::See `.hestai/north-star/000-INGEST_ASSISTANT-D1-NORTH-STAR.md`[7 immutables + microphase structure]
 
 TECH_STACK::[
   RUNTIME::Electron[main + renderer processes],
@@ -157,7 +157,7 @@ SUPABASE_INTEGRATION::[
 
 CROSS_ECOSYSTEM_COORDINATION::[
   EAV_SCHEMA_CHANGES::[
-    1::Check /Volumes/HestAI-Projects/eav-monorepo/.coord/ACTIVE-WORK.md[avoid conflicts],
+    1::Check /Volumes/HestAI-Projects/eav-monorepo/.hestai/state/context/ACTIVE-WORK.md[avoid conflicts],
     2::Branch ia/{task-name},
     3::Update ACTIVE-WORK.md[status tracking],
     4::Deploy EAV first → IA second[prevents orphaned migrations],
@@ -168,18 +168,19 @@ CROSS_ECOSYSTEM_COORDINATION::[
 
 REFERENCES::[
   THIS_PROJECT::[
-    CONTEXT::".coord/PROJECT-CONTEXT.md",
-    CHECKLIST::".coord/SHARED-CHECKLIST.md",
-    ROADMAP::".coord/PROJECT-ROADMAP.md",
-    ARCHITECTURE::".coord/docs/001-DOC-ARCHITECTURE.md",
-    BATCH_PROCESSING::".coord/docs/007-DOC-BATCH-PROCESSING-IMPLEMENTATION.md",
-    DEPENDENCY_ROADMAP::".coord/docs/DEPENDENCY-ROADMAP.md"
+    CONTEXT::".hestai/state/context/PROJECT-CONTEXT.md",
+    CHECKLIST::".hestai/state/context/SHARED-CHECKLIST.md",
+    ROADMAP::".hestai/state/context/PROJECT-ROADMAP.md",
+    NORTH_STAR::".hestai/north-star/000-INGEST_ASSISTANT-D1-NORTH-STAR.md",
+    ARCHITECTURE::"docs/architecture/001-DOC-ARCHITECTURE.md",
+    BATCH_PROCESSING::"docs/guides/implementation/007-DOC-BATCH-PROCESSING-IMPLEMENTATION.md",
+    DEPENDENCY_ROADMAP::"docs/013-DOC-DEPENDENCY-ROADMAP.md"
   ],
   EAV_ECOSYSTEM::[
-    CONTEXT::"/Volumes/HestAI-Projects/eav-monorepo/.coord/PROJECT-CONTEXT.md",
-    PIPELINE::"/Volumes/HestAI-Projects/eav-monorepo/.coord/workflow-docs/002-EAV-PRODUCTION-PIPELINE.md",
-    ACTIVE_WORK::"/Volumes/HestAI-Projects/eav-monorepo/.coord/ACTIVE-WORK.md",
-    CROSS_WORKFLOW::"/Volumes/HestAI-Projects/eav-monorepo/.coord/workflow-docs/CROSS-ECOSYSTEM-WORKFLOW.md"
+    CONTEXT::"/Volumes/HestAI-Projects/eav-monorepo/.hestai/state/context/PROJECT-CONTEXT.md",
+    PIPELINE::"/Volumes/HestAI-Projects/eav-monorepo/.hestai/decisions/002-EAV-PRODUCTION-PIPELINE.md",
+    ACTIVE_WORK::"/Volumes/HestAI-Projects/eav-monorepo/.hestai/state/context/ACTIVE-WORK.md",
+    CROSS_WORKFLOW::"/Volumes/HestAI-Projects/eav-monorepo/.hestai/decisions/CROSS-ECOSYSTEM-WORKFLOW.md"
   ]
 ]
 
@@ -203,6 +204,6 @@ CONSTITUTIONAL_REMINDERS::[
 
 ===END===
 
-**Last Updated:** 2025-12-03 (OCTAVE compression applied)
+**Last Updated:** 2026-03-03 (three-tier .hestai migration)
 **Maintainer:** Shaun Buswell
-**Claude Code Version:** Sonnet 4.5
+**Claude Code Version:** Sonnet 4.6
