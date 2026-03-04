@@ -58,6 +58,11 @@ test-output.log
 # Tier 3: Working state (symlink to .hestai-state/) and shared state directory
 .hestai/state
 .hestai-state/
+# Legacy .coord/ structure (replaced by three-tier .hestai/ as of 2026-03-03)
+.coord/
+# Machine-format files (reconstructible, not committed per visibility-rules v1.6)
+debates/*.json
+*.jsonl
 
 # Git worktrees (Crystal)
 /worktrees/
