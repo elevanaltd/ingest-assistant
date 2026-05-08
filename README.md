@@ -11,7 +11,7 @@ AI-powered media file ingestion and metadata assistant for MacOS.
   - Queue persistence survives app restarts
   - Graceful cancellation (finishes current file)
   - Same metadata storage as manual processing
-  - See: [Batch Processing Documentation](.coord/docs/guides/implementation/007-DOC-BATCH-PROCESSING-IMPLEMENTATION.md)
+  - See: [Batch Processing Documentation](docs/guides/implementation/007-DOC-BATCH-PROCESSING-IMPLEMENTATION.md)
 - **Auto-Rename**: Files automatically renamed to `{ID}-{kebab-case-name}.{ext}`
   - **Photos**: 3-part naming `{location}-{subject}-{shotType}`
   - **Videos**: 4-part naming `{location}-{subject}-{action}-{shotType}`
@@ -58,7 +58,7 @@ AI-powered media file ingestion and metadata assistant for MacOS.
 - Writes structured XMP to files (location, subject, action, shotType, date)
 - CEP Panel reads XMP and imports to Premiere Pro with field mapping
 - Shared metadata ensures consistency across production pipeline
-- See: [Shared Metadata Strategy](.coord/docs/011-DOC-METADATA-STRATEGY-SHARED.md)
+- See: [Shared Metadata Strategy](docs/011-DOC-METADATA-STRATEGY-SHARED.md)
 
 ## Setup
 
@@ -80,7 +80,7 @@ brew install exiftool  # macOS
 
 **Metadata Strategy:** This project uses a **shared XMP metadata strategy** with `eav-cep-assist` (Premiere Pro panel). Both tools write identical XMP fields to video files, ensuring consistency across the video production workflow.
 
-See: [Shared Metadata Strategy](.coord/docs/011-DOC-METADATA-STRATEGY-SHARED.md) for complete field specifications, namespace rationale, and implementation details.
+See: [Shared Metadata Strategy](docs/011-DOC-METADATA-STRATEGY-SHARED.md) for complete field specifications, namespace rationale, and implementation details.
 
 **Key XMP Fields Written:**
 - `xmpDM:shotName` - Combined entity mapping to PP Shot field (survives proxy workflows)
@@ -220,7 +220,7 @@ Process multiple files automatically with AI analysis:
 - Finishes current file, then stops
 - Cancelled files can be reprocessed later
 
-**Detailed Documentation:** See [Batch Processing Implementation](.coord/docs/guides/implementation/007-DOC-BATCH-PROCESSING-IMPLEMENTATION.md)
+**Detailed Documentation:** See [Batch Processing Implementation](docs/guides/implementation/007-DOC-BATCH-PROCESSING-IMPLEMENTATION.md)
 
 ## File Naming Convention
 
@@ -297,7 +297,7 @@ Example:
 
 ## Testing
 
-Comprehensive TDD implementation with **527 tests** (34 test files) covering:
+Comprehensive TDD implementation with **543 tests** (35 test files) covering:
 - Settings Modal and lexicon management
 - Multi-format AI response parsing with versioned schemas (V1/V2)
 - Metadata storage, EXIF embedding, and pagination
@@ -327,6 +327,34 @@ Run tests: `npm test`
 - **Sequential Shot Numbers**: EXIF sorting, folder completion, shot number immutability
 
 ## Version History
+
+### v3.0.0 (February 2026) - Context Architecture & Dependency Upgrades
+**Major Release:**
+- Context Architecture: `AppProviders`, `IngestSettingsContext`, `BatchQueueContext`, `CfexTransferContext`, `FileListContext`, `MetadataFormContext`
+- IPC Handler Decomposition: `fileHandlers`, `aiHandlers`, `batchHandlers`, `configHandlers` modules extracted from `main.ts`
+- ASAR-aware ffmpeg/ffprobe path resolution for packaged production builds
+- Proxy Generation: TapeName preservation, faststart flag, New Transfer button, cancel wiring
+- AI processing: failure validation gate, all results written for QC-first workflow
+- ExifPreserver: concurrency limiting, `Promise.allSettled`, per-file DateTimeOriginal preservation
+- Security: capability token redaction from all log output
+- Apache 2.0 LICENSE (aligned with Elevana Ltd)
+- Three-tier `.hestai` architecture for project governance
+- Upgrade Electron 33 to 39, React 18 to 19.2.1, Vite 6 to 7, Vitest 4, TypeScript tooling
+- Upgrade Anthropic SDK to v0.71, OpenAI SDK to v6
+- Test suite: 543 tests across 35 test files
+
+### v2.3.0 (November 2025) - CFEx Transfer System & Proxy Pipeline
+**Major Features:**
+- Full CFEx transfer pipeline: source scanning, integrity validation, streaming file transfer
+- CFEx auto-detection service with async I/O for memory card discovery
+- `ProxyGenerator` with ffmpeg stderr progress parsing
+- `ExifPreserver` 3-phase workflow (read, transcode, verify) with DateTimeOriginal preservation (I1)
+- `ProxyOrchestrator` with fail-log-continue error strategy
+- Configurable proxy format presets with Settings UI dropdown
+- `FilenameTemplateParser` with security validation
+- `MetadataToggleService` for field-level toggle persistence
+- R1.1 schema alignment for metadata format
+- Sidebar improvements: select all, checkbox alignment, full-width layout
 
 ### v2.2.0 (November 2025) - Sequential Shot Numbers & Production Baseline
 **Major Features:**
@@ -375,7 +403,7 @@ Run tests: `npm test`
 - ✅ Fixed: Stale queue persistence across folder changes (99/100 failures)
 - ✅ Fixed: Missing metadata entries for unprocessed files (68/69 skipped)
 - ✅ Fixed: Rate limiter throwing errors instead of waiting
-- Documentation: [Batch Processing Implementation](.coord/docs/007-DOC-BATCH-PROCESSING-IMPLEMENTATION.md)
+- Documentation: [Batch Processing Implementation](docs/guides/implementation/007-DOC-BATCH-PROCESSING-IMPLEMENTATION.md)
 
 **Architecture:**
 - Phase 0 prerequisites complete (security, pagination, schemas)
@@ -384,17 +412,9 @@ Run tests: `npm test`
 - EAV ecosystem integration documented (Step 6 of 10 in production pipeline)
 - Shared Supabase architecture designed for Reference Image Lookup (Issue #63)
 
-**Upcoming Enhancements (Roadmap):**
-- **CFEx File Transfer Integration (Phase 1)**: Integrated workflow replacing external app
-  - Zero-click AI pre-analysis during file copy (parallel I/O + compute)
-  - EXIF validation before shot number assignment
-  - Project intelligence with folder pattern matching
-  - Status: D1 North Star complete (7 immutables extracted), commitment ceremony pending
-- **Reference Image Lookup (Issue #63)**: AI learning from human corrections (DEFERRED)
-  - Vector similarity search for visually similar reference images
-  - Integration with EAV production database for shot lookup
-  - Incremental learning: 70% → 85%+ cataloging accuracy over time
-  - Status: Deferred until CFEx Phase 1 complete + guardrails (4-6 weeks)
+**Roadmap (as of v1.1.0):**
+- CFEx File Transfer Integration: delivered in v2.3.0 and v3.0.0
+- Reference Image Lookup (Issue #63): deferred until post-CFEx guardrails complete
 
 ### v1.0.0 (January 2025) - Initial Release
 - Core manual workflow (view, rename, tag, save)
@@ -408,4 +428,4 @@ Run tests: `npm test`
 
 ## License
 
-MIT
+Apache 2.0
