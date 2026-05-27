@@ -5,6 +5,28 @@ All notable changes to the Ingest Assistant project will be documented in this f
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- ASAR-aware ffmpeg/ffprobe path resolution for packaged application (production binary discovery)
+- Migrate to three-tier `.hestai` architecture for project governance and documentation structure
+- Apache 2.0 LICENSE file aligned with Elevana Ltd repository standards
+
+### Fixed
+
+- Create missing ffmpeg platform directories in postinstall script
+- Correct `.gitignore` inline comments that were breaking `.hestai` pattern matching
+
+### Changed
+
+- Switch LICENSE from MIT to Apache 2.0 aligned with Elevana Ltd repositories
+- Realign repository structure with visibility-rules v1.7 (`.hestai` governance layout)
+- Add worktrees directories to `.gitignore`
+- Exclude `.hestai-sys/` from version control
+
+---
+
 ## [3.0.0] - 2026-02-10
 
 Major release introducing the complete Context Architecture, IPC handler decomposition,
@@ -193,6 +215,7 @@ served as the stable foundation for the CFEx Integration development phase.
 
 ---
 
+[Unreleased]: https://github.com/elevanaltd/ingest-assistant/compare/v3.0.0...HEAD
 [3.0.0]: https://github.com/elevanaltd/ingest-assistant/compare/v2.3.0...v3.0.0
 [2.3.0]: https://github.com/elevanaltd/ingest-assistant/compare/v2.2.0...v2.3.0
 [2.2.0]: https://github.com/elevanaltd/ingest-assistant/releases/tag/v2.2.0
