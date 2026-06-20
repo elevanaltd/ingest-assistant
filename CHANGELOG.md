@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [3.0.1] - 2026-06-20
 
+### Security
+
+- Pin `fast-uri@3.1.2` and `ws@8.21.0` via `overrides` to resolve 4 HIGH-severity npm audit vulnerabilities (GHSA-q3j6-qgpj-74h6, GHSA-v39h-62p7-jpjc, GHSA-58qx-3vcg-4xpx, GHSA-96hv-2xvq-fx4p)
+
 ### Added
 
 - ASAR-aware ffmpeg/ffprobe path resolution for packaged application (production binary discovery)
@@ -19,11 +23,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Fix ASAR path guard to use regex boundary match, preventing `app.asar` substring check from incorrectly blocking valid binaries inside `app.asar.unpacked`
 - Create missing ffmpeg platform directories in postinstall script
 - Correct `.gitignore` inline comments that were breaking `.hestai` pattern matching
 
 ### Changed
 
+- Add `author` field to `package.json` and exclude non-native ffmpeg platform packages (required for Linux `.deb` packaging)
 - Switch LICENSE from MIT to Apache 2.0 aligned with Elevana Ltd repositories
 - Realign repository structure with visibility-rules v1.7 (`.hestai` governance layout)
 - Add worktrees directories to `.gitignore`
