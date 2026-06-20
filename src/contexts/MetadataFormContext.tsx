@@ -63,6 +63,7 @@ export function MetadataFormProvider({ children }: { children: ReactNode }) {
   // Sync form fields with currentFile
   useEffect(() => {
     if (!currentFile) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setLocation('');
       setSubject('');
       setAction('');
