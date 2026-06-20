@@ -11,10 +11,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [3.0.1] - 2026-06-20
 
-### Security
-
-- Pin `fast-uri@3.1.2` and `ws@8.21.0` via `overrides` to resolve 4 HIGH-severity npm audit vulnerabilities (GHSA-q3j6-qgpj-74h6, GHSA-v39h-62p7-jpjc, GHSA-58qx-3vcg-4xpx, GHSA-96hv-2xvq-fx4p)
-
 ### Added
 
 - ASAR-aware ffmpeg/ffprobe path resolution for packaged application (production binary discovery)
@@ -34,6 +30,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Realign repository structure with visibility-rules v1.7 (`.hestai` governance layout)
 - Add worktrees directories to `.gitignore`
 - Exclude `.hestai-sys/` from version control
+
+### Security
+
+- Pin `fast-uri@3.1.2` and `ws@8.21.0` via `overrides` to resolve 4 HIGH-severity npm audit vulnerabilities (GHSA-q3j6-qgpj-74h6, GHSA-v39h-62p7-jpjc, GHSA-58qx-3vcg-4xpx, GHSA-96hv-2xvq-fx4p)
 
 ---
 
