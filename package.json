@@ -107,6 +107,7 @@
     ],
     "directories": {
       "output": "release"
-    }
+    },
+    "publish": null
   }
 }
