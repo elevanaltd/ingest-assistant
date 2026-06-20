@@ -131,6 +131,7 @@ export function SettingsModal({
   // Sync context settings to local state (Phase 5.2: hybrid approach for compatibility)
   useEffect(() => {
     // Lexicon settings from context
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setPattern(settings.pattern);
     setCommonLocations(settings.commonLocations);
     setCommonSubjects(settings.commonSubjects);
@@ -160,6 +161,7 @@ export function SettingsModal({
   useEffect(() => {
     if (activeTab === 'ai' && window.electronAPI) {
       let isCurrent = true; // Track if this effect is still current
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       _setLoadingModels(true);
 
       window.electronAPI.getAIModels(aiProvider)
