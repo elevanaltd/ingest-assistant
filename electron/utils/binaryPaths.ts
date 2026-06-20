@@ -25,8 +25,9 @@ export function resolveWithAsarFallback(
   // IMPORTANT: Electron patches fs to read inside ASAR archives, so
   // fs.existsSync() returns true for paths inside app.asar. But spawn()
   // cannot execute binaries from inside an ASAR — it needs a real file on
-  // disk. Skip installer paths that resolve inside app.asar.
-  if (!installerPath.includes('app.asar') && fs.existsSync(installerPath)) {
+  // disk. Skip installer paths that resolve inside app.asar (but NOT
+  // app.asar.unpacked, which is a real on-disk directory).
+  if (!(/(?:^|[/\\])app\.asar(?=[/\\]|$)/).test(installerPath) && fs.existsSync(installerPath)) {
     return installerPath;
   }
 
