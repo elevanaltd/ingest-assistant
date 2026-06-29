@@ -221,6 +221,93 @@ describe('CfexAutoDetect Service', () => {
     })
   })
 
+  describe('Fuji Card Detection by Structure (Linux)', () => {
+    beforeEach(() => {
+      vi.mocked(os.platform).mockReturnValue('linux')
+      vi.mocked(os.homedir).mockReturnValue('/home/testuser')
+    })
+
+    it('should detect card mounted as "disk" when DCIM/100_FUJI exists', async () => {
+      vi.mocked(fs.readdir).mockImplementation((p: PathLike) => {
+        if (p === '/media/testuser/') return Promise.resolve(['disk', 'backup-drive'] as any)
+        return Promise.resolve([] as any)
+      })
+      vi.mocked(fs.stat).mockImplementation((p: PathLike) => {
+        if (p.toString() === '/media/testuser/disk/DCIM/100_FUJI') return Promise.resolve({} as any)
+        return Promise.reject(Object.assign(new Error('ENOENT'), { code: 'ENOENT' }))
+      })
+
+      const cards = await autoDetect.detectCfexCards()
+
+      expect(cards).toContain('/media/testuser/disk')
+      expect(cards).not.toContain('/media/testuser/backup-drive')
+    })
+
+    it('should detect card mounted as "disk1" when stale "disk" directory exists', async () => {
+      vi.mocked(fs.readdir).mockImplementation((p: PathLike) => {
+        if (p === '/media/testuser/') return Promise.resolve(['disk', 'disk1'] as any)
+        return Promise.resolve([] as any)
+      })
+      vi.mocked(fs.stat).mockImplementation((p: PathLike) => {
+        // disk is a stale empty directory; disk1 is the actual card
+        if (p.toString() === '/media/testuser/disk1/DCIM/100_FUJI') return Promise.resolve({} as any)
+        return Promise.reject(Object.assign(new Error('ENOENT'), { code: 'ENOENT' }))
+      })
+
+      const cards = await autoDetect.detectCfexCards()
+
+      expect(cards).toContain('/media/testuser/disk1')
+      expect(cards).not.toContain('/media/testuser/disk')
+    })
+
+    it('should detect card regardless of volume label', async () => {
+      vi.mocked(fs.readdir).mockImplementation((p: PathLike) => {
+        if (p === '/media/testuser/') return Promise.resolve(['MY_CARD', 'disk3', 'external-hdd'] as any)
+        return Promise.resolve([] as any)
+      })
+      vi.mocked(fs.stat).mockImplementation((p: PathLike) => {
+        if (p.toString() === '/media/testuser/disk3/DCIM/100_FUJI') return Promise.resolve({} as any)
+        return Promise.reject(Object.assign(new Error('ENOENT'), { code: 'ENOENT' }))
+      })
+
+      const cards = await autoDetect.detectCfexCards()
+
+      expect(cards).toContain('/media/testuser/disk3')
+      expect(cards).not.toContain('/media/testuser/MY_CARD')
+      expect(cards).not.toContain('/media/testuser/external-hdd')
+    })
+
+    it('should check /run/media as well as /media for content-based detection', async () => {
+      vi.mocked(fs.readdir).mockImplementation((p: PathLike) => {
+        if (p === '/media/testuser/') return Promise.resolve([] as any)
+        if (p === '/run/media/testuser/') return Promise.resolve(['disk'] as any)
+        return Promise.resolve([] as any)
+      })
+      vi.mocked(fs.stat).mockImplementation((p: PathLike) => {
+        if (p.toString() === '/run/media/testuser/disk/DCIM/100_FUJI') return Promise.resolve({} as any)
+        return Promise.reject(Object.assign(new Error('ENOENT'), { code: 'ENOENT' }))
+      })
+
+      const cards = await autoDetect.detectCfexCards()
+
+      expect(cards).toContain('/run/media/testuser/disk')
+    })
+
+    it('should return empty when no mounted directory has DCIM/100_FUJI', async () => {
+      vi.mocked(fs.readdir).mockImplementation((p: PathLike) => {
+        if (p === '/media/testuser/') return Promise.resolve(['disk', 'external-hdd'] as any)
+        return Promise.resolve([] as any)
+      })
+      vi.mocked(fs.stat).mockImplementation((_p: PathLike) => {
+        return Promise.reject(Object.assign(new Error('ENOENT'), { code: 'ENOENT' }))
+      })
+
+      const cards = await autoDetect.detectCfexCards()
+
+      expect(cards).toEqual([])
+    })
+  })
+
   describe('Card Selection Logic', () => {
     it('should identify single card for auto-population', async () => {
       // ARRANGE: Mock single card detection
