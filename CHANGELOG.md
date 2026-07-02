@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [3.0.2] - 2026-07-02
+
+### Fixed
+
+- CFEx auto-detect on Linux now identifies Fuji cards by `DCIM/NNN_FUJI` directory structure rather than volume label — cards that mount as `disk`, `disk1`, or any other label are correctly detected
+- Stale empty mount point directories (e.g. a leftover `disk` directory after the reader was remounted as `disk1`) no longer block card detection
+
+---
+
 ## [3.0.1] - 2026-06-20
 
 ### Added
