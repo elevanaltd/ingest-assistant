@@ -67,3 +67,4 @@ debates/*.json
 # Git worktrees (Crystal)
 /worktrees/
 /worktree-*/
+node_modules/.pnpm
