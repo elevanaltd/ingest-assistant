@@ -41,17 +41,33 @@ export class CfexAutoDetect {
         // macOS: Scan /Volumes/ for "NO NAME" directories with timeout
         return await this.detectWithTimeout('/Volumes/', ['NO NAME'], 10000)
       } else if (platform === 'linux') {
-        // Ubuntu: Scan both /media/$USER/ and /run/media/$USER/ with timeouts
+        // Ubuntu: Scan both /media/$USER/ and /run/media/$USER/.
+        // Use content-based detection (DCIM/100_FUJI presence) rather than
+        // volume label matching — Fuji cards mount as "disk", "disk1", etc.
         const username = path.basename(os.homedir())
         const mediaPath = `/media/${username}/`
         const runMediaPath = `/run/media/${username}/`
 
-        const results = await Promise.all([
-          this.detectWithTimeout(mediaPath, ['CFEx'], 10000),
-          this.detectWithTimeout(runMediaPath, ['CFEx'], 10000)
+        // Use allSettled so a failure (EACCES/ETIMEDOUT) on one media root
+        // cannot discard cards already found on the other root.
+        const settled = await Promise.allSettled([
+          this.detectFujiCardsWithTimeout(mediaPath, 10000),
+          this.detectFujiCardsWithTimeout(runMediaPath, 10000)
         ])
 
-        return [...results[0], ...results[1]]
+        const cards: string[] = []
+        for (const outcome of settled) {
+          if (outcome.status === 'fulfilled') {
+            cards.push(...outcome.value)
+          } else {
+            const reason = outcome.reason
+            console.warn(
+              `CFEx Fuji scan failed for a media root: ${reason instanceof Error ? reason.message : String(reason)}`
+            )
+          }
+        }
+
+        return cards
       }
 
       return []
@@ -202,6 +218,94 @@ export class CfexAutoDetect {
       // Unexpected errors: Log for debugging
       console.warn(`Unexpected error checking path ${checkPath}: ${error instanceof Error ? error.message : String(error)}`)
       return false
+    }
+  }
+
+  /**
+   * Detect Fuji CFEx cards in a directory using content-based detection with timeout.
+   * Checks for DCIM/100_FUJI presence rather than matching volume label.
+   */
+  private async detectFujiCardsWithTimeout(dirPath: string, timeoutMs: number): Promise<string[]> {
+    return new Promise<string[]>((resolve, reject) => {
+      const timer = setTimeout(() => {
+        reject(Object.assign(
+          new Error(`Volume scan timeout: ${dirPath}`),
+          { code: 'ETIMEDOUT' }
+        ))
+      }, timeoutMs)
+
+      this.scanForFujiCards(dirPath)
+        .then(result => {
+          clearTimeout(timer)
+          resolve(result)
+        })
+        .catch(err => {
+          clearTimeout(timer)
+          reject(err)
+        })
+    })
+  }
+
+  /**
+   * Matches a Fujifilm DCF image folder name.
+   *
+   * DCF folders roll over as they fill: 100_FUJI → 101_FUJI → 102_FUJI ... (at
+   * 999 files, and continuously across camera bodies). Hard-coding 100_FUJI
+   * silently false-negatives the common reused/high-count card, so we match ANY
+   * three-digit NNN_FUJI folder.
+   */
+  private static readonly FUJI_DCF_FOLDER = /^\d{3}_FUJI$/
+
+  /**
+   * Scan a directory for Fuji CFEx cards by checking the DCIM folder for any
+   * NNN_FUJI subdirectory. Returns mount paths where the Fuji directory
+   * structure is present, regardless of the volume label (handles "disk",
+   * "disk1", "NO NAME", etc.).
+   */
+  private async scanForFujiCards(dirPath: string): Promise<string[]> {
+    try {
+      const entries = await fs.readdir(dirPath)
+      const results = await Promise.all(
+        entries.map(async (entry) => {
+          const mountPath = path.join(dirPath, entry)
+          const dcimPath = path.join(mountPath, 'DCIM')
+          try {
+            // withFileTypes lets us both enumerate NNN_FUJI folders (rollover)
+            // and guard that the match is a directory, not a regular file.
+            const dcimEntries = await fs.readdir(dcimPath, { withFileTypes: true })
+            const hasFujiFolder = dcimEntries.some(
+              (dirent) =>
+                dirent.isDirectory() &&
+                CfexAutoDetect.FUJI_DCF_FOLDER.test(dirent.name)
+            )
+            return hasFujiFolder ? mountPath : null
+          } catch {
+            // No DCIM directory (or unreadable) → not a detectable Fuji card.
+            return null
+          }
+        })
+      )
+      return results.filter((p): p is string => p !== null)
+    } catch (error: unknown) {
+      const nodeError = error as NodeJS.ErrnoException
+
+      if (nodeError?.code === 'EACCES') {
+        throw Object.assign(
+          new Error(`Permission denied scanning ${dirPath}. Check volume mount permissions.`),
+          { code: 'EACCES' }
+        )
+      }
+
+      if (nodeError?.code === 'ENOENT') {
+        return []
+      }
+
+      if (nodeError?.code === 'EIO') {
+        console.warn(`I/O error scanning ${dirPath}`)
+        return []
+      }
+
+      throw error
     }
   }
 

@@ -139,12 +139,17 @@ describe('CfexAutoDetect Service', () => {
     })
 
     it('should detect CFEx cards in /media/$USER/', async () => {
-      // ARRANGE: Mock /media/testuser/ directory
+      // ARRANGE: content-based detection — the mount is detected because its
+      // DCIM contains an NNN_FUJI folder, not because of its label.
       vi.mocked(fs.readdir).mockImplementation((path: PathLike) => {
-        if (path === '/media/testuser/') {
+        const s = path.toString()
+        if (s === '/media/testuser/') {
           return Promise.resolve(['CFEx', 'other-drive'] as any)
         }
-        return Promise.resolve([])
+        if (s === '/media/testuser/CFEx/DCIM') {
+          return Promise.resolve([{ name: '100_FUJI', isDirectory: () => true }] as any)
+        }
+        return Promise.resolve([] as any)
       })
 
       // ACT
@@ -152,18 +157,23 @@ describe('CfexAutoDetect Service', () => {
 
       // ASSERT
       expect(cards).toContain('/media/testuser/CFEx')
+      expect(cards).not.toContain('/media/testuser/other-drive')
     })
 
     it('should detect CFEx cards in /run/media/$USER/', async () => {
-      // ARRANGE: Mock /run/media/testuser/ directory
+      // ARRANGE: content-based detection on the /run/media location
       vi.mocked(fs.readdir).mockImplementation((path: PathLike) => {
-        if (path === '/run/media/testuser/') {
+        const s = path.toString()
+        if (s === '/run/media/testuser/') {
           return Promise.resolve(['CFEx'] as any)
         }
-        if (path === '/media/testuser/') {
+        if (s === '/media/testuser/') {
           return Promise.resolve([] as any)
         }
-        return Promise.resolve([])
+        if (s === '/run/media/testuser/CFEx/DCIM') {
+          return Promise.resolve([{ name: '100_FUJI', isDirectory: () => true }] as any)
+        }
+        return Promise.resolve([] as any)
       })
 
       // ACT
@@ -218,6 +228,141 @@ describe('CfexAutoDetect Service', () => {
 
       // ASSERT: Should return empty array instead of throwing
       expect(cards).toEqual([])
+    })
+  })
+
+  describe('Fuji Card Detection by Structure (Linux)', () => {
+    beforeEach(() => {
+      vi.mocked(os.platform).mockReturnValue('linux')
+      vi.mocked(os.homedir).mockReturnValue('/home/testuser')
+    })
+
+    // Dirent-like helper for withFileTypes readdir mocks
+    const dirent = (name: string, isDir = true) => ({ name, isDirectory: () => isDir }) as any
+
+    it('should detect card mounted as "disk" when DCIM contains an NNN_FUJI folder', async () => {
+      vi.mocked(fs.readdir).mockImplementation((p: PathLike) => {
+        const s = p.toString()
+        if (s === '/media/testuser/') return Promise.resolve(['disk', 'backup-drive'] as any)
+        if (s === '/media/testuser/disk/DCIM') return Promise.resolve([dirent('100_FUJI')] as any)
+        // backup-drive has no DCIM directory
+        if (s === '/media/testuser/backup-drive/DCIM') {
+          return Promise.reject(Object.assign(new Error('ENOENT'), { code: 'ENOENT' }))
+        }
+        return Promise.resolve([] as any)
+      })
+
+      const cards = await autoDetect.detectCfexCards()
+
+      expect(cards).toContain('/media/testuser/disk')
+      expect(cards).not.toContain('/media/testuser/backup-drive')
+    })
+
+    it('should detect card mounted as "disk1" when stale "disk" directory exists', async () => {
+      vi.mocked(fs.readdir).mockImplementation((p: PathLike) => {
+        const s = p.toString()
+        if (s === '/media/testuser/') return Promise.resolve(['disk', 'disk1'] as any)
+        // disk is a stale empty directory (empty DCIM); disk1 is the actual card
+        if (s === '/media/testuser/disk/DCIM') return Promise.resolve([] as any)
+        if (s === '/media/testuser/disk1/DCIM') return Promise.resolve([dirent('100_FUJI')] as any)
+        return Promise.resolve([] as any)
+      })
+
+      const cards = await autoDetect.detectCfexCards()
+
+      expect(cards).toContain('/media/testuser/disk1')
+      expect(cards).not.toContain('/media/testuser/disk')
+    })
+
+    it('should detect card regardless of volume label', async () => {
+      vi.mocked(fs.readdir).mockImplementation((p: PathLike) => {
+        const s = p.toString()
+        if (s === '/media/testuser/') return Promise.resolve(['MY_CARD', 'disk3', 'external-hdd'] as any)
+        if (s === '/media/testuser/disk3/DCIM') return Promise.resolve([dirent('100_FUJI')] as any)
+        return Promise.resolve([] as any)
+      })
+
+      const cards = await autoDetect.detectCfexCards()
+
+      expect(cards).toContain('/media/testuser/disk3')
+      expect(cards).not.toContain('/media/testuser/MY_CARD')
+      expect(cards).not.toContain('/media/testuser/external-hdd')
+    })
+
+    it('should check /run/media as well as /media for content-based detection', async () => {
+      vi.mocked(fs.readdir).mockImplementation((p: PathLike) => {
+        const s = p.toString()
+        if (s === '/media/testuser/') return Promise.resolve([] as any)
+        if (s === '/run/media/testuser/') return Promise.resolve(['disk'] as any)
+        if (s === '/run/media/testuser/disk/DCIM') return Promise.resolve([dirent('100_FUJI')] as any)
+        return Promise.resolve([] as any)
+      })
+
+      const cards = await autoDetect.detectCfexCards()
+
+      expect(cards).toContain('/run/media/testuser/disk')
+    })
+
+    it('should return empty when no mounted directory has an NNN_FUJI folder', async () => {
+      vi.mocked(fs.readdir).mockImplementation((p: PathLike) => {
+        const s = p.toString()
+        if (s === '/media/testuser/') return Promise.resolve(['disk', 'external-hdd'] as any)
+        // No DCIM directories anywhere
+        return Promise.reject(Object.assign(new Error('ENOENT'), { code: 'ENOENT' }))
+      })
+
+      const cards = await autoDetect.detectCfexCards()
+
+      expect(cards).toEqual([])
+    })
+
+    // BLOCKING P1: DCF folder rollover — 100_FUJI → 101_FUJI → 102_FUJI ...
+    // A reused/high-count card may have NO 100_FUJI folder at all.
+    it('should detect a card whose ONLY DCIM subfolder is 101_FUJI (rollover)', async () => {
+      vi.mocked(fs.readdir).mockImplementation((p: PathLike) => {
+        const s = p.toString()
+        if (s === '/media/testuser/') return Promise.resolve(['disk'] as any)
+        if (s === '/media/testuser/disk/DCIM') return Promise.resolve([dirent('101_FUJI')] as any)
+        return Promise.resolve([] as any)
+      })
+
+      const cards = await autoDetect.detectCfexCards()
+
+      expect(cards).toContain('/media/testuser/disk')
+    })
+
+    // BLOCKING P2: a plain FILE named 100_FUJI must NOT count as a match.
+    it('should NOT detect when 100_FUJI is a regular file, not a directory', async () => {
+      vi.mocked(fs.readdir).mockImplementation((p: PathLike) => {
+        const s = p.toString()
+        if (s === '/media/testuser/') return Promise.resolve(['disk'] as any)
+        // 100_FUJI present but as a regular file (isDirectory() === false)
+        if (s === '/media/testuser/disk/DCIM') return Promise.resolve([dirent('100_FUJI', false)] as any)
+        return Promise.resolve([] as any)
+      })
+
+      const cards = await autoDetect.detectCfexCards()
+
+      expect(cards).not.toContain('/media/testuser/disk')
+      expect(cards).toEqual([])
+    })
+
+    // RECOMMENDED: Promise.allSettled hardening — a failing media root must not
+    // discard a valid card found on the other root.
+    it('should still return a valid card when one media root rejects EACCES', async () => {
+      vi.mocked(fs.readdir).mockImplementation((p: PathLike) => {
+        const s = p.toString()
+        if (s === '/media/testuser/') {
+          return Promise.reject(Object.assign(new Error('EACCES: permission denied'), { code: 'EACCES' }))
+        }
+        if (s === '/run/media/testuser/') return Promise.resolve(['disk'] as any)
+        if (s === '/run/media/testuser/disk/DCIM') return Promise.resolve([dirent('100_FUJI')] as any)
+        return Promise.resolve([] as any)
+      })
+
+      const cards = await autoDetect.detectCfexCards()
+
+      expect(cards).toContain('/run/media/testuser/disk')
     })
   })
 
