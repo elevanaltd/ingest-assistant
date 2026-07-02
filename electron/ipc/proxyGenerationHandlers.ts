@@ -116,14 +116,15 @@ export function registerProxyGenerationHandlers(mainWindow: BrowserWindow) {
       )
 
       // Copy metadata sidecar to proxy destination (best-effort; missing source is not an error)
-      try {
-        await copyFile(
-          path.join(validated.rawVideoFolder, METADATA_FILENAME),
-          path.join(validated.proxyOutputFolder, METADATA_FILENAME)
-        )
-      } catch (copyError: unknown) {
-        if ((copyError as NodeJS.ErrnoException)?.code !== 'ENOENT') {
-          console.error('Failed to copy .ingest-metadata.json to proxy folder:', copyError)
+      const srcMetadataPath = path.resolve(validated.rawVideoFolder, METADATA_FILENAME)
+      const destMetadataPath = path.resolve(validated.proxyOutputFolder, METADATA_FILENAME)
+      if (srcMetadataPath !== destMetadataPath) {
+        try {
+          await copyFile(srcMetadataPath, destMetadataPath)
+        } catch (copyError: unknown) {
+          if ((copyError as NodeJS.ErrnoException)?.code !== 'ENOENT') {
+            console.error('Failed to copy .ingest-metadata.json to proxy folder:', copyError)
+          }
         }
       }
 

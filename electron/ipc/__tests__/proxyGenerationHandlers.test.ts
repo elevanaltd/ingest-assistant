@@ -324,6 +324,7 @@ describe('Proxy Generation IPC Handlers', () => {
       }
       mockOrchestrator.executeJob.mockResolvedValue(expectedResult)
       mockCopyFile.mockRejectedValue(Object.assign(new Error('not found'), { code: 'ENOENT' }))
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
 
       registerProxyGenerationHandlers(mockWindow)
       const handler = (ipcMain.handle as any).mock.calls.find(
@@ -341,6 +342,79 @@ describe('Proxy Generation IPC Handlers', () => {
 
       // ASSERT
       expect(result).toEqual(expectedResult)
+      expect(mockCopyFile).toHaveBeenCalledWith(
+        '/valid/raw/.ingest-metadata.json',
+        '/valid/output/.ingest-metadata.json'
+      )
+      expect(consoleErrorSpy).not.toHaveBeenCalled()
+
+      consoleErrorSpy.mockRestore()
+    })
+
+    test('logs and continues when metadata copy fails for a reason other than missing file', async () => {
+      // ARRANGE
+      const expectedResult = {
+        success: true,
+        completedCount: 1,
+        failedCount: 0,
+        failedFiles: [],
+        verificationFailures: []
+      }
+      mockOrchestrator.executeJob.mockResolvedValue(expectedResult)
+      const permissionError = Object.assign(new Error('permission denied'), { code: 'EACCES' })
+      mockCopyFile.mockRejectedValue(permissionError)
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+
+      registerProxyGenerationHandlers(mockWindow)
+      const handler = (ipcMain.handle as any).mock.calls.find(
+        (call: any) => call[0] === 'proxy:generate'
+      )[1]
+
+      const validRequest = {
+        rawVideoFolder: '/valid/raw',
+        proxyOutputFolder: '/valid/output',
+        videoFilenames: ['video1.MOV']
+      }
+
+      // ACT
+      const result = await handler({}, validRequest)
+
+      // ASSERT
+      expect(result).toEqual(expectedResult)
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        'Failed to copy .ingest-metadata.json to proxy folder:',
+        permissionError
+      )
+
+      consoleErrorSpy.mockRestore()
+    })
+
+    test('skips the copy when rawVideoFolder and proxyOutputFolder are the same directory', async () => {
+      // ARRANGE
+      mockOrchestrator.executeJob.mockResolvedValue({
+        success: true,
+        completedCount: 1,
+        failedCount: 0,
+        failedFiles: [],
+        verificationFailures: []
+      })
+
+      registerProxyGenerationHandlers(mockWindow)
+      const handler = (ipcMain.handle as any).mock.calls.find(
+        (call: any) => call[0] === 'proxy:generate'
+      )[1]
+
+      const sameFolderRequest = {
+        rawVideoFolder: '/valid/raw',
+        proxyOutputFolder: '/valid/raw',
+        videoFilenames: ['video1.MOV']
+      }
+
+      // ACT
+      await handler({}, sameFolderRequest)
+
+      // ASSERT
+      expect(mockCopyFile).not.toHaveBeenCalled()
     })
   })
 
