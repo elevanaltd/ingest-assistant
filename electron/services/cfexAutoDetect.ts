@@ -48,12 +48,26 @@ export class CfexAutoDetect {
         const mediaPath = `/media/${username}/`
         const runMediaPath = `/run/media/${username}/`
 
-        const results = await Promise.all([
+        // Use allSettled so a failure (EACCES/ETIMEDOUT) on one media root
+        // cannot discard cards already found on the other root.
+        const settled = await Promise.allSettled([
           this.detectFujiCardsWithTimeout(mediaPath, 10000),
           this.detectFujiCardsWithTimeout(runMediaPath, 10000)
         ])
 
-        return [...results[0], ...results[1]]
+        const cards: string[] = []
+        for (const outcome of settled) {
+          if (outcome.status === 'fulfilled') {
+            cards.push(...outcome.value)
+          } else {
+            const reason = outcome.reason
+            console.warn(
+              `CFEx Fuji scan failed for a media root: ${reason instanceof Error ? reason.message : String(reason)}`
+            )
+          }
+        }
+
+        return cards
       }
 
       return []
@@ -233,9 +247,20 @@ export class CfexAutoDetect {
   }
 
   /**
-   * Scan a directory for Fuji CFEx cards by checking for DCIM/100_FUJI structure.
-   * Returns mount paths where the Fuji directory structure is present,
-   * regardless of the volume label (handles "disk", "disk1", "NO NAME", etc.).
+   * Matches a Fujifilm DCF image folder name.
+   *
+   * DCF folders roll over as they fill: 100_FUJI → 101_FUJI → 102_FUJI ... (at
+   * 999 files, and continuously across camera bodies). Hard-coding 100_FUJI
+   * silently false-negatives the common reused/high-count card, so we match ANY
+   * three-digit NNN_FUJI folder.
+   */
+  private static readonly FUJI_DCF_FOLDER = /^\d{3}_FUJI$/
+
+  /**
+   * Scan a directory for Fuji CFEx cards by checking the DCIM folder for any
+   * NNN_FUJI subdirectory. Returns mount paths where the Fuji directory
+   * structure is present, regardless of the volume label (handles "disk",
+   * "disk1", "NO NAME", etc.).
    */
   private async scanForFujiCards(dirPath: string): Promise<string[]> {
     try {
@@ -243,11 +268,19 @@ export class CfexAutoDetect {
       const results = await Promise.all(
         entries.map(async (entry) => {
           const mountPath = path.join(dirPath, entry)
-          const fujiPath = path.join(mountPath, 'DCIM', '100_FUJI')
+          const dcimPath = path.join(mountPath, 'DCIM')
           try {
-            await fs.stat(fujiPath)
-            return mountPath
+            // withFileTypes lets us both enumerate NNN_FUJI folders (rollover)
+            // and guard that the match is a directory, not a regular file.
+            const dcimEntries = await fs.readdir(dcimPath, { withFileTypes: true })
+            const hasFujiFolder = dcimEntries.some(
+              (dirent) =>
+                dirent.isDirectory() &&
+                CfexAutoDetect.FUJI_DCF_FOLDER.test(dirent.name)
+            )
+            return hasFujiFolder ? mountPath : null
           } catch {
+            // No DCIM directory (or unreadable) → not a detectable Fuji card.
             return null
           }
         })

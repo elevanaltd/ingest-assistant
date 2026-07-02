@@ -139,12 +139,17 @@ describe('CfexAutoDetect Service', () => {
     })
 
     it('should detect CFEx cards in /media/$USER/', async () => {
-      // ARRANGE: Mock /media/testuser/ directory
+      // ARRANGE: content-based detection — the mount is detected because its
+      // DCIM contains an NNN_FUJI folder, not because of its label.
       vi.mocked(fs.readdir).mockImplementation((path: PathLike) => {
-        if (path === '/media/testuser/') {
+        const s = path.toString()
+        if (s === '/media/testuser/') {
           return Promise.resolve(['CFEx', 'other-drive'] as any)
         }
-        return Promise.resolve([])
+        if (s === '/media/testuser/CFEx/DCIM') {
+          return Promise.resolve([{ name: '100_FUJI', isDirectory: () => true }] as any)
+        }
+        return Promise.resolve([] as any)
       })
 
       // ACT
@@ -152,18 +157,23 @@ describe('CfexAutoDetect Service', () => {
 
       // ASSERT
       expect(cards).toContain('/media/testuser/CFEx')
+      expect(cards).not.toContain('/media/testuser/other-drive')
     })
 
     it('should detect CFEx cards in /run/media/$USER/', async () => {
-      // ARRANGE: Mock /run/media/testuser/ directory
+      // ARRANGE: content-based detection on the /run/media location
       vi.mocked(fs.readdir).mockImplementation((path: PathLike) => {
-        if (path === '/run/media/testuser/') {
+        const s = path.toString()
+        if (s === '/run/media/testuser/') {
           return Promise.resolve(['CFEx'] as any)
         }
-        if (path === '/media/testuser/') {
+        if (s === '/media/testuser/') {
           return Promise.resolve([] as any)
         }
-        return Promise.resolve([])
+        if (s === '/run/media/testuser/CFEx/DCIM') {
+          return Promise.resolve([{ name: '100_FUJI', isDirectory: () => true }] as any)
+        }
+        return Promise.resolve([] as any)
       })
 
       // ACT
