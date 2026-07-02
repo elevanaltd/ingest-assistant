@@ -28,6 +28,9 @@ import {
   ProxyProgressEvent
 } from '../services/proxyOrchestrator'
 import * as path from 'path'
+import { copyFile } from 'fs/promises'
+
+const METADATA_FILENAME = '.ingest-metadata.json'
 
 /**
  * Validation schema for proxy generation request
@@ -111,6 +114,19 @@ export function registerProxyGenerationHandlers(mainWindow: BrowserWindow) {
       const rawVideoPaths = validated.videoFilenames.map(filename =>
         path.join(validated.rawVideoFolder, filename)
       )
+
+      // Copy metadata sidecar to proxy destination (best-effort; missing source is not an error)
+      const srcMetadataPath = path.resolve(validated.rawVideoFolder, METADATA_FILENAME)
+      const destMetadataPath = path.resolve(validated.proxyOutputFolder, METADATA_FILENAME)
+      if (srcMetadataPath !== destMetadataPath) {
+        try {
+          await copyFile(srcMetadataPath, destMetadataPath)
+        } catch (copyError: unknown) {
+          if ((copyError as NodeJS.ErrnoException)?.code !== 'ENOENT') {
+            console.error('Failed to copy .ingest-metadata.json to proxy folder:', copyError)
+          }
+        }
+      }
 
       // Get orchestrator instance
       const orch = getOrchestrator()
