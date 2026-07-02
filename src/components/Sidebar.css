@@ -168,3 +168,13 @@
 .sidebar-file-list::-webkit-scrollbar-thumb:hover {
   background: #a1a1a1;
 }
+
+.sidebar-footer {
+  flex-shrink: 0;
+  padding: 6px 16px;
+  border-top: 1px solid #ddd;
+  background: #fff;
+  color: #999;
+  font-size: 11px;
+  text-align: center;
+}

@@ -1,6 +1,9 @@
 import type { FileMetadata, AppConfig, AIAnalysisResult, Lexicon, LexiconConfig, AIConfigForUI, AIConnectionTestResult } from './index';
 
 export interface ElectronAPI {
+  // App metadata
+  getAppVersion: () => Promise<string>;
+
   // File operations
   selectFolder: (startPath?: string) => Promise<string | null>;
   // CRITICAL-1 FIX: Removed folderPath parameter (security boundary enforced in main process)

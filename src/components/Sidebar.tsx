@@ -28,6 +28,13 @@ export function Sidebar({
   const listRef = useRef<ListImperativeAPI>(null);
   const useVirtualScrolling = files.length > VIRTUAL_SCROLL_THRESHOLD;
   const [lastSelectedIndex, setLastSelectedIndex] = useState<number | null>(null);
+  const [appVersion, setAppVersion] = useState<string | null>(null);
+
+  // Fetch the running app version once on mount; stays in sync with package.json
+  // automatically since it's read from Electron's app.getVersion() at runtime.
+  useEffect(() => {
+    window.electronAPI?.getAppVersion?.().then(setAppVersion);
+  }, []);
 
   // Auto-scroll to selected item when currentFileIndex changes
   useEffect(() => {
@@ -163,6 +170,12 @@ export function Sidebar({
       {hasFiles && !useVirtualScrolling && (
         <div className="sidebar-file-list">
           {files.map((file, index) => renderFileItem(file, index))}
+        </div>
+      )}
+
+      {appVersion && (
+        <div className="sidebar-footer">
+          v{appVersion}
         </div>
       )}
     </aside>

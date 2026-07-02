@@ -24,6 +24,7 @@ import { registerFileHandlers } from './ipc/fileHandlers';
 import { registerAiHandlers } from './ipc/aiHandlers';
 import { registerBatchHandlers } from './ipc/batchHandlers';
 import { registerConfigHandlers } from './ipc/configHandlers';
+import { registerAppHandlers } from './ipc/appHandlers';
 import { RateLimiter } from './utils/rateLimiter';
 import { redactUrlTokens } from './utils/redactUrl';
 
@@ -286,6 +287,9 @@ async function createWindow() {
     getCurrentFolderPath: () => currentFolderPath,
     getMetadataStore: () => metadataStore
   });
+
+  // Register App IPC handlers
+  registerAppHandlers();
 
   // In development, use Vite dev server; in production, load built files
   const isDev = !app.isPackaged;

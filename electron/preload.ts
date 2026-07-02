@@ -4,6 +4,10 @@ import type { FileMetadata, AppConfig, AIAnalysisResult, Lexicon, LexiconConfig,
 // Expose protected methods that allow the renderer process to use
 // the ipcRenderer without exposing the entire object
 contextBridge.exposeInMainWorld('electronAPI', {
+  // App metadata
+  getAppVersion: (): Promise<string> =>
+    ipcRenderer.invoke('app:get-version'),
+
   // File operations
   selectFolder: (startPath?: string): Promise<string | null> =>
     ipcRenderer.invoke('file:select-folder', startPath),
