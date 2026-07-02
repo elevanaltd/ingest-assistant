@@ -108,6 +108,65 @@ describe('Sidebar Component', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (window as any).electronAPI = {
+      getAppVersion: vi.fn().mockResolvedValue('3.0.2'),
+    };
+  });
+
+  describe('Version Footer', () => {
+    it('should render the app version in the footer', async () => {
+      render(
+        <Sidebar
+          files={[]}
+          currentFileIndex={0}
+          onSelectFolder={mockOnSelectFolder}
+          onSelectFile={mockOnSelectFile}
+        />
+      );
+
+      expect(await screen.findByText('v3.0.2')).toBeInTheDocument();
+    });
+
+    it('should not crash when electronAPI is unavailable', () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      delete (window as any).electronAPI;
+
+      expect(() =>
+        render(
+          <Sidebar
+            files={[]}
+            currentFileIndex={0}
+            onSelectFolder={mockOnSelectFolder}
+            onSelectFile={mockOnSelectFile}
+          />
+        )
+      ).not.toThrow();
+
+      const sidebar = screen.getByRole('complementary');
+      expect(sidebar).toBeInTheDocument();
+    });
+
+    it('should not crash when electronAPI is mocked without getAppVersion', () => {
+      // Simulates other test suites that mock electronAPI with only the
+      // methods they exercise, omitting getAppVersion entirely.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (window as any).electronAPI = {};
+
+      expect(() =>
+        render(
+          <Sidebar
+            files={[]}
+            currentFileIndex={0}
+            onSelectFolder={mockOnSelectFolder}
+            onSelectFile={mockOnSelectFile}
+          />
+        )
+      ).not.toThrow();
+
+      const sidebar = screen.getByRole('complementary');
+      expect(sidebar).toBeInTheDocument();
+    });
   });
 
   describe('Basic Rendering', () => {
