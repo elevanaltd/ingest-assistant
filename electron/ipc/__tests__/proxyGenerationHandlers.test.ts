@@ -24,6 +24,12 @@ vi.mock('../../services/proxyOrchestrator', () => ({
   ProxyOrchestrator: MockProxyOrchestrator
 }))
 
+const mockCopyFile = vi.fn()
+vi.mock('fs/promises', () => ({
+  copyFile: (...args: unknown[]) => mockCopyFile(...args),
+  default: { copyFile: (...args: unknown[]) => mockCopyFile(...args) }
+}))
+
 describe('Proxy Generation IPC Handlers', () => {
   let mockWindow: any
   let mockOrchestrator: any
@@ -46,6 +52,8 @@ describe('Proxy Generation IPC Handlers', () => {
     mockOrchestrator = {
       executeJob: vi.fn()
     };
+
+    mockCopyFile.mockReset().mockResolvedValue(undefined)
 
     // Reset and configure mock constructor to return instance when called with 'new'
     MockProxyOrchestrator.mockReset().mockImplementation(function(this: any) {
@@ -270,6 +278,69 @@ describe('Proxy Generation IPC Handlers', () => {
       expect(result.success).toBe(false)
       expect(result.completedCount).toBe(1)
       expect(result.failedCount).toBe(1)
+    })
+  })
+
+  describe('Metadata Sidecar Copy', () => {
+    test('copies .ingest-metadata.json from rawVideoFolder to proxyOutputFolder', async () => {
+      // ARRANGE
+      mockOrchestrator.executeJob.mockResolvedValue({
+        success: true,
+        completedCount: 1,
+        failedCount: 0,
+        failedFiles: [],
+        verificationFailures: []
+      })
+
+      registerProxyGenerationHandlers(mockWindow)
+      const handler = (ipcMain.handle as any).mock.calls.find(
+        (call: any) => call[0] === 'proxy:generate'
+      )[1]
+
+      const validRequest = {
+        rawVideoFolder: '/valid/raw',
+        proxyOutputFolder: '/valid/output',
+        videoFilenames: ['video1.MOV']
+      }
+
+      // ACT
+      await handler({}, validRequest)
+
+      // ASSERT
+      expect(mockCopyFile).toHaveBeenCalledWith(
+        '/valid/raw/.ingest-metadata.json',
+        '/valid/output/.ingest-metadata.json'
+      )
+    })
+
+    test('tolerates missing source metadata file without failing proxy generation', async () => {
+      // ARRANGE
+      const expectedResult = {
+        success: true,
+        completedCount: 1,
+        failedCount: 0,
+        failedFiles: [],
+        verificationFailures: []
+      }
+      mockOrchestrator.executeJob.mockResolvedValue(expectedResult)
+      mockCopyFile.mockRejectedValue(Object.assign(new Error('not found'), { code: 'ENOENT' }))
+
+      registerProxyGenerationHandlers(mockWindow)
+      const handler = (ipcMain.handle as any).mock.calls.find(
+        (call: any) => call[0] === 'proxy:generate'
+      )[1]
+
+      const validRequest = {
+        rawVideoFolder: '/valid/raw',
+        proxyOutputFolder: '/valid/output',
+        videoFilenames: ['video1.MOV']
+      }
+
+      // ACT
+      const result = await handler({}, validRequest)
+
+      // ASSERT
+      expect(result).toEqual(expectedResult)
     })
   })
 
