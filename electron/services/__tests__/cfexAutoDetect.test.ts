@@ -227,14 +227,19 @@ describe('CfexAutoDetect Service', () => {
       vi.mocked(os.homedir).mockReturnValue('/home/testuser')
     })
 
-    it('should detect card mounted as "disk" when DCIM/100_FUJI exists', async () => {
+    // Dirent-like helper for withFileTypes readdir mocks
+    const dirent = (name: string, isDir = true) => ({ name, isDirectory: () => isDir }) as any
+
+    it('should detect card mounted as "disk" when DCIM contains an NNN_FUJI folder', async () => {
       vi.mocked(fs.readdir).mockImplementation((p: PathLike) => {
-        if (p === '/media/testuser/') return Promise.resolve(['disk', 'backup-drive'] as any)
+        const s = p.toString()
+        if (s === '/media/testuser/') return Promise.resolve(['disk', 'backup-drive'] as any)
+        if (s === '/media/testuser/disk/DCIM') return Promise.resolve([dirent('100_FUJI')] as any)
+        // backup-drive has no DCIM directory
+        if (s === '/media/testuser/backup-drive/DCIM') {
+          return Promise.reject(Object.assign(new Error('ENOENT'), { code: 'ENOENT' }))
+        }
         return Promise.resolve([] as any)
-      })
-      vi.mocked(fs.stat).mockImplementation((p: PathLike) => {
-        if (p.toString() === '/media/testuser/disk/DCIM/100_FUJI') return Promise.resolve({} as any)
-        return Promise.reject(Object.assign(new Error('ENOENT'), { code: 'ENOENT' }))
       })
 
       const cards = await autoDetect.detectCfexCards()
@@ -245,13 +250,12 @@ describe('CfexAutoDetect Service', () => {
 
     it('should detect card mounted as "disk1" when stale "disk" directory exists', async () => {
       vi.mocked(fs.readdir).mockImplementation((p: PathLike) => {
-        if (p === '/media/testuser/') return Promise.resolve(['disk', 'disk1'] as any)
+        const s = p.toString()
+        if (s === '/media/testuser/') return Promise.resolve(['disk', 'disk1'] as any)
+        // disk is a stale empty directory (empty DCIM); disk1 is the actual card
+        if (s === '/media/testuser/disk/DCIM') return Promise.resolve([] as any)
+        if (s === '/media/testuser/disk1/DCIM') return Promise.resolve([dirent('100_FUJI')] as any)
         return Promise.resolve([] as any)
-      })
-      vi.mocked(fs.stat).mockImplementation((p: PathLike) => {
-        // disk is a stale empty directory; disk1 is the actual card
-        if (p.toString() === '/media/testuser/disk1/DCIM/100_FUJI') return Promise.resolve({} as any)
-        return Promise.reject(Object.assign(new Error('ENOENT'), { code: 'ENOENT' }))
       })
 
       const cards = await autoDetect.detectCfexCards()
@@ -262,12 +266,10 @@ describe('CfexAutoDetect Service', () => {
 
     it('should detect card regardless of volume label', async () => {
       vi.mocked(fs.readdir).mockImplementation((p: PathLike) => {
-        if (p === '/media/testuser/') return Promise.resolve(['MY_CARD', 'disk3', 'external-hdd'] as any)
+        const s = p.toString()
+        if (s === '/media/testuser/') return Promise.resolve(['MY_CARD', 'disk3', 'external-hdd'] as any)
+        if (s === '/media/testuser/disk3/DCIM') return Promise.resolve([dirent('100_FUJI')] as any)
         return Promise.resolve([] as any)
-      })
-      vi.mocked(fs.stat).mockImplementation((p: PathLike) => {
-        if (p.toString() === '/media/testuser/disk3/DCIM/100_FUJI') return Promise.resolve({} as any)
-        return Promise.reject(Object.assign(new Error('ENOENT'), { code: 'ENOENT' }))
       })
 
       const cards = await autoDetect.detectCfexCards()
@@ -279,13 +281,11 @@ describe('CfexAutoDetect Service', () => {
 
     it('should check /run/media as well as /media for content-based detection', async () => {
       vi.mocked(fs.readdir).mockImplementation((p: PathLike) => {
-        if (p === '/media/testuser/') return Promise.resolve([] as any)
-        if (p === '/run/media/testuser/') return Promise.resolve(['disk'] as any)
+        const s = p.toString()
+        if (s === '/media/testuser/') return Promise.resolve([] as any)
+        if (s === '/run/media/testuser/') return Promise.resolve(['disk'] as any)
+        if (s === '/run/media/testuser/disk/DCIM') return Promise.resolve([dirent('100_FUJI')] as any)
         return Promise.resolve([] as any)
-      })
-      vi.mocked(fs.stat).mockImplementation((p: PathLike) => {
-        if (p.toString() === '/run/media/testuser/disk/DCIM/100_FUJI') return Promise.resolve({} as any)
-        return Promise.reject(Object.assign(new Error('ENOENT'), { code: 'ENOENT' }))
       })
 
       const cards = await autoDetect.detectCfexCards()
@@ -293,18 +293,66 @@ describe('CfexAutoDetect Service', () => {
       expect(cards).toContain('/run/media/testuser/disk')
     })
 
-    it('should return empty when no mounted directory has DCIM/100_FUJI', async () => {
+    it('should return empty when no mounted directory has an NNN_FUJI folder', async () => {
       vi.mocked(fs.readdir).mockImplementation((p: PathLike) => {
-        if (p === '/media/testuser/') return Promise.resolve(['disk', 'external-hdd'] as any)
-        return Promise.resolve([] as any)
-      })
-      vi.mocked(fs.stat).mockImplementation((_p: PathLike) => {
+        const s = p.toString()
+        if (s === '/media/testuser/') return Promise.resolve(['disk', 'external-hdd'] as any)
+        // No DCIM directories anywhere
         return Promise.reject(Object.assign(new Error('ENOENT'), { code: 'ENOENT' }))
       })
 
       const cards = await autoDetect.detectCfexCards()
 
       expect(cards).toEqual([])
+    })
+
+    // BLOCKING P1: DCF folder rollover — 100_FUJI → 101_FUJI → 102_FUJI ...
+    // A reused/high-count card may have NO 100_FUJI folder at all.
+    it('should detect a card whose ONLY DCIM subfolder is 101_FUJI (rollover)', async () => {
+      vi.mocked(fs.readdir).mockImplementation((p: PathLike) => {
+        const s = p.toString()
+        if (s === '/media/testuser/') return Promise.resolve(['disk'] as any)
+        if (s === '/media/testuser/disk/DCIM') return Promise.resolve([dirent('101_FUJI')] as any)
+        return Promise.resolve([] as any)
+      })
+
+      const cards = await autoDetect.detectCfexCards()
+
+      expect(cards).toContain('/media/testuser/disk')
+    })
+
+    // BLOCKING P2: a plain FILE named 100_FUJI must NOT count as a match.
+    it('should NOT detect when 100_FUJI is a regular file, not a directory', async () => {
+      vi.mocked(fs.readdir).mockImplementation((p: PathLike) => {
+        const s = p.toString()
+        if (s === '/media/testuser/') return Promise.resolve(['disk'] as any)
+        // 100_FUJI present but as a regular file (isDirectory() === false)
+        if (s === '/media/testuser/disk/DCIM') return Promise.resolve([dirent('100_FUJI', false)] as any)
+        return Promise.resolve([] as any)
+      })
+
+      const cards = await autoDetect.detectCfexCards()
+
+      expect(cards).not.toContain('/media/testuser/disk')
+      expect(cards).toEqual([])
+    })
+
+    // RECOMMENDED: Promise.allSettled hardening — a failing media root must not
+    // discard a valid card found on the other root.
+    it('should still return a valid card when one media root rejects EACCES', async () => {
+      vi.mocked(fs.readdir).mockImplementation((p: PathLike) => {
+        const s = p.toString()
+        if (s === '/media/testuser/') {
+          return Promise.reject(Object.assign(new Error('EACCES: permission denied'), { code: 'EACCES' }))
+        }
+        if (s === '/run/media/testuser/') return Promise.resolve(['disk'] as any)
+        if (s === '/run/media/testuser/disk/DCIM') return Promise.resolve([dirent('100_FUJI')] as any)
+        return Promise.resolve([] as any)
+      })
+
+      const cards = await autoDetect.detectCfexCards()
+
+      expect(cards).toContain('/run/media/testuser/disk')
     })
   })
 
