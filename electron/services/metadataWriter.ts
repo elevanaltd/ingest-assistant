@@ -35,6 +35,11 @@ function findExiftool(): string {
 // Common in legitimate metadata: "5 Kg Wash & Dry", "Villeroy & Boch"
 const SHELL_METACHARACTERS = /[;|$`\n<>{}!]/;
 
+// Large ProRes/MOV files (with -api largefilesupport=1) can take exiftool well
+// past 30s to read or write; 3 minutes gives headroom before the file is
+// treated as failed.
+export const EXIFTOOL_TIMEOUT_MS = 180_000;
+
 /**
  * MetadataWriter service for embedding metadata into media files via exiftool.
  *
@@ -116,7 +121,7 @@ export class MetadataWriter {
       const exiftoolPath = findExiftool();
 
       const { stdout } = await execFileAsync(exiftoolPath, args, {
-        timeout: 30000,
+        timeout: EXIFTOOL_TIMEOUT_MS,
         maxBuffer: 10 * 1024 * 1024
       });
 
@@ -312,7 +317,7 @@ export class MetadataWriter {
       console.log('[MetadataWriter]   Args:', args);
 
       const { stderr } = await execFileAsync(exiftoolPath, args, {
-        timeout: 30000,        // 30 second timeout
+        timeout: EXIFTOOL_TIMEOUT_MS,
         maxBuffer: 10 * 1024 * 1024  // 10MB output limit
       });
 
@@ -360,7 +365,7 @@ export class MetadataWriter {
       const exiftoolPath = findExiftool();
 
       const { stdout } = await execFileAsync(exiftoolPath, args, {
-        timeout: 30000,
+        timeout: EXIFTOOL_TIMEOUT_MS,
         maxBuffer: 10 * 1024 * 1024
       });
 
@@ -419,7 +424,7 @@ export class MetadataWriter {
       const exiftoolPath = findExiftool();
 
       const { stdout } = await execFileAsync(exiftoolPath, args, {
-        timeout: 30000,
+        timeout: EXIFTOOL_TIMEOUT_MS,
         maxBuffer: 10 * 1024 * 1024
       });
 
