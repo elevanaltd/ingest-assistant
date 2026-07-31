@@ -180,9 +180,9 @@ function App() {
                 padding: '6px 16px',
                 fontSize: '13px',
                 borderRadius: '4px',
-                border: currentTab === 'ingest' ? '2px solid #007bff' : '1px solid #ccc',
-                backgroundColor: currentTab === 'ingest' ? '#007bff' : 'white',
-                color: currentTab === 'ingest' ? 'white' : '#333',
+                border: currentTab === 'ingest' ? '2px solid var(--color-accent)' : '1px solid var(--color-border)',
+                backgroundColor: currentTab === 'ingest' ? 'var(--color-accent)' : 'var(--color-surface)',
+                color: currentTab === 'ingest' ? 'white' : 'var(--color-text)',
                 fontWeight: currentTab === 'ingest' ? 600 : 400,
                 cursor: 'pointer'
               }}
@@ -195,9 +195,9 @@ function App() {
                 padding: '6px 16px',
                 fontSize: '13px',
                 borderRadius: '4px',
-                border: currentTab === 'cfex' ? '2px solid #007bff' : '1px solid #ccc',
-                backgroundColor: currentTab === 'cfex' ? '#007bff' : 'white',
-                color: currentTab === 'cfex' ? 'white' : '#333',
+                border: currentTab === 'cfex' ? '2px solid var(--color-accent)' : '1px solid var(--color-border)',
+                backgroundColor: currentTab === 'cfex' ? 'var(--color-accent)' : 'var(--color-surface)',
+                color: currentTab === 'cfex' ? 'white' : 'var(--color-text)',
                 fontWeight: currentTab === 'cfex' ? 600 : 400,
                 cursor: 'pointer'
               }}

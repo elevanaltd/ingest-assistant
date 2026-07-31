@@ -466,7 +466,8 @@ export function SettingsModal({
       <div
         className="modal-content settings-modal"
         style={{
-          backgroundColor: 'white',
+          backgroundColor: 'var(--color-surface)',
+          color: 'var(--color-text)',
           borderRadius: '8px',
           width: '90%',
           maxWidth: '800px',
@@ -488,7 +489,7 @@ export function SettingsModal({
             border: 'none',
             fontSize: '24px',
             cursor: 'pointer',
-            color: '#666',
+            color: 'var(--color-text-secondary)',
             padding: '4px 8px',
             lineHeight: 1,
           }}
@@ -499,14 +500,14 @@ export function SettingsModal({
         <h2 style={{ marginTop: 0 }}>Settings</h2>
 
         {/* Tabs */}
-        <div style={{ display: 'flex', gap: '16px', borderBottom: '1px solid #ddd', marginBottom: '24px' }}>
+        <div style={{ display: 'flex', gap: '16px', borderBottom: '1px solid var(--color-border)', marginBottom: '24px' }}>
           <button
             onClick={() => setActiveTab('lexicon')}
             style={{
               padding: '8px 16px',
               background: 'none',
               border: 'none',
-              borderBottom: activeTab === 'lexicon' ? '2px solid #007bff' : '2px solid transparent',
+              borderBottom: activeTab === 'lexicon' ? '2px solid var(--color-accent)' : '2px solid transparent',
               cursor: 'pointer',
               fontWeight: activeTab === 'lexicon' ? 'bold' : 'normal',
             }}
@@ -519,7 +520,7 @@ export function SettingsModal({
               padding: '8px 16px',
               background: 'none',
               border: 'none',
-              borderBottom: activeTab === 'ai' ? '2px solid #007bff' : '2px solid transparent',
+              borderBottom: activeTab === 'ai' ? '2px solid var(--color-accent)' : '2px solid transparent',
               cursor: 'pointer',
               fontWeight: activeTab === 'ai' ? 'bold' : 'normal',
             }}
@@ -532,7 +533,7 @@ export function SettingsModal({
               padding: '8px 16px',
               background: 'none',
               border: 'none',
-              borderBottom: activeTab === 'cfex' ? '2px solid #007bff' : '2px solid transparent',
+              borderBottom: activeTab === 'cfex' ? '2px solid var(--color-accent)' : '2px solid transparent',
               cursor: 'pointer',
               fontWeight: activeTab === 'cfex' ? 'bold' : 'normal',
             }}
@@ -545,7 +546,7 @@ export function SettingsModal({
               padding: '8px 16px',
               background: 'none',
               border: 'none',
-              borderBottom: activeTab === 'ingestion' ? '2px solid #007bff' : '2px solid transparent',
+              borderBottom: activeTab === 'ingestion' ? '2px solid var(--color-accent)' : '2px solid transparent',
               cursor: 'pointer',
               fontWeight: activeTab === 'ingestion' ? 'bold' : 'normal',
             }}

@@ -293,8 +293,8 @@ export function BatchOperationsPanel({ availableFiles, selectedFileIds, filename
 
   return (
     <div style={{
-      backgroundColor: '#f9fafb',
-      borderBottom: '1px solid #e5e7eb',
+      backgroundColor: 'var(--color-surface-secondary)',
+      borderBottom: '1px solid var(--color-border-subtle)',
       padding: '16px',
     }}>
       {/* Action Buttons */}
@@ -353,7 +353,7 @@ export function BatchOperationsPanel({ availableFiles, selectedFileIds, filename
       {/* Status Message */}
       <div style={{
         fontSize: '13px',
-        color: unprocessedCount > 0 ? '#374151' : '#6b7280',
+        color: unprocessedCount > 0 ? 'var(--color-text)' : 'var(--color-text-secondary)',
         marginBottom: '12px',
         lineHeight: '1.5',
       }}>

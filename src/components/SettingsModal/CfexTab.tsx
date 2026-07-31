@@ -29,7 +29,7 @@ export function CfexTab({
 }: CfexTabProps) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-      <p style={{ color: '#666', marginTop: 0 }}>
+      <p style={{ color: 'var(--color-text-secondary)', marginTop: 0 }}>
         Configure default paths for CFEx card file transfers.
       </p>
 
@@ -44,7 +44,7 @@ export function CfexTab({
             value={cfexSource}
             onChange={(e) => setCfexSource(e.target.value)}
             placeholder="/Volumes/Untitled/DCIM/100_FUJI"
-            style={{ flex: 1, padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
+            style={{ flex: 1, padding: '8px', border: '1px solid var(--color-border)', borderRadius: '4px' }}
           />
           <button
             onClick={() => onBrowse('source')}
@@ -60,7 +60,7 @@ export function CfexTab({
             Browse
           </button>
         </div>
-        <small style={{ color: '#666' }}>CFEx card mount location (e.g., /Volumes/Untitled/DCIM/100_FUJI)</small>
+        <small style={{ color: 'var(--color-text-secondary)' }}>CFEx card mount location (e.g., /Volumes/Untitled/DCIM/100_FUJI)</small>
       </div>
 
       <div>
@@ -74,7 +74,7 @@ export function CfexTab({
             value={cfexPhotos}
             onChange={(e) => setCfexPhotos(e.target.value)}
             placeholder="/Volumes/videos-current/2. WORKING PROJECTS/"
-            style={{ flex: 1, padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
+            style={{ flex: 1, padding: '8px', border: '1px solid var(--color-border)', borderRadius: '4px' }}
           />
           <button
             onClick={() => onBrowse('photos')}
@@ -90,7 +90,7 @@ export function CfexTab({
             Browse
           </button>
         </div>
-        <small style={{ color: '#666' }}>LucidLink folder for photos (subfolders created per project)</small>
+        <small style={{ color: 'var(--color-text-secondary)' }}>LucidLink folder for photos (subfolders created per project)</small>
       </div>
 
       <div>
@@ -104,7 +104,7 @@ export function CfexTab({
             value={cfexVideos}
             onChange={(e) => setCfexVideos(e.target.value)}
             placeholder="/Volumes/EAV_Video_RAW/"
-            style={{ flex: 1, padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
+            style={{ flex: 1, padding: '8px', border: '1px solid var(--color-border)', borderRadius: '4px' }}
           />
           <button
             onClick={() => onBrowse('videos')}
@@ -120,11 +120,11 @@ export function CfexTab({
             Browse
           </button>
         </div>
-        <small style={{ color: '#666' }}>Ubuntu SMB share for raw video archival</small>
+        <small style={{ color: 'var(--color-text-secondary)' }}>Ubuntu SMB share for raw video archival</small>
       </div>
 
-      {error && <div style={{ color: 'red' }}>{error}</div>}
-      {saveSuccess && <div style={{ color: 'green' }}>✓ CFEx settings saved successfully!</div>}
+      {error && <div style={{ color: 'var(--color-danger-text)' }}>{error}</div>}
+      {saveSuccess && <div style={{ color: 'var(--color-success-text)' }}>✓ CFEx settings saved successfully!</div>}
 
       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '16px' }}>
         <button onClick={onClose} style={{ padding: '8px 16px' }}>
@@ -135,7 +135,7 @@ export function CfexTab({
           disabled={isSaving}
           style={{
             padding: '8px 16px',
-            backgroundColor: '#007bff',
+            backgroundColor: 'var(--color-accent)',
             color: 'white',
             border: 'none',
             borderRadius: '4px',

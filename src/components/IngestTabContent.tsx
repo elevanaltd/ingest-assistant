@@ -348,7 +348,7 @@ export function IngestTabContent({
                   <label style={{ fontSize: '13px' }}>Generated Title</label>
                   <div style={{
                     padding: '5px 8px',
-                    background: '#f5f5f5',
+                    background: 'var(--color-surface-secondary)',
                     borderRadius: '4px',
                     fontFamily: 'monospace',
                     fontSize: '12px',
@@ -364,13 +364,13 @@ export function IngestTabContent({
                         <>
                           <span>{`${location}-${subject}-${currentFile.fileType === 'video' && action ? `${action}-` : ''}${shotType}`}</span>
                           {currentFile.shotNumber !== undefined ? (
-                            <span style={{ color: '#0066cc', fontWeight: 'bold' }}>-#{currentFile.shotNumber}</span>
+                            <span style={{ color: 'var(--color-accent)', fontWeight: 'bold' }}>-#{currentFile.shotNumber}</span>
                           ) : (
-                            <span style={{ color: '#999', fontWeight: 'normal' }}>-[timestamp]</span>
+                            <span style={{ color: 'var(--color-text-muted)', fontWeight: 'normal' }}>-[timestamp]</span>
                           )}
                         </>
                       )
-                      : <span style={{ color: '#999', fontFamily: 'sans-serif' }}>Fill fields above...</span>
+                      : <span style={{ color: 'var(--color-text-muted)', fontFamily: 'sans-serif' }}>Fill fields above...</span>
                     }
                   </div>
                 </div>
@@ -453,13 +453,13 @@ export function IngestTabContent({
                   {/* Current filename */}
                   <div style={{
                     fontSize: '13px',
-                    color: '#333',
+                    color: 'var(--color-text)',
                     whiteSpace: 'nowrap',
                     overflow: 'hidden',
                     textOverflow: 'ellipsis'
                   }}>
                     {currentFile.currentFilename}
-                    {currentFile.processedByAI && <span style={{ color: '#666', marginLeft: '4px' }}>(AI)</span>}
+                    {currentFile.processedByAI && <span style={{ color: 'var(--color-text-secondary)', marginLeft: '4px' }}>(AI)</span>}
                   </div>
 
                   {/* Status messages */}
@@ -470,11 +470,11 @@ export function IngestTabContent({
                   )}
                   {codecWarning && (
                     <div style={{
-                      backgroundColor: '#fff3cd',
-                      border: '1px solid #ffc107',
+                      backgroundColor: 'var(--color-warning-bg)',
+                      border: '1px solid var(--color-warning)',
                       borderRadius: '4px',
                       padding: '6px 12px',
-                      color: '#856404',
+                      color: 'var(--color-warning-text)',
                       fontSize: '13px',
                       display: 'inline-block',
                       whiteSpace: 'nowrap'
@@ -533,12 +533,12 @@ export function IngestTabContent({
             <div style={{
               marginTop: '16px',
               padding: '12px',
-              borderTop: '1px solid #ddd',
+              borderTop: '1px solid var(--color-border)',
               display: 'flex',
               flexDirection: 'column',
               gap: '8px'
             }}>
-              <div style={{ fontSize: '13px', color: '#666', textAlign: 'center' }}>
+              <div style={{ fontSize: '13px', color: 'var(--color-text-secondary)', textAlign: 'center' }}>
                 {isFolderCompleted ? (
                   <span style={{ fontWeight: 500 }}>
                     🔒 Folder COMPLETED (locked)
@@ -556,7 +556,7 @@ export function IngestTabContent({
                       width: '100%',
                       fontSize: '13px',
                       padding: '8px 12px',
-                      backgroundColor: '#28a745',
+                      backgroundColor: 'var(--color-success)',
                       color: 'white',
                       border: 'none'
                     }}
@@ -572,7 +572,7 @@ export function IngestTabContent({
                       width: '100%',
                       fontSize: '13px',
                       padding: '8px 12px',
-                      backgroundColor: '#007bff',
+                      backgroundColor: 'var(--color-accent)',
                       color: 'white',
                       border: 'none'
                     }}

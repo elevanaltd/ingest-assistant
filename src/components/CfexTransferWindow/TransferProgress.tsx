@@ -36,15 +36,15 @@ export function TransferProgress({
   percentComplete
 }: TransferProgressProps) {
   return (
-    <div style={{ marginBottom: '20px', padding: '12px', backgroundColor: '#f5f5f5', borderRadius: '4px' }}>
+    <div style={{ marginBottom: '20px', padding: '12px', backgroundColor: 'var(--color-surface-secondary)', borderRadius: '4px' }}>
       <div style={{ marginBottom: '8px', fontSize: '14px' }}>
         <strong>Current File:</strong> {currentFile || 'N/A'}
       </div>
       <div style={{ marginBottom: '8px', fontSize: '14px' }}>
         <strong>Progress:</strong> {filesCompleted} / {filesTotal} files ({percentComplete.toFixed(2)}%)
       </div>
-      <div style={{ height: '8px', backgroundColor: '#ddd', borderRadius: '4px', overflow: 'hidden' }}>
-        <div style={{ width: `${percentComplete}%`, height: '100%', backgroundColor: '#007bff' }} />
+      <div style={{ height: '8px', backgroundColor: 'var(--color-border-subtle)', borderRadius: '4px', overflow: 'hidden' }}>
+        <div style={{ width: `${percentComplete}%`, height: '100%', backgroundColor: 'var(--color-accent)' }} />
       </div>
     </div>
   )

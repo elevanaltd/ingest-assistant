@@ -47,7 +47,7 @@ export function AITab({
           id="aiProvider"
           value={aiProvider}
           onChange={(e) => setAiProvider(e.target.value as 'openrouter' | 'openai' | 'anthropic')}
-          style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
+          style={{ width: '100%', padding: '8px', border: '1px solid var(--color-border)', borderRadius: '4px' }}
         >
           <option value="openrouter">OpenRouter</option>
           <option value="openai">OpenAI</option>
@@ -57,7 +57,7 @@ export function AITab({
 
       <div>
         <label htmlFor="aiModel" style={{ display: 'block', marginBottom: '4px', fontWeight: 'bold' }}>
-          Model {availableModels.length > 0 && <span style={{ color: '#666', fontSize: '12px', fontWeight: 'normal' }}>({availableModels.length} available)</span>}
+          Model {availableModels.length > 0 && <span style={{ color: 'var(--color-text-secondary)', fontSize: '12px', fontWeight: 'normal' }}>({availableModels.length} available)</span>}
         </label>
         <input
           id="aiModel"
@@ -67,7 +67,7 @@ export function AITab({
           onChange={(e) => setAiModel(e.target.value)}
           disabled={loadingModels}
           placeholder={loadingModels ? "Loading models..." : availableModels.length > 0 ? "Type to search or select..." : "No models available"}
-          style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
+          style={{ width: '100%', padding: '8px', border: '1px solid var(--color-border)', borderRadius: '4px' }}
         />
         <datalist id="modelList">
           {availableModels.map((model) => (
@@ -77,7 +77,7 @@ export function AITab({
           ))}
         </datalist>
         {aiModel && !availableModels.find(m => m.id === aiModel) && availableModels.length > 0 && (
-          <small style={{ color: '#f59e0b', display: 'block', marginTop: '4px' }}>
+          <small style={{ color: 'var(--color-warning-text)', display: 'block', marginTop: '4px' }}>
             ⚠️ Model not in list - will use as custom model ID
           </small>
         )}
@@ -85,7 +85,7 @@ export function AITab({
 
       <div>
         <label htmlFor="aiApiKey" style={{ display: 'block', marginBottom: '4px', fontWeight: 'bold' }}>
-          API Key {hasSavedKey && <span style={{ color: 'green', fontSize: '12px' }}>(saved in Keychain)</span>}
+          API Key {hasSavedKey && <span style={{ color: 'var(--color-success-text)', fontSize: '12px' }}>(saved in Keychain)</span>}
         </label>
         <input
           id="aiApiKey"
@@ -93,12 +93,12 @@ export function AITab({
           value={aiApiKey}
           onChange={(e) => setAiApiKey(e.target.value)}
           placeholder={hasSavedKey ? "Leave empty to keep existing key" : "Enter API key"}
-          style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
+          style={{ width: '100%', padding: '8px', border: '1px solid var(--color-border)', borderRadius: '4px' }}
         />
       </div>
 
-      {error && <div style={{ color: 'red' }}>{error}</div>}
-      {saveSuccess && <div style={{ color: 'green' }}>✓ AI configuration saved successfully!</div>}
+      {error && <div style={{ color: 'var(--color-danger-text)' }}>{error}</div>}
+      {saveSuccess && <div style={{ color: 'var(--color-success-text)' }}>✓ AI configuration saved successfully!</div>}
 
       <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
         {hasSavedKey && (
@@ -107,7 +107,7 @@ export function AITab({
             disabled={testStatus === 'testing'}
             style={{
               padding: '8px 16px',
-              backgroundColor: '#28a745',
+              backgroundColor: 'var(--color-success)',
               color: 'white',
               border: 'none',
               borderRadius: '4px',
@@ -142,7 +142,7 @@ export function AITab({
           disabled={isSaving}
           style={{
             padding: '8px 16px',
-            backgroundColor: '#007bff',
+            backgroundColor: 'var(--color-accent)',
             color: 'white',
             border: 'none',
             borderRadius: '4px',
