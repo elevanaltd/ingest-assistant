@@ -47,7 +47,7 @@
     "@vitest/ui": "^4.0.15",
     "concurrently": "^8.2.2",
     "electron": "^39.2.5",
-    "electron-builder": "^26.0.12",
+    "electron-builder": "^26.15.7",
     "eslint": "^9.39.0",
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.4.24",
@@ -114,6 +114,11 @@
     "directories": {
       "output": "release"
     },
-    "publish": null
+    "publish": null,
+    "asarUnpack": [
+      "node_modules/@ffmpeg-installer/*/ffmpeg",
+      "node_modules/@ffprobe-installer/*/ffprobe",
+      "node_modules/keytar/build/Release/*.node"
+    ]
   }
 }
