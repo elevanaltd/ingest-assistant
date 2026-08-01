@@ -26,6 +26,7 @@ describe('MetadataWriter exiftool timeout', () => {
     await writer.readCreationTimestamp('/tmp/does-not-matter.mov');
     await writer.readMetadataFromFile('/tmp/does-not-matter.mov');
     await writer.readTapeNameFromFile('/tmp/does-not-matter.mov');
+    await writer.writeMetadataToFile('/tmp/does-not-matter.mov', 'test-name', []);
 
     expect(execFileMock).toHaveBeenCalled();
     for (const call of execFileMock.mock.calls) {
