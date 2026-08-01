@@ -9,6 +9,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [3.1.0] - 2026-08-01
+
+### Added
+
+- Automatic dark mode that follows the OS appearance setting, via a semantic CSS variable / design-token system (#173)
+- App version displayed in the sidebar footer (#171)
+
+### Fixed
+
+- Raised the exiftool metadata-write timeout from 30 seconds to 3 minutes (`EXIFTOOL_TIMEOUT_MS`), fixing spurious write failures on large ProRes/MOV files (#174)
+
+### Changed
+
+- Explicit `build.asarUnpack` configuration for ffmpeg, ffprobe, and the keytar native module, replacing reliance on electron-builder's internal `smartUnpack` heuristic to decide whether these binaries end up executable in a packaged build; removed five `build.files` exclusions for `@ffmpeg-installer` platform packages left over from 3.0.1 that never actually matched anything (#178)
+- Added an automated test guarding the ffmpeg/ffprobe/keytar packaging configuration, so future edits to it can't silently break proxy generation in a packaged build (#178)
+- Refreshed `package-lock.json` and synced its version fields with `package.json` (#172)
+- Removed `pnpm-lock.yaml` — this project installs with npm, not pnpm (#171)
+- CI: bumped `actions/cache` from v3 to v4 in all four workflow jobs, ahead of GitHub's retirement of older cache action versions (#176)
+
+### Security
+
+- Updated `fast-uri` to 3.1.4, `js-yaml` to ^4.3.0, and scoped `ajv` overrides, clearing HIGH-severity npm audit findings that were blocking CI (#175)
+- Updated Electron from 39.2.5 to 39.8.10, closing 5 HIGH-severity advisories: a context-isolation bypass via `contextBridge` VideoFrame transfer, renderer command-line switch injection via undocumented `commandLineSwitches`, and three use-after-free issues (offscreen child window paint callback, WebContents fullscreen/pointer-lock/keyboard-lock permission callbacks, PowerMonitor) (#177)
+- Updated `electron-builder` from 26.0.12 to 26.15.7, closing HIGH-severity advisories in `app-builder-lib` and `builder-util-runtime` (#178)
+
+### Known Issues
+
+- **Linux `.deb`/AppImage builds produced from this version may ship a non-executable `ffprobe` binary** (permission mode `0644` instead of the executable `0755`), a side effect of the electron-builder 26.15.7 packaging engine — see #179. **macOS builds are unaffected**, verified directly against the packaged `.app` bundle before this release. This does not affect any already-published Linux build; it affects only a *future* Linux build cut from this version. **Linux releases are blocked until #179 is resolved.**
+
+---
+
 ## [3.0.2] - 2026-07-02
 
 ### Fixed
