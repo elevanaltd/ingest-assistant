@@ -48,7 +48,7 @@ export function BatchProgressDetails({
           justifyContent: 'space-between',
           fontSize: '12px',
           marginBottom: '4px',
-          color: '#6b7280',
+          color: 'var(--color-text-secondary)',
         }}>
           <span>Progress</span>
           <span>{progressPercentage}%</span>
@@ -56,7 +56,7 @@ export function BatchProgressDetails({
         <div style={{
           width: '100%',
           height: '8px',
-          backgroundColor: '#e5e7eb',
+          backgroundColor: 'var(--color-border-subtle)',
           borderRadius: '4px',
           overflow: 'hidden',
         }}>
@@ -74,17 +74,17 @@ export function BatchProgressDetails({
         <div style={{
           fontSize: '12px',
           padding: '8px',
-          backgroundColor: '#fff',
+          backgroundColor: 'var(--color-surface)',
           borderRadius: '4px',
-          border: '1px solid #e5e7eb',
+          border: '1px solid var(--color-border-subtle)',
         }}>
           <div style={{ fontWeight: '500', marginBottom: '4px' }}>
             Processing: {currentProgress.fileId}
           </div>
-          <div style={{ color: '#6b7280' }}>
+          <div style={{ color: 'var(--color-text-secondary)' }}>
             {currentProgress.current} of {currentProgress.total} files
             {currentProgress.error && (
-              <span style={{ color: '#dc2626', marginLeft: '8px' }}>
+              <span style={{ color: 'var(--color-danger-text)', marginLeft: '8px' }}>
                 Error: {currentProgress.error}
               </span>
             )}
@@ -96,7 +96,7 @@ export function BatchProgressDetails({
       <div style={{
         marginTop: '8px',
         fontSize: '12px',
-        color: '#6b7280',
+        color: 'var(--color-text-secondary)',
         display: 'flex',
         gap: '16px',
       }}>

@@ -113,7 +113,7 @@ export function FolderPicker({
   return (
     <div style={{ marginBottom: '20px' }}>
       {browseError && (
-        <div style={{ marginBottom: '12px', padding: '8px', backgroundColor: '#f8d7da', borderRadius: '4px', fontSize: '13px', color: '#721c24' }}>
+        <div style={{ marginBottom: '12px', padding: '8px', backgroundColor: 'var(--color-danger-bg)', borderRadius: '4px', fontSize: '13px', color: 'var(--color-danger-text)' }}>
           <strong>Browse failed:</strong> {browseError}<br />
           <span style={{ fontSize: '12px' }}>Please type the path manually instead.</span>
         </div>
@@ -138,8 +138,8 @@ export function FolderPicker({
             style={{
               padding: '6px 16px',
               fontSize: '13px',
-              backgroundColor: isBrowsing ? '#ffc107' : '#f0f0f0',
-              border: '1px solid #ccc',
+              backgroundColor: isBrowsing ? 'var(--color-warning)' : 'var(--color-surface-hover)',
+              border: '1px solid var(--color-border)',
               borderRadius: '4px',
               cursor: (disabled || isBrowsing) ? 'not-allowed' : 'pointer'
             }}
@@ -181,8 +181,8 @@ export function FolderPicker({
             style={{
               padding: '6px 16px',
               fontSize: '13px',
-              backgroundColor: isBrowsing ? '#ffc107' : '#f0f0f0',
-              border: '1px solid #ccc',
+              backgroundColor: isBrowsing ? 'var(--color-warning)' : 'var(--color-surface-hover)',
+              border: '1px solid var(--color-border)',
               borderRadius: '4px',
               cursor: (disabled || isBrowsing || !enabledDestinations.photos) ? 'not-allowed' : 'pointer',
               opacity: enabledDestinations.photos ? 1 : 0.6
@@ -224,8 +224,8 @@ export function FolderPicker({
             style={{
               padding: '6px 16px',
               fontSize: '13px',
-              backgroundColor: isBrowsing ? '#ffc107' : '#f0f0f0',
-              border: '1px solid #ccc',
+              backgroundColor: isBrowsing ? 'var(--color-warning)' : 'var(--color-surface-hover)',
+              border: '1px solid var(--color-border)',
               borderRadius: '4px',
               cursor: (disabled || isBrowsing || !enabledDestinations.rawVideos) ? 'not-allowed' : 'pointer',
               opacity: enabledDestinations.rawVideos ? 1 : 0.6
@@ -267,8 +267,8 @@ export function FolderPicker({
             style={{
               padding: '6px 16px',
               fontSize: '13px',
-              backgroundColor: isBrowsing ? '#ffc107' : '#f0f0f0',
-              border: '1px solid #ccc',
+              backgroundColor: isBrowsing ? 'var(--color-warning)' : 'var(--color-surface-hover)',
+              border: '1px solid var(--color-border)',
               borderRadius: '4px',
               cursor: (disabled || isBrowsing || !enabledDestinations.proxies) ? 'not-allowed' : 'pointer',
               opacity: enabledDestinations.proxies ? 1 : 0.6

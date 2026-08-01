@@ -118,6 +118,7 @@ describe('ProxyProgressCard', () => {
     // Find progress bar fill (has width style)
     const progressBar = container.querySelector('[style*="width: 45%"]');
     expect(progressBar).toBeInTheDocument();
-    expect(progressBar).toHaveStyle({ backgroundColor: '#3b82f6' }); // blue
+    // Uses the accent theme token (adapts to light/dark automatically)
+    expect(progressBar).toHaveStyle({ backgroundColor: 'var(--color-accent)' });
   });
 });

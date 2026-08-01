@@ -49,15 +49,15 @@ class ErrorBoundary extends Component<Props, State> {
           padding: '20px',
           maxWidth: '800px',
           margin: '50px auto',
-          backgroundColor: '#fff3cd',
-          border: '1px solid #ffc107',
+          backgroundColor: 'var(--color-warning-bg)',
+          border: '1px solid var(--color-warning)',
           borderRadius: '8px',
         }}>
-          <h2 style={{ color: '#856404', marginTop: 0 }}>Something went wrong</h2>
-          <p style={{ color: '#856404' }}>
+          <h2 style={{ color: 'var(--color-warning-text)', marginTop: 0 }}>Something went wrong</h2>
+          <p style={{ color: 'var(--color-warning-text)' }}>
             The application encountered an unexpected error. This might be due to:
           </p>
-          <ul style={{ color: '#856404' }}>
+          <ul style={{ color: 'var(--color-warning-text)' }}>
             <li>Missing Electron API (ensure the app is running in Electron)</li>
             <li>Configuration issues</li>
             <li>Network or file system problems</li>
@@ -65,16 +65,16 @@ class ErrorBoundary extends Component<Props, State> {
 
           {this.state.error && (
             <details style={{ marginTop: '20px' }}>
-              <summary style={{ cursor: 'pointer', fontWeight: 'bold', color: '#721c24' }}>
+              <summary style={{ cursor: 'pointer', fontWeight: 'bold', color: 'var(--color-danger-text)' }}>
                 Error Details (click to expand)
               </summary>
               <pre style={{
-                backgroundColor: '#f8d7da',
+                backgroundColor: 'var(--color-danger-bg)',
                 padding: '10px',
                 borderRadius: '4px',
                 overflow: 'auto',
                 fontSize: '12px',
-                color: '#721c24',
+                color: 'var(--color-danger-text)',
               }}>
                 {this.state.error.toString()}
                 {this.state.errorInfo && (
@@ -92,7 +92,7 @@ class ErrorBoundary extends Component<Props, State> {
             style={{
               marginTop: '20px',
               padding: '10px 20px',
-              backgroundColor: '#007bff',
+              backgroundColor: 'var(--color-accent)',
               color: 'white',
               border: 'none',
               borderRadius: '4px',

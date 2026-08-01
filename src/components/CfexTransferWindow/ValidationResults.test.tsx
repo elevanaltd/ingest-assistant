@@ -116,8 +116,8 @@ describe('ValidationResults (Phase 8a Extraction)', () => {
       // ACT
       const { container } = render(<ValidationResults warnings={warnings} errors={[]} />)
 
-      // ASSERT: Warning div has yellow background color
-      const warningDiv = container.querySelector('div[style*="background-color: rgb(255, 243, 205)"]')
+      // ASSERT: Warning div uses the warning theme token (adapts to light/dark automatically)
+      const warningDiv = container.querySelector('div[style*="background-color: var(--color-warning-bg)"]')
       expect(warningDiv).toBeInTheDocument()
     })
 
@@ -130,8 +130,8 @@ describe('ValidationResults (Phase 8a Extraction)', () => {
       // ACT
       const { container } = render(<ValidationResults warnings={[]} errors={errors} />)
 
-      // ASSERT: Error div has red background color
-      const errorDiv = container.querySelector('div[style*="background-color: rgb(248, 215, 218)"]')
+      // ASSERT: Error div uses the danger theme token (adapts to light/dark automatically)
+      const errorDiv = container.querySelector('div[style*="background-color: var(--color-danger-bg)"]')
       expect(errorDiv).toBeInTheDocument()
     })
   })
