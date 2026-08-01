@@ -57,9 +57,9 @@ export function LexiconTab({
           value={pattern}
           onChange={(e) => setPattern(e.target.value)}
           placeholder="{location}-{subject}-{shotType}"
-          style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
+          style={{ width: '100%', padding: '8px', border: '1px solid var(--color-border)', borderRadius: '4px' }}
         />
-        <small style={{ color: '#666' }}>
+        <small style={{ color: 'var(--color-text-secondary)' }}>
           Photos: {'{location}-{subject}-{shotType}'} • Videos: {'{location}-{subject}-{action}-{shotType}'}
         </small>
       </div>
@@ -74,7 +74,7 @@ export function LexiconTab({
           value={commonLocations}
           onChange={(e) => setCommonLocations(e.target.value)}
           placeholder="kitchen, hall, utility, bath, building"
-          style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
+          style={{ width: '100%', padding: '8px', border: '1px solid var(--color-border)', borderRadius: '4px' }}
         />
       </div>
 
@@ -88,7 +88,7 @@ export function LexiconTab({
           value={commonSubjects}
           onChange={(e) => setCommonSubjects(e.target.value)}
           placeholder="oven, sink, tap, dishwasher, shower"
-          style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
+          style={{ width: '100%', padding: '8px', border: '1px solid var(--color-border)', borderRadius: '4px' }}
         />
       </div>
 
@@ -102,7 +102,7 @@ export function LexiconTab({
           value={commonActions}
           onChange={(e) => setCommonActions(e.target.value)}
           placeholder="cleaning, installing, replacing, inspecting"
-          style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
+          style={{ width: '100%', padding: '8px', border: '1px solid var(--color-border)', borderRadius: '4px' }}
         />
       </div>
 
@@ -116,7 +116,7 @@ export function LexiconTab({
           onChange={(e) => setWordPreferences(e.target.value)}
           placeholder={"faucet → tap\nstove → hob\ntrash → bin"}
           rows={3}
-          style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px', fontFamily: 'monospace' }}
+          style={{ width: '100%', padding: '8px', border: '1px solid var(--color-border)', borderRadius: '4px', fontFamily: 'monospace' }}
         />
       </div>
 
@@ -130,7 +130,7 @@ export function LexiconTab({
           onChange={(e) => setAiInstructions(e.target.value)}
           placeholder="Use lowercase. Hyphens for multi-word terms. Photos use 3-part pattern. Videos use 4-part pattern with action."
           rows={3}
-          style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
+          style={{ width: '100%', padding: '8px', border: '1px solid var(--color-border)', borderRadius: '4px' }}
         />
       </div>
 
@@ -144,7 +144,7 @@ export function LexiconTab({
           onChange={(e) => setGoodExamples(e.target.value)}
           placeholder={"kitchen-oven-CU\nbath-shower-MID\nkitchen-dishwasher-cleaning-MID"}
           rows={3}
-          style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px', fontFamily: 'monospace' }}
+          style={{ width: '100%', padding: '8px', border: '1px solid var(--color-border)', borderRadius: '4px', fontFamily: 'monospace' }}
         />
       </div>
 
@@ -158,12 +158,12 @@ export function LexiconTab({
           onChange={(e) => setBadExamples(e.target.value)}
           placeholder={"Kitchen-Oven-CU (mixed case)\nkitchen_oven_CU (underscores)\nkitchen-fridge freezer-CU (missing hyphen)"}
           rows={3}
-          style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px', fontFamily: 'monospace' }}
+          style={{ width: '100%', padding: '8px', border: '1px solid var(--color-border)', borderRadius: '4px', fontFamily: 'monospace' }}
         />
       </div>
 
-      {error && <div style={{ color: 'red' }}>{error}</div>}
-      {saveSuccess && <div style={{ color: 'green' }}>✓ Lexicon settings saved successfully!</div>}
+      {error && <div style={{ color: 'var(--color-danger-text)' }}>{error}</div>}
+      {saveSuccess && <div style={{ color: 'var(--color-success-text)' }}>✓ Lexicon settings saved successfully!</div>}
 
       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '16px' }}>
         <button onClick={onClose} style={{ padding: '8px 16px' }}>
@@ -174,7 +174,7 @@ export function LexiconTab({
           disabled={isSaving}
           style={{
             padding: '8px 16px',
-            backgroundColor: '#007bff',
+            backgroundColor: 'var(--color-accent)',
             color: 'white',
             border: 'none',
             borderRadius: '4px',

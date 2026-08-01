@@ -37,14 +37,14 @@ export function IngestionTab({
 }: IngestionTabProps) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-      <p style={{ color: '#666', marginTop: 0 }}>
+      <p style={{ color: 'var(--color-text-secondary)', marginTop: 0 }}>
         Configure automation for file ingestion operations. These settings apply to all ingestion workflows.
       </p>
 
       {/* Power Features - Toggles */}
       <div>
         <h3 style={{ marginTop: 0, marginBottom: '16px', fontSize: '16px' }}>Power Features</h3>
-        <p style={{ color: '#666', fontSize: '14px', marginBottom: '16px' }}>
+        <p style={{ color: 'var(--color-text-secondary)', fontSize: '14px', marginBottom: '16px' }}>
           All features default to OFF (I7 Human Primacy - human judgment has final authority).
         </p>
 
@@ -59,7 +59,7 @@ export function IngestionTab({
             />
             <span style={{ fontSize: '14px' }}>AI Auto-Analyze after transfer</span>
           </label>
-          <small style={{ color: '#666', marginLeft: '24px', marginTop: '-8px', display: 'block' }}>
+          <small style={{ color: 'var(--color-text-secondary)', marginLeft: '24px', marginTop: '-8px', display: 'block' }}>
             Automatically run AI analysis on transferred files
           </small>
 
@@ -73,7 +73,7 @@ export function IngestionTab({
             />
             <span style={{ fontSize: '14px' }}>Write metadata to files (shotName, LogComment, Description, TapeName)</span>
           </label>
-          <small style={{ color: '#666', marginLeft: '24px', marginTop: '-8px', display: 'block' }}>
+          <small style={{ color: 'var(--color-text-secondary)', marginLeft: '24px', marginTop: '-8px', display: 'block' }}>
             Embed XMP metadata directly into file headers
           </small>
 
@@ -87,7 +87,7 @@ export function IngestionTab({
             />
             <span style={{ fontSize: '14px' }}>Rename files using template</span>
           </label>
-          <small style={{ color: '#666', marginLeft: '24px', marginTop: '-8px', display: 'block' }}>
+          <small style={{ color: 'var(--color-text-secondary)', marginLeft: '24px', marginTop: '-8px', display: 'block' }}>
             Rename files based on metadata template (preserves original via TapeName)
           </small>
 
@@ -103,9 +103,9 @@ export function IngestionTab({
                 value={filenameTemplate}
                 onChange={(e) => setFilenameTemplate(e.target.value)}
                 placeholder="{location}-{subject}-{action}-{shotType}"
-                style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px', fontFamily: 'monospace' }}
+                style={{ width: '100%', padding: '8px', border: '1px solid var(--color-border)', borderRadius: '4px', fontFamily: 'monospace' }}
               />
-              <small style={{ color: '#666', display: 'block', marginTop: '4px' }}>
+              <small style={{ color: 'var(--color-text-secondary)', display: 'block', marginTop: '4px' }}>
                 Available tokens: {'{location}'}, {'{subject}'}, {'{action}'}, {'{shotType}'}
               </small>
             </div>
@@ -116,7 +116,7 @@ export function IngestionTab({
       {/* Proxy Format Selection */}
       <div>
         <h3 style={{ marginTop: 0, marginBottom: '16px', fontSize: '16px' }}>Proxy Format</h3>
-        <p style={{ color: '#666', fontSize: '14px', marginBottom: '16px' }}>
+        <p style={{ color: 'var(--color-text-secondary)', fontSize: '14px', marginBottom: '16px' }}>
           Select the format for generated proxy files (used for editing workflow).
         </p>
 
@@ -128,7 +128,7 @@ export function IngestionTab({
             id="proxyFormat"
             value={proxyPresetId}
             onChange={(e) => setProxyPresetId(e.target.value)}
-            style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
+            style={{ width: '100%', padding: '8px', border: '1px solid var(--color-border)', borderRadius: '4px' }}
           >
             {PROXY_PRESETS.map((preset) => (
               <option key={preset.id} value={preset.id}>
@@ -136,14 +136,14 @@ export function IngestionTab({
               </option>
             ))}
           </select>
-          <small style={{ color: '#666', display: 'block', marginTop: '4px' }}>
+          <small style={{ color: 'var(--color-text-secondary)', display: 'block', marginTop: '4px' }}>
             {PROXY_PRESETS.find(p => p.id === proxyPresetId)?.description}
           </small>
         </div>
       </div>
 
-      {error && <div style={{ color: 'red' }}>{error}</div>}
-      {saveSuccess && <div style={{ color: 'green' }}>✓ Ingestion settings saved successfully!</div>}
+      {error && <div style={{ color: 'var(--color-danger-text)' }}>{error}</div>}
+      {saveSuccess && <div style={{ color: 'var(--color-success-text)' }}>✓ Ingestion settings saved successfully!</div>}
 
       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '16px' }}>
         <button onClick={onClose} style={{ padding: '8px 16px' }}>
@@ -154,7 +154,7 @@ export function IngestionTab({
           disabled={isSaving}
           style={{
             padding: '8px 16px',
-            backgroundColor: '#007bff',
+            backgroundColor: 'var(--color-accent)',
             color: 'white',
             border: 'none',
             borderRadius: '4px',

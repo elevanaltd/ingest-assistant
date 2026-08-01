@@ -144,7 +144,7 @@ export function CfexTransferWindow() {
       <h1 style={{ marginBottom: '20px', fontSize: '24px' }}>CFEx File Transfer</h1>
 
       {isDetecting && (
-        <div style={{ marginBottom: '12px', padding: '8px', backgroundColor: '#e3f2fd', borderRadius: '4px', fontSize: '13px', color: '#1976d2' }}>
+        <div style={{ marginBottom: '12px', padding: '8px', backgroundColor: 'var(--color-info-bg)', borderRadius: '4px', fontSize: '13px', color: 'var(--color-info-text)' }}>
           Detecting CFEx cards...
         </div>
       )}
@@ -197,7 +197,7 @@ export function CfexTransferWindow() {
             padding: '12px',
             fontSize: '14px',
             fontWeight: 500,
-            backgroundColor: canStart ? '#007bff' : '#ccc',
+            backgroundColor: canStart ? 'var(--color-accent)' : 'var(--color-border)',
             color: 'white',
             border: 'none',
             borderRadius: '4px',
@@ -217,7 +217,7 @@ export function CfexTransferWindow() {
               padding: '12px 24px',
               fontSize: '14px',
               fontWeight: 500,
-              backgroundColor: '#dc3545',
+              backgroundColor: 'var(--color-danger)',
               color: 'white',
               border: 'none',
               borderRadius: '4px',
@@ -235,7 +235,7 @@ export function CfexTransferWindow() {
               padding: '12px 24px',
               fontSize: '14px',
               fontWeight: 500,
-              backgroundColor: '#28a745',
+              backgroundColor: 'var(--color-success)',
               color: 'white',
               border: 'none',
               borderRadius: '4px',
@@ -249,8 +249,8 @@ export function CfexTransferWindow() {
 
       {/* Error Display */}
       {ctxState.lastError && (
-        <div style={{ marginBottom: '20px', padding: '12px', backgroundColor: '#fee', borderRadius: '4px', border: '1px solid #fcc' }}>
-          <div style={{ fontSize: '13px', fontWeight: '500', color: '#c00' }}>
+        <div style={{ marginBottom: '20px', padding: '12px', backgroundColor: 'var(--color-danger-bg)', borderRadius: '4px', border: '1px solid var(--color-danger-border)' }}>
+          <div style={{ fontSize: '13px', fontWeight: '500', color: 'var(--color-danger-text)' }}>
             {ctxState.lastError}
           </div>
         </div>
@@ -258,23 +258,23 @@ export function CfexTransferWindow() {
 
       {/* Proxy Generation Progress */}
       {proxyProgress && proxyProgress.type === 'transcode_progress' && (
-        <div style={{ marginBottom: '20px', padding: '12px', backgroundColor: '#f0f9ff', borderRadius: '4px', border: '1px solid #bfdbfe' }}>
-          <div style={{ fontSize: '13px', fontWeight: '500', marginBottom: '8px', color: '#1e40af' }}>
+        <div style={{ marginBottom: '20px', padding: '12px', backgroundColor: 'var(--color-info-bg)', borderRadius: '4px', border: '1px solid var(--color-info-border)' }}>
+          <div style={{ fontSize: '13px', fontWeight: '500', marginBottom: '8px', color: 'var(--color-info-text)' }}>
             Generating Proxies: {proxyProgress.filename || 'N/A'}
           </div>
-          <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '8px' }}>
+          <div style={{ fontSize: '12px', color: 'var(--color-text-secondary)', marginBottom: '8px' }}>
             Progress: {proxyProgress.index || 0} / {proxyProgress.total || 0} videos ({proxyProgress.percentage || 0}%)
           </div>
-          <div style={{ width: '100%', height: '8px', backgroundColor: '#e5e7eb', borderRadius: '4px', overflow: 'hidden' }}>
+          <div style={{ width: '100%', height: '8px', backgroundColor: 'var(--color-border-subtle)', borderRadius: '4px', overflow: 'hidden' }}>
             <div style={{
               width: `${proxyProgress.percentage || 0}%`,
               height: '100%',
-              backgroundColor: '#3b82f6',
+              backgroundColor: 'var(--color-accent)',
               transition: 'width 0.3s ease'
             }} />
           </div>
           {proxyProgress.timeString && (
-            <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>
+            <div style={{ fontSize: '12px', color: 'var(--color-text-secondary)', marginTop: '4px' }}>
               Encoding: {proxyProgress.percentage || 0}% | ETA: {proxyProgress.timeString}
             </div>
           )}

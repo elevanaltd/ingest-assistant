@@ -43,7 +43,7 @@ export function ValidationResults({ warnings, errors }: ValidationResultsProps) 
         <div style={{ marginBottom: '12px' }}>
           <h3 style={{ fontSize: '14px', marginBottom: '8px' }}>Warnings</h3>
           {warnings.map((warning, index) => (
-            <div key={index} style={{ padding: '8px', backgroundColor: '#fff3cd', borderRadius: '4px', marginBottom: '4px', fontSize: '13px' }}>
+            <div key={index} style={{ padding: '8px', backgroundColor: 'var(--color-warning-bg)', color: 'var(--color-warning-text)', borderRadius: '4px', marginBottom: '4px', fontSize: '13px' }}>
               <strong>{warning.file}:</strong> {warning.message}
             </div>
           ))}
@@ -54,7 +54,7 @@ export function ValidationResults({ warnings, errors }: ValidationResultsProps) 
         <div>
           <h3 style={{ fontSize: '14px', marginBottom: '8px' }}>Errors</h3>
           {errors.map((error, index) => (
-            <div key={index} style={{ padding: '8px', backgroundColor: '#f8d7da', borderRadius: '4px', marginBottom: '4px', fontSize: '13px' }}>
+            <div key={index} style={{ padding: '8px', backgroundColor: 'var(--color-danger-bg)', color: 'var(--color-danger-text)', borderRadius: '4px', marginBottom: '4px', fontSize: '13px' }}>
               <strong>{error.file || 'Unknown'}:</strong> {error.error.message}
             </div>
           ))}
