@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Automatic dark mode that follows the OS appearance setting, via a semantic CSS variable / design-token system (#173)
 - App version displayed in the sidebar footer (#171)
+- Application icon replacing the default Electron icon on macOS and Linux builds
 
 ### Fixed
 
