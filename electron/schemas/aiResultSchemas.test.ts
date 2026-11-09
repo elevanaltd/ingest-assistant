@@ -431,7 +431,7 @@ describe('aiResultSchemas', () => {
       if (!result.success) {
         const error = result.error.issues[0];
         expect(error.path).toContain('shotName');
-        expect(error.message).toContain('Required');
+        expect(error.code).toBe('invalid_type');
       }
     });
 
@@ -448,7 +448,7 @@ describe('aiResultSchemas', () => {
       if (!result.success) {
         const error = result.error.issues[0];
         expect(error.path).toContain('shotName');
-        expect(error.message).toContain('Expected string');
+        expect(error.code).toBe('invalid_type');
       }
     });
 
@@ -465,7 +465,8 @@ describe('aiResultSchemas', () => {
       if (!result.success) {
         const error = result.error.issues[0];
         expect(error.path).toContain('confidence');
-        expect(error.message).toContain('less than or equal to 1');
+        expect(error.code).toBe('too_big');
+        expect((error as { maximum?: unknown }).maximum).toBe(1);
       }
     });
   });

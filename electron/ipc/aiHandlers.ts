@@ -235,7 +235,7 @@ export function registerAiHandlers(
 
       // Special handling for validation errors
       if (error instanceof z.ZodError) {
-        console.error('Invalid IPC message:', error.errors);
+        console.error('Invalid IPC message:', error.issues);
         throw new Error('Invalid request parameters');
       }
 
