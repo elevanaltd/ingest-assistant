@@ -26,7 +26,7 @@ import {
 } from './ipcSchemas';
 import { AIAnalysisResultSchema, AIAnalysisResultV1Schema } from './aiResultSchemas';
 
-const issuePaths = (schema: z.ZodTypeAny, input: unknown): string[] => {
+const issuePaths = (schema: z.ZodType, input: unknown): string[] => {
   const r = schema.safeParse(input);
   if (r.success) throw new Error('expected rejection');
   return r.error.issues.map((i) => i.path.join('.'));
