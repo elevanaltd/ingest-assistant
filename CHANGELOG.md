@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+
+- Upgraded `zod` from 3.25.76 to 4.6.7 to clear HIGH advisory GHSA-mrhx-c7xc-m3w5 (no patched 3.x release); bumped the `fast-uri` override to 3.1.8 and `js-yaml` to ^4.3.2
+
+### Changed
+
+- IPC handlers log `ZodError.issues` (zod 4 removed `ZodError.errors`); zod issue codes and message wording differ from zod 3, but the renderer still receives the same generic "Invalid request parameters" error
+
 ---
 
 ## [3.1.0] - 2026-08-01
