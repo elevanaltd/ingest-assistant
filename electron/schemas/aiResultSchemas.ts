@@ -117,7 +117,7 @@ export const AIAnalysisResultV2Schema = z.object({
  *
  * Validation failures are reported as a ZodError whose `issues` carry a
  * machine-readable `code` and `path` (zod 4: e.g. `invalid_union` for a bad
- * `version`, `invalid_type` for a missing or wrong-type field, `too_big` for
+ * `version`, `invalid_type` for a missing or wrong-type field, `too_big`/`too_small` for
  * out-of-range numbers). Assert on `code`/`path`, not on message wording,
  * which is library-version dependent.
  */
